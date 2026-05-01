@@ -61,6 +61,10 @@ function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
 }
 
+function normalizePostTag(tag: string) {
+  return tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+}
+
 export const useStore = create<AppState>((set, get) => ({
   user: {
     id: undefined,
@@ -1189,16 +1193,19 @@ export const useStore = create<AppState>((set, get) => ({
 
       // 3. Insert Tags
       if (post.tags && post.tags.length > 0) {
-        console.log('Inserting tags...', post.tags);
-        const { error: tagsError } = await supabase
-          .from('post_tags')
-          .insert(post.tags.map((t: string) => ({
-            post_id: postId,
-            tag: t
-          })));
-        if (tagsError) {
-          console.error('Tags insertion error:', tagsError);
-           // Not critical, but good to know
+        const uniqueTags = Array.from(new Set(post.tags.map((t: string) => normalizePostTag(t)).filter(Boolean)));
+        if (uniqueTags.length > 0) {
+          console.log('Inserting tags...', uniqueTags);
+          const { error: tagsError } = await supabase
+            .from('post_tags')
+            .insert(uniqueTags.map((t: string) => ({
+              post_id: postId,
+              tag: t
+            })));
+          if (tagsError) {
+            console.error('Tags insertion error:', tagsError);
+             // Not critical, but good to know
+          }
         }
       }
 

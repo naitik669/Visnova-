@@ -32,11 +32,19 @@ import { uploadMedia, supabase } from '../../lib/supabase';
 import { TrendingTopicsSection } from './TrendingTopicsSection';
 import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';
 
+const normalizeHashtag = (tag: string) => tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+const extractHashtags = (text: string) => {
+  const matches = text.match(/(^|\s)#([a-zA-Z0-9_-]+)/g) || [];
+  return matches.map(tag => normalizeHashtag(tag.trim()));
+};
+
 export default function CommunityFeed() {
   const [activeTab, setActiveTab] = useState<'feed' | 'explore' | 'saved'>('feed');
   const [feedSubTab, setFeedSubTab] = useState<'recommended' | 'following' | 'latest'>('recommended');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchedUsers, setSearchedUsers] = useState<any[]>([]);
+  const [hashtagPosts, setHashtagPosts] = useState<Post[]>([]);
+  const [isHashtagLoading, setIsHashtagLoading] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [selectedPostForThread, setSelectedPostForThread] = useState<Post | null>(null);
   const { posts, addPost, fetchPosts, user, trackInteraction, followingIds, circle, toggleFollow } = useStore();
@@ -58,7 +66,7 @@ export default function CommunityFeed() {
   }, [feedSubTab]);
 
   useEffect(() => {
-    if (activeTab === 'explore' && searchQuery.trim().length >= 2) {
+    if (activeTab === 'explore' && !searchQuery.trim().startsWith('#') && searchQuery.trim().length >= 2) {
       const searchUsers = async () => {
         const { data } = await supabase
           .from('profiles')
@@ -71,6 +79,86 @@ export default function CommunityFeed() {
     } else {
       setSearchedUsers([]);
     }
+  }, [searchQuery, activeTab]);
+
+  const mapPostRow = (p: any): Post => ({
+    id: p.id,
+    userId: p.user_id,
+    author: {
+      id: p.author?.id || p.user_id,
+      name: p.author?.display_name || p.author?.full_name || 'Explorer',
+      avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
+      handle: `@${p.author?.username || 'user'}`
+    },
+    caption: p.caption,
+    content: p.content || '',
+    timestamp: new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+    createdAt: new Date(p.created_at).getTime(),
+    likes: p.likes?.[0]?.count || 0,
+    comments: p.comment_count?.[0]?.count || 0,
+    saves: p.saves?.[0]?.count || 0,
+    isLiked: false,
+    isSaved: false,
+    type: p.type || 'update',
+    visibility: p.visibility || 'public',
+    media: p.media?.map((m: any) => ({
+      id: m.id,
+      url: m.media_url,
+      type: m.media_type
+    })) || [],
+    tags: p.post_tags?.map((t: any) => t.tag) || [],
+    mentions: p.mentions?.map((m: any) => ({
+      userId: m.mentioned_user_id,
+      username: m.user?.username || 'user'
+    })) || [],
+    stats: p.stats,
+    metadata: p.metadata
+  });
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    const tag = query.startsWith('#') ? normalizeHashtag(query) : '';
+
+    if (activeTab !== 'explore' || !tag) {
+      setHashtagPosts([]);
+      setIsHashtagLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchHashtagPosts = async () => {
+      setIsHashtagLoading(true);
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          author:profiles(*),
+          likes:post_likes(count),
+          saves:saved_posts(count),
+          comment_count:comments(count),
+          media:post_media(*),
+          post_tags!inner(*),
+          mentions:post_mentions(*, user:profiles(username))
+        `)
+        .eq('visibility', 'public')
+        .ilike('post_tags.tag', tag)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (cancelled) return;
+      if (error) {
+        console.error('Failed to fetch hashtag posts:', error);
+        setHashtagPosts([]);
+      } else {
+        setHashtagPosts((data || []).map(mapPostRow));
+      }
+      setIsHashtagLoading(false);
+    };
+
+    fetchHashtagPosts();
+    return () => {
+      cancelled = true;
+    };
   }, [searchQuery, activeTab]);
 
   const filteredPosts = posts.filter(post => {
@@ -93,6 +181,13 @@ export default function CommunityFeed() {
 
     return matchesSearch;
   });
+
+  const visiblePosts = activeTab === 'explore' && searchQuery.trim().startsWith('#') ? hashtagPosts : filteredPosts;
+
+  const handleHashtagClick = (tag: string) => {
+    setActiveTab('explore');
+    setSearchQuery(`#${normalizeHashtag(tag)}`);
+  };
 
   const switchTab = (tab: 'feed' | 'explore' | 'saved') => {
     setActiveTab(tab);
@@ -138,6 +233,7 @@ export default function CommunityFeed() {
           key={`${post.id || 'post'}-${idx}`} 
           post={post} 
           onOpenThread={() => setSelectedPostForThread(post)} 
+          onHashtagClick={handleHashtagClick}
         />
       );
 
@@ -304,7 +400,7 @@ export default function CommunityFeed() {
 
              {/* Trending Topics - Main Section */}
              <TrendingTopicsSection 
-                onTopicClick={(tag) => setSearchQuery(`#${tag}`)} 
+                onTopicClick={handleHashtagClick} 
                 className="mb-12"
              />
 
@@ -316,11 +412,22 @@ export default function CommunityFeed() {
                    </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   {filteredPosts.slice(0, 10).map((post, idx) => (
+                   {isHashtagLoading ? (
+                     <div className="col-span-full py-16 flex flex-col items-center justify-center gap-4 border border-card-border rounded-[2rem] bg-card/40">
+                       <Loader2 size={24} className="animate-spin text-accent" />
+                       <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Loading hashtag posts...</p>
+                     </div>
+                   ) : visiblePosts.length === 0 ? (
+                     <div className="col-span-full py-16 flex flex-col items-center justify-center gap-3 border border-dashed border-card-border rounded-[2rem]">
+                       <Hash size={24} className="text-text-secondary/40" />
+                       <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">No posts found for this search.</p>
+                     </div>
+                   ) : visiblePosts.slice(0, 10).map((post, idx) => (
                      <PostCard 
                        key={`explore-${post.id}-${idx}`} 
                        post={post} 
                        onOpenThread={() => setSelectedPostForThread(post)} 
+                       onHashtagClick={handleHashtagClick}
                      />
                    ))}
                 </div>
@@ -467,11 +574,6 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const parseTags = (text: string) => {
-    const tags = text.match(/#[\w-]+/g);
-    return tags ? tags.map(t => t.slice(1)) : [];
-  };
-
   const handleSubmit = async () => {
     if (!caption.trim() && !content.trim() && images.length === 0) return;
     setIsSubmitting(true);
@@ -487,7 +589,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
         });
       }
 
-      const tags = [...parseTags(content), ...parseTags(caption)];
+      const tags = Array.from(new Set([...extractHashtags(content), ...extractHashtags(caption)].filter(Boolean)));
       const finalMentions = mentions.filter(m => 
         content.includes(`@${m.username}`) || caption.includes(`@${m.username}`)
       );
@@ -708,7 +810,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   );
 }
 
-function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void }) {
+function PostCard({ post, onOpenThread, onHashtagClick }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void }) {
   const { toggleLikePost, toggleSavePost, trackInteraction, session } = useStore();
   const hasTrackedView = useRef(false);
   const currentUserId = session?.user?.id;
@@ -720,12 +822,10 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
     }
   }, [post.id]);
   
-  const renderTextWithMentions = (text: string, mentions?: Post['mentions']) => {
-    if (!mentions || mentions.length === 0) return text;
-    
-    const parts = text.split(/(@\w+)/g);
+  const renderInteractiveText = (text: string, mentions?: Post['mentions']) => {
+    const parts = text.split(/(@\w+|#[a-zA-Z0-9_-]+)/g);
     return parts.map((part, i) => {
-      const mention = mentions.find(m => `@${m.username}`.toLowerCase() === part.toLowerCase());
+      const mention = mentions?.find(m => `@${m.username}`.toLowerCase() === part.toLowerCase());
       if (mention) {
         return (
           <button
@@ -733,6 +833,20 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
             onClick={(e) => {
               e.stopPropagation();
               useStore.getState().setSelectedProfileId(mention.userId);
+            }}
+            className="text-accent hover:underline font-bold transition-all"
+          >
+            {part}
+          </button>
+        );
+      }
+      if (part.startsWith('#') && normalizeHashtag(part)) {
+        return (
+          <button
+            key={i}
+            onClick={(e) => {
+              e.stopPropagation();
+              onHashtagClick?.(part);
             }}
             className="text-accent hover:underline font-bold transition-all"
           >
@@ -853,21 +967,25 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
           )}
           
           {post.tags?.map(tag => (
-            <span key={tag} className="px-3 py-1.5 rounded-full bg-surface-muted text-[9px] font-black text-text-secondary/60 uppercase tracking-widest border border-card-border hover:text-accent transition-colors cursor-pointer">
+            <button
+              key={tag}
+              onClick={() => onHashtagClick?.(tag)}
+              className="px-3 py-1.5 rounded-full bg-surface-muted text-[9px] font-black text-text-secondary/60 uppercase tracking-widest border border-card-border hover:text-accent transition-colors cursor-pointer"
+            >
               #{tag}
-            </span>
+            </button>
           ))}
         </div>
         
         <div className="space-y-4">
           {post.caption && (
             <h5 className="text-xl font-bold text-text-main tracking-tight leading-relaxed font-display">
-              {renderTextWithMentions(post.caption, post.mentions)}
+              {renderInteractiveText(post.caption, post.mentions)}
             </h5>
           )}
           
           <p className="text-sm text-text-secondary leading-relaxed font-medium whitespace-pre-wrap opacity-80">
-            {renderTextWithMentions(post.content, post.mentions)}
+            {renderInteractiveText(post.content, post.mentions)}
           </p>
         </div>
 
@@ -1103,4 +1221,3 @@ function CommentThreadModal({ post, onClose }: { post: Post, onClose: () => void
     </div>
   );
 }
-
