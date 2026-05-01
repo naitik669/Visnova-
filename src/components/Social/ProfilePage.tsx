@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { 
   Zap, 
@@ -43,6 +43,7 @@ import { supabase } from '../../lib/supabase';
 
 export default function ProfilePage() {
   const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow } = useStore();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'achievements' | 'settings';
   
@@ -326,7 +327,7 @@ export default function ProfilePage() {
                         {isFollowing ? <Check size={18} /> : <Plus size={18} />}
                         {isFollowing ? 'Following' : 'Follow'}
                      </button>
-                     <button className="h-12 w-12 rounded-2xl bg-surface-muted border border-card-border text-text-secondary flex items-center justify-center hover:text-accent transition-all">
+                     <button onClick={() => navigate(targetId ? `/messages?user=${targetId}` : '/messages')} className="h-12 w-12 rounded-2xl bg-surface-muted border border-card-border text-text-secondary flex items-center justify-center hover:text-accent transition-all">
                         <MessageCircle size={20} />
                      </button>
                    </>

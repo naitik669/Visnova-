@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Plus, Search, Bell, Menu, Compass, Sun, Moon, Palette, Brain, Clock, Globe, X, BookOpen, Book, User, LogOut } from 'lucide-react';
+import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Plus, Search, Bell, Menu, Compass, Sun, Moon, Palette, Brain, Clock, Globe, X, BookOpen, Book, User, LogOut, MessageCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -23,6 +23,7 @@ import FloatingTimer from './components/Dashboard/FloatingTimer';
 import UserProfileModal from './components/Social/UserProfileModal';
 import NotificationCenter from './components/Social/NotificationCenter';
 import ProfilePage from './components/Social/ProfilePage';
+import MessagesPage from './components/Social/MessagesPage';
 import ProfileDropdown from './components/ProfileDropdown';
 import ToastViewport from './components/ToastViewport';
 import { cn } from './lib/utils';
@@ -99,6 +100,7 @@ function Sidebar() {
     { icon: Book, label: 'Journal', path: '/journal' },
     { icon: BookOpen, label: 'Library', path: '/notes' },
     { icon: Users, label: 'Circle', path: '/circle' },
+    { icon: MessageCircle, label: 'Messages', path: '/messages' },
     { icon: User, label: 'Profile', path: '/profile' },
     { icon: Clock, label: 'Timeline', path: '/nova' },
     { icon: Activity, label: 'Growth', path: '/mind-map' },
@@ -406,6 +408,7 @@ export default function App() {
                     <Route path="/feed" element={<CommunityFeed />} />
                     <Route path="/vision" element={<VisionBoard />} />
                     <Route path="/circle" element={<Circle />} />
+                    <Route path="/messages" element={<MessagesPage />} />
                     <Route path="/notes" element={<NotesSystem />} />
                     <Route path="/journal" element={<NotesSystem />} />
                     <Route path="/profile" element={<ProfilePage />} />

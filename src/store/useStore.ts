@@ -1157,8 +1157,12 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       console.log('Attempting to add post for user:', userId);
-      // 0. Ensure profile exists
-      await withTimeout(get().ensureCurrentUserProfile(), 10000, 'Preparing your profile');
+      // 0. Try to ensure the profile exists, but do not block posting on a slow profile read.
+      try {
+        await withTimeout(get().ensureCurrentUserProfile(), 4000, 'Preparing your profile');
+      } catch (profileError) {
+        console.warn('Profile preparation was slow; continuing with post insert:', profileError);
+      }
 
       // 1. Insert core post data
       console.log('Inserting post data...', post);
