@@ -57,6 +57,17 @@ service cloud.firestore {
              data.completed is bool;
     }
 
+    function isValidJournalEntry(data) {
+      return data.keys().hasAll(['userId', 'date', 'note']) &&
+             data.userId == request.auth.uid &&
+             data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+             data.note is string && data.note.size() > 0 && data.note.size() <= 10000 &&
+             (!('visionIds' in data) || (data.visionIds is list && data.visionIds.size() <= 10)) &&
+             (!('mood' in data) || (data.mood is string && data.mood.size() <= 50)) &&
+             (!('createdAt' in data) || (data.createdAt is number)) &&
+             (!('updatedAt' in data) || (data.updatedAt is number));
+    }
+
     // --- Rules ---
 
     match /users/{userId} {
@@ -102,8 +113,15 @@ service cloud.firestore {
     }
 
     match /journal/{entryId} {
-      // entryId is likely userId + date
-      allow read, write: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidJournalEntry(incoming());
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && isValidJournalEntry(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().date == existing().date &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['note', 'visionIds', 'mood', 'updatedAt'])
+      );
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
 
     match /posts/{postId} {

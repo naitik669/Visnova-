@@ -340,6 +340,9 @@ CREATE INDEX IF NOT EXISTS idx_posts_created_at ON public.posts(created_at DESC)
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id_read ON public.notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON public.follows(follower_id);
 CREATE INDEX IF NOT EXISTS idx_follows_following_id ON public.follows(following_id);
+CREATE INDEX IF NOT EXISTS idx_post_tags_tag ON public.post_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_post_tags_post_id ON public.post_tags(post_id);
+CREATE INDEX IF NOT EXISTS idx_user_interests_tag ON public.user_interests(tag);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;

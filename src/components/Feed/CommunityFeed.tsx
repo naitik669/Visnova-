@@ -20,22 +20,33 @@ import {
   Search,
   Shield,
   AtSign,
-  Hash
+  Hash,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
 import { Post, Comment } from '../../types';
 import { uploadMedia, supabase } from '../../lib/supabase';
-import { auth } from '../../lib/firebase';
+// Removed Firebase auth import
+
+import { TrendingTopicsSection } from './TrendingTopicsSection';
+import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';
 
 export default function CommunityFeed() {
   const [activeTab, setActiveTab] = useState<'feed' | 'explore' | 'saved'>('feed');
   const [feedSubTab, setFeedSubTab] = useState<'recommended' | 'following' | 'latest'>('recommended');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchedUsers, setSearchedUsers] = useState<any[]>([]);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [selectedPostForThread, setSelectedPostForThread] = useState<Post | null>(null);
   const { posts, addPost, fetchPosts, user, trackInteraction, followingIds, circle, toggleFollow } = useStore();
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const handleNavExplore = () => setActiveTab('explore');
+    window.addEventListener('nav-explore', handleNavExplore);
+    return () => window.removeEventListener('nav-explore', handleNavExplore);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -46,25 +57,112 @@ export default function CommunityFeed() {
     load();
   }, [feedSubTab]);
 
-  const filteredPosts = posts.filter(post => {
-    const matchesSearch = post.content.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         post.author.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         post.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+  useEffect(() => {
+    if (activeTab === 'explore' && searchQuery.trim().length >= 2) {
+      const searchUsers = async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url, bio, level')
+          .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
+          .limit(6);
+        if (data) setSearchedUsers(data);
+      };
+      searchUsers();
+    } else {
+      setSearchedUsers([]);
+    }
+  }, [searchQuery, activeTab]);
 
-    if (activeTab === 'saved') return post.isSaved && matchesSearch;
-    if (activeTab === 'explore') return !post.isSaved && matchesSearch; // Just a placeholder for explore logic
+  const filteredPosts = posts.filter(post => {
+    // Only apply search filter in Explore tab
+    if (activeTab !== 'explore') {
+       if (activeTab === 'saved') return post.isSaved;
+       return true;
+    }
+
+    const searchLower = searchQuery.toLowerCase();
+    if (!searchLower) return true;
+
+    const isTagSearch = searchLower.startsWith('#');
+    const cleanSearch = isTagSearch ? searchLower.slice(1) : searchLower;
+
+    const matchesSearch = post.content.toLowerCase().includes(searchLower) || 
+                         post.author.name.toLowerCase().includes(searchLower) ||
+                         post.tags?.some(t => t.toLowerCase().includes(cleanSearch)) ||
+                         (post.caption?.toLowerCase().includes(searchLower));
+
     return matchesSearch;
   });
 
+  const switchTab = (tab: 'feed' | 'explore' | 'saved') => {
+    setActiveTab(tab);
+    setSearchQuery(''); // Clear search on tab switch as requested
+  };
+
+  const renderFeedItems = () => {
+    const items: React.ReactNode[] = [];
+    
+    if (filteredPosts.length === 0) {
+      const emptyMessages = {
+        recommended: searchQuery ? 'No posts matched your query.' : 'No posts yet. Share your first progress update.',
+        following: 'You are not following anyone yet. Follow creators to build your feed.',
+        latest: 'No public posts yet.'
+      };
+      
+      const currentEmptyMsg = activeTab === 'saved' ? 'No saved posts yet.' : emptyMessages[feedSubTab];
+
+      return (
+        <div className="py-20 flex flex-col items-center justify-center text-center px-4 border-2 border-dashed border-card-border rounded-[2.5rem]">
+           <div className="w-20 h-20 rounded-[2rem] bg-accent/5 text-accent flex items-center justify-center mb-6">
+              <Users size={32} />
+           </div>
+           <h3 className="text-xl font-black text-text-main uppercase tracking-tight mb-2">No Posts Found</h3>
+           <p className="text-text-secondary/60 text-xs font-medium max-w-xs uppercase tracking-widest leading-relaxed">
+              {currentEmptyMsg}
+           </p>
+           {activeTab === 'feed' && !searchQuery && (
+             <button 
+               onClick={() => setIsComposerOpen(true)}
+               className="mt-8 px-8 h-12 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-105 active:scale-95 transition-all"
+             >
+                Share First Update
+             </button>
+           )}
+        </div>
+      );
+    }
+
+    filteredPosts.forEach((post, idx) => {
+      items.push(
+        <PostCard 
+          key={`${post.id || 'post'}-${idx}`} 
+          post={post} 
+          onOpenThread={() => setSelectedPostForThread(post)} 
+        />
+      );
+
+      // Inject suggested users after every 5 items
+      if (idx > 0 && (idx + 1) % 5 === 0) {
+        items.push(<SuggestedUsersFeedBlock key={`suggested-${idx}`} />);
+      }
+    });
+
+    if (filteredPosts.length > 0 && filteredPosts.length < 5) {
+      items.push(<SuggestedUsersFeedBlock key="suggested-end" />);
+    }
+
+    return items;
+  };
+
   return (
-    <div className="w-full max-w-5xl mx-auto pb-20 animate-in fade-in duration-700">
+    <div className="w-full max-w-7xl mx-auto pb-20 animate-in fade-in duration-700">
       {/* Feed Navigation - Non-sticky per user request */}
       <div className="bg-app-container/80 backdrop-blur-md pt-2 pb-2 px-4 mb-4 border-b border-card-border/50">
-        <div className="flex flex-col gap-4 max-w-5xl mx-auto">
+        <div className="flex flex-col gap-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <div className="flex bg-surface-muted p-1 rounded-xl border border-card-border flex-1 items-center shadow-sm">
               <button
-                onClick={() => setActiveTab('feed')}
+                onClick={() => switchTab('feed')}
                 className={cn(
                   "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
                   activeTab === 'feed' ? "bg-card shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
@@ -73,7 +171,7 @@ export default function CommunityFeed() {
                 <Users size={14} /> Feed
               </button>
               <button
-                onClick={() => setActiveTab('explore')}
+                onClick={() => switchTab('explore')}
                 className={cn(
                   "flex-1 py-1.5 sm:py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
                   activeTab === 'explore' ? "bg-card shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
@@ -82,7 +180,7 @@ export default function CommunityFeed() {
                 <Compass size={14} /> Explore
               </button>
               <button
-                onClick={() => setActiveTab('saved')}
+                onClick={() => switchTab('saved')}
                 className={cn(
                   "flex-1 py-1.5 sm:py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
                   activeTab === 'saved' ? "bg-card shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
@@ -92,22 +190,24 @@ export default function CommunityFeed() {
               </button>
             </div>
             
-            <div className="hidden md:flex items-center bg-surface-muted rounded-xl border border-card-border px-3 gap-2 flex-1 max-w-xs focus-within:border-accent/40 transition-colors">
-               <Search size={14} className="text-text-secondary/40" />
-               <input 
-                 value={searchQuery}
-                 onChange={(e) => setSearchQuery(e.target.value)}
-                 placeholder="Search matrix..." 
-                 className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest text-text-main placeholder:text-text-secondary/20 h-10 w-full"
-               />
-            </div>
+            {activeTab === 'explore' && (
+              <div className="flex items-center bg-surface-muted rounded-xl border border-card-border px-3 gap-2 flex-1 max-w-2xl focus-within:border-accent/40 transition-colors">
+                 <Search size={14} className="text-text-secondary/40 shrink-0" />
+                 <input 
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                   placeholder="Search posts, creators, or topics" 
+                   className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest text-text-main placeholder:text-text-secondary/20 h-10 w-full"
+                 />
+              </div>
+            )}
 
             <button 
               onClick={() => setIsComposerOpen(true)}
               className="h-10 w-10 sm:w-auto sm:px-4 rounded-xl bg-accent text-accent-contrast flex items-center justify-center gap-2 shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all"
             >
               <Plus size={18} />
-              <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Share Sprint</span>
+              <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Post</span>
             </button>
             
             <button 
@@ -139,8 +239,8 @@ export default function CommunityFeed() {
 
       <div className="px-4">
         {activeTab !== 'explore' ? (
-          <div className="flex flex-col lg:flex-row gap-8">
-            <div className="flex-1 space-y-6">
+          <div className="flex flex-col lg:flex-row gap-8 max-w-[1440px] mx-auto">
+            <div className="flex-1 max-w-6xl space-y-8">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={feedSubTab}
@@ -166,111 +266,68 @@ export default function CommunityFeed() {
                      </div>
                   </div>
                 ))
-              ) : filteredPosts.length > 0 ? (
-                filteredPosts.map(post => (
-                  <PostCard 
-                    key={post.id} 
-                    post={post} 
-                    onOpenThread={() => setSelectedPostForThread(post)} 
-                  />
-                ))
-              ) : (
-                <div className="py-20 flex flex-col items-center justify-center text-center px-4 border-2 border-dashed border-card-border rounded-[2.5rem]">
-                   <div className="w-20 h-20 rounded-[2rem] bg-accent/5 text-accent flex items-center justify-center mb-6">
-                      <Users size={32} />
-                   </div>
-                   <h3 className="text-xl font-black text-text-main uppercase tracking-tight mb-2">No Posts Found</h3>
-                   <p className="text-text-secondary/60 text-xs font-medium max-w-xs uppercase tracking-widest leading-relaxed">
-                      {searchQuery ? 'No nodes matched your query. Try different parameters.' : 'Your feed is currently empty. Start following nodes or share your first sprint.'}
-                   </p>
-                   {!searchQuery && (
-                     <button 
-                       onClick={() => setIsComposerOpen(true)}
-                       className="mt-8 px-8 h-12 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20"
-                     >
-                        Sync First Sprint
-                     </button>
-                   )}
-                </div>
-              )}
+              ) : renderFeedItems()}
             </motion.div>
           </AnimatePresence>
         </div>
 
-        <div className="hidden lg:block w-80 shrink-0 space-y-6">
-          <div className="bg-app-container rounded-[2.5rem] border border-card-border p-8 shadow-sm">
-             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-text-secondary">Pulse Discovery</h3>
-                <TrendingUp size={14} className="text-accent" />
-             </div>
-             <div className="space-y-4">
-                {(['#vision', '#productivity', '#tech', '#wellness']).map(tag => (
-                  <button key={tag} className="flex items-center justify-between w-full p-4 rounded-2xl hover:bg-surface-muted transition-all group">
-                     <span className="text-[11px] font-bold text-text-main group-hover:text-accent transition-colors">{tag}</span>
-                     <span className="text-[9px] font-medium text-text-secondary opacity-40 uppercase">2.4k Sprints</span>
-                  </button>
-                ))}
-             </div>
-          </div>
-
-          <div className="bg-app-container rounded-[2.5rem] border border-card-border p-8 shadow-sm">
-             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-text-secondary">Suggested Minds</h3>
-                <Users size={14} className="text-accent" />
-             </div>
-             <div className="space-y-6">
-                {circle.slice(0, 4).map(u => (
-                  <div key={u.id} className="flex items-center justify-between">
-                     <button 
-                       onClick={() => useStore.getState().setSelectedProfileId(u.id)}
-                       className="flex items-center gap-3 group text-left"
-                     >
-                        <img src={u.avatar} className="w-10 h-10 rounded-xl object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all border border-card-border" />
-                        <div className="min-w-0">
-                           <p className="text-[11px] font-bold text-text-main leading-tight group-hover:text-accent truncate">{u.name}</p>
-                           <p className="text-[9px] text-text-secondary opacity-40 uppercase font-black tracking-widest mt-0.5 truncate">{u.role}</p>
-                        </div>
-                     </button>
-                     <button 
-                       onClick={() => toggleFollow(u.id)}
-                       className={cn(
-                         "text-[9px] font-black uppercase tracking-widest transition-colors",
-                         followingIds.includes(u.id) ? "text-text-secondary opacity-40" : "text-accent hover:underline"
-                       )}
-                     >
-                        {followingIds.includes(u.id) ? 'Linked' : 'Link'}
-                     </button>
-                  </div>
-                ))}
-             </div>
-          </div>
-        </div>
+        <div className="hidden lg:block w-80 shrink-0 space-y-6" />
       </div>
     ) : (
-          <div className="space-y-10 animate-in fade-in duration-500 max-w-4xl mx-auto">
-             {/* Trending Topics */}
-             <div className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 flex items-center gap-2">
-                  <TrendingUp size={12} /> Hot Topics
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                   <div className="system-card p-6 border-accent/20 bg-accent/[0.02]">
-                      <h4 className="text-sm font-bold text-text-main">#DeepSprint</h4>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mt-1">1.2k Sessions</p>
-                   </div>
-                   <div className="system-card p-6">
-                      <h4 className="text-sm font-bold text-text-main">#VisionBoarding</h4>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mt-1">840 Active</p>
-                   </div>
-                   <div className="system-card p-6">
-                      <h4 className="text-sm font-bold text-text-main">#ProductivityHacks</h4>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary mt-1">560 Insights</p>
-                   </div>
+          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-7xl mx-auto">
+             {searchQuery && searchedUsers.length > 0 && (
+               <div className="space-y-6">
+                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 flex items-center gap-2">
+                   <Users size={12} /> People
+                 </h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                   {searchedUsers.map(u => (
+                     <div key={u.id} className="system-card p-4 flex items-center justify-between group">
+                       <div className="flex items-center gap-3">
+                         <img src={u.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${u.id}`} className="w-10 h-10 rounded-xl" alt={u.username} />
+                         <div>
+                            <p className="text-[11px] font-black text-text-main uppercase">{u.display_name || 'Explorer'}</p>
+                            <p className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest">@{u.username}</p>
+                         </div>
+                       </div>
+                       <button 
+                         onClick={() => useStore.getState().setSelectedProfileId(u.id)}
+                         className="h-8 px-4 rounded-lg border border-card-border text-[8px] font-black uppercase tracking-widest hover:border-accent hover:text-accent transition-all"
+                       >
+                         View
+                       </button>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+
+             {/* Trending Topics - Main Section */}
+             <TrendingTopicsSection 
+                onTopicClick={(tag) => setSearchQuery(`#${tag}`)} 
+                className="mb-12"
+             />
+
+             {/* Dynamic Feed showing matches */}
+             <div className="space-y-8">
+                <div className="flex items-center justify-between px-2">
+                   <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60">
+                      Discovery Stream
+                   </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   {filteredPosts.slice(0, 10).map((post, idx) => (
+                     <PostCard 
+                       key={`explore-${post.id}-${idx}`} 
+                       post={post} 
+                       onOpenThread={() => setSelectedPostForThread(post)} 
+                     />
+                   ))}
                 </div>
              </div>
 
              {/* Discover Circles */}
-             <div className="space-y-6">
+             <div className="space-y-6 pt-10 border-t border-card-border/30">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 flex items-center gap-2">
                   <Plus size={12} /> Discover Communities
                 </h3>
@@ -300,8 +357,8 @@ export default function CommunityFeed() {
       <AnimatePresence>
         {isComposerOpen && (
           <PostComposer onClose={() => setIsComposerOpen(false)} onPost={async (p) => {
-            await addPost(p);
-            setIsComposerOpen(false);
+            const success = await addPost(p);
+            return success;
           }} />
         )}
       </AnimatePresence>
@@ -318,7 +375,7 @@ export default function CommunityFeed() {
   );
 }
 
-function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: any) => Promise<void> }) {
+function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: any) => Promise<boolean> }) {
   const [content, setContent] = useState('');
   const [caption, setCaption] = useState('');
   const [type, setType] = useState<Post['type']>('update');
@@ -327,8 +384,74 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   const [date, setDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const [mentions, setMentions] = useState<{ userId: string, username: string }[]>([]);
+  const [mentionSearch, setMentionSearch] = useState<{ type: 'caption' | 'content', query: string, cursorPosition: number } | null>(null);
+  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useStore();
+
+  useEffect(() => {
+    if (mentionSearch && mentionSearch.query.length >= 1) {
+      const search = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .or(`username.ilike.%${mentionSearch.query}%,display_name.ilike.%${mentionSearch.query}%`)
+          .limit(5);
+        if (data) setSuggestedUsers(data);
+      };
+      search();
+    } else {
+      setSuggestedUsers([]);
+    }
+  }, [mentionSearch?.query]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>, type: 'caption' | 'content') => {
+    const value = e.target.value;
+    const cursor = e.target.selectionStart;
+    
+    if (type === 'caption') setCaption(value);
+    else setContent(value);
+
+    // Detect @ mention
+    const lastAtPos = value.lastIndexOf('@', cursor - 1);
+    if (lastAtPos !== -1) {
+      const textAfterAt = value.slice(lastAtPos + 1, cursor);
+      // Only trigger if it's a word start and no spaces relative to @
+      const isStartOfWord = lastAtPos === 0 || /\s/.test(value[lastAtPos - 1]);
+      const hasSpaces = /\s/.test(textAfterAt);
+
+      if (isStartOfWord && !hasSpaces) {
+        setMentionSearch({ type, query: textAfterAt, cursorPosition: cursor });
+        return;
+      }
+    }
+    setMentionSearch(null);
+  };
+
+  const selectUser = (selectedUser: any) => {
+    if (!mentionSearch) return;
+
+    const { type, query: mentionQuery, cursorPosition } = mentionSearch;
+    const text = type === 'caption' ? caption : content;
+    const lastAtPos = text.lastIndexOf('@', cursorPosition - 1);
+    
+    const before = text.slice(0, lastAtPos);
+    const after = text.slice(cursorPosition);
+    const newText = `${before}@${selectedUser.username} ${after}`;
+
+    if (type === 'caption') setCaption(newText);
+    else setContent(newText);
+
+    setMentions(prev => {
+      if (prev.some(m => m.userId === selectedUser.id)) return prev;
+      return [...prev, { userId: selectedUser.id, username: selectedUser.username }];
+    });
+
+    setMentionSearch(null);
+    setSuggestedUsers([]);
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -350,7 +473,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   };
 
   const handleSubmit = async () => {
-    if (!content.trim() && images.length === 0) return;
+    if (!caption.trim() && !content.trim() && images.length === 0) return;
     setIsSubmitting(true);
 
     try {
@@ -365,15 +488,23 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
       }
 
       const tags = [...parseTags(content), ...parseTags(caption)];
+      const finalMentions = mentions.filter(m => 
+        content.includes(`@${m.username}`) || caption.includes(`@${m.username}`)
+      );
 
-      await onPost({
+      const success = await onPost({
         content,
         caption,
         type,
         media: uploadedMedia,
         tags,
+        mentions: finalMentions,
         metadata: (type === 'achievement' || type === 'milestone') ? { title, date } : undefined
       });
+
+      if (success) {
+        onClose();
+      }
     } catch (err) {
       console.error('Submission failed:', err);
     } finally {
@@ -394,14 +525,14 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-2xl bg-app-container rounded-[2rem] shadow-2xl overflow-hidden border border-card-border p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-3xl bg-app-container rounded-[2rem] shadow-2xl overflow-hidden border border-card-border p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
                {type === 'achievement' ? <Trophy size={20} /> : type === 'milestone' ? <Flag size={20} /> : <Zap size={20} />}
             </div>
-            <h3 className="text-xl font-bold text-text-main tracking-tight uppercase font-display">New Broadcast</h3>
+            <h3 className="text-xl font-bold text-text-main tracking-tight uppercase font-display">New Post</h3>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all">
             <X size={20} />
@@ -457,12 +588,12 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
              </motion.div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-4 relative">
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 ml-2">Caption</label>
               <textarea
                 value={caption}
-                onChange={(e) => setCaption(e.target.value)}
+                onChange={(e) => handleTextChange(e, 'caption')}
                 placeholder="A catchy hook for your update..."
                 className="w-full h-20 bg-card border border-card-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
               />
@@ -472,11 +603,43 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
               <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 ml-2">Detailed Content</label>
               <textarea
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={(e) => handleTextChange(e, 'content')}
                 placeholder="Expand on your progress, insights, or plans..."
                 className="w-full h-40 bg-card border border-card-border rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
               />
             </div>
+
+            {/* Mention Suggestions */}
+            <AnimatePresence>
+              {suggestedUsers.length > 0 && mentionSearch && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className={cn(
+                    "absolute z-[110] w-64 bg-card border border-card-border rounded-2xl shadow-2xl p-2 left-4",
+                    mentionSearch.type === 'caption' ? "top-20" : "top-48"
+                  )}
+                >
+                  <div className="p-3 border-b border-card-border mb-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/60">Suggesting Users</p>
+                  </div>
+                  {suggestedUsers.map(u => (
+                    <button
+                      key={u.id}
+                      onClick={() => selectUser(u)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-surface-muted transition-all group text-left"
+                    >
+                      <img src={u.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${u.id}`} className="w-8 h-8 rounded-lg" alt={u.username} />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-text-main leading-tight truncate group-hover:text-accent transition-colors">{u.display_name || 'Explorer'}</p>
+                        <p className="text-[9px] text-text-secondary/40 font-black uppercase tracking-widest mt-0.5 truncate">@{u.username}</p>
+                      </div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="space-y-4">
@@ -524,17 +687,17 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || (!content.trim() && images.length === 0)}
+              disabled={isSubmitting || (!caption.trim() && !content.trim() && images.length === 0)}
               className="px-10 py-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-accent-contrast/30 border-t-accent-contrast rounded-full animate-spin" />
-                  Broadcasting...
+                  Posting...
                 </>
               ) : (
                 <>
-                  <Send size={16} /> Finish & Share
+                  <Send size={16} /> Post
                 </>
               )}
             </button>
@@ -546,8 +709,9 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
 }
 
 function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void }) {
-  const { toggleLikePost, toggleSavePost, trackInteraction } = useStore();
+  const { toggleLikePost, toggleSavePost, trackInteraction, session } = useStore();
   const hasTrackedView = useRef(false);
+  const currentUserId = session?.user?.id;
 
   useEffect(() => {
     if (!hasTrackedView.current) {
@@ -556,9 +720,33 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
     }
   }, [post.id]);
   
+  const renderTextWithMentions = (text: string, mentions?: Post['mentions']) => {
+    if (!mentions || mentions.length === 0) return text;
+    
+    const parts = text.split(/(@\w+)/g);
+    return parts.map((part, i) => {
+      const mention = mentions.find(m => `@${m.username}`.toLowerCase() === part.toLowerCase());
+      if (mention) {
+        return (
+          <button
+            key={i}
+            onClick={(e) => {
+              e.stopPropagation();
+              useStore.getState().setSelectedProfileId(mention.userId);
+            }}
+            className="text-accent hover:underline font-bold transition-all"
+          >
+            {part}
+          </button>
+        );
+      }
+      return part;
+    });
+  };
+  
   return (
     <motion.div
-      className="system-card p-6 sm:p-10 bg-card border-card-border hover:border-accent/20 transition-all group w-full relative overflow-hidden"
+      className="system-card p-6 sm:p-12 bg-card border-card-border hover:border-accent/20 transition-all group w-full relative overflow-hidden"
       layout
     >
       <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
@@ -585,29 +773,47 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
           
           <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2 opacity-0 scale-95 pointer-events-none group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:pointer-events-auto transition-all">
              <button 
-               onClick={() => {
-                 supabase.from('reports').insert({
-                   reporter_id: auth.currentUser?.uid,
+               onClick={async () => {
+                 if (!currentUserId) return;
+                 
+                 const { error } = await supabase.from('reports').insert({
+                   reporter_id: currentUserId,
                    target_id: post.id,
                    target_type: 'post',
                    reason: 'User Reported'
                  });
+
+                 if (error) {
+                   useStore.getState().addToast({ type: 'error', title: 'Report failed', description: 'Could not send report.' });
+                   return;
+                 }
+
                  useStore.getState().addActivity({
                    type: 'social',
                    description: 'Reported post for moderation'
                  });
+                 useStore.getState().addToast({ type: 'success', title: 'Post reported', description: 'Thank you for keeping the community safe.' });
                }}
                className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
              >
                 <Flag size={14} /> Report Post
              </button>
-             {post.userId !== auth.currentUser?.uid && (
+             {post.userId !== currentUserId && (
                <button 
-                 onClick={() => {
-                   supabase.from('user_blocks').insert({
-                     blocker_id: auth.currentUser?.uid,
+                 onClick={async () => {
+                   if (!currentUserId) return;
+
+                   const { error } = await supabase.from('user_blocks').insert({
+                     blocker_id: currentUserId,
                      blocked_id: post.userId
                    });
+
+                   if (error) {
+                     useStore.getState().addToast({ type: 'error', title: 'Block failed', description: 'Could not block user.' });
+                     return;
+                   }
+
+                   useStore.getState().addToast({ type: 'success', title: 'User blocked', description: 'You will no longer see posts from this user.' });
                  }}
                  className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
                >
@@ -621,13 +827,23 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
       <div className="mt-8 space-y-6 relative z-10">
         <div className="flex flex-wrap gap-2">
           {post.type === 'achievement' && (
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-warning/10 text-warning text-[9px] font-black uppercase tracking-widest border border-warning/20">
-              <Trophy size={14} /> Achievement Unlocked
+            <div className="flex flex-col gap-1">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-warning/10 text-warning text-[9px] font-black uppercase tracking-widest border border-warning/20 self-start">
+                <Trophy size={14} /> Achievement Unlocked
+              </div>
+              {post.metadata?.title && (
+                <p className="text-sm font-bold text-warning/80 ml-2 italic tracking-tight">{post.metadata.title}</p>
+              )}
             </div>
           )}
           {post.type === 'milestone' && (
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 text-success text-[9px] font-black uppercase tracking-widest border border-success/20">
-              <Flag size={14} /> Milestone Mastered
+            <div className="flex flex-col gap-1">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 text-success text-[9px] font-black uppercase tracking-widest border border-success/20 self-start">
+                <Flag size={14} /> Milestone Mastered
+              </div>
+              {post.metadata?.title && (
+                <p className="text-sm font-bold text-success/80 ml-2 italic tracking-tight">{post.metadata.title}</p>
+              )}
             </div>
           )}
           {post.type === 'sprint' && (
@@ -646,12 +862,12 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
         <div className="space-y-4">
           {post.caption && (
             <h5 className="text-xl font-bold text-text-main tracking-tight leading-relaxed font-display">
-              {post.caption}
+              {renderTextWithMentions(post.caption, post.mentions)}
             </h5>
           )}
           
           <p className="text-sm text-text-secondary leading-relaxed font-medium whitespace-pre-wrap opacity-80">
-            {post.content}
+            {renderTextWithMentions(post.content, post.mentions)}
           </p>
         </div>
 
@@ -669,19 +885,19 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
         )}
 
         {post.stats && (
-          <div className="p-6 bg-surface-muted/50 rounded-[2rem] border border-card-border flex items-center gap-8 group/stats transition-all hover:bg-surface-muted">
+          <div className="p-6 bg-surface-muted/20 rounded-[2rem] border border-card-border/50 flex items-center gap-8 group/stats transition-all">
              {post.stats.focusTime && (
                <div className="flex flex-col gap-1">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/40">Cycle Time</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/40">Focus Time</p>
                   <p className="text-base font-bold text-text-main tracking-tight">{post.stats.focusTime} Minutes</p>
                </div>
              )}
-             <div className="w-px h-8 bg-card-border/50" />
-             <div className="flex items-center gap-3 text-accent group-hover/stats:scale-110 transition-transform">
-                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
+             <div className="w-px h-8 bg-card-border/30" />
+             <div className="flex items-center gap-3 text-accent/80">
+                <div className="w-8 h-8 rounded-full bg-accent/5 flex items-center justify-center">
                    <ArrowUpRight size={16} />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest">Executive Session</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60">Deep Session</span>
              </div>
           </div>
         )}
@@ -714,7 +930,14 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
                <span className="text-[11px] font-black tabular-nums">{post.comments}</span>
             </button>
             
-            <button className="flex items-center gap-2 text-text-secondary hover:text-text-main hover:scale-110 active:scale-95 transition-all">
+            <button 
+              onClick={() => {
+                const url = `${window.location.origin}/post/${post.id}`;
+                navigator.clipboard.writeText(url);
+                useStore.getState().addToast({ type: 'info', title: 'Link copied', description: 'Post reference saved to clipboard.' });
+              }}
+              className="flex items-center gap-2 text-text-secondary hover:text-text-main hover:scale-110 active:scale-95 transition-all"
+            >
                <Share2 size={20} />
                <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest">Share</span>
             </button>

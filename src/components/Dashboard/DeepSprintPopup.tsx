@@ -34,7 +34,7 @@ export default function DeepSprintPopup({ isOpen, onClose }: { isOpen: boolean; 
           {/* Close Header */}
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[8px] font-black uppercase tracking-widest leading-none">
-              Ready for extraction?
+              Ready to focus?
             </div>
             <button
               onClick={onClose}
@@ -45,9 +45,9 @@ export default function DeepSprintPopup({ isOpen, onClose }: { isOpen: boolean; 
           </div>
 
           <div className="space-y-2 text-center pb-2">
-            <h2 className="text-2xl font-semibold tracking-tight text-text-main ">Initialize <span className="text-accent underline decoration-accent/20 underline-offset-4">Deep Sprint</span></h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-text-main ">Start <span className="text-accent underline decoration-accent/20 underline-offset-4">Focus Session</span></h2>
             <p className="text-[10px] text-text-secondary font-medium opacity-60 max-w-xs mx-auto">
-              Select a depth profile for total alignment.
+              Choose a session duration to begin.
             </p>
           </div>
 
@@ -82,11 +82,11 @@ export default function DeepSprintPopup({ isOpen, onClose }: { isOpen: boolean; 
               onClick={onClose}
               className="w-full py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary/60 hover:text-text-main transition-colors"
             >
-              Cancel Protocol
+              Cancel
             </button>
             <div className="flex items-center gap-3 justify-center opacity-30">
                <Activity size={12} className="text-accent" />
-               <span className="text-[8px] font-black uppercase tracking-[0.2em] text-text-secondary">System Synchronized</span>
+               <span className="text-[8px] font-black uppercase tracking-[0.2em] text-text-secondary">System Ready</span>
             </div>
           </div>
         </motion.div>

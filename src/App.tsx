@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Activity, Users, Settings, Plus, Search, Bell, Menu, Compass, Sun, Moon, Palette, Brain, Clock, Globe, X, BookOpen, User, LogOut } from 'lucide-react';
+import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Plus, Search, Bell, Menu, Compass, Sun, Moon, Palette, Brain, Clock, Globe, X, BookOpen, Book, User, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -15,7 +15,9 @@ import MindVisualizer from './components/Mind/MindVisualizer';
 import Circle from './components/Circle/Circle';
 import CommunityFeed from './components/Feed/CommunityFeed';
 import NotesSystem from './components/Notes/NotesSystem';
+import DailyJournal from './components/VisionBoard/DailyJournal';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
+import AuthCallback from './components/Auth/AuthCallback';
 import { InteractiveTour } from './components/Onboarding/InteractiveTour';
 import VisionAssistant from './components/AI/VisionAssistant';
 import FloatingTimer from './components/Dashboard/FloatingTimer';
@@ -27,6 +29,7 @@ import ToastViewport from './components/ToastViewport';
 import { cn } from './lib/utils';
 import { useStore } from './store/useStore';
 import FocusOverlay from './components/Dashboard/FocusOverlay';
+import Settings from './components/Settings/Settings';
 import { supabase } from './lib/supabase';
 
 function AccountabilityNudge() {
@@ -93,9 +96,10 @@ function Sidebar() {
   const navItems = [
     { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
     { icon: Compass, label: 'Feed', path: '/feed' },
-    { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Target, label: 'Visions', path: '/vision', id: 'nav-vision' },
-    { icon: BookOpen, label: 'Vault', path: '/notes' },
+    { icon: Book, label: 'Journal', path: '/journal' },
+    { icon: BookOpen, label: 'Library', path: '/notes' },
+    { icon: Users, label: 'Circle', path: '/circle' },
     { icon: User, label: 'Profile', path: '/profile' },
     { icon: Clock, label: 'Timeline', path: '/nova' },
     { icon: Activity, label: 'Growth', path: '/mind-map' },
@@ -125,7 +129,7 @@ function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-1 mt-6 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 px-3 space-y-1 mt-6 overflow-y-auto scrollbar-hide">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -141,10 +145,11 @@ function Sidebar() {
                   : 'text-text-secondary hover:text-text-main hover:bg-surface-muted'
               )}
             >
-              <Icon size={18} className={cn('shrink-0 transition-all duration-500', isActive ? 'text-accent' : 'text-text-secondary/60 group-hover:text-text-main')} />
+              <Icon size={18} className={cn('shrink-0 transition-all duration-500', isActive ? 'text-accent' : '[data-theme=sage]:text-white/70 text-text-secondary/60 group-hover:text-text-main group-hover:[data-theme=sage]:text-white')} />
               <span className={cn(
                 "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
-                isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+                isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4",
+                isActive ? "text-accent" : "[data-theme=sage]:text-white/80 text-text-secondary"
               )}>
                 {item.label}
               </span>
@@ -171,7 +176,7 @@ function Sidebar() {
                 "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
                 isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
               )}>
-                Deep Sprint
+                Start Focus
               </span>
           </button>
         </div>
@@ -180,13 +185,13 @@ function Sidebar() {
       {/* User Section */}
       <div className="p-4 mb-2">
         <Link
-          to="/profile?tab=settings"
+          to="/settings"
           className={cn(
             "flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-500 group",
-            location.pathname === '/profile' && new URLSearchParams(location.search).get('tab') === 'settings' ? "text-accent bg-accent/5" : "text-text-secondary hover:text-text-main hover:bg-surface-muted"
+            location.pathname === '/settings' ? "text-accent bg-accent/5" : "text-text-secondary hover:text-text-main hover:bg-surface-muted"
           )}
         >
-          <Settings size={18} className="shrink-0 group-hover:rotate-90 transition-transform duration-700" />
+          <SettingsIcon size={18} className="shrink-0 group-hover:rotate-90 transition-transform duration-700" />
           <span className={cn(
             "text-[10px] font-semibold uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
             isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
@@ -210,14 +215,14 @@ function Topbar() {
   const xpProgress = Math.min(100, ((user?.xp || 0) / nextLevelXp) * 100);
 
   const getSub = () => {
-    if (location.pathname === '/') return 'Dashbord Pulse';
-    if (location.pathname === '/vision') return 'Goal Ecosystem';
-    if (location.pathname === '/notes') return 'Vault';
-    if (location.pathname === '/circle') return 'Circle Pulse';
-    if (location.pathname === '/profile') return 'User Identity';
-    if (location.pathname === '/nova') return 'Temporal Horizon';
-    if (location.pathname === '/mind-map') return 'Strategic Growth';
-    return 'Peripheral';
+    if (location.pathname === '/') return 'Dashboard';
+    if (location.pathname === '/vision') return 'Visions';
+    if (location.pathname === '/notes') return 'Notes';
+    if (location.pathname === '/circle') return 'Circle';
+    if (location.pathname === '/profile') return 'Profile';
+    if (location.pathname === '/nova') return 'Timeline';
+    if (location.pathname === '/mind-map') return 'Growth';
+    return 'VisNova';
   };
 
   return (
@@ -227,15 +232,6 @@ function Topbar() {
       </div>
 
       <div className="flex items-center gap-8">
-        <div className="hidden lg:flex items-center relative group w-[360px]">
-          <Search size={16} className="absolute left-5 text-text-secondary/50 transition-colors group-focus-within:text-accent" />
-          <input
-            type="text"
-            placeholder="Search Intelligence..."
-            className="w-full h-11 pl-12 pr-6 rounded-full bg-card hover:bg-card-elevated border border-card-border/50 shadow-sm text-sm focus:outline-none focus:border-accent/30 focus:shadow-md transition-all font-medium text-text-main placeholder:text-text-secondary/40"
-          />
-        </div>
-
         <div className="flex items-center gap-3">
           <div className="relative">
             <button 
@@ -307,54 +303,29 @@ function MobileNav() {
 
 
 export default function App() {
-  const { theme, isFocusMode, hasCompletedOnboarding, fetchUser, user, setSession, addToast, tutorialCompleted } = useStore();
-  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
-  const [authInitialized, setAuthInitialized] = useState(false);
+  const { 
+    theme, 
+    isFocusMode, 
+    hasCompletedOnboarding, 
+    authLoading, 
+    profileLoading, 
+    initializeAuth, 
+    tutorialCompleted, 
+    session 
+  } = useStore();
+  
   const isPasswordRecovery = sessionStorage.getItem('visnova-auth-link-mode') === 'recovery' || new URLSearchParams(window.location.search).get('mode') === 'reset-password';
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Handle Session Persistence & Supabase Listener
+  // Auth Initialization
   useEffect(() => {
-    if (authInitialized) return;
-    let cancelled = false;
+    initializeAuth();
+  }, [initializeAuth]);
 
-    // Failsafe timer to guarantee loading screen disappears
-    const failSafe = setTimeout(() => {
-      if (!cancelled) {
-        setIsInitializingAuth(false);
-        setAuthInitialized(true);
-      }
-    }, 2000);
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (cancelled) return;
-      
-      setSession(session);
-      
-      if (session?.user) {
-        await fetchUser(session.user.email || '');
-        if (!authInitialized) {
-          addToast({ type: 'success', title: 'Welcome back', description: "Session synchronized successfully." });
-        }
-      }
-      
-      if (!cancelled && !authInitialized) {
-         setIsInitializingAuth(false);
-         setAuthInitialized(true);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      clearTimeout(failSafe);
-      subscription.unsubscribe();
-    };
-  }, [fetchUser, addToast, authInitialized, setSession]);
-
-  if (isInitializingAuth) {
+  if (authLoading) {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
          <motion.div 
@@ -364,19 +335,42 @@ export default function App() {
          />
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">VisNova</span>
-            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-text-secondary opacity-40">Taking you to your dashbord...</span>
+            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-text-secondary opacity-40">Setting up your workspace...</span>
          </div>
       </div>
     );
   }
 
+  // If session exists but profile is still loading
+  if (session && profileLoading && !hasCompletedOnboarding) {
+    return (
+      <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
+         <motion.div 
+            animate={{ rotate: 360, scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="w-12 h-12 bg-accent/20 rounded-xl flex items-center justify-center"
+         >
+            <div className="w-2 h-2 bg-accent rounded-full animate-ping" />
+         </motion.div>
+         <div className="flex flex-col items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">Synchronizing</span>
+            <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-text-secondary opacity-40">Loading your profile data...</span>
+         </div>
+      </div>
+    );
+  }
+
+  const showOnboarding = !session || !hasCompletedOnboarding || isPasswordRecovery;
+
   return (
     <Router>
       <ToastViewport />
       <AnimatePresence mode="wait">
-        {(!hasCompletedOnboarding || isPasswordRecovery) ? (
+        {showOnboarding ? (
           <motion.div
             key="onboarding"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.98, filter: 'blur(5px)' }}
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="absolute inset-0 z-50 bg-bg-base"
@@ -393,35 +387,37 @@ export default function App() {
             transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
             className="min-h-screen bg-bg-base lg:p-6 flex items-center justify-center font-sans selection:bg-accent selection:text-accent-contrast relative z-0"
           >
-           <div className="w-full max-w-[1600px] h-screen lg:h-[94vh] bg-app-container lg:rounded-[2rem] shadow-2xl overflow-hidden relative flex">
-            <AnimatePresence>
-              {isFocusMode && <FocusOverlay />}
-              <AccountabilityNudge />
-              <UserProfileModal />
-            </AnimatePresence>
+            <div className="w-full max-w-[1600px] h-screen lg:h-[94vh] bg-app-container lg:rounded-[2rem] shadow-2xl overflow-hidden relative flex">
+              <AnimatePresence>
+                {isFocusMode && <FocusOverlay />}
+                <AccountabilityNudge />
+                <UserProfileModal />
+              </AnimatePresence>
 
-            {!tutorialCompleted && hasCompletedOnboarding && !isPasswordRecovery && <InteractiveTour />}
-            <Sidebar />
-            <FloatingTimer />
-            <VisionAssistant />
-            <main className="flex-1 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
-              <Topbar />
-              <div className="flex-1 p-6 lg:p-10 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/feed" element={<CommunityFeed />} />
-                  <Route path="/vision" element={<VisionBoard />} />
-                  <Route path="/circle" element={<Circle />} />
-                  <Route path="/notes" element={<NotesSystem />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/nova" element={<NovaClock />} />
-                  <Route path="/mind-map" element={<MindVisualizer />} />
-                  <Route path="*" element={<div className="p-20 text-center text-[10px] font-black text-text-secondary opacity-30 uppercase tracking-[0.4em]">Encypted Path // Access Denied</div>} />
-                </Routes>
-              </div>
-            </main>
-            <MobileNav />
-           </div>
+              {!tutorialCompleted && hasCompletedOnboarding && !isPasswordRecovery && <InteractiveTour />}
+              <Sidebar />
+              <FloatingTimer />
+              <VisionAssistant />
+              <main className="flex-1 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
+                <Topbar />
+                <div className="flex-1 p-6 lg:p-10 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/feed" element={<CommunityFeed />} />
+                    <Route path="/vision" element={<VisionBoard />} />
+                    <Route path="/circle" element={<Circle />} />
+                    <Route path="/notes" element={<NotesSystem />} />
+                    <Route path="/journal" element={<DailyJournal />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/nova" element={<NovaClock />} />
+                    <Route path="/mind-map" element={<MindVisualizer />} />
+                    <Route path="*" element={<div className="p-20 text-center text-[10px] font-black text-text-secondary opacity-30 uppercase tracking-[0.4em]">Page Not Found</div>} />
+                  </Routes>
+                </div>
+              </main>
+              <MobileNav />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

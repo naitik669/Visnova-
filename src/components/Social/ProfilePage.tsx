@@ -40,10 +40,9 @@ import {
 import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
-import { auth } from '../../lib/firebase';
 
 export default function ProfilePage() {
-  const { user: currentUser, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow } = useStore();
+  const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'achievements' | 'settings';
   
@@ -63,10 +62,17 @@ export default function ProfilePage() {
     avatar: currentUser.avatar
   });
 
-  const targetId = selectedProfileId === 'me' ? auth.currentUser?.uid : selectedProfileId;
+  const targetId = (selectedProfileId === 'me' || !selectedProfileId) ? (session?.user?.id || currentUser.id) : selectedProfileId;
 
   const fetchProfileData = async () => {
-    if (!targetId) return;
+    if (!targetId) {
+      // If we don't have a target ID yet, check if we're waiting for auth
+      if (!session?.user && selectedProfileId === 'me') {
+        return;
+      }
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       // Fetch Profile
@@ -80,13 +86,15 @@ export default function ProfilePage() {
       setProfile(profileData);
 
       // Fetch Follow Status
-      if (selectedProfileId !== 'me') {
+      if (selectedProfileId !== 'me' && session?.user) {
         const { data: followData } = await supabase
           .from('follows')
           .select('*')
-          .match({ follower_id: auth.currentUser?.uid, following_id: targetId })
+          .match({ follower_id: session.user.id, following_id: targetId })
           .maybeSingle();
         setIsFollowing(!!followData);
+      } else {
+        setIsFollowing(false);
       }
 
       // Fetch Achievements
@@ -105,20 +113,27 @@ export default function ProfilePage() {
         .order('created_at', { ascending: false });
       setMilestones(milestoneData || []);
 
-      // Filter Posts from store (or fetch them if needed, but fetchPosts in Feed usually populates all)
+      // Filter Posts from store
       const filtered = allPosts.filter(p => p.userId === targetId);
       setProfilePosts(filtered);
 
     } catch (err) {
       console.error('Error fetching profile:', err);
+      // If profile not found, we shouldn't be stuck forever
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // If we're looking at 'me' but auth hasn't loaded yet, wait
+    if (selectedProfileId === 'me' && !session?.user) {
+      // We'll be re-triggered when session changes if it's part of the dependency or via state
+      return;
+    }
     fetchProfileData();
-  }, [targetId, allPosts]);
+  }, [targetId, allPosts, session?.user]);
 
   const setActiveTab = (tab: string) => {
     setSearchParams({ tab });
@@ -154,24 +169,23 @@ export default function ProfilePage() {
   ] as const;
 
   const settingsSections = [
-    { icon: Key, label: 'Security', desc: 'Access keys and protocols' },
-    { icon: Bell, label: 'Notifications', desc: 'Threshold and limits' },
-    { icon: Smartphone, label: 'Devices', desc: 'Sync nodes' },
-    { icon: Globe, label: 'Localization', desc: 'Regional protocols' },
-    { icon: Sparkles, label: 'Tutorial', desc: 'Interactive sequence', action: 'restart' },
+    { icon: Key, label: 'Security', desc: 'Security and privacy settings' },
+    { icon: Bell, label: 'Notifications', desc: 'Alert preferences' },
+    { icon: Smartphone, label: 'Devices', desc: 'Connected devices' },
+    { icon: Globe, label: 'Localization', desc: 'Regional settings' },
+    { icon: Sparkles, label: 'Tutorial', desc: 'Interactive tour', action: 'restart' },
   ];
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'posts', label: 'Posts' },
-    { id: 'achievements', label: 'Trophies' },
-    ...(selectedProfileId === 'me' ? [{ id: 'settings', label: 'Settings' }] : [])
+    { id: 'achievements', label: 'Trophies' }
   ];
 
   if (isLoading) return (
     <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-4">
        <div className="w-12 h-12 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
-       <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">Syncing Profile Data...</p>
+       <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">Loading Profile...</p>
     </div>
   );
 
@@ -219,10 +233,10 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                 {selectedProfileId === 'me' ? (
+                 { (selectedProfileId === 'me' || targetId === session?.user?.id) ? (
                    <>
                     <button 
-                      onClick={() => setActiveTab('settings')}
+                      onClick={() => setIsEditingProfile(true)}
                       className="h-12 px-8 rounded-2xl bg-surface-muted border border-card-border text-text-secondary text-[11px] font-black uppercase tracking-widest hover:bg-card-dark hover:text-text-main transition-all flex items-center gap-3"
                     >
                         <Edit3 size={18} /> Edit Profile
@@ -246,7 +260,7 @@ export default function ProfilePage() {
                        )}
                      >
                         {isFollowing ? <Check size={18} /> : <Plus size={18} />}
-                        {isFollowing ? 'Following' : 'Follow Protocol'}
+                        {isFollowing ? 'Following' : 'Follow'}
                      </button>
                      <button className="h-12 w-12 rounded-2xl bg-surface-muted border border-card-border text-text-secondary flex items-center justify-center hover:text-accent transition-all">
                         <MessageCircle size={20} />
@@ -306,15 +320,15 @@ export default function ProfilePage() {
 
                 <div className="system-card p-8 bg-card border-card-border">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50 mb-6 flex items-center gap-2">
-                    <BookOpen size={12} /> Identity Manifest
+                    <BookOpen size={12} /> Biography
                   </h3>
                   <p className="text-base font-medium text-text-main leading-relaxed  opacity-80">
-                    "{profile?.bio || "This user operates in silent mode. No biography transmitted."}"
+                    "{profile?.bio || "This user prefers silence. No biography provided."}"
                   </p>
                   <div className="mt-8 pt-8 border-t border-card-border space-y-6">
                     <div className="flex items-center gap-3 text-[10px] font-black text-text-secondary uppercase tracking-widest">
                       <Calendar size={16} className="text-accent" />
-                      <span>Transmitted since {new Date(profile?.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+                      <span>Joined {new Date(profile?.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
                     </div>
                     {profile?.interests && profile.interests.length > 0 && (
                       <div className="flex flex-wrap gap-2">
@@ -332,7 +346,7 @@ export default function ProfilePage() {
               {/* Activity Feed */}
               <div className="lg:col-span-8 space-y-6">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50 mb-6 flex items-center gap-2 ml-2">
-                  <LayoutGrid size={12} /> Recent Dispatches
+                  <LayoutGrid size={12} /> Recent Activity
                 </h3>
                 {profilePosts.slice(0, 3).map(post => (
                   <ProfilePostCard key={post.id} post={post} />
@@ -418,7 +432,7 @@ export default function ProfilePage() {
                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-1">
                     <h3 className="text-xl font-bold text-text-main mb-2">Profile</h3>
-                    <p className="text-sm text-text-secondary">Update your core identity and credentials across the expanse.</p>
+                    <p className="text-sm text-text-secondary">Update your personal information and profile details.</p>
                   </div>
                   <div className="lg:col-span-2 system-card p-10 bg-card border-card-border shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-3xl rounded-full -mr-32 -mt-32 pointer-events-none" />
@@ -438,20 +452,20 @@ export default function ProfilePage() {
                            </div>
                         </div>
                         <div className="p-6 bg-surface-muted rounded-2xl border border-card-border/50  opacity-80">
-                           <p className="text-sm font-medium text-text-secondary leading-relaxed">"{currentUser.bio || 'Identify bio uncalibrated.'}"</p>
+                           <p className="text-sm font-medium text-text-secondary leading-relaxed">"{currentUser.bio || 'Bio not set.'}"</p>
                         </div>
                         <button 
                           onClick={() => setIsEditingProfile(true)}
                           className="px-10 py-4 bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 shadow-xl shadow-accent/20 transition-all font-display"
                         >
-                          Modify Parameters
+                          Edit Profile
                         </button>
                       </div>
                     ) : (
                       <div className="space-y-8 relative z-10">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-3">
-                              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Visual Name</label>
+                              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Name</label>
                               <input
                                 type="text"
                                 value={editData.name}
@@ -460,7 +474,7 @@ export default function ProfilePage() {
                               />
                             </div>
                             <div className="space-y-3">
-                              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Channel Alias</label>
+                              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Username</label>
                               <input
                                 type="text"
                                 value={editData.username}
@@ -470,7 +484,7 @@ export default function ProfilePage() {
                             </div>
                          </div>
                          <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Identity bio</label>
+                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Bio</label>
                             <textarea
                               value={editData.bio}
                               onChange={e => setEditData({...editData, bio: e.target.value})}
@@ -479,10 +493,10 @@ export default function ProfilePage() {
                          </div>
                          <div className="flex gap-4">
                             <button onClick={handleSaveProfile} className="flex-1 h-14 bg-accent text-accent-contrast rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 shadow-xl shadow-accent/20">
-                              <Check size={18} /> Update Matrix
+                              <Check size={18} /> Update Profile
                             </button>
                             <button onClick={() => setIsEditingProfile(false)} className="px-10 h-14 bg-surface-muted rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border border-card-border flex items-center justify-center gap-3 hover:bg-card-dark transition-all">
-                              <X size={18} /> Discard Changes
+                              <X size={18} /> Cancel
                             </button>
                          </div>
                       </div>
@@ -529,7 +543,7 @@ export default function ProfilePage() {
                {/* Preferences */}
                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-1">
-                    <h3 className="text-xl font-bold text-text-main mb-2">Protocols</h3>
+                    <h3 className="text-xl font-bold text-text-main mb-2">Preferences</h3>
                     <p className="text-sm text-text-secondary">Fine-tune system alerts and sync options for optimal flow.</p>
                   </div>
                   <div className="lg:col-span-2 grid grid-cols-1 gap-4">
@@ -557,15 +571,15 @@ export default function ProfilePage() {
                {/* Danger Zone */}
                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-8 border-t border-card-border">
                   <div className="lg:col-span-1">
-                    <h3 className="text-xl font-bold text-danger mb-2">Destruction Bay</h3>
+                    <h3 className="text-xl font-bold text-danger mb-2">Danger Zone</h3>
                     <p className="text-sm text-text-secondary">Irreversible account actions. Proceed with caution.</p>
                   </div>
                   <div className="lg:col-span-2 flex flex-wrap gap-4">
                     <button className="h-14 px-10 bg-danger/5 border border-danger/20 text-danger rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-danger/10 transition-all font-display">
-                       Purge App Data
+                       Reset Data
                     </button>
                     <button className="h-14 px-10 bg-danger text-accent-contrast rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:brightness-110 transition-all shadow-xl shadow-danger/20 font-display">
-                       Erase Core Identity
+                       Delete Account
                     </button>
                   </div>
                </section>
@@ -621,13 +635,13 @@ function ProfilePostCard({ post }: { post: Post }) {
         {post.stats && (
           <div className="mt-6 p-6 bg-surface-muted/30 rounded-[2rem] border border-card-border flex items-center gap-8 group/stat transition-all hover:bg-surface-muted">
              <div className="flex flex-col gap-1">
-                <p className="text-[8px] font-black uppercase text-text-secondary/40 tracking-widest">Protocol Efficiency</p>
+                <p className="text-[8px] font-black uppercase text-text-secondary/40 tracking-widest">Focus Session</p>
                 <p className="text-sm font-black text-text-main tracking-tight tabular-nums">{post.stats.focusTime} Minutes Logged</p>
              </div>
              <div className="w-px h-10 bg-card-border/50" />
              <div className="flex items-center gap-3 text-accent group-hover/stat:scale-105 transition-transform">
                 <Award size={18} className="drop-shadow-[0_0_5px_rgba(var(--accent-rgb),0.3)]" />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em]">Synchronized Session</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em]">Verified Session</span>
              </div>
           </div>
         )}

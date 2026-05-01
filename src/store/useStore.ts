@@ -4,14 +4,66 @@
  */
 
 import { create } from 'zustand';
-import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post } from '../types';
+import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { format } from 'date-fns';
 
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const session = useStore.getState().session;
+  const user = session?.user;
+  
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: user?.id,
+      email: user?.email,
+      emailVerified: !!user?.email_confirmed_at,
+      isAnonymous: false,
+      tenantId: null,
+      providerInfo: []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+function isDbId(id: string | undefined): id is string {
+  return typeof id === 'string' && id.length > 0;
+}
 
 export const useStore = create<AppState>((set, get) => ({
   user: {
+    id: undefined,
     name: 'Explorer',
     email: '',
     avatar: 'https://api.dicebear.com/7.x/shapes/svg?seed=Explorer&backgroundColor=d1d5db',
@@ -44,6 +96,7 @@ export const useStore = create<AppState>((set, get) => ({
     { id: 'p4', label: 'Power Nap', duration: 20, type: 'rest' },
   ],
   dateNotes: {},
+  journalEntries: [],
   userInterests: {},
   userCircles: {},
   followingIds: [],
@@ -51,7 +104,9 @@ export const useStore = create<AppState>((set, get) => ({
   unreadNotificationCount: 0,
   achievements: [],
   milestones: [],
-  hasCompletedOnboarding: localStorage.getItem('visnova_onboarded_v2') === 'true',
+  authLoading: true,
+  profileLoading: false,
+  hasCompletedOnboarding: false,
   tutorialCompleted: localStorage.getItem('visnova_tour_completed') === 'true',
   isFocusMode: false,
   toasts: [],
@@ -62,12 +117,292 @@ export const useStore = create<AppState>((set, get) => ({
     totalTime: 0,
     label: '',
   },
-  theme: (localStorage.getItem('theme') as 'light' | 'dark' | 'pastel' | 'green' | 'yellow') || 'light',
+  theme: (localStorage.getItem('theme') as 'light' | 'dark' | 'pastel' | 'green' | 'yellow' | 'sage') || 'sage',
   session: null,
   selectedProfileId: null,
-  setSelectedProfileId: (id) => set({ selectedProfileId: id }),
+  isDashboardLoading: false,
+  isAuthInitialized: false,
 
-  setSession: (session) => set({ session }),
+  setSelectedProfileId: (id) => set({ selectedProfileId: id }),
+  setSession: (session) => {
+    set({ session, isAuthInitialized: true });
+    if (session?.user) {
+      get().loadUserProfile(session.user.id);
+    }
+  },
+
+  initializeAuth: async () => {
+    set({ authLoading: true });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      set({ session, isAuthInitialized: true });
+      
+      if (session?.user) {
+        await get().ensureCurrentUserProfile();
+        await get().loadUserProfile(session.user.id);
+      }
+      
+      supabase.auth.onAuthStateChange(async (event, newSession) => {
+        set({ session: newSession });
+        if (newSession?.user) {
+          await get().ensureCurrentUserProfile();
+          get().loadUserProfile(newSession.user.id);
+        } else {
+          set({ 
+            user: {
+              id: undefined,
+              name: 'Explorer',
+              email: '',
+              avatar: 'https://api.dicebear.com/7.x/shapes/svg?seed=Explorer&backgroundColor=d1d5db',
+              gender: 'male',
+              rank: 'Explorer',
+              level: 1,
+              xp: 0,
+              streak: 0,
+              dailyIntention: '',
+              isGrinding: false,
+            },
+            hasCompletedOnboarding: false,
+            session: null,
+            visions: [],
+            posts: [],
+            notes: [],
+            journalEntries: []
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+    } finally {
+      set({ authLoading: false });
+    }
+  },
+
+  fetchDashboardData: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    set({ isDashboardLoading: true });
+    try {
+      await Promise.all([
+        get().loadUserProfile(userId),
+        get().fetchVisions(),
+        get().fetchTodos(),
+        get().fetchNotes(),
+        get().fetchJournalEntries(),
+        get().fetchFeedContext(),
+        get().fetchNotifications(),
+      ]);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      set({ isDashboardLoading: false });
+    }
+  },
+
+  loadUserProfile: async (userId: string) => {
+    set({ profileLoading: true });
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      if (data) {
+        set((state) => ({
+          user: {
+            ...state.user,
+            id: data.id,
+            name: data.display_name || data.full_name || 'Visionary',
+            email: data.email || state.user.email,
+            username: data.username,
+            avatar: data.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${data.id}`,
+            rank: data.role || 'Explorer',
+            level: data.level || 1,
+            xp: data.xp || 0,
+            streak: data.streak || 0,
+            isGrinding: data.is_grinding || false,
+            bio: data.bio,
+            statusNote: data.status_note,
+            role: data.role,
+          },
+          vitals: {
+            focus: data.focus ?? 85,
+            energy: data.energy ?? 72,
+            mood: data.mood ?? 90,
+            sleep: data.sleep ?? 64,
+          },
+          hasCompletedOnboarding: !!data.onboarded
+        }));
+
+        if (data.onboarded) {
+          get().fetchDashboardData();
+        }
+      } else {
+        const newProfile = await get().ensureCurrentUserProfile();
+        if (newProfile) {
+          // Recursive call or just update state here. Recursive is safer to ensure consistency.
+          await get().loadUserProfile(userId);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user profile:', error);
+    } finally {
+      set({ profileLoading: false });
+    }
+  },
+
+  fetchVisions: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    try {
+      const { data: visionsData, error: visionsError } = await supabase
+        .from('visions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (visionsError) throw visionsError;
+
+      // Extract vision IDs for task fetching
+      const visionIds = visionsData.map(v => v.id);
+      
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .in('vision_id', visionIds);
+      
+      if (tasksError) throw tasksError;
+
+      const formattedVisions: Vision[] = visionsData.map((v: any) => {
+        const visionTasks = (tasksData || [])
+          .filter(t => t.vision_id === v.id)
+          .map(t => ({
+            id: t.id,
+            text: t.text,
+            completed: t.completed,
+            subTasks: t.sub_tasks || []
+          }));
+          
+        return {
+          id: v.id,
+          title: v.title,
+          description: v.description,
+          progress: v.progress || 0,
+          status: v.status || 'idea',
+          tasks: visionTasks as Task[],
+          notes: v.notes || '',
+          proof: v.proof || [],
+          tags: v.tags || [],
+          category: v.category,
+          elements: v.elements || [],
+          createdAt: new Date(v.created_at).getTime(),
+          visibility: v.visibility,
+        };
+      });
+
+      set({ visions: formattedVisions });
+    } catch (error) {
+      console.error('Failed to fetch visions:', error);
+    }
+  },
+
+  fetchTodos: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedTodos: Task[] = data.map((t: any) => ({
+        id: t.id,
+        text: t.text,
+        completed: t.completed,
+      }));
+
+      set({ todos: formattedTodos });
+    } catch (error) {
+      console.error('Failed to fetch todos:', error);
+    }
+  },
+
+  toggleVisionTask: async (visionId, taskId) => {
+    const { visions } = get();
+    const vision = visions.find(v => v.id === visionId);
+    if (!vision) return;
+
+    const task = vision.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newCompleted = !task.completed;
+    const newTasks = vision.tasks.map(t => t.id === taskId ? { ...t, completed: newCompleted } : t);
+    
+    const completedCount = newTasks.filter(t => t.completed).length;
+    const progress = newTasks.length > 0 ? Math.round((completedCount / newTasks.length) * 100) : 0;
+
+    // Optimistic UI
+    set((state) => ({
+      visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: newTasks, progress } : v)
+    }));
+
+    try {
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ completed: newCompleted })
+        .eq('id', taskId);
+
+      if (taskError) throw taskError;
+
+      // Update vision progress in DB
+      const { error: visionError } = await supabase
+        .from('visions')
+        .update({ progress })
+        .eq('id', visionId);
+      
+      if (visionError) throw visionError;
+      
+      if (newCompleted) {
+        get().addXp(15);
+        get().addActivity({
+          type: 'completed',
+          description: `Completed task: ${task.text} in ${vision.title}`,
+          visionId
+        });
+      }
+    } catch (error) {
+      console.error('Failed to toggle vision task:', error);
+      // Rollback
+      set((state) => ({
+        visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: vision.tasks, progress: vision.progress } : v)
+      }));
+      get().addToast({ type: 'error', title: 'Task failed', description: 'Could not synchronize progress with library.' });
+    }
+  },
+
+  updateVitals: async (newVitals) => {
+    set((state) => ({
+      vitals: { ...state.vitals, ...newVitals }
+    }));
+
+    const userId = get().session?.user?.id;
+    if (userId) {
+      try {
+        await supabase.from('profiles').update(newVitals).eq('id', userId);
+      } catch (error) {
+        console.error('Failed to update vitals in DB:', error);
+      }
+    }
+  },
 
   addToast: (toast) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -82,9 +417,14 @@ export const useStore = create<AppState>((set, get) => ({
 
   addVision: async (vision) => {
     const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Action required', description: 'Please sign in to create visions.' });
+      throw new Error('Not authenticated');
+    }
 
+    const tempId = Math.random().toString(36).substring(7);
     const newVision: Vision = {
-      id: Math.random().toString(36).substring(7),
+      id: tempId,
       title: vision.title || 'Untitled Vision',
       description: vision.description || '',
       progress: 0,
@@ -95,30 +435,42 @@ export const useStore = create<AppState>((set, get) => ({
       tags: vision.tags || [],
       createdAt: Date.now(),
       ...vision,
-    };
+    } as Vision;
 
     set((state) => ({ visions: [...state.visions, newVision] }));
 
-    if (userId) {
-      try {
-        const { id: _, ...visionData } = newVision;
-        const { data, error } = await supabase
-          .from('visions')
-          .insert({ ...visionData, user_id: userId })
-          .select()
-          .single();
+    try {
+      const { data, error } = await supabase
+        .from('visions')
+        .insert({
+          user_id: userId,
+          title: newVision.title,
+          description: newVision.description,
+          status: newVision.status,
+          category: newVision.category,
+          tags: newVision.tags,
+          notes: newVision.notes,
+          proof: newVision.proof,
+          elements: newVision.elements || [],
+          visibility: newVision.visibility || 'private'
+        })
+        .select()
+        .single();
 
-        if (error) throw error;
-        
-        set((state) => ({
-          visions: state.visions.map(v => v.id === newVision.id ? { ...v, id: data.id } : v)
-        }));
-        return { ...newVision, id: data.id };
-      } catch (error) {
-        console.error('Failed to create vision:', error);
-      }
+      if (error) throw error;
+      
+      set((state) => ({
+        visions: state.visions.map(v => v.id === tempId ? { ...v, id: data.id } : v)
+      }));
+      
+      get().addToast({ type: 'success', title: 'Vision created', description: `"${newVision.title}" has been materialized.` });
+      return { ...newVision, id: data.id };
+    } catch (error: any) {
+      console.error('Failed to create vision:', error);
+      set((state) => ({ visions: state.visions.filter(v => v.id !== tempId) }));
+      get().addToast({ type: 'error', title: 'Materialization failed', description: error.message });
+      throw error;
     }
-    return newVision;
   },
 
   updateVision: async (id, updates) => {
@@ -177,12 +529,77 @@ export const useStore = create<AppState>((set, get) => ({
         await supabase.from('activities').insert({
           user_id: userId,
           type: activity.type,
-          content: activity.content,
-          metadata: activity.metadata || {}
+          description: activity.description
         });
       } catch (error) {
         console.error('Failed to log activity:', error);
       }
+    }
+  },
+  
+  signInWithGoogle: async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Google Sign-In Error:', err);
+      get().addToast({ type: 'error', title: 'Sign-in failed', description: err.message });
+    }
+  },
+
+  signOut: async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      set({ 
+        session: null, 
+        user: {
+          id: undefined,
+          name: 'Explorer',
+          email: '',
+          avatar: 'https://api.dicebear.com/7.x/shapes/svg?seed=Explorer&backgroundColor=d1d5db',
+          gender: 'male',
+          rank: 'Explorer',
+          level: 1,
+          xp: 0,
+          streak: 0,
+          dailyIntention: '',
+          isGrinding: false,
+        },
+        hasCompletedOnboarding: false,
+        visions: [],
+        todos: [],
+        notes: [],
+        journalEntries: [],
+        notifications: [],
+        unreadNotificationCount: 0
+      });
+      localStorage.removeItem('visnova_onboarded_v2');
+      localStorage.removeItem('visnova_tour_completed');
+      localStorage.removeItem('visnova_onboarding_step');
+      localStorage.removeItem('visnova_username');
+      window.location.href = '/';
+    } catch (err: any) {
+      console.error('Sign-Out Error:', err);
+      get().addToast({ type: 'error', title: 'Sign-out failed', description: err.message });
+    }
+  },
+
+  updateOnboardingStep: async (step: number) => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    try {
+      await supabase.from('profiles').update({ onboarding_step: step }).eq('id', userId);
+      // Local state update if needed, but usually the store's user.onboardingStep is enough
+    } catch (err) {
+      console.error('Failed to update onboarding step:', err);
     }
   },
   setTheme: (theme) => {
@@ -237,11 +654,6 @@ export const useStore = create<AppState>((set, get) => ({
   updateCircleMember: (id, updates) => set((state) => ({
     circle: state.circle.map(m => m.id === id ? { ...m, ...updates } : m)
   })),
-  updateVitals: async (vitals) => {
-    set((state) => ({
-      vitals: { ...state.vitals, ...vitals }
-    }));
-  },
   addXp: async (amount) => {
     const { user } = get();
     let newXpData: any = null;
@@ -320,28 +732,100 @@ export const useStore = create<AppState>((set, get) => ({
 
   setDateNote: async (date, note) => {
     const userId = get().session?.user?.id;
+    if (!userId) return;
 
+    // Optimistic UI
     set((state) => ({
       dateNotes: { ...state.dateNotes, [date]: note }
     }));
 
-    if (userId) {
-      try {
-        const journalId = `${userId}_${date}`;
-        if (!note.trim()) {
-          await supabase.from('journal').delete().eq('userId', userId).eq('date', date);
-        } else {
-          const { error } = await supabase.from('journal').upsert({
-            userId,
-            date,
-            note,
-            updatedAt: Date.now()
-          });
-          if (error) throw error;
-        }
-      } catch (error) {
-        console.error('Failed to set date note:', error);
+    try {
+      if (!note.trim()) {
+        await supabase.from('date_notes').delete().eq('user_id', userId).eq('date_str', date);
+      } else {
+        await supabase.from('date_notes').upsert({
+          user_id: userId,
+          date_str: date,
+          note: note,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,date_str' });
       }
+    } catch (error) {
+      console.error('Failed to set date note:', error);
+      get().addToast({ type: 'error', title: 'Library Sync Error', description: 'Could not preserve date note.' });
+    }
+  },
+
+  addJournalEntry: async (entry) => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    try {
+      await get().addNote({
+        title: `Journal: ${entry.date}`,
+        content: entry.note,
+        note_type: 'journal',
+        mood: entry.mood,
+        createdAt: new Date(entry.date).getTime()
+      });
+      get().addXp(25);
+    } catch (error) {
+       console.error('Failed to add journal entry:', error);
+    }
+  },
+
+  updateJournalEntry: async (id, updates) => {
+    try {
+      // Find the note id if it's different, but assuming id matches for now
+      // Or just update the note system
+      await get().updateNote(id, {
+        content: updates.note,
+        mood: updates.mood,
+        updatedAt: Date.now()
+      });
+      await get().fetchJournalEntries();
+    } catch (error) {
+      console.error('Failed to update journal entry:', error);
+    }
+  },
+
+  deleteJournalEntry: async (id) => {
+    try {
+      await get().deleteNote(id);
+      await get().fetchJournalEntries();
+    } catch (error) {
+      console.error('Failed to delete journal entry:', error);
+    }
+  },
+
+  fetchJournalEntries: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('note_type', 'journal')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      const entries: JournalEntry[] = data.map((n: any) => ({
+        id: n.id,
+        userId: n.user_id,
+        date: format(new Date(n.created_at), 'yyyy-MM-dd'),
+        note: n.content,
+        visionIds: [],
+        mood: n.mood,
+        createdAt: new Date(n.created_at).getTime(),
+        updatedAt: new Date(n.updated_at).getTime()
+      }));
+
+      set({ journalEntries: entries });
+    } catch (error) {
+      console.error('Failed to fetch journal entries:', error);
     }
   },
 
@@ -355,6 +839,32 @@ export const useStore = create<AppState>((set, get) => ({
   deleteFocusPreset: (id) => set((state) => ({
     focusPresets: state.focusPresets.filter(p => p.id !== id)
   })),
+
+  fetchFolders: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('folders')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      const formattedFolders: Folder[] = data.map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        parentId: f.parent_id || null,
+        color: f.color,
+        expanded: f.expanded ?? true,
+      }));
+
+      set({ folders: formattedFolders });
+    } catch (error) {
+      console.error('Failed to fetch folders:', error);
+    }
+  },
 
   addFolder: async (folder) => {
     const userId = get().session?.user?.id;
@@ -374,7 +884,13 @@ export const useStore = create<AppState>((set, get) => ({
     if (userId) {
       try {
         const { id: _, ...folderData } = newFolder;
-        const { data, error } = await supabase.from('folders').insert({ ...folderData, userId }).select().single();
+        const { data, error } = await supabase.from('folders').insert({ 
+          name: folderData.name,
+          parent_id: folderData.parentId,
+          color: folderData.color,
+          expanded: folderData.expanded,
+          user_id: userId 
+        }).select().single();
         if (error) throw error;
         set((state) => ({
           folders: state.folders.map(f => f.id === tempId ? { ...f, id: data.id } : f)
@@ -391,7 +907,13 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      await supabase.from('folders').update(updates).eq('id', id);
+      const dbUpdates: any = {};
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.parentId !== undefined) dbUpdates.parent_id = updates.parentId;
+      if (updates.color !== undefined) dbUpdates.color = updates.color;
+      if (updates.expanded !== undefined) dbUpdates.expanded = updates.expanded;
+
+      await supabase.from('folders').update(dbUpdates).eq('id', id);
     } catch (error) {
       console.error('Failed to update folder:', error);
     }
@@ -414,25 +936,48 @@ export const useStore = create<AppState>((set, get) => ({
     const userId = get().session?.user?.id;
     const tempId = Math.random().toString(36).substring(7);
 
-    const newNote = {
+    const newNote: Note = {
       id: tempId,
       title: note.title || 'Untitled Note',
       content: note.content || '',
+      note_type: note.note_type || 'library',
       folderId: note.folderId || null,
       tags: note.tags || [],
       linkedVisionId: note.linkedVisionId || null,
       visibility: note.visibility || 'private',
+      isPinned: note.isPinned || false,
+      isFavorite: note.isFavorite || false,
+      isDeleted: false,
+      mood: note.mood,
+      journal_date: note.journal_date,
+      location: note.location,
+      image_url: note.image_url,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       ...note,
     };
 
-    set((state) => ({ notes: [...state.notes, newNote] }));
+    set((state) => ({ notes: [newNote, ...state.notes] }));
 
     if (userId) {
       try {
         const { id: _, ...noteData } = newNote;
-        const { data, error } = await supabase.from('notes').insert({ ...noteData, userId }).select().single();
+        const { data, error } = await supabase.from('notes').insert({ 
+          title: noteData.title,
+          content: noteData.content,
+          note_type: noteData.note_type,
+          folder_id: noteData.folderId,
+          tags: noteData.tags,
+          is_pinned: noteData.isPinned,
+          is_favorite: noteData.isFavorite,
+          is_deleted: false,
+          mood: noteData.mood,
+          journal_date: noteData.journal_date,
+          location: noteData.location,
+          image_url: noteData.image_url,
+          user_id: userId,
+          created_at: new Date(noteData.createdAt).toISOString()
+        }).select().single();
         if (error) throw error;
         set((state) => ({
           notes: state.notes.map(n => n.id === tempId ? { ...n, id: data.id } : n)
@@ -449,21 +994,82 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      await supabase.from('notes').update({ ...updates, updatedAt: Date.now() }).eq('id', id);
+      const dbUpdates: any = {};
+      if (updates.title !== undefined) dbUpdates.title = updates.title;
+      if (updates.content !== undefined) dbUpdates.content = updates.content;
+      if (updates.folderId !== undefined) dbUpdates.folder_id = updates.folderId;
+      if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+      if (updates.isPinned !== undefined) dbUpdates.is_pinned = updates.isPinned;
+      if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
+      if (updates.isDeleted !== undefined) dbUpdates.is_deleted = updates.isDeleted;
+      if (updates.mood !== undefined) dbUpdates.mood = updates.mood;
+      if (updates.journal_date !== undefined) dbUpdates.journal_date = updates.journal_date;
+      if (updates.location !== undefined) dbUpdates.location = updates.location;
+      if (updates.image_url !== undefined) dbUpdates.image_url = updates.image_url;
+      dbUpdates.updated_at = new Date().toISOString();
+
+      await supabase.from('notes').update(dbUpdates).eq('id', id);
     } catch (error) {
       console.error('Failed to update note:', error);
     }
   },
 
-  deleteNote: async (id) => {
-    set((state) => ({
-      notes: state.notes.filter((n) => n.id !== id),
-    }));
+  fetchNotes: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
 
     try {
-      await supabase.from('notes').delete().eq('id', id);
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedNotes: Note[] = data.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        content: n.content,
+        note_type: n.note_type,
+        folderId: n.folder_id,
+        tags: n.tags || [],
+        linkedVisionId: n.linked_vision_id || null,
+        visibility: n.visibility || 'private',
+        isPinned: n.is_pinned,
+        isFavorite: n.is_favorite,
+        isDeleted: n.is_deleted || false,
+        mood: n.mood,
+        journal_date: n.journal_date,
+        location: n.location,
+        image_url: n.image_url,
+        createdAt: new Date(n.created_at).getTime(),
+        updatedAt: new Date(n.updated_at).getTime()
+      }));
+
+      set({ notes: formattedNotes });
     } catch (error) {
-      console.error('Failed to delete note:', error);
+      console.error('Failed to fetch notes:', error);
+    }
+  },
+
+  deleteNote: async (id) => {
+    // Soft delete by default
+    const note = get().notes.find(n => n.id === id);
+    if (note?.isDeleted) {
+      // Actually delete if already in trash
+      set((state) => ({
+        notes: state.notes.filter((n) => n.id !== id),
+      }));
+
+      try {
+        await supabase.from('notes').delete().eq('id', id);
+      } catch (error) {
+        console.error('Failed to permanent delete note:', error);
+      }
+    } else {
+      // Move to trash
+      get().updateNote(id, { isDeleted: true });
     }
   },
 
@@ -520,51 +1126,219 @@ export const useStore = create<AppState>((set, get) => ({
   },
   
   addPost: async (post: any) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = get().session;
     const userId = session?.user?.id;
-    if (!userId) return;
+    
+    if (!userId) {
+      get().addToast({
+        type: 'error',
+        title: 'Login required',
+        description: 'You need to be signed in to post.'
+      });
+      return false;
+    }
 
     try {
-      // 1. Insert post
+      console.log('Attempting to add post for user:', userId);
+      // 0. Ensure profile exists
+      await get().ensureCurrentUserProfile();
+
+      // 1. Insert core post data
+      console.log('Inserting post data...', post);
       const { data: postData, error: postError } = await supabase
         .from('posts')
         .insert({
           user_id: userId,
           type: post.type,
           caption: post.caption,
-          content: post.content,
-          media: post.media || [],
-          tags: post.tags || [],
-          stats: post.stats || {},
-          visibility: post.visibility || 'public'
+          content: post.content || '',
+          visibility: post.visibility || 'public',
+          metadata: post.metadata || {}
         })
         .select()
         .single();
 
-      if (postError) throw postError;
+      if (postError) {
+        if (postError.message.includes('public.posts')) {
+          throw new Error('Community Feed is not yet initialized in the database. Please ensure the "posts" table exists.');
+        }
+        console.error('Post insertion error:', postError);
+        throw postError;
+      }
+      const postId = postData.id;
+      console.log('Post inserted with ID:', postId);
 
-      // 2. Extra achievement/milestone logic (optional profiling)
-      if (post.type === 'achievement' || post.type === 'milestone') {
-         // Could track in global achievements table if needed
+      // 2. Insert Media
+      if (post.media && post.media.length > 0) {
+        console.log('Inserting media...', post.media);
+        const { error: mediaError } = await supabase
+          .from('post_media')
+          .insert(post.media.map((m: any) => ({
+            post_id: postId,
+            media_url: m.url,
+            media_type: m.type,
+            storage_path: m.storagePath || null
+          })));
+        if (mediaError) {
+          console.error('Media insertion error:', mediaError);
+          // Don't throw here? Maybe media failed but post is okay. 
+          // Actually, better to throw if it's supposed to be there.
+          throw mediaError;
+        }
       }
 
+      // 3. Insert Tags
+      if (post.tags && post.tags.length > 0) {
+        console.log('Inserting tags...', post.tags);
+        const { error: tagsError } = await supabase
+          .from('post_tags')
+          .insert(post.tags.map((t: string) => ({
+            post_id: postId,
+            tag: t
+          })));
+        if (tagsError) {
+          console.error('Tags insertion error:', tagsError);
+           // Not critical, but good to know
+        }
+      }
+
+      // 4. Insert Mentions
+      if (post.mentions && post.mentions.length > 0) {
+        console.log('Inserting mentions...', post.mentions);
+        const { error: mentionsError } = await supabase
+          .from('post_mentions')
+          .insert(post.mentions.map((m: any) => ({
+            post_id: postId,
+            mentioned_user_id: m.userId
+          })));
+        if (mentionsError) {
+          console.error('Mentions insertion error:', mentionsError);
+        }
+      }
+
+      // 5. XP and Reward
+      get().addXp(50);
+      get().addActivity({
+        type: 'social',
+        description: `Shared a new ${post.type} with the community.`
+      });
+
       // Refresh feed
-      get().fetchPosts('latest');
+      console.log('Refreshing feed...');
+      await get().fetchPosts('latest');
       
       get().addToast({
         type: 'success',
         title: 'Post shared',
         description: 'Successfully broadcast to the community.'
       });
+      return true;
+    } catch (err: any) {
+      console.error('Failed to create post (full trace):', err);
+      get().addToast({ type: 'error', title: 'Post failed', description: err.message || 'Could not synchronize post.' });
+      return false;
+    }
+  },
+
+  ensureCurrentUserProfile: async () => {
+    const session = get().session;
+    if (!session?.user) return null;
+
+    const userId = session.user.id;
+
+    try {
+      // 1. Initial check
+      let { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking profile:', error);
+      }
+
+      // 2. If not found, try to insert (with a small delay to allow triggers to finish if they are running)
+      if (!profile) {
+        console.log('Profile not found, waiting briefly for potential trigger...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Final check before insert
+        const { data: finalCheck } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        if (finalCheck) return finalCheck;
+
+        console.log('Inserting new profile for:', userId);
+        const userMetadata = session.user.user_metadata || {};
+        const displayName = userMetadata.display_name || userMetadata.full_name || userMetadata.name || 'Explorer';
+        const avatarUrl = userMetadata.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`;
+        const usernameBase = (userMetadata.user_name || session.user.email?.split('@')[0] || `user_${userId.slice(0, 5)}`).toLowerCase().replace(/[^a-z0-9_.]/g, '');
+        
+        const { data: newProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: session.user.email,
+            full_name: displayName,
+            display_name: displayName,
+            avatar_url: avatarUrl,
+            username: usernameBase,
+            onboarded: false,
+            onboarding_step: 0,
+            xp: 0,
+            level: 1,
+            streak: 0
+          })
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error('Insert profile failed:', insertError);
+          // If insert failed due to duplicate key, try fetching again
+          if (insertError.code === '23505') {
+            const { data: retryProfile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+            return retryProfile;
+          }
+          throw insertError;
+        }
+        return newProfile;
+      }
+      return profile;
+    } catch (error) {
+      console.error('Failed to ensure user profile:', error);
+      return null;
+    }
+  },
+
+  fetchFeedContext: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    try {
+      // Fetch Following
+      const { data: follows } = await supabase.from('follows').select('following_id').eq('follower_id', userId);
+      const followingIds = follows?.map(f => f.following_id) || [];
+
+      // Fetch Interests
+      const { data: interests } = await supabase.from('user_interests').select('tag, weight').eq('user_id', userId);
+      const interestMap = interests?.reduce((acc: any, curr) => ({ ...acc, [curr.tag]: curr.weight }), {}) || {};
+
+      set({ 
+        followingIds,
+        userInterests: interestMap
+      });
     } catch (err) {
-      console.error('Failed to create post:', err);
-      get().addToast({ type: 'error', title: 'Post failed', description: 'Could not synchronize post with Supabase.' });
+      console.error('Failed to fetch feed context:', err);
     }
   },
 
   fetchPosts: async (tab?: 'recommended' | 'following' | 'latest') => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = get().session;
       const userId = session?.user?.id;
 
       let query = supabase
@@ -572,24 +1346,64 @@ export const useStore = create<AppState>((set, get) => ({
         .select(`
           *,
           author:profiles(*),
-          likes:post_likes(user_id),
-          saves:saved_posts(user_id),
-          comment_count:comments(count)
+          likes:post_likes(count),
+          saves:saved_posts(count),
+          comment_count:comments(count),
+          media:post_media(*),
+          post_tags(*),
+          mentions:post_mentions(*, user:profiles(username))
         `)
-        .limit(20);
+        .eq('visibility', 'public');
 
       if (tab === 'latest') {
-        query = query.order('created_at', { ascending: false });
-      } else if (tab === 'following' && userId) {
-        const { data: follows } = await supabase.from('follows').select('following_id').eq('follower_id', userId);
-        const followingIds = follows?.map(f => f.following_id) || [];
-        query = query.in('user_id', followingIds).order('created_at', { ascending: false });
+        query = query.order('created_at', { ascending: false }).limit(20);
+      } else if (tab === 'following') {
+        if (!userId) {
+          set({ posts: [] });
+          return;
+        }
+        
+        let followingIds = get().followingIds;
+        if (followingIds.length === 0) {
+           // Try to fetch context first if empty
+           await get().fetchFeedContext();
+           followingIds = get().followingIds;
+        }
+
+        if (followingIds.length > 0) {
+          query = query.in('user_id', followingIds).order('created_at', { ascending: false }).limit(20);
+        } else {
+          set({ posts: [] });
+          return;
+        }
       } else {
-        query = query.order('created_at', { ascending: false });
+        // Recommended or default - fetch more for frontend ranking
+        query = query.order('created_at', { ascending: false }).limit(50);
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('public.posts') || error.code === 'PGRST116') {
+          console.warn('Posts table not found in schema cache. Feed might be empty.');
+          set({ posts: [] });
+          return;
+        }
+        throw error;
+      }
+
+      let myLikes: string[] = [];
+      let mySaves: string[] = [];
+
+      if (userId && data.length > 0) {
+        const postIds = data.map((p: any) => p.id);
+        const [likesRes, savesRes] = await Promise.all([
+          supabase.from('post_likes').select('post_id').eq('user_id', userId).in('post_id', postIds),
+          supabase.from('saved_posts').select('post_id').eq('user_id', userId).in('post_id', postIds)
+        ]);
+        
+        myLikes = likesRes.data?.map(l => l.post_id) || [];
+        mySaves = savesRes.data?.map(s => s.post_id) || [];
+      }
 
       const formattedPosts: Post[] = data.map((p: any) => ({
         id: p.id,
@@ -601,28 +1415,43 @@ export const useStore = create<AppState>((set, get) => ({
           handle: `@${p.author?.username || 'user'}`
         },
         caption: p.caption,
-        content: p.content,
-        timestamp: new Date(p.created_at).toLocaleDateString(),
-        createdAt: p.created_at, // Keep raw for ranking
-        likes: p.likes?.length || 0,
+        content: p.content || '',
+        timestamp: format(new Date(p.created_at), 'MMM d, yyyy'),
+        createdAt: new Date(p.created_at).getTime(),
+        likes: p.likes?.[0]?.count || 0,
         comments: p.comment_count?.[0]?.count || 0,
-        saves: p.saves?.length || 0,
-        isLiked: userId ? p.likes?.some((l: any) => l.user_id === userId) : false,
-        isSaved: userId ? p.saves?.some((s: any) => s.user_id === userId) : false,
+        saves: p.saves?.[0]?.count || 0,
+        isLiked: myLikes.includes(p.id),
+        isSaved: mySaves.includes(p.id),
         type: p.type,
         visibility: p.visibility,
-        media: p.media || [],
-        tags: p.tags || []
+        media: p.media?.map((m: any) => ({
+          id: m.id,
+          url: m.media_url,
+          type: m.media_type
+        })) || [],
+        tags: p.post_tags?.map((t: any) => t.tag) || [],
+        mentions: p.mentions?.map((m: any) => ({
+          userId: m.mentioned_user_id,
+          username: m.user?.username || 'user'
+        })) || [],
+        stats: p.stats,
+        metadata: p.metadata
       }));
 
       let finalPosts = formattedPosts;
       if (tab === 'recommended' || !tab) {
+        // Ensure we have context for ranking
         const state = get();
+        if (Object.keys(state.userInterests).length === 0 && userId) {
+          await get().fetchFeedContext();
+        }
+        
         finalPosts = rankPosts(formattedPosts, {
           userId: userId || null,
-          followingIds: state.followingIds,
-          circleIds: state.userCircles,
-          userInterests: state.userInterests
+          followingIds: get().followingIds,
+          circleIds: {},
+          userInterests: get().userInterests
         });
       }
 
@@ -633,7 +1462,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   trackInteraction: async (postId, type) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId) return;
 
     const post = get().posts.find(p => p.id === postId);
@@ -651,7 +1480,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       // Analytics Logging
-      if (isSupabaseConfigured) {
+      if (isSupabaseConfigured()) {
         supabase.from('analytics_events').insert({
           user_id: userId,
           event_type: type,
@@ -701,7 +1530,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   updateUserInterests: async (interests) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId) return;
 
     try {
@@ -721,7 +1550,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addToCircle: async (targetUserId, type) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId) return;
 
     try {
@@ -738,7 +1567,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   removeFromCircle: async (targetUserId) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId) return;
 
     try {
@@ -758,7 +1587,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   fetchNotifications: async () => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId) return;
 
     try {
@@ -795,7 +1624,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   toggleLikePost: async (id: string) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId) return;
 
     const { posts } = get();
@@ -825,7 +1654,7 @@ export const useStore = create<AppState>((set, get) => ({
             actorId: userId,
             type: 'like',
             entityId: id,
-            content: 'liked your post'
+            message: 'liked your post'
           });
         }
       }
@@ -843,7 +1672,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   toggleSavePost: async (id: string) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId) return;
 
     const { posts } = get();
@@ -872,7 +1701,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addComment: async (postId: string, content: string, parentId?: string) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId) return;
 
     try {
@@ -901,7 +1730,7 @@ export const useStore = create<AppState>((set, get) => ({
           actorId: userId,
           type: parentId ? 'reply' : 'comment',
           entityId: postId,
-          content: parentId ? 'replied to your comment' : 'commented on your post'
+          message: parentId ? 'replied to your comment' : 'commented on your post'
         });
       }
 
@@ -913,7 +1742,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   toggleFollow: async (followingId: string) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (!userId || userId === followingId) return;
 
     try {
@@ -940,7 +1769,7 @@ export const useStore = create<AppState>((set, get) => ({
           userId: followingId,
           actorId: userId,
           type: 'follow',
-          content: 'started following you'
+          message: 'started following you'
         });
       }
     } catch (err) {
@@ -949,194 +1778,147 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   shareVision: async (visionId, receiverEmail) => {
-    const userId = auth.currentUser?.uid;
-    if (!userId || !isDbId(visionId)) return;
+    const userId = get().session?.user?.id;
+    if (!userId) return;
 
     try {
-      await addDoc(collection(db, 'sharedVisions'), {
-        visionId,
-        senderId: userId,
-        receiverEmail,
-        status: 'pending',
-        createdAt: Date.now()
+      const { error } = await supabase.from('vision_shares').insert({
+        vision_id: visionId,
+        sender_email: get().user.email,
+        receiver_email: receiverEmail,
+        status: 'pending'
       });
+      if (error) throw error;
+      
+      get().addToast({ type: 'success', title: 'Vision shared', description: `Request sent to ${receiverEmail}` });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'sharedVisions');
-    }
-  },
-
-  toggleVisionTask: async (visionId, taskId) => {
-    const { visions } = get();
-    const vision = visions.find(v => v.id === visionId);
-    if (!vision) return;
-
-    const task = vision.tasks.find(t => t.id === taskId);
-    const wasCompleted = task?.completed;
-
-    const updatedTasks = vision.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t);
-    const completedCount = updatedTasks.filter(t => t.completed).length;
-    const progress = Math.round((completedCount / updatedTasks.length) * 100);
-
-    set((state) => ({
-      visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: updatedTasks, progress } : v)
-    }));
-
-    if (!wasCompleted) {
-      get().addXp(50);
-      get().updateVitals({
-        focus: Math.min(100, get().vitals.focus + 2),
-        energy: Math.max(0, get().vitals.energy - 5)
-      });
-      get().addActivity({
-        type: 'completed',
-        userId: auth.currentUser?.uid || 'me',
-        description: `Strategic component of ${vision.title} successfully executed.`
-      });
-    }
-
-    if (isDbId(visionId)) {
-      try {
-        await updateDoc(doc(db, 'visions', visionId), { tasks: updatedTasks, progress });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `visions/${visionId}`);
-      }
+      console.error('Failed to share vision:', error);
+      get().addToast({ type: 'error', title: 'Share failed', description: 'Could not send vision sharing request.' });
     }
   },
 
   completeOnboarding: async (data: any) => {
-    const { name, email, interests, intent, commitment, username, bio, tags, avatar, role, gender } = data;
-
-    const initialId = Math.random().toString(36).substring(7);
-    const initialVision: Vision = {
-      id: initialId,
-      title: intent || 'Primary Vision',
-      status: 'in-progress' as const,
-      description: `Commitment level: ${commitment}`,
-      tags: interests || [],
-      progress: 0,
-      notes: '',
-      proof: [],
-      createdAt: Date.now(),
-      tasks: [
-        { id: Math.random().toString(36).substring(7), text: 'Establish system baseline', completed: false },
-        { id: Math.random().toString(36).substring(7), text: 'Verify core objectives', completed: false },
-        { id: Math.random().toString(36).substring(7), text: 'Execute initial sprint', completed: false }
-      ]
-    };
-
-    // Optimistic Update
+    const { name, email, interests, intent, commitment, username, bio, avatar, role, gender } = data;
+    
+    // 1. Initial State Update (Optimistic)
     set((state: any) => ({
       user: {
         ...state.user,
         name,
         email,
-        username: username || '',
-        bio: bio || '',
+        username: username || state.user.username,
+        bio: bio || state.user.bio,
         avatar: avatar || state.user.avatar,
         gender: gender || state.user.gender,
         role: role || state.user.role
       },
-      visions: [initialVision],
       hasCompletedOnboarding: true
     }));
-    localStorage.setItem('visnova_onboarded_v2', 'true');
-    localStorage.setItem('visnova_onboarding_data', JSON.stringify({ ...data, visionId: initialId }));
 
-    const userId = auth.currentUser?.uid;
+    const session = get().session;
+    const userId = session?.user?.id;
+
     if (userId) {
       try {
-        const batch = writeBatch(db);
-        
-        // 1. Create User Profile
-        const userRef = doc(db, 'users', userId);
-        batch.set(userRef, {
-          name,
-          email,
-          username: username || '',
-          bio: bio || '',
-          avatar: avatar || 'https://api.dicebear.com/7.x/shapes/svg?seed=User',
-          role: role || 'Explorer',
-          gender: gender || 'custom',
-          hasCompletedOnboarding: true,
-          vitals: { focus: 85, energy: 72, mood: 90, sleep: 64 },
-          xp: 0,
-          level: 1,
-          rank: 'Explorer',
-          streak: 0,
-          createdAt: Date.now()
-        });
-
-        // 2. Create Initial Vision
-        const visionRef = doc(collection(db, 'visions'));
-        const { id: _, ...visionData } = initialVision;
-        batch.set(visionRef, { ...visionData, userId });
-
-        await batch.commit();
-
-        // 3. Sync to Supabase for Social Features
-        await supabase.from('profiles').upsert({
-          id: userId,
-          display_name: name,
-          avatar_url: avatar,
-          bio: bio,
-          role: role,
-          updated_at: new Date().toISOString()
-        });
-
-        if (interests && interests.length > 0) {
-          const interestEntries = interests.map((tag: string) => ({
-            user_id: userId,
-            tag: tag.toLowerCase(),
-            weight: 1.0,
+        // 2. Create/Update Profile in Supabase
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: userId,
+            email,
+            full_name: name,
+            display_name: name,
+            username: (username || email.split('@')[0] || `user_${userId.slice(0, 5)}`).toLowerCase().replace(/[^a-z0-9_.]/g, ''),
+            bio: bio || '',
+            avatar_url: avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`,
+            role: role || 'Explorer',
+            gender: gender || 'custom',
+            onboarded: true,
+            onboarding_step: 999,
+            onboarding_completed_at: new Date().toISOString(),
+            main_goal: intent,
             updated_at: new Date().toISOString()
-          }));
-          await supabase.from('user_interests').upsert(interestEntries);
-        }
+          });
 
-        set(state => ({
-          visions: state.visions.map(v => v.id === initialId ? { ...v, id: visionRef.id } : v)
-        }));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, 'onboarding');
+        if (profileError) throw profileError;
+
+        // 3. Create Initial Vision in Supabase
+        const { data: vision, error: visionError } = await supabase
+          .from('visions')
+          .insert({
+            user_id: userId,
+            title: intent || 'Primary Vision',
+            description: `Commitment level: ${commitment}`,
+            status: 'in-progress',
+            tags: interests || [],
+            progress: 0,
+            visibility: 'private'
+          })
+          .select()
+          .single();
+
+        if (visionError) throw visionError;
+
+        // Create a default task for the vision if provided
+        await supabase.from('tasks').insert({
+          user_id: userId,
+          vision_id: vision.id,
+          text: 'Complete first milestone',
+          completed: false
+        });
+
+        // 4. Update interests normalized
+        if (interests?.length > 0) {
+           const interestData = interests.map((tag: string) => ({
+             user_id: userId,
+             tag,
+             weight: 1.0
+           }));
+           await supabase.from('user_interests').upsert(interestData, { onConflict: 'user_id,tag' });
+        }
+        
+        await get().fetchDashboardData();
+        get().addToast({ type: 'success', title: 'Onboarding Complete', description: 'Welcome to VisNova.' });
+      } catch (err) {
+        console.error('Finalization partially failed:', err);
+        get().addToast({ type: 'error', title: 'Onboarding Error', description: 'We saved your progress, but some setup steps failed.' });
       }
     }
   },
 
   acceptVision: async (visionId) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
+    const userEmail = get().session?.user?.email;
+    if (!userId || !userEmail) return;
 
     try {
-      const q = query(
-        collection(db, 'sharedVisions'), 
-        where('visionId', '==', visionId), 
-        where('receiverEmail', '==', auth.currentUser?.email)
-      );
-      const docs = await getDocs(q);
-      if (!docs.empty) {
-        await updateDoc(doc(db, 'sharedVisions', docs.docs[0].id), { status: 'accepted' });
-        set((state) => ({
-          sharedVisions: state.sharedVisions.filter(v => v.id !== visionId)
-        }));
-      }
+      const { error } = await supabase
+        .from('vision_shares')
+        .update({ status: 'accepted' })
+        .match({ vision_id: visionId, receiver_email: userEmail });
+
+      if (error) throw error;
+
+      set((state) => ({
+        sharedVisions: state.sharedVisions.filter(v => v.id !== visionId)
+      }));
+      
+      get().addToast({ type: 'success', title: 'Vision accepted', description: 'The shared vision is now yours.' });
     } catch (err) {
       console.error('Failed to accept vision:', err);
     }
   },
 
-  fetchUser: async (email) => {
-    if (!email) return;
+  fetchUser: async () => {
+    const session = get().session;
+    if (!session?.user) return;
+    
+    const userId = session.user.id;
+    const userEmail = session.user.email;
     
     const state = get();
-    if ((state as any)._isFetchingUser === email) return;
-    set({ _isFetchingUser: email } as any);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-       set({ _isFetchingUser: null } as any);
-       return;
-    }
-
-    const userId = user.id;
+    if ((state as any)._isFetchingUser === userId) return;
+    set({ _isFetchingUser: userId } as any);
 
     try {
       // 1. Fetch Profile (Supabase)
@@ -1151,7 +1933,7 @@ export const useStore = create<AppState>((set, get) => ({
           user: { 
             ...state.user, 
             name: profile.display_name || profile.full_name || 'Explorer',
-            email: user.email || '',
+            email: userEmail || '',
             avatar: profile.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`,
             bio: profile.bio,
             username: profile.username,
@@ -1161,9 +1943,14 @@ export const useStore = create<AppState>((set, get) => ({
             streak: profile.streak || 0,
             isGrinding: profile.is_grinding || false
           },
-          hasCompletedOnboarding: profile.has_completed_onboarding ?? state.hasCompletedOnboarding
+          hasCompletedOnboarding: !!profile.onboarded
         }));
       }
+
+      // Load User Data
+      get().fetchFolders();
+      get().fetchNotes();
+      get().fetchJournalEntries();
 
       // 2. Fetch Notifications (Initial)
       get().fetchNotifications();

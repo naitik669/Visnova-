@@ -40,14 +40,14 @@ export default function Settings() {
       icon: Sparkles,
       label: 'Green',
       desc: 'Organic growth focus',
-      color: 'bg-[#2d4a3e] text-accent-contrast'
+      color: 'bg-[#4ade80] text-[#064e3b]'
     },
     {
       id: 'yellow',
       icon: Zap,
       label: 'Yellow',
       desc: 'Optimistic energy',
-      color: 'bg-[#7a6a2a] text-accent-contrast'
+      color: 'bg-[#eab308] text-[#422006]'
     },
     {
       id: 'pastel',
@@ -55,6 +55,13 @@ export default function Settings() {
       label: 'Pastel',
       desc: 'Creative & Soft mood',
       color: 'bg-[#5D4361] text-[#FFF7F0]'
+    },
+    {
+      id: 'sage',
+      icon: Sparkles,
+      label: 'Sage',
+      desc: 'Natural & Focused',
+      color: 'bg-[#8da482] text-white'
     },
   ] as const;
 

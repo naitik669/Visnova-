@@ -18,11 +18,12 @@ export default function Vitals() {
   
   const activeVisionsCount = (visions || []).filter(v => v.status === 'in-progress').length;
 
-  const calculatedVitals = {
-    focus: Math.min(100, 40 + (tasksCompletedToday * 12) + (notesAddedToday * 8) + (user.isGrinding ? 20 : 0)),
-    energy: Math.max(15, Math.min(100, 90 - (Math.max(0, (now - new Date().setHours(8, 0, 0, 0)) / (1000 * 60 * 60)) * 5) + (tasksCompletedToday * 3))),
+  // Use vitals from store to ensure manual adjustments are persisted
+  const displayVitals = {
+    focus: vitals.focus,
+    energy: vitals.energy,
     alignment: totalTasks > 0 ? Math.round((completedTasks/totalTasks)*100) : 0,
-    systemLoad: Math.min(100, activeVisionsCount * 25)
+    systemLoad: vitals.sleep // Mapping sleep to systemLoad or vice versa for consistency
   };
 
   const metrics = [
@@ -35,7 +36,7 @@ export default function Vitals() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
       {metrics.map((m) => {
-        const value = calculatedVitals[m.key as keyof typeof calculatedVitals];
+        const value = displayVitals[m.key as keyof typeof displayVitals];
         return (
           <motion.div
             key={m.key}
@@ -74,20 +75,28 @@ export default function Vitals() {
             </div>
 
             {/* Micro Interaction: Quick Update */}
-            <div className="absolute inset-0 bg-card/90 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-              <button
-                onClick={() => updateVitals({ [m.key]: Math.max(0, value - 10) })}
-                className="p-2 hover:bg-card-border rounded-lg text-text-secondary hover:text-danger transition-colors"
-              >
-                -10
-              </button>
-              <button
-                onClick={() => updateVitals({ [m.key]: Math.min(100, value + 10) })}
-                className="p-2 hover:bg-card-border rounded-lg text-text-secondary hover:text-success transition-colors"
-              >
-                +10
-              </button>
-            </div>
+            {m.key !== "alignment" && (
+              <div className="absolute inset-0 bg-card/90 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                <button
+                  onClick={() => {
+                    const vitalKey = m.key === "systemLoad" ? "sleep" : m.key;
+                    updateVitals({ [vitalKey]: Math.max(0, value - 10) });
+                  }}
+                  className="p-2 hover:bg-card-border rounded-lg text-text-secondary hover:text-danger transition-colors"
+                >
+                  -10
+                </button>
+                <button
+                  onClick={() => {
+                    const vitalKey = m.key === "systemLoad" ? "sleep" : m.key;
+                    updateVitals({ [vitalKey]: Math.min(100, value + 10) });
+                  }}
+                  className="p-2 hover:bg-card-border rounded-lg text-text-secondary hover:text-success transition-colors"
+                >
+                  +10
+                </button>
+              </div>
+            )}
           </motion.div>
         );
       })}

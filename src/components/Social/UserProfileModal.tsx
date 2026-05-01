@@ -5,10 +5,9 @@ import { X, Sparkles, Map, BookOpen, MessageCircle, Link2, MapPin, Plus, Shield,
 import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { auth } from '../../lib/firebase';
 
 export default function UserProfileModal() {
-  const { selectedProfileId, setSelectedProfileId, user: currentUser, userCircles, addToCircle, removeFromCircle, toggleFollow, followingIds } = useStore();
+  const { selectedProfileId, setSelectedProfileId, user: currentUser, session, userCircles, addToCircle, removeFromCircle, toggleFollow, followingIds } = useStore();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +26,7 @@ export default function UserProfileModal() {
     const fetchProfile = async () => {
       if (!selectedProfileId) return;
       setIsLoading(true);
-      const targetId = selectedProfileId === 'me' ? auth.currentUser?.uid : selectedProfileId;
+      const targetId = selectedProfileId === 'me' ? session?.user?.id : selectedProfileId;
       
       try {
         const { data, error } = await supabase
@@ -46,7 +45,7 @@ export default function UserProfileModal() {
     };
 
     fetchProfile();
-  }, [selectedProfileId]);
+  }, [selectedProfileId, session?.user?.id]);
 
   if (!selectedProfileId) return null;
 

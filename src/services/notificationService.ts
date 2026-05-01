@@ -8,6 +8,8 @@ export interface NotificationPayload {
   type: NotificationType;
   postId?: string;
   commentId?: string;
+  entityId?: string;
+  content?: string;
   message: string;
 }
 

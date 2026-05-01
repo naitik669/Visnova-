@@ -4,8 +4,7 @@ import { User, MessageSquare, Bookmark, Settings, LogOut, Bell, HelpCircle } fro
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
-import { auth } from '../lib/firebase';
-import { signOut } from 'firebase/auth';
+import { supabase } from '../lib/supabase';
 
 interface ProfileDropdownProps {
   isOpen: boolean;
@@ -33,7 +32,7 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
       location.reload(); // Refresh to clean up listeners and state
     } catch (error) {
       console.error('Logout failed:', error);

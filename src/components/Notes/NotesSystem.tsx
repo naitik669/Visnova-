@@ -1,286 +1,968 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import {
   Folder,
-  FolderOpen,
   Plus,
   ChevronRight,
   ChevronDown,
   FileText,
   Search,
-  BarChart,
-  Cloud,
-  Image as ImageIcon,
-  Music,
-  Play,
   Trash2,
   Layout,
   Grid,
-  Maximize2,
   X,
   Sparkles,
-  Zap,
-  Loader2
+  Loader2,
+  BookOpen,
+  Star,
+  Clock,
+  Tag,
+  Calendar,
+  Pin,
+  Smile,
+  Hash,
+  Archive,
+  MoreVertical,
+  Home,
+  Sidebar as SidebarIcon,
+  MapPin,
+  Cloud,
+  Image as ImageIcon,
+  CheckCircle2,
+  AlertCircle,
+  Maximize2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
+import { Note } from '../../types';
 
 export default function NotesSystem() {
-  const { notes, folders, addNote, addFolder, updateNote, user } = useStore();
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [selectedNote, setSelectedNote] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'recent' | 'trash'>('all');
-  const [viewMode, setViewMode] = useState<'stream' | 'gallery'>('stream');
-
-  const currentNotes = selectedFolder
-    ? notes.filter(n => n.folderId === selectedFolder)
-    : notes;
-
-  const activeNote = selectedNote ? notes.find(n => n.id === selectedNote) : null;
-
-  return (
-    <div className="flex bg-card rounded-3xl h-[calc(100vh-7rem)] shadow-2xl overflow-hidden border border-card-border animate-in fade-in zoom-in-95 duration-500">
-      {/* Side Panel: Dynamic Accent Category */}
-      <div className="w-72 bg-bg-base border-r border-card-border p-8 flex flex-col gap-8">
-        <div className="flex items-center gap-4 border-b border-card-border pb-6">
-          <div className="relative group cursor-pointer">
-             <div className="absolute inset-0 bg-accent blur-md opacity-0 group-hover:opacity-20 transition-opacity" />
-             <img
-               src={user?.avatar || undefined}
-               className="w-10 h-10 rounded-xl object-cover border border-card-border relative z-10"
-               alt="User"
-             />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <h3 className="text-text-main font-bold tracking-tight truncate text-sm">{user?.name}</h3>
-            <p className="text-text-secondary text-[9px] font-semibold uppercase tracking-wider">Goal Sync Active</p>
-          </div>
-        </div>
-
-        <div className="space-y-1.5 overflow-y-auto custom-scrollbar pr-2 h-full">
-           <h4 className="text-text-secondary opacity-40 text-[10px] font-semibold uppercase tracking-wider mb-4">Vision Assets</h4>
-           <CategoryItem icon={<Layout size={16} />} label="Visions" count="24" progress={80} active />
-           <CategoryItem icon={<FileText size={16} />} label="Documents" count="12" progress={45} />
-           <CategoryItem icon={<ImageIcon size={16} />} label="Reference" count="124" progress={65} />
-           <CategoryItem icon={<Cloud size={16} />} label="Cloud Sync" count="2.4K" progress={92} />
-           <CategoryItem icon={<Trash2 size={16} />} label="Trash" count="12" progress={0} />
-        </div>
-
-        <div className="mt-auto pt-6 border-t border-card-border">
-           <button className="flex items-center gap-4 text-text-secondary hover:text-text-main transition-all group w-full">
-              <div className="w-9 h-9 rounded-xl bg-accent/5 flex items-center justify-center group-hover:bg-accent group-hover:text-accent-contrast transition-all shadow-sm active:scale-90">
-                <Plus size={16} />
-              </div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider">New Insight</span>
-           </button>
-        </div>
-      </div>
-
-
-      {/* Main Panel: Fluid Workspace */}
-      <div className="flex-1 flex flex-col bg-bg-base relative overflow-hidden">
-        {selectedNote ? (
-          <NoteEditor
-            note={activeNote!}
-            onClose={() => setSelectedNote(null)}
-            updateNote={updateNote}
-          />
-        ) : (
-          <div className="flex-1 overflow-y-auto custom-scrollbar relative">
-            <div className="p-8 lg:p-12 space-y-12">
-              {/* Storage Header */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex items-center gap-6">
-                    <div className="w-12 h-12 rounded-full border border-card-border flex items-center justify-center relative bg-card shadow-sm shrink-0">
-                        <span className="text-[10px] font-bold text-text-main">80%</span>
-                        <svg className="absolute inset-0 w-full h-full -rotate-90 p-1">
-                           <circle cx="22" cy="22" r="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent/20" />
-                           <circle cx="22" cy="22" r="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent" strokeDasharray={126} strokeDashoffset={126 * 0.2} strokeLinecap="round" />
-                        </svg>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                       <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40" />
-                       <input
-                         placeholder="Search Knowledge..."
-                         className="h-10 pl-10 pr-4 rounded-xl bg-card border border-card-border text-[11px] font-medium text-text-main focus:outline-none focus:border-accent/40 w-48 transition-all"
-                       />
-                    </div>
-                    <button
-                     onClick={() => addNote({ title: 'New Insight ' + format(new Date(), 'MM.dd'), content: '', folderId: selectedFolder, tags: [] })}
-                     className="xp-button !h-10 !px-5"
-                    >
-                       + Entry
-                    </button>
-                </div>
-              </div>
-
-              {/* Folder Grid */}
-              <section className="space-y-6">
-                 <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary opacity-40">Key Sectors</h4>
-                 </div>
-                 <div className="flex flex-wrap gap-4">
-                    {folders.map(folder => (
-                      <FolderCard
-                        key={folder.id}
-                        folder={folder}
-                        onClick={() => setSelectedFolder(folder.id === selectedFolder ? null : folder.id)}
-                        isActive={selectedFolder === folder.id}
-                      />
-                    ))}
-                 </div>
-              </section>
-
-              {/* Memories Grid */}
-              <section className="space-y-6">
-                 <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary opacity-40">Milestones</h4>
-                    <div className="flex items-center gap-4 text-[10px] font-semibold text-text-secondary">
-                       <button onClick={() => setViewMode('gallery')} className={cn("flex items-center gap-1.5 transition-all cursor-pointer", viewMode === 'gallery' ? "text-accent opacity-100" : "opacity-40 hover:opacity-100")}><Grid size={12} /> Gallery</button>
-                       <button onClick={() => setViewMode('stream')} className={cn("flex items-center gap-1.5 transition-all cursor-pointer", viewMode === 'stream' ? "text-accent opacity-100" : "opacity-40 hover:opacity-100")}><Layout size={12} /> Stream</button>
-                    </div>
-                 </div>
-                 {viewMode === 'gallery' ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-[150px]">
-                       <div className="rounded-3xl overflow-hidden relative group row-span-2">
-                          <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=400&h=600" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="Idea" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-overlay to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                             <span className="text-accent-contrast text-xs font-bold">Workspace Inspiration</span>
-                          </div>
-                       </div>
-                       <div className="rounded-3xl overflow-hidden relative group row-span-1 border border-card-border">
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-card hover:bg-surface-muted transition-colors cursor-pointer text-text-secondary">
-                             <Plus size={24} className="mb-2" />
-                             <span className="text-[10px] font-bold uppercase tracking-wider">Upload Reference</span>
-                          </div>
-                       </div>
-                       <div className="rounded-3xl overflow-hidden relative group row-span-2">
-                          <img src="https://images.unsplash.com/photo-1542435503-956c469947f6?auto=format&fit=crop&q=80&w=400&h=600" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="Journal" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-overlay to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                             <span className="text-accent-contrast text-xs font-bold">Daily Logs</span>
-                          </div>
-                       </div>
-                       <div className="rounded-3xl overflow-hidden relative group row-span-1">
-                          <img src="https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&q=80&w=400&h=400" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="Setup" />
-                       </div>
-                       <div className="rounded-3xl overflow-hidden relative group row-span-1">
-                          <img src="https://images.unsplash.com/photo-1621075160523-b936ad96132a?auto=format&fit=crop&q=80&w=400&h=400" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="Growth" />
-                       </div>
-                    </div>
-                 ) : (
-                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                      {currentNotes.map(n => (
-                        <NoteCard key={n.id} note={n} onClick={() => setSelectedNote(n.id)} />
-                      ))}
-                   </div>
-                 )}
-                 {currentNotes.length === 0 && (
-                   <div className="h-40 flex flex-col items-center justify-center border border-dashed border-card-border rounded-[2rem] text-text-secondary/30 font-black uppercase text-[10px] tracking-[0.2em]">
-                      <Cloud size={32} className="mb-4 opacity-10" />
-                      Zero State Reached
-                   </div>
-                 )}
-              </section>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CategoryItem({ icon, label, count, progress, active }: any) {
-  return (
-    <div className={cn(
-      "w-full flex items-center justify-between p-3 rounded-xl transition-all group cursor-pointer",
-      active ? "bg-accent/5 text-accent shadow-sm" : "hover:bg-surface-muted text-text-secondary"
-    )}>
-      <div className="flex items-center gap-3">
-        <div className={cn("shrink-0", active ? "text-accent" : "opacity-40 group-hover:opacity-100 transition-opacity")}>
-          {icon}
-        </div>
-        <span className={cn("text-[11px] font-semibold uppercase tracking-wider", active ? "opacity-100" : "opacity-60")}>{label}</span>
-      </div>
-      <span className="text-[10px] font-mono opacity-30">{count}</span>
-    </div>
-  );
-}
-
-function FolderCard({ folder, onClick, isActive }: any) {
-  return (
-    <div
-      onClick={onClick}
-      className={cn(
-        "p-5 rounded-2xl border transition-all cursor-pointer group min-w-[130px] flex flex-col items-center justify-center gap-3 text-center",
-        isActive ? "bg-accent border-accent shadow-lg" : "bg-card border-card-border hover:border-accent/20"
-      )}
-    >
-      <div className={cn(
-        "w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-500",
-        isActive ? "bg-accent-contrast/20 text-accent-contrast" : "bg-accent/5 text-accent group-hover:scale-105"
-      )}>
-        <Folder size={28} strokeWidth={isActive ? 2 : 1.5} />
-      </div>
-      <div className="space-y-0.5">
-        <h3 className={cn("font-semibold tracking-tight uppercase text-[10px]", isActive ? "text-accent-contrast" : "text-text-main")}>{folder.name}</h3>
-        <p className={cn("text-[8px] font-bold uppercase tracking-wider opacity-60", isActive ? "text-accent-contrast" : "text-text-secondary")}>12 Units</p>
-      </div>
-    </div>
-  );
-}
-
-function NoteCard({ note, onClick }: any) {
-  return (
-    <div
-      onClick={onClick}
-      className="p-5 rounded-3xl bg-card border border-card-border hover:border-accent/40 hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden"
-    >
-      <div className="absolute top-0 right-0 p-4 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity">
-        <FileText size={48} strokeWidth={1} />
-      </div>
-      <div className="flex items-center justify-between mb-5 relative z-10">
-         <div className="w-8 h-8 rounded-lg bg-bg-base border border-card-border flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all">
-            <FileText size={14} />
-         </div>
-         <span className="text-[9px] font-semibold text-text-secondary/60 uppercase tracking-widest">{format(new Date(note.updatedAt), 'MMM dd')}</span>
-      </div>
-      <h3 className="text-sm font-semibold text-text-main leading-tight mb-2 tracking-tight group-hover:text-accent transition-colors">{note.title}</h3>
-      <p className="text-[11px] text-text-secondary/80 line-clamp-2 leading-relaxed font-medium">
-        {note.content || "Entry pending strategic analysis..."}
-      </p>
-    </div>
-  );
-}
-
-function NoteEditor({ note, onClose, updateNote }: any) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user } = useStore();
+  const location = useLocation();
+  const initialTab = location.pathname.includes('journal') ? 'journal' : 'library';
+  const [activeTab, setActiveTab] = useState<'library' | 'journal'>(initialTab);
+  const [isJournalFullView, setIsJournalFullView] = useState(false);
 
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+    fetchFolders();
+    fetchNotes();
+  }, []);
+
+  useEffect(() => {
+    setActiveTab(location.pathname.includes('journal') ? 'journal' : 'library');
+  }, [location.pathname]);
+
+  const [sidebarFilter, setSidebarFilter] = useState<'all' | 'recent' | 'favorites' | 'trash'>('all');
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  const journalEntry = useMemo(() => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    return notes.find(n => 
+      !n.isDeleted && 
+      n.note_type === 'journal' && 
+      (n.journal_date === dateStr || (n.journal_date === undefined && isSameDay(n.createdAt, selectedDate)))
+    );
+  }, [notes, selectedDate]);
+
+  const streak = useMemo(() => {
+    const journalNotes = notes.filter(n => n.note_type === 'journal' && !n.isDeleted && n.content.trim());
+    if (journalNotes.length === 0) return 0;
+    
+    const entryDates = new Set(journalNotes.map(n => n.journal_date || format(n.createdAt, 'yyyy-MM-dd')));
+    let count = 0;
+    let curr = new Date();
+    
+    if (!entryDates.has(format(curr, 'yyyy-MM-dd'))) {
+      curr = new Date(Date.now() - 86400000);
     }
-  }, [note.content]);
+    
+    while (entryDates.has(format(curr, 'yyyy-MM-dd'))) {
+      count++;
+      curr = new Date(curr.getTime() - 86400000);
+    }
+    return count;
+  }, [notes]);
+
+  const handleNewFolder = async () => {
+    const name = prompt('Enter a name for the new folder:');
+    if (name && name.trim()) {
+      const trimmedName = name.trim();
+      const isDuplicate = folders.some(f => f.name.toLowerCase() === trimmedName.toLowerCase());
+      if (isDuplicate) {
+        alert('A folder with this name already exists.');
+        return;
+      }
+      addFolder({ name: trimmedName });
+    } else if (name !== null) {
+      alert('Folder name cannot be empty.');
+    }
+  };
+
+  const filteredNotes = useMemo(() => {
+    let result = notes;
+
+    // Handle Trash filter separately as it ignores note_type/folders
+    if (sidebarFilter === 'trash') {
+      result = result.filter(n => n.isDeleted);
+    } else {
+      // Exclude deleted notes from normal views
+      result = result.filter(n => !n.isDeleted && n.note_type === activeTab);
+
+      // Apply sidebar filters
+      if (sidebarFilter === 'recent') {
+        const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        result = result.filter(n => n.updatedAt > oneWeekAgo);
+      } else if (sidebarFilter === 'favorites') {
+        result = result.filter(n => n.isFavorite);
+      }
+
+      // Library specific folder filter
+      if (activeTab === 'library' && selectedFolder) {
+        result = result.filter(n => n.folderId === selectedFolder);
+      }
+    }
+
+    // Search (applies to both trash and normal views)
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(n => 
+        n.title.toLowerCase().includes(q) || 
+        n.content.toLowerCase().includes(q) ||
+        n.tags.some(t => t.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [notes, activeTab, sidebarFilter, searchQuery, selectedFolder]);
+
+  const selectedNote = useMemo(() => 
+    notes.find(n => n.id === selectedNoteId), 
+    [notes, selectedNoteId]
+  );
+
+  const handleCreateNote = (type: 'library' | 'journal') => {
+    const defaultTitle = type === 'journal' 
+      ? `Entry ${format(new Date(), 'MMM dd, yyyy')}`
+      : 'Untitled Note';
+    
+    addNote({
+      title: defaultTitle,
+      content: '',
+      note_type: type,
+      folderId: type === 'library' ? selectedFolder : null,
+      tags: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+  };
+
+  return (
+    <div className={cn(
+      "flex bg-[#fcfcfc] transition-all duration-700 font-sans relative overflow-hidden",
+      isJournalFullView ? "h-screen fixed inset-0 z-[100]" : "h-[calc(100vh-7rem)]"
+    )}>
+      {/* 1. Left Support Sidebar - Hidden with animation on Journal or Full View */}
+      <AnimatePresence>
+        {!isJournalFullView && activeTab !== 'journal' && (
+          <motion.aside 
+            initial={{ x: -280, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -280, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="w-16 md:w-64 flex flex-col border-r border-card-border/50 bg-white shrink-0"
+          >
+            <div className="p-6 md:p-8 flex flex-col gap-10 h-full">
+              {/* Add New Section like in image */}
+              <div className="hidden md:block">
+                <button 
+                  onClick={() => handleCreateNote(activeTab)}
+                  className="w-full h-12 flex items-center justify-center gap-3 bg-accent text-white rounded-2xl font-bold text-xs shadow-xl shadow-accent/10 hover:scale-[1.02] transition-all"
+                >
+                  <Plus size={16} />
+                  Add new
+                </button>
+              </div>
+
+              <nav className="flex-1 w-full space-y-6">
+                <div className="space-y-1">
+                  <SidebarIconBtn 
+                    key="btn-all"
+                    icon={<Layout size={18} />} 
+                    active={sidebarFilter === 'all'} 
+                    onClick={() => { setSidebarFilter('all'); setSelectedFolder(null); }} 
+                    label="All Notes"
+                  />
+                  <SidebarIconBtn 
+                    key="btn-favorites"
+                    icon={<Star size={18} />} 
+                    active={sidebarFilter === 'favorites'} 
+                    onClick={() => setSidebarFilter('favorites')} 
+                    label="Favorites"
+                  />
+                  <SidebarIconBtn 
+                    key="btn-recent"
+                    icon={<Clock size={18} />} 
+                    active={sidebarFilter === 'recent'} 
+                    onClick={() => setSidebarFilter('recent')} 
+                    label="Recent"
+                  />
+                  <SidebarIconBtn 
+                    key="btn-trash"
+                    icon={<Trash2 size={18} />} 
+                    active={sidebarFilter === 'trash'} 
+                    onClick={() => setSidebarFilter('trash')} 
+                    label="Trash"
+                  />
+                </div>
+                
+                <div className="pt-6 border-t border-card-border/30 hidden md:block">
+                  <div className="flex items-center justify-between ml-4 mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40">Folders</p>
+                    <button 
+                      onClick={() => {
+                        const name = prompt('Folder name:');
+                        if (name) addFolder({ name });
+                      }}
+                      className="p-1 hover:bg-surface-muted rounded-md text-text-secondary/40 hover:text-accent transition-colors"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                  <div className="space-y-1 px-1">
+                    {folders.slice(0, 5).map(f => (
+                      <button 
+                        key={f.id} 
+                        onClick={() => {
+                          setActiveTab('library');
+                          setSelectedFolder(f.id);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[11px] font-bold transition-all",
+                          selectedFolder === f.id ? "bg-accent/5 text-accent" : "text-text-secondary hover:bg-surface-muted"
+                        )}
+                      >
+                        <Folder size={14} className={selectedFolder === f.id ? "fill-accent" : ""} />
+                        <span className="truncate">{f.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </nav>
+
+              <div className="hidden md:block mt-auto border-t border-card-border/30 pt-6">
+                 <div className="flex items-center gap-3 px-2">
+                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-accent/10">
+                       <img src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} className="w-full h-full object-cover" alt="User" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-text-main truncate">{user?.name || "Explorer"}</p>
+                      <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">{user?.rank || "Architect"}</p>
+                    </div>
+                 </div>
+              </div>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#fcfcfc] overflow-hidden relative">
+        {/* Top Header - Reduced size and condensed content */}
+        {!isJournalFullView && (
+          <header className={cn(
+            "flex items-center justify-between px-8 md:px-12 border-b border-card-border/30 bg-white/50 backdrop-blur-sm shrink-0 transition-all duration-500",
+            activeTab === 'journal' ? "h-20" : "h-28"
+          )}>
+            <div className="flex items-center gap-12">
+              <div>
+                <h1 className={cn(
+                  "font-black text-text-main tracking-tight uppercase transition-all",
+                  activeTab === 'journal' ? "text-xl" : "text-3xl"
+                )}>
+                  {activeTab === 'journal' ? 'Chronicle' : 'Library'}
+                </h1>
+              </div>
+
+              {/* Tabs integrated into header area */}
+              <div className="flex bg-surface-muted p-1 rounded-xl border border-card-border/50">
+                <button 
+                  onClick={() => setActiveTab('library')}
+                  className={cn(
+                    "px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                    activeTab === 'library' ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
+                  )}
+                >
+                  Archive
+                </button>
+                <button 
+                  onClick={() => setActiveTab('journal')}
+                  className={cn(
+                    "px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                    activeTab === 'journal' ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
+                  )}
+                >
+                  Journal
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6">
+              {activeTab === 'library' && (
+                <div className="relative group hidden sm:block animate-in fade-in slide-in-from-right duration-500">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 group-focus-within:text-accent transition-colors" />
+                  <input
+                    placeholder="Search Library..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-11 pl-10 pr-4 w-64 bg-surface-muted border border-card-border/50 rounded-2xl text-[11px] font-bold text-text-main focus:outline-none focus:border-accent/40 focus:bg-white transition-all placeholder:text-text-secondary/30 shadow-sm"
+                  />
+                </div>
+              )}
+              {activeTab === 'journal' && (
+                <button 
+                  onClick={() => setIsJournalFullView(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/5 text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-white transition-all animate-in fade-in slide-in-from-right duration-500"
+                >
+                  <Maximize2 size={14} />
+                  Immersive Mode
+                </button>
+              )}
+              <button 
+                onClick={() => handleCreateNote(activeTab)}
+                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/10 hover:scale-105 transition-all md:hidden"
+              >
+                <Plus size={24} />
+              </button>
+            </div>
+          </header>
+        )}
+
+        {/* Content Section */}
+        <div className={cn(
+          "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
+          isJournalFullView ? "p-0" : "px-8 md:px-12 py-10"
+        )}>
+          <AnimatePresence mode="wait">
+            {selectedNote ? (
+              <NoteEditor 
+                key={selectedNote.id}
+                note={selectedNote} 
+                onClose={() => setSelectedNoteId(null)}
+                updateNote={updateNote}
+              />
+            ) : (
+              <div className={cn(
+                "mx-auto transition-all duration-700",
+                isJournalFullView ? "max-w-none h-full" : "max-w-[1600px] space-y-16"
+              )}>
+                {activeTab === 'library' && (
+                  <section className="space-y-8">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                      <div className="space-y-1">
+                        <h3 className="text-xl font-black text-text-main tracking-tight uppercase">Recent Folders</h3>
+                        <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">Directory Layout</p>
+                      </div>
+                      <div className="flex bg-surface-muted p-1 rounded-xl border border-card-border/50 self-start sm:self-auto">
+                        {['Today', 'This Week', 'All'].map((t) => (
+                          <button 
+                            key={t}
+                            className={cn(
+                              "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                              t === 'This Week' ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
+                            )}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8 gap-6">
+                       {folders.map((folder, idx) => (
+                         <FolderCard 
+                           key={folder.id || `folder-${idx}`} 
+                           folder={folder}
+                           active={selectedFolder === folder.id}
+                           onClick={() => setSelectedFolder(selectedFolder === folder.id ? null : folder.id)}
+                         />
+                       ))}
+                       <button 
+                         onClick={handleNewFolder}
+                         className="aspect-[4/3] rounded-[2rem] border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-3"
+                       >
+                          <div className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
+                             <Plus size={20} />
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40 group-hover:text-accent transition-colors">New Folder</span>
+                       </button>
+                    </div>
+                  </section>
+                )}
+
+                <section className={cn("space-y-8", isJournalFullView && "h-full space-y-0")}>
+                   {!isJournalFullView && (
+                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-black text-text-main tracking-tight uppercase">
+                            {activeTab === 'library' ? 'Work Records' : 'Chronicle'}
+                          </h3>
+                          <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">
+                            {activeTab === 'library' ? 'Project documentation' : 'Recursive memory loop'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4 self-start sm:self-auto">
+                          <div className="flex bg-surface-muted p-1 rounded-xl border border-card-border/50">
+                            {['Today', 'This Week', 'All'].map((t) => (
+                              <button 
+                                key={t}
+                                className={cn(
+                                  "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                                  t === 'All' ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
+                                )}
+                              >
+                                {t}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="hidden sm:flex items-center gap-1 bg-surface-muted p-1 rounded-xl border border-card-border/50">
+                            <button 
+                              onClick={() => setViewMode('grid')}
+                              className={cn("p-2 rounded-lg transition-all", viewMode === 'grid' ? "bg-white shadow-sm text-accent" : "text-text-secondary/40 hover:text-text-main")}
+                            >
+                              <Grid size={16} />
+                            </button>
+                            <button 
+                              onClick={() => setViewMode('list')}
+                              className={cn("p-2 rounded-lg transition-all", viewMode === 'list' ? "bg-white shadow-sm text-accent" : "text-text-secondary/40 hover:text-text-main")}
+                            >
+                              <Layout size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === 'journal' ? (
+                      <JournalSpread 
+                        selectedDate={selectedDate}
+                        setSelectedDate={setSelectedDate}
+                        entry={journalEntry}
+                        streak={streak}
+                        fullView={isJournalFullView}
+                        toggleFullView={() => setIsJournalFullView(!isJournalFullView)}
+                        recentLibraryNotes={notes.filter(n => n.note_type === 'library' && !n.isDeleted).slice(0, 5)}
+                        onSave={(content: string, updates: any) => {
+                          if (journalEntry) {
+                            updateNote(journalEntry.id, { content, ...updates });
+                          } else {
+                            addNote({
+                              title: updates?.title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`,
+                              content,
+                              note_type: 'journal',
+                              journal_date: format(selectedDate, 'yyyy-MM-dd'),
+                              mood: updates?.mood || '✍️',
+                              ...updates
+                            });
+                          }
+                        }}
+                      />
+                    ) : filteredNotes.length === 0 ? (
+                      <div className="h-96 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-card-border/50 shadow-sm">
+                        <div className="w-20 h-20 rounded-3xl bg-surface-muted flex items-center justify-center mb-6 text-text-secondary/20">
+                          <BookOpen size={40} />
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary/40 mb-6">No workspace records detected</p>
+                        <button 
+                          onClick={() => handleCreateNote(activeTab)}
+                          className="h-11 px-8 rounded-xl border border-accent/20 text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-white transition-all"
+                        >
+                          Initialize First Entry
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={cn(
+                        "grid gap-6",
+                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" : "grid-cols-1"
+                      )}>
+                        {filteredNotes.map((note, idx) => (
+                          <NoteCard key={note.id || `note-${idx}`} note={note} onClick={() => setSelectedNoteId(note.id)} viewMode={viewMode} />
+                        ))}
+                        {viewMode === 'grid' && (
+                          <button 
+                            onClick={() => handleCreateNote('library')}
+                            className="aspect-square sm:aspect-[4/5] rounded-[2.5rem] border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
+                          >
+                             <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
+                                <Plus size={24} />
+                             </div>
+                             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary/40 group-hover:text-accent transition-colors">Add New Note</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                </section>
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const JOURNAL_PROMPTS = [
+  "What made today meaningful?",
+  "What did you learn today?",
+  "What do you want to improve tomorrow?",
+  "What progress did you make today?",
+  "What are you grateful for today?"
+];
+
+function getDailyPrompt(date: Date) {
+  const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000);
+  return JOURNAL_PROMPTS[dayOfYear % JOURNAL_PROMPTS.length];
+}
+
+function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, fullView, toggleFullView, recentLibraryNotes }: any) {
+  const [content, setContent] = useState(entry?.content || '');
+  const [title, setTitle] = useState(entry?.title || '');
+  const [mood, setMood] = useState(entry?.mood || '✍️');
+  const [location, setLocation] = useState(entry?.location || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<number | null>(entry?.updatedAt || null);
+
+  useEffect(() => {
+    setContent(entry?.content || '');
+    setTitle(entry?.title || '');
+    setMood(entry?.mood || '✍️');
+    setLocation(entry?.location || '');
+    setLastSaved(entry?.updatedAt || null);
+  }, [entry, selectedDate]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(content, { title: title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`, mood, location });
+      setLastSaved(Date.now());
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDropNote = (noteContent: string) => {
+    setContent(prev => prev + (prev ? '\n\n' : '') + `📌 From Library:\n${noteContent}`);
+  };
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(selectedDate);
+    return eachDayOfInterval({
+      start,
+      end: endOfWeek(selectedDate)
+    });
+  }, [selectedDate]);
+
+  const prompt = useMemo(() => getDailyPrompt(selectedDate), [selectedDate]);
+
+  return (
+    <div className={cn(
+      "mx-auto transition-all duration-700 font-sans",
+      fullView ? "w-full h-screen bg-[#fcfcfc] overflow-hidden" : "max-w-6xl py-4"
+    )}>
+      {fullView && (
+        <div className="h-16 flex items-center justify-between px-10 border-b border-card-border/30 bg-white/50 backdrop-blur-md">
+           <div className="flex items-center gap-4">
+              <button 
+                onClick={toggleFullView}
+                className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center hover:scale-105 transition-all"
+              >
+                 <X size={18} />
+              </button>
+              <h2 className="text-sm font-black text-text-main uppercase tracking-widest">Immersive Journal View</h2>
+           </div>
+           <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Star size={14} className={streak > 0 ? "text-accent fill-accent" : "text-text-secondary/20"} />
+                <span className="text-[10px] font-black text-text-main uppercase tracking-widest">{streak} Day Streak</span>
+              </div>
+              <button onClick={handleSave} className="h-10 px-6 rounded-xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10">Save Record</button>
+           </div>
+        </div>
+      )}
+
+      <div className={cn(
+        "flex transition-all duration-1000",
+        fullView ? "h-[calc(100vh-4rem)] p-10 gap-10" : "flex-col lg:flex-row gap-8 items-stretch min-h-[700px]"
+      )}>
+        {/* Sticky Notes Sidebar in Full View */}
+        {fullView && (
+          <div className="w-64 shrink-0 flex flex-col gap-6 animate-in slide-in-from-left duration-700">
+             <div className="space-y-1">
+               <h3 className="text-xs font-black text-text-main uppercase tracking-widest">Library Stickies</h3>
+               <p className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-40">Drag to Journal</p>
+             </div>
+             <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
+                {recentLibraryNotes.map((note: any) => (
+                  <motion.div
+                    key={note.id}
+                    draggable
+                    onDragStart={(e: any) => e.dataTransfer.setData('text/plain', note.content)}
+                    whileHover={{ scale: 1.02 }}
+                    className="p-4 rounded-2xl bg-yellow-50 border border-yellow-200 shadow-sm cursor-grab active:cursor-grabbing group relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-yellow-200 group-hover:bg-yellow-400 transition-colors" />
+                    <h4 className="text-[10px] font-black text-yellow-800 uppercase tracking-tight truncate">{note.title}</h4>
+                    <p className="text-[9px] text-yellow-700/60 line-clamp-3 mt-1 leading-relaxed">{note.content || "Empty sticky..."}</p>
+                  </motion.div>
+                ))}
+             </div>
+          </div>
+        )}
+
+        <motion.div 
+          key={`journal-page-${selectedDate.toISOString()}`}
+          layout
+          className={cn(
+            "flex-1 flex gap-0 lg:gap-8 perspective-[1500px]",
+            fullView ? "h-full" : "min-h-[700px]"
+          )}
+        >
+          {/* Left Page: Daily Overview */}
+          <motion.div 
+            initial={{ rotateY: -10, opacity: 0 }}
+            animate={{ rotateY: 0, opacity: 1 }}
+            transition={{ duration: 0.8, type: 'spring' }}
+            className="flex-1 bg-white rounded-[2.5rem] border border-card-border/50 shadow-2xl p-10 flex flex-col items-center text-center space-y-10 origin-right relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-2 h-full bg-surface-muted/30 border-l border-card-border/10" />
+            
+            <div className="space-y-2">
+              <h2 className="text-4xl font-black text-text-main tracking-tighter uppercase">{format(selectedDate, 'EEEE')}</h2>
+              <p className="text-xs font-bold text-accent uppercase tracking-[0.3em] opacity-60">{format(selectedDate, 'MMMM dd, yyyy')}</p>
+            </div>
+
+            {/* Memory / Visual Card */}
+            <div 
+              onClick={() => !fullView && toggleFullView()}
+              className="w-full aspect-square rounded-[2rem] bg-surface-muted border-2 border-dashed border-card-border/50 flex flex-col items-center justify-center p-8 group hover:bg-accent/[0.02] transition-colors relative overflow-hidden cursor-pointer"
+            >
+              {entry?.image_url ? (
+                 <img src={entry.image_url} alt="Memory" className="absolute inset-0 w-full h-full object-cover" />
+              ) : (
+                <>
+                  <motion.div 
+                    whileHover={{ rotate: 12, scale: 1.1 }}
+                    className="w-16 h-16 rounded-2xl bg-white border border-card-border/50 flex items-center justify-center text-text-secondary/20 mb-4 shadow-sm"
+                  >
+                    <BookOpen size={32} />
+                  </motion.div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">
+                    {fullView ? "Daily Snapshot active" : "Enter Immersive View"}
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Weekly date strip */}
+            <div className="w-full space-y-4">
+              <div className="flex items-center gap-4">
+                 <div className="h-[1px] flex-1 bg-card-border/30" />
+                 <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/30">Temporal Pulse</span>
+                 <div className="h-[1px] flex-1 bg-card-border/30" />
+              </div>
+              <div className="flex justify-between items-center bg-surface-muted/50 p-2 rounded-2xl border border-card-border/30">
+                {weekDays.map((date, i) => {
+                  const isActive = isSameDay(date, selectedDate);
+                  const isDayToday = isToday(date);
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedDate(date)}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all min-w-[50px]",
+                        isActive ? "bg-white shadow-md text-accent scale-105" : "text-text-secondary/40 hover:text-text-main hover:bg-white/50"
+                      )}
+                    >
+                      <span className="text-[8px] font-black uppercase tracking-widest">{format(date, 'EEE')}</span>
+                      <span className="text-xs font-bold">{format(date, 'd')}</span>
+                      {isDayToday && !isActive && <div className="w-1 h-1 rounded-full bg-accent/40" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right Page: Writing Area */}
+          <motion.div 
+            initial={{ rotateY: 30, opacity: 0 }}
+            animate={{ rotateY: 0, opacity: 1 }}
+            transition={{ duration: 0.8, type: 'spring', delay: 0.1 }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const noteContent = e.dataTransfer.getData('text/plain');
+              if (noteContent) handleDropNote(noteContent);
+            }}
+            className="flex-1 bg-white rounded-[2.5rem] border border-card-border/50 shadow-2xl p-10 flex flex-col space-y-8 relative origin-left overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-2 h-full bg-surface-muted/30 border-r border-card-border/10" />
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-accent/5 rounded-l-full" />
+            
+            {/* Prompt Card */}
+            <div className="bg-surface-muted rounded-[2rem] p-8 border border-card-border/50 space-y-3 relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors" />
+              <div className="flex items-center gap-3">
+                <Sparkles size={14} className="text-accent" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-accent">Daily Reflection</span>
+              </div>
+              <p className="text-lg font-bold text-text-main leading-snug">
+                {prompt}
+              </p>
+            </div>
+
+            {/* Editor Area */}
+            <div className="flex-1 flex flex-col space-y-6">
+               <input 
+                 value={title}
+                 onChange={(e) => setTitle(e.target.value)}
+                 placeholder="Journal Entry Title"
+                 className="text-2xl font-black text-text-main placeholder:text-text-secondary/20 bg-transparent border-none focus:outline-none uppercase tracking-tight"
+               />
+               <textarea 
+                 value={content}
+                 onChange={(e) => setContent(e.target.value)}
+                 placeholder="Write your thoughts for today..."
+                 className="flex-1 w-full text-base font-medium text-text-secondary leading-relaxed bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20"
+                 style={{ backgroundImage: 'linear-gradient(transparent, transparent 31px, #f1f1f1 31px)', backgroundSize: '100% 32px' }}
+               />
+            </div>
+
+            {/* Metadata & Actions */}
+            <div className="pt-8 border-t border-card-border/30 space-y-8">
+              <div className="flex flex-wrap items-center gap-3">
+                 <div className="flex gap-2 bg-surface-muted p-1 rounded-xl border border-card-border/50">
+                    {['😊', '🚀', '🧠', '🔥', '💪'].map(e => (
+                      <button 
+                        key={e} 
+                        onClick={() => setMood(e)}
+                        className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-all", mood === e ? "bg-white shadow-sm scale-110" : "opacity-40 hover:opacity-100 hover:bg-white/50")}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                 </div>
+                 <div className="flex items-center gap-2 px-4 h-12 bg-surface-muted rounded-xl border border-card-border/50">
+                    <MapPin size={14} className="text-text-secondary/40" />
+                    <input 
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Origin"
+                      className="bg-transparent border-none focus:outline-none text-[10px] font-black tracking-widest uppercase text-text-secondary"
+                    />
+                 </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-secondary/30">
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin" />
+                      <span>Syncing...</span>
+                    </>
+                  ) : lastSaved ? (
+                    <>
+                      <CheckCircle2 size={12} className="text-green-500" />
+                      <span>Saved {format(lastSaved, 'h:mm a')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle size={12} />
+                      <span>Local Cache Only</span>
+                    </>
+                  )}
+                </div>
+                {!fullView && (
+                  <button 
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="h-12 px-10 rounded-2xl bg-accent text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    Preserve Entry
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function SidebarIconBtn({ icon, active, onClick, label }: any) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-4 px-4 h-12 rounded-2xl transition-all group relative",
+        active ? "bg-accent text-white shadow-lg shadow-accent/10" : "text-text-secondary hover:bg-surface-muted"
+      )}
+    >
+      <div className={cn("shrink-0 transition-transform", active ? "scale-110" : "group-hover:scale-110")}>{icon}</div>
+      <span className={cn("hidden md:block text-[11px] font-bold tracking-tight", active ? "opacity-100" : "opacity-70 group-hover:opacity-100")}>{label}</span>
+      {active && <div className="absolute left-0 w-1 h-5 bg-white/40 rounded-r-full hidden md:block" />}
+    </button>
+  );
+}
+
+function FolderCard({ folder, active, onClick }: { folder: any, active: boolean, onClick: () => void }) {
+  const colors = [
+    'bg-blue-50 text-blue-500 border-blue-100',
+    'bg-orange-50 text-orange-500 border-orange-100',
+    'bg-purple-50 text-purple-500 border-purple-100',
+    'bg-emerald-50 text-emerald-500 border-emerald-100',
+    'bg-rose-50 text-rose-500 border-rose-100'
+  ];
+  const colorIndex = (folder.name.length % colors.length);
+  const colorClass = colors[colorIndex];
+
+  return (
+    <button 
+      onClick={onClick} 
+      className={cn(
+        "aspect-[4/3] rounded-[2rem] p-6 flex flex-col justify-between transition-all group relative overflow-hidden text-left",
+        active ? "bg-accent text-white shadow-xl scale-[1.02] ring-2 ring-accent/20" : "bg-white border border-card-border hover:shadow-lg"
+      )}
+    >
+       <div className={cn(
+         "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+         active ? "bg-white/20" : colorClass
+       )}>
+          <Folder size={20} fill={active ? "white" : "currentColor"} strokeWidth={active ? 0 : 2} />
+       </div>
+       <div>
+         <p className={cn("text-xs font-black uppercase tracking-tight truncate", active ? "text-white" : "text-text-main")}>{folder.name}</p>
+         <p className={cn("text-[9px] font-bold uppercase tracking-widest mt-1 opacity-50", active ? "text-white" : "text-text-secondary")}>
+           Collection
+         </p>
+       </div>
+       {active && (
+         <div className="absolute top-4 right-4 group-hover:rotate-12 transition-transform">
+            <MoreVertical size={14} className="opacity-40" />
+         </div>
+       )}
+    </button>
+  );
+}
+
+function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void, viewMode?: 'grid' | 'list' }) {
+  if (viewMode === 'list') {
+    return (
+      <div 
+        onClick={onClick}
+        className="group cursor-pointer p-5 rounded-2xl bg-white border border-card-border hover:border-accent/40 hover:shadow-lg transition-all flex items-center gap-6"
+      >
+        <div className="w-12 h-12 rounded-xl bg-accent/5 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all">
+          <FileText size={20} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-black text-text-main group-hover:text-accent transition-colors truncate uppercase tracking-tight">{note.title}</h4>
+          <p className="text-[10px] text-text-secondary font-bold uppercase tracking-wider opacity-60">Updated {format(note.updatedAt, 'MMM dd, h:mm a')}</p>
+        </div>
+        <div className="flex items-center gap-4 px-6 border-l border-card-border/50">
+           {note.tags.slice(0, 2).map((t, i) => (
+             <span key={i} className="text-[9px] font-black text-accent/40 uppercase tracking-widest">#{t}</span>
+           ))}
+        </div>
+        <ChevronRight size={16} className="text-text-secondary/20 group-hover:text-accent group-hover:translate-x-1 transition-all" />
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      onClick={onClick}
+      className="aspect-square sm:aspect-[4/5] p-8 rounded-[2.5rem] bg-white border border-card-border hover:border-accent/40 hover:shadow-2xl transition-all group cursor-pointer flex flex-col relative overflow-hidden"
+    >
+       {/* Card background accent like in image */}
+       <div className="absolute top-0 left-0 w-full h-1.5 bg-accent/5 group-hover:bg-accent transition-colors" />
+       
+       <div className="flex items-center justify-between mb-8">
+          <div className="w-12 h-12 rounded-2xl bg-accent/5 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all shadow-sm">
+             <FileText size={22} />
+          </div>
+          <div className="flex flex-col items-end">
+            <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-[0.2em]">{format(note.updatedAt, 'yyyy')}</p>
+            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">{format(note.updatedAt, 'MMM dd')}</p>
+          </div>
+       </div>
+
+       <div className="flex-1 space-y-3 min-w-0">
+          <h4 className="text-lg font-black text-text-main group-hover:text-accent transition-colors leading-tight uppercase tracking-tight">{note.title}</h4>
+          <p className="text-[11px] text-text-secondary/60 font-medium line-clamp-4 leading-relaxed italic">
+            {note.content ? note.content.substring(0, 120) + '...' : "Secure data point waiting for input documentation..."}
+          </p>
+       </div>
+
+       <div className="mt-8 pt-6 border-t border-card-border/30 flex items-center justify-between">
+          <div className="flex -space-x-2">
+            {note.tags.slice(0, 3).map((t, i) => (
+              <div key={i} className="w-6 h-6 rounded-full bg-white border border-card-border flex items-center justify-center shadow-sm" title={`#${t}`}>
+                <Hash size={10} className="text-accent" />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 text-[9px] font-black text-accent uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+             Open <ChevronRight size={12} />
+          </div>
+       </div>
+    </div>
+  );
+}
+
+function TabButton({ active, onClick, label, icon }: any) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 py-3 px-1 relative transition-all group",
+        active ? "text-accent" : "text-text-secondary/40 hover:text-text-main"
+      )}
+    >
+      {icon}
+      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+      {active && (
+        <motion.div 
+          layoutId="activeTabNote" 
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-full" 
+        />
+      )}
+    </button>
+  );
+}
+
+function NoteEditor({ note, onClose, updateNote }: { note: Note, onClose: () => void, updateNote: (id: string, updates: Partial<Note>) => void }) {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { deleteNote } = useStore();
 
   const handleAIAnalysis = async () => {
     if (!note.content || isAnalyzing) return;
     setIsAnalyzing(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
+      const prompt = `Provide a technical summary of this note for an architect dashboard. Use bullet points for key takeaways. Content: ${note.content}`;
+      const result = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Please summarize the following note content in a concise, technical manner suitable for an "Architect" dashboard. Use bullet points for key takeaways.\n\nContent: ${note.content}`,
-        config: {
-          systemInstruction: "You are the Visnova Analysis Engine. Your goal is to synthesize user thoughts into actionable insights.",
-        }
+        contents: prompt
       });
-
-      const summary = response.text || "Analysis failed.";
+      const summary = result.text;
       updateNote(note.id, { content: note.content + "\n\n--- AI SYNTHESIS ---\n" + summary });
     } catch (error) {
       console.error("AI Analysis failed:", error);
@@ -291,63 +973,194 @@ function NoteEditor({ note, onClose, updateNote }: any) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex-1 flex flex-col bg-bg-base overflow-hidden"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      className="h-full flex flex-col bg-white overflow-hidden rounded-[2.5rem]"
     >
-      <div className="h-20 px-8 flex items-center justify-between border-b border-card-border bg-card shadow-sm">
-        <div className="flex items-center gap-4">
-           <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center text-accent-contrast shadow-lg shadow-accent/10">
-              <FileText size={18} />
-           </div>
+      <div className="h-20 flex items-center justify-between px-8 border-b border-[#f9f9f9] shrink-0">
+         <div className="flex items-center gap-6">
+           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-accent/5 text-accent flex items-center justify-center hover:bg-accent hover:text-white transition-all active:scale-90">
+              <ChevronRight className="rotate-180" size={18} />
+           </button>
            <div className="space-y-0.5">
-             <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Strategy Engine</span>
-             <p className="text-[9px] font-semibold text-text-secondary/60 uppercase tracking-widest leading-none">Vision Sync Active</p>
+             <span className="text-[10px] font-black uppercase tracking-widest text-[#ccc]">{note.note_type}</span>
+             <p className="text-[9px] font-bold text-accent uppercase tracking-widest leading-none">Vision Sync Active</p>
            </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+           <button 
+             onClick={() => updateNote(note.id, { isFavorite: !note.isFavorite })}
+             className={cn("w-10 h-10 rounded-xl border flex items-center justify-center transition-all", note.isFavorite ? "bg-accent/10 border-accent/30 text-accent" : "bg-transparent border-[#eee] text-[#ccc] hover:text-[#333]")}
+            >
+              <Star size={16} className={note.isFavorite ? "fill-accent" : ""} />
+           </button>
            <button
             onClick={handleAIAnalysis}
             disabled={isAnalyzing}
-            className="h-10 px-6 rounded-xl bg-accent text-accent-contrast flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wider shadow-lg shadow-accent/10 active:scale-95 transition-all disabled:opacity-50"
+            className="h-10 px-5 rounded-xl bg-accent/5 text-accent flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest hover:bg-accent hover:text-white transition-all disabled:opacity-50"
            >
-              {isAnalyzing ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              AI Synthesis
+              {isAnalyzing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              Analysis
            </button>
-           <button onClick={onClose} className="w-9 h-9 rounded-lg bg-accent/5 border border-card-border flex items-center justify-center text-text-main hover:bg-accent hover:text-accent-contrast hover:border-accent transition-all active:scale-90"><X size={18} /></button>
         </div>
       </div>
 
+      <div className="flex-1 overflow-y-auto custom-scrollbar pt-12 pb-24 px-10">
+        <div className="max-w-3xl mx-auto space-y-12">
+          {note.note_type === 'journal' && (
+            <div className="flex items-center gap-4">
+               <div className="w-16 h-16 rounded-2xl bg-accent/5 flex items-center justify-center text-3xl">
+                 {note.mood || '✍️'}
+               </div>
+               <div className="space-y-1">
+                 <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{format(note.createdAt, 'EEEE, MMM dd')}</h4>
+                 <div className="flex gap-2">
+                    {['😊', '🚀', '🧠', '🔥', '🌊'].map(emoji => (
+                      <button 
+                        key={emoji} 
+                        onClick={() => updateNote(note.id, { mood: emoji })}
+                        className={cn("w-8 h-8 rounded-lg text-sm flex items-center justify-center transition-all", note.mood === emoji ? "bg-accent/10 scale-110 shadow-sm" : "hover:bg-[#fafafa]")}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                 </div>
+               </div>
+            </div>
+          )}
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-10 lg:p-20 bg-bg-base">
-        <div className="max-w-4xl mx-auto space-y-12 pb-32">
           <input
             value={note.title}
             onChange={e => updateNote(note.id, { title: e.target.value })}
-            className="w-full text-3xl lg:text-5xl font-bold text-text-main bg-transparent border-none focus:outline-none placeholder:text-text-main/10 tracking-tight"
-            placeholder="Anchor Title"
+            className="w-full text-4xl font-extrabold text-[#333] bg-transparent border-none focus:outline-none placeholder:text-[#eee] tracking-tight"
+            placeholder="Document Title"
           />
+          
           <textarea
-            ref={textareaRef}
             value={note.content}
-            onChange={e => updateNote(note.id, { content: e.target.value })}
-            className="w-full text-lg lg:text-xl text-text-secondary bg-transparent border-none focus:outline-none resize-none placeholder:text-text-main/5 leading-relaxed font-medium min-h-[400px]"
-            placeholder="Stream of consciousness..."
+            onChange={e => {
+              updateNote(note.id, { content: e.target.value });
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
+            className="w-full text-lg text-[#666] bg-transparent border-none focus:outline-none resize-none placeholder:text-[#eee] leading-loose font-medium min-h-[300px]"
+            placeholder="Log details..."
+            style={{ height: 'auto' }}
           />
 
-          <div className="flex flex-wrap gap-2 pt-12 border-t border-card-border">
-             <button className="px-4 h-9 rounded-xl border border-card-border flex items-center gap-2 text-[10px] font-semibold text-text-secondary uppercase tracking-wider hover:border-accent hover:text-accent transition-colors">
-                <Plus size={12} /> Add Tag
-             </button>
-             {note.tags.map((t: string, i: number) => (
-                <div key={`${t}-${i}`} className="px-4 h-9 rounded-xl bg-accent/5 border border-accent/20 flex items-center gap-2 text-[10px] font-semibold text-accent uppercase tracking-wider">
-                   # {t}
+          <div className="space-y-10 pt-16 border-t border-[#f5f5f5]">
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 px-4 h-10 rounded-xl bg-[#fafafa] border border-[#eee] text-[#ccc]">
+                <Tag size={14} />
+                <input 
+                  placeholder="Tag" 
+                  className="bg-transparent border-none focus:outline-none text-[10px] font-bold uppercase tracking-widest w-16"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val && !note.tags.includes(val)) {
+                        updateNote(note.id, { tags: [...note.tags, val] });
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                />
+              </div>
+              {note.tags.map((t, i) => (
+                <div key={i} className="px-4 h-10 rounded-xl bg-accent/5 border border-accent/10 flex items-center gap-2 text-[10px] font-bold text-accent uppercase tracking-widest group">
+                  # {t}
+                  <button 
+                    onClick={() => updateNote(note.id, { tags: note.tags.filter(tag => tag !== t) })}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all ml-1"
+                  >
+                    <X size={10} />
+                  </button>
                 </div>
-             ))}
-          </div>
+              ))}
+            </div>
 
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-[#ccc]">
+              <div className="flex items-center gap-6">
+                <span>Ref: {format(note.createdAt, 'MMM dd, yyyy')}</span>
+                <span>Class: {note.note_type}</span>
+              </div>
+              <button 
+                onClick={() => {
+                  if (window.confirm('Permanent deletion confirmed?')) {
+                    onClose();
+                    deleteNote(note.id);
+                  }
+                }}
+                className="text-red-400 hover:text-red-600 transition-colors flex items-center gap-2"
+              >
+                <Trash2 size={12} /> Erase Data
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </motion.div>
   );
 }
+
+function JournalTimeline({ entries, onSelect }: { entries: Note[], onSelect: (id: string) => void }) {
+  const groups = entries.reduce((acc: any, entry) => {
+    let dateStr = 'History';
+    const date = new Date(entry.createdAt);
+    if (isToday(date)) dateStr = 'Today';
+    else if (isYesterday(date)) dateStr = 'Yesterday';
+    else if (isThisWeek(date)) dateStr = 'This Week';
+    
+    if (!acc[dateStr]) acc[dateStr] = [];
+    acc[dateStr].push(entry);
+    return acc;
+  }, {});
+
+  const order = ['Today', 'Yesterday', 'This Week', 'History'];
+
+  return (
+    <div className="space-y-12 max-w-5xl">
+      {order.map((label, idx) => {
+        const group = groups[label];
+        if (!group) return null;
+        return (
+          <div key={`section-${label}-${idx}`} className="space-y-6">
+            <div className="flex items-center gap-4 px-2">
+               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/40 shrink-0">{label}</span>
+               <div className="h-[1px] flex-1 bg-card-border/30" />
+            </div>
+            <div className="grid gap-4">
+              {group.map((entry: Note, entryIdx: number) => (
+                <div
+                  key={entry.id || `journal-${idx}-${entryIdx}`}
+                  onClick={() => onSelect(entry.id)}
+                  className="group cursor-pointer p-6 rounded-[2rem] bg-white border border-card-border hover:border-accent/40 hover:shadow-xl transition-all flex items-center gap-6 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-1 h-full bg-accent/5 group-hover:bg-accent transition-colors" />
+                  <div className="w-14 h-14 rounded-2xl bg-accent/5 flex items-center justify-center text-3xl shrink-0 group-hover:scale-110 transition-transform">
+                    {entry.mood || '✍️'}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center justify-between">
+                       <h3 className="text-sm font-black text-text-main group-hover:text-accent transition-colors uppercase tracking-tight truncate">{entry.title}</h3>
+                       <span className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest">{format(entry.createdAt, 'h:mm a')}</span>
+                    </div>
+                    <p className="text-[11px] text-text-secondary/60 font-medium line-clamp-1 italic">
+                      {entry.content || "Documentation sequence awaiting input..."}
+                    </p>
+                  </div>
+                  <div className="hidden sm:flex flex-col items-end shrink-0 pl-10 border-l border-card-border/50">
+                    <span className="text-[10px] font-black text-text-main uppercase tracking-widest">{format(entry.createdAt, 'MMM dd')}</span>
+                    <span className="text-[8px] font-bold text-accent uppercase tracking-widest opacity-60">Snapshot</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+

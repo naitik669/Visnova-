@@ -50,6 +50,8 @@ export interface Vision {
   proof: string[];
   tags: string[];
   color?: string;
+  category?: string;
+  visibility?: 'private' | 'friends' | 'public';
   createdAt: number;
   elements?: VisionElement[];
   collaborators?: {
@@ -99,10 +101,18 @@ export interface Note {
   id: string;
   title: string;
   content: string;
+  note_type: 'library' | 'journal';
   folderId: string | null;
   tags: string[];
   linkedVisionId: string | null;
   visibility: 'private' | 'connections' | 'public';
+  mood?: string;
+  isPinned?: boolean;
+  isFavorite?: boolean;
+  isDeleted?: boolean;
+  journal_date?: string; // yyyy-MM-dd
+  location?: string;
+  image_url?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -112,6 +122,17 @@ export interface Vitals {
   energy: number;
   mood: number;
   sleep: number;
+}
+
+export interface JournalEntry {
+  id: string;
+  userId: string;
+  date: string; // yyyy-MM-dd
+  note: string;
+  visionIds: string[];
+  mood?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface FocusPreset {
@@ -149,6 +170,7 @@ export interface ToastMessage {
 
 export interface AppState {
   user: {
+    id?: string;
     name: string;
     email: string;
     avatar?: string;
@@ -175,12 +197,16 @@ export interface AppState {
   todos: Task[];
   focusPresets: FocusPreset[];
   dateNotes: Record<string, string>;
+  journalEntries: JournalEntry[];
   posts: Post[];
   userInterests: Record<string, number>;
   userCircles: Record<string, 'friend' | 'close_friend' | 'collaborator'>;
   followingIds: string[];
   notifications: any[];
   unreadNotificationCount: number;
+  authLoading: boolean;
+  profileLoading: boolean;
+  initializeAuth: () => Promise<void>;
   trackInteraction: (postId: string, type: 'view' | 'like' | 'comment' | 'save' | 'follow') => Promise<void>;
   updateUserInterests: (interests: string[]) => Promise<void>;
   addToCircle: (targetUserId: string, type: 'friend' | 'close_friend' | 'collaborator') => Promise<void>;
@@ -189,12 +215,17 @@ export interface AppState {
   markNotificationRead: (id: string) => Promise<void>;
   hasCompletedOnboarding: boolean;
   tutorialCompleted: boolean;
-  isFocusMode: boolean;
-  focusSession: FocusSession;
-  toasts: ToastMessage[];
-  theme: 'light' | 'dark' | 'pastel' | 'green' | 'yellow';
+  isDashboardLoading: boolean;
+  isAuthInitialized: boolean;
   selectedProfileId: string | null;
+  fetchDashboardData: () => Promise<void>;
+  fetchVisions: () => Promise<void>;
+  fetchTodos: () => Promise<void>;
+  loadUserProfile: (userId: string) => Promise<void>;
   setSelectedProfileId: (id: string | null) => void;
+  setSession: (session: any | null) => void;
+  addToast: (toast: Omit<ToastMessage, 'id'>) => void;
+  removeToast: (id: string) => void;
   updateUser: (updates: Partial<AppState['user']>) => void;
   toggleGrinding: () => void;
   updateCircleMember: (id: string, updates: Partial<CircleMember>) => void;
@@ -204,7 +235,7 @@ export interface AppState {
   moveVision: (id: string, newStatus: Vision['status']) => void;
   reorderVisions: (visions: Vision[]) => void;
   addActivity: (activity: Omit<Activity, 'id' | 'timestamp' | 'userId'> & { userId?: string }) => void;
-  setTheme: (theme: 'light' | 'dark' | 'pastel' | 'green' | 'yellow') => void;
+  setTheme: (theme: 'light' | 'dark' | 'pastel' | 'green' | 'yellow' | 'sage') => void;
   completeTutorial: () => void;
   restartTutorial: () => void;
   updateVitals: (vitals: Partial<Vitals>) => void;
@@ -215,6 +246,12 @@ export interface AppState {
   updateFocusTime: (timeLeft: number) => void;
   endFocusSession: () => void;
   setDateNote: (date: string, note: string) => void;
+  addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => Promise<void>;
+  deleteJournalEntry: (id: string) => Promise<void>;
+  fetchJournalEntries: () => Promise<void>;
+  fetchFolders: () => Promise<void>;
+  fetchNotes: () => Promise<void>;
   addFocusPreset: (preset: Omit<FocusPreset, 'id'>) => void;
   deleteFocusPreset: (id: string) => void;
   addFolder: (folder: Partial<Folder>) => void;
@@ -226,10 +263,15 @@ export interface AppState {
   addTodo: (text: string) => void;
   toggleTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
-  addPost: (post: any) => Promise<void>;
+  addPost: (post: any) => Promise<boolean>;
   toggleLikePost: (id: string) => Promise<void>;
   toggleSavePost: (id: string) => Promise<void>;
   fetchPosts: (tab?: 'recommended' | 'following' | 'latest') => Promise<void>;
+  fetchFeedContext: () => Promise<void>;
+  ensureCurrentUserProfile: () => Promise<any>;
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
+  updateOnboardingStep: (step: number) => Promise<void>;
   addComment: (postId: string, content: string, parentId?: string) => Promise<any>;
   toggleFollow: (followingId: string) => Promise<void>;
   achievements: Achievement[];
@@ -237,12 +279,13 @@ export interface AppState {
   shareVision: (visionId: string, receiverEmail: string) => Promise<void>;
   toggleVisionTask: (visionId: string, taskId: string) => void;
   acceptVision: (visionId: string) => Promise<void>;
-  fetchUser: (email: string) => Promise<void>;
+  fetchUser: () => Promise<void>;
   completeOnboarding: (data: { name: string, email: string, interests: string[], intent: string, commitment: string, username?: string, gender?: 'male' | 'female' | 'custom', bio?: string, tags?: string[], avatar?: string, role?: string, password?: string }) => void;
   session: any | null;
-  setSession: (session: any | null) => void;
-  addToast: (toast: Omit<ToastMessage, 'id'>) => void;
-  removeToast: (id: string) => void;
+  isFocusMode: boolean;
+  focusSession: FocusSession;
+  toasts: ToastMessage[];
+  theme: 'light' | 'dark' | 'pastel' | 'green' | 'yellow' | 'sage';
 }
 
 export interface Post {
@@ -264,6 +307,7 @@ export interface Post {
   isLiked?: boolean;
   type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement';
   visibility: 'public' | 'private' | 'friends';
+  createdAt?: number;
   media?: {
     id: string;
     url: string;
@@ -278,6 +322,7 @@ export interface Post {
     focusTime?: number;
     sessions?: number;
   };
+  metadata?: any;
 }
 
 export interface Comment {

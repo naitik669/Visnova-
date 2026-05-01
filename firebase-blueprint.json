@@ -109,7 +109,11 @@
       "properties": {
         "userId": { "type": "string" },
         "date": { "type": "string" },
-        "note": { "type": "string" }
+        "note": { "type": "string" },
+        "visionIds": { "type": "array", "items": { "type": "string" } },
+        "mood": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
       },
       "required": ["userId", "date", "note"]
     },

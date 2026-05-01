@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, supabase } from './supabase';
 
 export async function findExistingProfileByEmail(email: string) {
-  if (!isSupabaseConfigured || !email.trim()) return null;
+  if (!isSupabaseConfigured() || !email.trim()) return null;
 
   const { data, error } = await supabase
     .from('profiles')

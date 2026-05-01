@@ -13,7 +13,7 @@ export function rankPosts(posts: Post[], context: RankingContext): Post[] {
 
     // 1. Recency Score (25%)
     // Normalized based on hours since post, max score for 0 hours, decaying over 7 days
-    const hoursOld = (Date.now() - new Date(post.timestamp).getTime()) / (1000 * 60 * 60);
+    const hoursOld = (Date.now() - (post.createdAt || 0)) / (1000 * 60 * 60);
     const recencyScore = Math.max(0, 1 - (hoursOld / (24 * 7))); // Linear decay over 7 days
 
     // 2. Engagement Score (25%)

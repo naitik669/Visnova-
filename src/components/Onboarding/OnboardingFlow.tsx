@@ -4,20 +4,7 @@ import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as Ima
 import { useStore } from '../../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
-import { auth, db } from '../../lib/firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  sendPasswordResetEmail, 
-  onAuthStateChanged,
-  signInWithPopup,
-  GoogleAuthProvider,
-  sendEmailVerification,
-  signOut,
-  updatePassword
-} from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from '../../lib/firestoreUtils';
+import { supabase } from '../../lib/supabase';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
 
@@ -67,30 +54,49 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any
     setError('');
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-      if (!user.emailVerified) {
-        setError('Email not confirmed. Please check your inbox.');
-        // We could resend here or just tip them
-        setTimeout(() => nextStep(2), 1500);
-      } else {
-        // Correctly logged in, check if onboarded
+      if (loginError) throw loginError;
+      const user = data.user;
+
+      if (user) {
+        addToast({ type: 'success', title: 'Login successful', description: 'Accessing your dashboard...' });
+        // Correctly logged in, check if onboarded via profile
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists() && userDoc.data().hasCompletedOnboarding) {
-            await useStore.getState().fetchUser(user.email!);
-            window.location.href = '/';
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('onboarded, onboarding_step')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (profile) {
+             // Existing account found - skip onboarding or resume
+             await useStore.getState().loadUserProfile(user.id);
+             if (profile.onboarded) {
+                setStep(10); // Or use navigate if available
+             } else {
+                // If they have a profile but not marked onboarded, we can still skip to 9.5 (Final review) or just Finish
+                // User said: "skip the rest onboarding flow for existing accounts"
+                await supabase.from('profiles').update({ onboarded: true }).eq('id', user.id);
+                useStore.setState({ hasCompletedOnboarding: true });
+                setStep(10);
+             }
           } else {
+            // No profile yet, go to start of onboarding
             nextStep(3);
           }
         } catch (profileErr) {
-          console.error('Profile fetch failed:', profileErr);
+          console.error('Profile fetch during login failed:', profileErr);
           nextStep(3);
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      const message = err.message || 'Login failed. Please try again.';
+      setError(message);
+      addToast({ type: 'error', title: 'Login failed', description: message });
     } finally {
       setIsLoading(false);
     }
@@ -166,15 +172,6 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any
           >
             Don't have an account? Sign up
           </button>
-          <button
-            onClick={() => {
-              localStorage.setItem('visnova_onboarded_v2', 'true');
-              window.location.href = '/';
-            }}
-            className="w-full text-[9px] font-black uppercase tracking-widest text-accent/40 hover:text-accent transition-all py-1 border border-accent/10 rounded-xl"
-          >
-            Dev: Skip to Dashboard
-          </button>
         </div>
       </div>
     </div>
@@ -197,7 +194,8 @@ function ScreenForgotPassword({ email, setEmail, backToLogin }: any) {
     setError('');
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+      if (resetError) throw resetError;
       setSuccess('Recovery dispatch sent. Check your inbox.');
       addToast({ type: 'success', title: 'Recovery sent', description: 'Check your inbox for the reset link.' });
     } catch (resetError: any) {
@@ -274,15 +272,13 @@ function ScreenResetPassword({ nextStep }: any) {
     setIsLoading(true);
     setError('');
     try {
-      if (auth.currentUser) {
-        await updatePassword(auth.currentUser, password);
-        sessionStorage.removeItem('visnova-auth-link-mode');
-        window.history.replaceState({}, document.title, '/onboarding');
-        addToast({ type: 'success', title: 'Password updated', description: 'Continue your VisNova setup.' });
-        nextStep(3);
-      } else {
-        setError('No active session found.');
-      }
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) throw updateError;
+      
+      sessionStorage.removeItem('visnova-auth-link-mode');
+      window.history.replaceState({}, document.title, '/onboarding');
+      addToast({ type: 'success', title: 'Password updated', description: 'Continue your VisNova setup.' });
+      nextStep(3);
     } catch (updateError: any) {
       setError(updateError.message);
       addToast({ type: 'error', title: 'Password update failed', description: updateError.message });
@@ -409,25 +405,42 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
     try {
       const normalizedEmail = email.trim().toLowerCase();
       
-      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
-      const user = userCredential.user;
-      
-      await sendEmailVerification(user);
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            full_name: name,
+            display_name: name
+          }
+        }
+      });
+
+      if (signupError) throw signupError;
       
       addToast({
         type: 'success',
         title: 'Account created',
-        description: 'Verification email sent. Please check your inbox.',
+        description: data.user?.identities?.length === 0 
+          ? 'This email is already registered. Please login.'
+          : 'Please check your email to confirm registration.',
       });
       
-      nextStep(2);
+      if (data.user?.identities?.length === 0) {
+        nextStep(11); // Already registered, go to login
+      } else {
+        nextStep(2);
+      }
     } catch (err: any) {
       console.error('Signup error:', err);
-      if (err.code === 'auth/email-already-in-use') {
-        setGeneralError('Email already registered. Taking you to login...');
-        setTimeout(() => nextStep(11), 900);
+      const message = err.message || 'Signup failed';
+      if (message.includes('already registered')) {
+        setGeneralError('Email already registered. Redirecting to login...');
+        addToast({ type: 'info', title: 'Account exists', description: 'Redirecting to login page.' });
+        setTimeout(() => nextStep(11), 1000);
       } else {
-        setGeneralError(err.message || 'Signup failed');
+        setGeneralError(message);
+        addToast({ type: 'error', title: 'Signup failed', description: message });
       }
     } finally {
       setIsSubmitting(false);
@@ -548,52 +561,12 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         >
           {isSubmitting ? 'Loading...' : 'Create account'}
         </button>
-
-        <div className="relative py-2">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-card-border"></div></div>
-          <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-bg-base px-5 text-text-secondary opacity-40 ">or</span></div>
-        </div>
-
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full h-12 bg-card border border-card-border rounded-2xl flex items-center justify-center gap-3 text-text-main font-bold hover:bg-surface-muted transition-all shadow-sm"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-            />
-          </svg>
-          Sign in with Google
-        </button>
       </div>
 
       <div className="space-y-4 text-center">
         <p className="text-sm text-text-secondary font-medium">
           Already have an account? <button onClick={() => nextStep(11)} className="text-accent hover:underline font-bold">Login</button>
         </p>
-
-        <button
-          onClick={() => {
-            localStorage.setItem('visnova_onboarded_v2', 'true');
-            window.location.href = '/';
-          }}
-          className="w-full py-3 rounded-2xl border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary/30 hover:text-accent hover:border-accent/30 transition-all"
-        >
-          Dev Check: Skip Verification & Onboarding
-        </button>
       </div>
     </div>
   );
@@ -603,16 +576,17 @@ function ScreenVerify({ email, nextStep }: any) {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState('');
   const [isResending, setIsResending] = useState(false);
+  const { session } = useStore();
 
   const checkVerification = async () => {
     setIsChecking(true);
     setError('');
 
     try {
-      await auth.currentUser?.reload();
-      const user = auth.currentUser;
+      const { data: { user: updatedUser } } = await supabase.auth.getUser();
+      const user = updatedUser;
 
-      if (user?.emailVerified) {
+      if (user?.email_confirmed_at) {
         console.log('User verified globally. Advancing...');
         nextStep();
       } else if (user) {
@@ -630,8 +604,8 @@ function ScreenVerify({ email, nextStep }: any) {
   // Poll for verification status every 5 seconds
   useEffect(() => {
     const timer = setInterval(() => {
-      auth.currentUser?.reload().then(() => {
-        if (auth.currentUser?.emailVerified) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user?.email_confirmed_at) {
           nextStep();
         }
       });
@@ -643,8 +617,8 @@ function ScreenVerify({ email, nextStep }: any) {
     setIsResending(true);
     setError('');
     try {
-      if (auth.currentUser) {
-        await sendEmailVerification(auth.currentUser);
+      if (session?.user) {
+        await supabase.auth.resetPasswordForEmail(session.user.email!);
         setError('A new verification link has been dispatched to your inbox.');
       }
     } catch (err: any) {
@@ -1016,16 +990,16 @@ function Screen7({ avatar, setAvatar, name, setName, username, setUsername, bio,
 
     setIsCheckingUsername(true);
     try {
-      const q = query(collection(db, 'users'), where('username', '==', username));
-      const querySnapshot = await getDocs(q);
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .maybeSingle();
 
-      if (!querySnapshot.empty) {
-        const found = querySnapshot.docs.find(d => d.id !== currentUserId);
-        if (found) {
-          setUsernameError('Username already synchronized in another sector.');
-          setIsCheckingUsername(false);
-          return;
-        }
+      if (existingUser && existingUser.id !== currentUserId) {
+        setUsernameError('Username already synchronized in another sector.');
+        setIsCheckingUsername(false);
+        return;
       }
 
       nextStep();
@@ -1379,38 +1353,42 @@ function Screen9({ handleForceStart }: { handleForceStart: () => void }) {
 }
 
 export default function OnboardingFlow() {
-  const [step, setStep] = useState(() => {
-    const saved = localStorage.getItem('visnova_onboarding_step');
-    const parsed = saved ? parseInt(saved, 10) : 1;
-    // Never start on step 10 (transitional loading screen) after refresh
-    return (parsed === 10) ? 9 : parsed;
-  });
+  const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
-  const { completeOnboarding, addToast } = useStore();
+  const { completeOnboarding, addToast, session, signOut } = useStore();
   const navigate = useNavigate();
 
-  const handleForceStart = () => {
-    localStorage.setItem('visnova_onboarded_v2', 'true');
-    useStore.setState({ hasCompletedOnboarding: true });
-    window.location.reload();
+  const handleForceStart = async () => {
+    if (!username) {
+        setStep(8);
+        addToast({ type: 'info', title: 'Finalization required', description: 'Please set your identity handle first.' });
+        return;
+    }
+    await handleComplete();
   };
 
-  // Save step to localStorage
-  useEffect(() => {
-    localStorage.setItem('visnova_onboarding_step', step.toString());
-  }, [step]);
+  // Save step to backend (removed localStorage sync)
 
   // State
-  const [name, setName] = useState(auth.currentUser?.displayName || '');
-  const [email, setEmail] = useState(auth.currentUser?.email || '');
+  const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
+  const [email, setEmail] = useState(session?.user?.email || '');
+  const [password, setPassword] = useState('');
+  const [interests, setInterests] = useState<string[]>([]);
+  const [intent, setIntent] = useState('');
+  const [commitment, setCommitment] = useState('');
+  const [username, setUsername] = useState('');
+  const [bio, setBio] = useState('');
+  const [gender, setGender] = useState<ProfileChoice>('male');
+  const [role, setRole] = useState('');
+  const [avatar, setAvatar] = useState(DEFAULT_PROFILE_AVATARS.male);
 
-  // Sync state from session if it changes and we don't have local values yet
+  // Sync state from session
   useEffect(() => {
-    if (auth.currentUser) {
-      setName(prev => prev || auth.currentUser?.displayName || '');
-      setEmail(prev => prev || auth.currentUser?.email || '');
+    if (session?.user) {
+      setName(prev => prev || session.user.user_metadata?.full_name || '');
+      setEmail(prev => prev || session.user.email || '');
     }
-  }, [auth.currentUser]);
+  }, [session?.user]);
 
   // Logging for debug
   useEffect(() => {
@@ -1419,83 +1397,87 @@ export default function OnboardingFlow() {
 
   // Handle session-based redirection
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isRecoveryMode = params.get('mode') === 'reset-password' || sessionStorage.getItem('visnova-auth-link-mode') === 'recovery';
-    if (isRecoveryMode) {
-      setStep(13);
-      return;
-    }
+    const syncOnboardingStep = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const isRecoveryMode = params.get('mode') === 'reset-password' || sessionStorage.getItem('visnova-auth-link-mode') === 'recovery';
+      if (isRecoveryMode) {
+        setStep(13);
+        return;
+      }
 
-    // If session exists and we are at the very beginning, advance past login/signup
-    if (auth.currentUser && (step === 1 || step === 11)) {
-       setStep(3);
-    }
-  }, [auth.currentUser?.uid, step === 1, step === 11]);
+      const userId = session?.user?.id;
+      if (userId) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('onboarding_step, onboarded')
+            .eq('id', userId)
+            .maybeSingle();
+            
+          if (profile?.onboarded) {
+             addToast({ type: 'success', title: 'Session restored', description: 'Returning to dashboard.' });
+             navigate('/');
+             return;
+          }
+          
+          if (profile && profile.onboarding_step > 0 && profile.onboarding_step < 10) {
+             setStep(profile.onboarding_step);
+          } else if (step === 1 || step === 11) {
+             // Only auto-advance if we're on the start screens and a session just appeared
+             setStep(3);
+          }
+        } catch (err) {
+          console.error('Failed to sync onboarding step:', err);
+        }
+      }
+    };
+
+    syncOnboardingStep();
+  }, [session?.user?.id]);
 
   // Automatic progression for email confirmation
   useEffect(() => {
-    if (auth.currentUser?.emailVerified && step === 2) {
+    if (session?.user?.email_confirmed_at && step === 2) {
       console.log('Verification detected automatically. Progressing...');
       nextStep();
     }
-  }, [auth.currentUser, step]);
+  }, [session?.user, step]);
 
   const handleGoogleLogin = async () => {
     const addToast = useStore.getState().addToast;
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      
-      // If sign in is successful, check if onboarded
-      const user = auth.currentUser;
-      if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && userDoc.data().hasCompletedOnboarding) {
-          await useStore.getState().fetchUser(user.email!);
-          window.location.href = '/';
-        } else {
-          nextStep(3); // Start onboarding
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
         }
-      }
+      });
+      if (error) throw error;
     } catch (error: any) {
       console.error('Google sign-in error:', error);
       addToast({ type: 'error', title: 'Google sign-in failed', description: error.message });
     }
   };
-  const [password, setPassword] = useState('');
-  const [interests, setInterests] = useState<string[]>([]);
-  const [intent, setIntent] = useState('');
-  const [commitment, setCommitment] = useState('');
-  const [username, setUsername] = useState(() => localStorage.getItem('visnova_username') || '');
-  const [bio, setBio] = useState('');
-  const [gender, setGender] = useState<ProfileChoice>('male');
-  const [role, setRole] = useState('');
-  const [avatar, setAvatar] = useState(DEFAULT_PROFILE_AVATARS.male);
 
   // Persistence for critical identity state
   useEffect(() => {
     if (username) localStorage.setItem('visnova_username', username);
   }, [username]);
 
-  // Security: Ensure username is selected before allowing higher steps
-  // Removed problematic checkpoint to prevent looping
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isRecoveryMode = params.get('mode') === 'reset-password' || sessionStorage.getItem('visnova-auth-link-mode') === 'recovery';
-    if (isRecoveryMode) {
-      setStep(13);
-    }
-  }, []);
-
   const nextStep = useCallback((targetStep?: number | any) => {
     setDirection(1);
-    if (typeof targetStep === 'number') {
-      setStep(targetStep);
-      return;
+    const nextS = typeof targetStep === 'number' ? targetStep : step + 1;
+    setStep(nextS);
+    
+    // Persist to DB if logged in
+    const userId = session?.user?.id;
+    if (userId && nextS < 10) {
+      supabase.from('profiles').update({ onboarding_step: nextS }).eq('id', userId)
+        .then(({ error }) => {
+          if (error) console.error('Failed to save onboarding progress:', error);
+        });
     }
-    setStep((prev) => prev + 1);
-  }, []);
+  }, [step, session?.user?.id]);
 
   const prevStep = useCallback(() => {
     setDirection(-1);
@@ -1508,7 +1490,6 @@ export default function OnboardingFlow() {
   }, []);
 
   const handleComplete = async () => {
-    // Strictly require username
     if (!username || username.trim().length === 0) {
         if (step !== 8) setStep(8);
         addToast({ type: 'info', title: 'Username required', description: 'Please choose a unique identifying handle before proceeding.' });
@@ -1518,12 +1499,11 @@ export default function OnboardingFlow() {
     setStep(9.5);
 
     try {
-      const currentUser = auth.currentUser;
+      const currentUser = session?.user;
 
       await completeOnboarding({
         name: name || 'Visionary Explorer',
         email: email || currentUser?.email || 'explorer@visnova.ai',
-        password,
         interests,
         intent,
         commitment,
@@ -1533,16 +1513,12 @@ export default function OnboardingFlow() {
         role,
         avatar
       });
-      // Final safety: ensuring it's true and persisted
-      localStorage.setItem('visnova_onboarded_v2', 'true');
-      useStore.setState({ hasCompletedOnboarding: true });
     } catch (err) {
-      console.error('Finalization failed, but proceeding:', err);
-      // Ensure local state reflects completion even if API call fails
-      localStorage.setItem('visnova_onboarded_v2', 'true');
-      useStore.setState({ hasCompletedOnboarding: true });
+      console.error('Finalization failed:', err);
+      addToast({ type: 'error', title: 'Setup interrupted', description: 'Something went wrong during final sync.' });
     }
   };
+
 
   const slideVariants: Variants = {
     initial: (direction: number) => ({
@@ -1634,7 +1610,7 @@ export default function OnboardingFlow() {
       case 5: return <Screen4 commitment={commitment} setCommitment={setCommitment} nextStep={nextStep} />;
       case 6: return <Screen5 interests={interests} intent={intent} nextStep={nextStep} />;
       case 7: return <Screen6 nextStep={nextStep} />;
-      case 8: return <Screen7 avatar={avatar} setAvatar={setAvatar} name={name} setName={setName} username={username} setUsername={setUsername} bio={bio} setBio={setBio} gender={gender} setGender={setGender} currentUserId={auth.currentUser?.uid} nextStep={nextStep} />;
+      case 8: return <Screen7 avatar={avatar} setAvatar={setAvatar} name={name} setName={setName} username={username} setUsername={setUsername} bio={bio} setBio={setBio} gender={gender} setGender={setGender} currentUserId={session?.user?.id} nextStep={nextStep} />;
       case 9: return <Screen8 role={role} setRole={setRole} ROLE_CATEGORIES={ROLE_CATEGORIES} handleComplete={handleComplete} />;
       case 9.5: return <Screen9 handleForceStart={handleForceStart} />;
       case 10: return null; 
@@ -1681,11 +1657,11 @@ export default function OnboardingFlow() {
 
         {step < 10 && (
           <div className="flex items-center gap-4">
-            {auth.currentUser && (
+            {session?.user && (
               <button
                 onClick={async () => {
-                  await signOut(auth);
-                  window.location.reload();
+                  await signOut();
+                  navigate('/');
                 }}
                 className="text-[10px] font-black uppercase tracking-widest text-accent/60 hover:text-accent transition-all bg-accent/5 px-3 py-1.5 rounded-lg border border-accent/10"
               >

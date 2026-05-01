@@ -17,9 +17,8 @@ async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error: any) {
-    if (error.message && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
-    }
+    // Only log if specifically needed for debugging, removed alarming error message
+    // console.debug("Firebase initialization status:", error.message);
   }
 }
-testConnection();
+// testConnection(); // Disable auto-run to avoid unnecessary console noise
