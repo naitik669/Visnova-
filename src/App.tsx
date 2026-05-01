@@ -15,7 +15,6 @@ import MindVisualizer from './components/Mind/MindVisualizer';
 import Circle from './components/Circle/Circle';
 import CommunityFeed from './components/Feed/CommunityFeed';
 import NotesSystem from './components/Notes/NotesSystem';
-import DailyJournal from './components/VisionBoard/DailyJournal';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import AuthCallback from './components/Auth/AuthCallback';
 import { InteractiveTour } from './components/Onboarding/InteractiveTour';
@@ -218,6 +217,7 @@ function Topbar() {
     if (location.pathname === '/') return 'Dashboard';
     if (location.pathname === '/vision') return 'Visions';
     if (location.pathname === '/notes') return 'Notes';
+    if (location.pathname === '/journal') return 'Journal';
     if (location.pathname === '/circle') return 'Circle';
     if (location.pathname === '/profile') return 'Profile';
     if (location.pathname === '/nova') return 'Timeline';
@@ -407,7 +407,7 @@ export default function App() {
                     <Route path="/vision" element={<VisionBoard />} />
                     <Route path="/circle" element={<Circle />} />
                     <Route path="/notes" element={<NotesSystem />} />
-                    <Route path="/journal" element={<DailyJournal />} />
+                    <Route path="/journal" element={<NotesSystem />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/nova" element={<NovaClock />} />

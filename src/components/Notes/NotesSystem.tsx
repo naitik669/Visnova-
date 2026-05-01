@@ -286,30 +286,8 @@ export default function NotesSystem() {
                   "font-black text-text-main tracking-tight uppercase transition-all",
                   activeTab === 'journal' ? "text-xl" : "text-3xl"
                 )}>
-                  {activeTab === 'journal' ? 'Chronicle' : 'Library'}
+                  {activeTab === 'journal' ? 'Journal' : 'Library'}
                 </h1>
-              </div>
-
-              {/* Tabs integrated into header area */}
-              <div className="flex bg-surface-muted p-1 rounded-xl border border-card-border/50">
-                <button 
-                  onClick={() => setActiveTab('library')}
-                  className={cn(
-                    "px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                    activeTab === 'library' ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
-                  )}
-                >
-                  Archive
-                </button>
-                <button 
-                  onClick={() => setActiveTab('journal')}
-                  className={cn(
-                    "px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                    activeTab === 'journal' ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
-                  )}
-                >
-                  Journal
-                </button>
               </div>
             </div>
 
@@ -1163,4 +1141,3 @@ function JournalTimeline({ entries, onSelect }: { entries: Note[], onSelect: (id
     </div>
   );
 }
-
