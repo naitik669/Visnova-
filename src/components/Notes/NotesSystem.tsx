@@ -37,7 +37,7 @@ import { cn } from '../../lib/utils';
 import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
-import { Note } from '../../types';
+import { Note, Folder as FolderType } from '../../types';
 
 export default function NotesSystem() {
   const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user } = useStore();
@@ -45,6 +45,7 @@ export default function NotesSystem() {
   const initialTab = location.pathname.includes('journal') ? 'journal' : 'library';
   const [activeTab, setActiveTab] = useState<'library' | 'journal'>(initialTab);
   const [isJournalFullView, setIsJournalFullView] = useState(false);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
 
   useEffect(() => {
     fetchFolders();
@@ -90,19 +91,14 @@ export default function NotesSystem() {
     return count;
   }, [notes]);
 
-  const handleNewFolder = async () => {
-    const name = prompt('Enter a name for the new folder:');
-    if (name && name.trim()) {
-      const trimmedName = name.trim();
-      const isDuplicate = folders.some(f => f.name.toLowerCase() === trimmedName.toLowerCase());
-      if (isDuplicate) {
-        alert('A folder with this name already exists.');
-        return;
-      }
-      addFolder({ name: trimmedName });
-    } else if (name !== null) {
-      alert('Folder name cannot be empty.');
-    }
+  const handleNewFolder = async (folder: { name: string; color?: string }) => {
+    const trimmedName = folder.name.trim();
+    const isDuplicate = folders.some(f => f.name.toLowerCase() === trimmedName.toLowerCase());
+    if (!trimmedName || isDuplicate) return false;
+
+    addFolder({ name: trimmedName, color: folder.color });
+    setIsFolderModalOpen(false);
+    return true;
   };
 
   const filteredNotes = useMemo(() => {
@@ -226,10 +222,7 @@ export default function NotesSystem() {
                   <div className="flex items-center justify-between ml-4 mb-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40">Folders</p>
                     <button 
-                      onClick={() => {
-                        const name = prompt('Folder name:');
-                        if (name) addFolder({ name });
-                      }}
+                      onClick={() => setIsFolderModalOpen(true)}
                       className="p-1 hover:bg-surface-muted rounded-md text-text-secondary/40 hover:text-accent transition-colors"
                     >
                       <Plus size={14} />
@@ -372,7 +365,7 @@ export default function NotesSystem() {
                          />
                        ))}
                        <button 
-                         onClick={handleNewFolder}
+                         onClick={() => setIsFolderModalOpen(true)}
                          className="aspect-[4/3] rounded-[2rem] border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-3"
                        >
                           <div className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
@@ -491,6 +484,12 @@ export default function NotesSystem() {
           </AnimatePresence>
         </div>
       </div>
+      <NewFolderModal
+        isOpen={isFolderModalOpen}
+        folders={folders}
+        onClose={() => setIsFolderModalOpen(false)}
+        onCreate={handleNewFolder}
+      />
     </div>
   );
 }
@@ -503,21 +502,36 @@ const JOURNAL_PROMPTS = [
   "What are you grateful for today?"
 ];
 
+const JOURNAL_PAGE_BREAK = '\n\n--- Page ---\n\n';
+const STICKERS = ['*', '!!', 'OK', 'IDEA', 'WIN', 'FOCUS'];
+const FOLDER_COLORS = [
+  { name: 'Sky', value: '#3b82f6' },
+  { name: 'Coral', value: '#f97316' },
+  { name: 'Violet', value: '#8b5cf6' },
+  { name: 'Mint', value: '#10b981' },
+  { name: 'Rose', value: '#f43f5e' },
+];
+
 function getDailyPrompt(date: Date) {
   const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000);
   return JOURNAL_PROMPTS[dayOfYear % JOURNAL_PROMPTS.length];
 }
 
 function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, fullView, toggleFullView, recentLibraryNotes }: any) {
-  const [content, setContent] = useState(entry?.content || '');
+  const [pages, setPages] = useState<string[]>((entry?.content || '').split(JOURNAL_PAGE_BREAK));
+  const [currentPage, setCurrentPage] = useState(0);
   const [title, setTitle] = useState(entry?.title || '');
   const [mood, setMood] = useState(entry?.mood || '✍️');
   const [location, setLocation] = useState(entry?.location || '');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(entry?.updatedAt || null);
+  const stickerInputRef = useRef<HTMLInputElement>(null);
+  const content = pages[currentPage] || '';
 
   useEffect(() => {
-    setContent(entry?.content || '');
+    const nextPages = (entry?.content || '').split(JOURNAL_PAGE_BREAK);
+    setPages(nextPages.length > 0 ? nextPages : ['']);
+    setCurrentPage(0);
     setTitle(entry?.title || '');
     setMood(entry?.mood || '✍️');
     setLocation(entry?.location || '');
@@ -527,7 +541,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onSave(content, { title: title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`, mood, location });
+      await onSave(pages.join(JOURNAL_PAGE_BREAK), { title: title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`, mood, location });
       setLastSaved(Date.now());
     } finally {
       setIsSaving(false);
@@ -536,6 +550,34 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
 
   const handleDropNote = (noteContent: string) => {
     setContent(prev => prev + (prev ? '\n\n' : '') + `📌 From Library:\n${noteContent}`);
+  };
+
+  const updateCurrentPage = (updater: string | ((value: string) => string)) => {
+    setPages(prev => prev.map((page, index) => {
+      if (index !== currentPage) return page;
+      return typeof updater === 'function' ? updater(page) : updater;
+    }));
+  };
+  const setContent = updateCurrentPage;
+
+  const addNotebookPage = () => {
+    setPages(prev => [...prev, '']);
+    setCurrentPage(pages.length);
+  };
+
+  const addSticker = (sticker: string) => {
+    updateCurrentPage(prev => `${prev}${prev ? ' ' : ''}${sticker}`);
+  };
+
+  const importStickerImage = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      if (result) {
+        updateCurrentPage(prev => `${prev}${prev ? '\n\n' : ''}![Imported sticker](${result})`);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const weekDays = useMemo(() => {
@@ -563,9 +605,16 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                  <X size={18} />
               </button>
               <h2 className="text-sm font-black text-text-main uppercase tracking-widest">Immersive Journal View</h2>
-           </div>
-           <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
+            </div>
+            <div className="flex items-center gap-6">
+              <button
+                onClick={addNotebookPage}
+                className="w-10 h-10 rounded-xl bg-surface-muted border border-card-border flex items-center justify-center text-accent hover:bg-accent hover:text-white transition-all"
+                title="Add page"
+              >
+                <Plus size={16} />
+              </button>
+               <div className="flex items-center gap-2">
                 <Star size={14} className={streak > 0 ? "text-accent fill-accent" : "text-text-secondary/20"} />
                 <span className="text-[10px] font-black text-text-main uppercase tracking-widest">{streak} Day Streak</span>
               </div>
@@ -641,7 +690,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                     <BookOpen size={32} />
                   </motion.div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">
-                    {fullView ? "Daily Snapshot active" : "Enter Immersive View"}
+                    Page {currentPage + 1} of {pages.length}
                   </p>
                 </>
               )}
@@ -675,10 +724,32 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                 })}
               </div>
             </div>
+            <div className="w-full grid grid-cols-2 gap-3">
+              {pages.map((_, index) => (
+                <button
+                  key={`journal-page-tab-${index}`}
+                  onClick={() => setCurrentPage(index)}
+                  className={cn(
+                    "h-10 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all",
+                    currentPage === index ? "bg-accent text-white border-accent shadow-lg shadow-accent/10" : "bg-white text-text-secondary/50 border-card-border hover:border-accent/40"
+                  )}
+                >
+                  Page {index + 1}
+                </button>
+              ))}
+              <button
+                onClick={addNotebookPage}
+                className="h-10 rounded-xl border border-dashed border-card-border text-accent flex items-center justify-center hover:bg-accent/5 transition-all"
+                title="Add notebook page"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
           </motion.div>
 
           {/* Right Page: Writing Area */}
           <motion.div 
+            key={`journal-writing-page-${currentPage}`}
             initial={{ rotateY: 30, opacity: 0 }}
             animate={{ rotateY: 0, opacity: 1 }}
             transition={{ duration: 0.8, type: 'spring', delay: 0.1 }}
@@ -703,6 +774,34 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               <p className="text-lg font-bold text-text-main leading-snug">
                 {prompt}
               </p>
+              <div className="pt-4 flex flex-wrap items-center gap-2">
+                {STICKERS.map(sticker => (
+                  <button
+                    key={sticker}
+                    onClick={() => addSticker(sticker)}
+                    className="px-3 h-8 rounded-lg bg-white border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/40 transition-all"
+                  >
+                    {sticker}
+                  </button>
+                ))}
+                <button
+                  onClick={() => stickerInputRef.current?.click()}
+                  className="px-3 h-8 rounded-lg bg-white border border-card-border text-[9px] font-black uppercase tracking-widest text-accent flex items-center gap-2 hover:border-accent/40 transition-all"
+                >
+                  <ImageIcon size={12} /> Import
+                </button>
+                <input
+                  ref={stickerInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) importStickerImage(file);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
             </div>
 
             {/* Editor Area */}
@@ -784,6 +883,108 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   );
 }
 
+function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
+  isOpen: boolean;
+  folders: FolderType[];
+  onClose: () => void;
+  onCreate: (folder: { name: string; color?: string }) => Promise<boolean>;
+}) {
+  const [name, setName] = useState('');
+  const [color, setColor] = useState(FOLDER_COLORS[0].value);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setColor(FOLDER_COLORS[0].value);
+      setError('');
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError('Folder name is required.');
+      return;
+    }
+    if (folders.some(folder => folder.name.toLowerCase() === trimmed.toLowerCase())) {
+      setError('A folder with this name already exists.');
+      return;
+    }
+    const created = await onCreate({ name: trimmed, color });
+    if (!created) setError('Could not create this folder.');
+  };
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-overlay/70 backdrop-blur-md"
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.96 }}
+        className="relative w-full max-w-md rounded-[2rem] bg-white border border-card-border shadow-2xl overflow-hidden"
+      >
+        <div className="p-8 border-b border-card-border/40 flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-black uppercase tracking-tight text-text-main">New Folder</h3>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent/60 mt-1">Library collection</p>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-text-main transition-all flex items-center justify-center">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-8 space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Name</label>
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError('');
+              }}
+              autoFocus
+              placeholder="Project notes"
+              className="w-full h-14 rounded-2xl border border-card-border bg-surface-muted/40 px-5 text-sm font-bold text-text-main outline-none focus:border-accent focus:bg-white transition-all"
+            />
+          </div>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Color</label>
+            <div className="grid grid-cols-5 gap-3">
+              {FOLDER_COLORS.map(option => (
+                <button
+                  key={option.value}
+                  onClick={() => setColor(option.value)}
+                  className={cn(
+                    "h-12 rounded-2xl border-2 transition-all",
+                    color === option.value ? "border-text-main scale-105 shadow-lg" : "border-transparent hover:scale-105"
+                  )}
+                  style={{ backgroundColor: option.value }}
+                  title={option.name}
+                />
+              ))}
+            </div>
+          </div>
+          {error && <p className="text-xs font-bold text-danger">{error}</p>}
+          <button
+            onClick={handleSubmit}
+            className="w-full h-12 rounded-2xl bg-accent text-white font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-accent/20 hover:scale-[1.01] active:scale-95 transition-all"
+          >
+            Create Folder
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function SidebarIconBtn({ icon, active, onClick, label }: any) {
   return (
     <button
@@ -821,9 +1022,11 @@ function FolderCard({ folder, active, onClick }: { folder: any, active: boolean,
     >
        <div className={cn(
          "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-         active ? "bg-white/20" : colorClass
-       )}>
-          <Folder size={20} fill={active ? "white" : "currentColor"} strokeWidth={active ? 0 : 2} />
+         active ? "bg-white/20" : folder.color ? "text-white border border-black/5" : colorClass
+       )}
+       style={folder.color && !active ? { backgroundColor: folder.color } : undefined}
+       >
+          <Folder size={20} fill={active ? "white" : folder.color ? "white" : "currentColor"} strokeWidth={active || folder.color ? 0 : 2} />
        </div>
        <div>
          <p className={cn("text-xs font-black uppercase tracking-tight truncate", active ? "text-white" : "text-text-main")}>{folder.name}</p>

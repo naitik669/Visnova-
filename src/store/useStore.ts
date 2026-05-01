@@ -106,7 +106,7 @@ export const useStore = create<AppState>((set, get) => ({
   milestones: [],
   authLoading: true,
   profileLoading: false,
-  hasCompletedOnboarding: false,
+  hasCompletedOnboarding: localStorage.getItem('visnova_onboarded_v2') === 'true',
   tutorialCompleted: localStorage.getItem('visnova_tour_completed') === 'true',
   isFocusMode: false,
   toasts: [],
@@ -235,10 +235,11 @@ export const useStore = create<AppState>((set, get) => ({
             mood: data.mood ?? 90,
             sleep: data.sleep ?? 64,
           },
-          hasCompletedOnboarding: !!data.onboarded
+          hasCompletedOnboarding: !!data.onboarded || localStorage.getItem('visnova_onboarded_v2') === 'true'
         }));
 
         if (data.onboarded) {
+          localStorage.setItem('visnova_onboarded_v2', 'true');
           get().fetchDashboardData();
         }
       } else {
@@ -1814,6 +1815,7 @@ export const useStore = create<AppState>((set, get) => ({
       },
       hasCompletedOnboarding: true
     }));
+    localStorage.setItem('visnova_onboarded_v2', 'true');
 
     const session = get().session;
     const userId = session?.user?.id;
@@ -1943,8 +1945,11 @@ export const useStore = create<AppState>((set, get) => ({
             streak: profile.streak || 0,
             isGrinding: profile.is_grinding || false
           },
-          hasCompletedOnboarding: !!profile.onboarded
+          hasCompletedOnboarding: !!profile.onboarded || localStorage.getItem('visnova_onboarded_v2') === 'true'
         }));
+        if (profile.onboarded) {
+          localStorage.setItem('visnova_onboarded_v2', 'true');
+        }
       }
 
       // Load User Data

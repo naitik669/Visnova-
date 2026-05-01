@@ -360,7 +360,7 @@ export default function App() {
     );
   }
 
-  const showOnboarding = !session || !hasCompletedOnboarding || isPasswordRecovery;
+  const showOnboarding = (!session || (!profileLoading && !hasCompletedOnboarding)) || isPasswordRecovery;
 
   return (
     <Router>
