@@ -125,7 +125,7 @@ export default function FocusOverlay() {
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[9px] font-bold uppercase tracking-widest leading-none">
                     <Target size={12} /> execution in progress
                   </div>
-                  <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-text-main italic line-clamp-2">
+                  <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-text-main  line-clamp-2">
                     "{primaryTask ? primaryTask.text : 'Calibrating Focus State...'}"
                   </h1>
                 </div>

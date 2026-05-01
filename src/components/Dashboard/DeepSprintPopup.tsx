@@ -45,7 +45,7 @@ export default function DeepSprintPopup({ isOpen, onClose }: { isOpen: boolean; 
           </div>
 
           <div className="space-y-2 text-center pb-2">
-            <h2 className="text-2xl font-semibold tracking-tight text-text-main italic">Initialize <span className="text-accent underline decoration-accent/20 underline-offset-4">Deep Sprint</span></h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-text-main ">Initialize <span className="text-accent underline decoration-accent/20 underline-offset-4">Deep Sprint</span></h2>
             <p className="text-[10px] text-text-secondary font-medium opacity-60 max-w-xs mx-auto">
               Select a depth profile for total alignment.
             </p>

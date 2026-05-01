@@ -406,7 +406,7 @@ const ElementContent: React.FC<{ element: VisionElement }> = ({ element }) => {
       return (
         <div className="p-10 bg-card border-l-4 border-accent rounded-r-[2.5rem] shadow-2xl max-w-lg space-y-6">
           <Quote size={40} className="text-accent opacity-20" />
-          <p className="text-2xl font-black text-text-main leading-tight tracking-tight italic">"{element.content}"</p>
+          <p className="text-2xl font-black text-text-main leading-tight tracking-tight ">"{element.content}"</p>
           {element.metadata?.author && (
             <p className="text-sm font-bold text-accent uppercase tracking-widest">— {element.metadata.author}</p>
           )}

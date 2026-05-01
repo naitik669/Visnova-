@@ -179,7 +179,7 @@ export default function CommunityFeed() {
                    <div className="w-20 h-20 rounded-[2rem] bg-accent/5 text-accent flex items-center justify-center mb-6">
                       <Users size={32} />
                    </div>
-                   <h3 className="text-xl font-black text-text-main uppercase tracking-tight mb-2">Matrix Silence</h3>
+                   <h3 className="text-xl font-black text-text-main uppercase tracking-tight mb-2">No Posts Found</h3>
                    <p className="text-text-secondary/60 text-xs font-medium max-w-xs uppercase tracking-widest leading-relaxed">
                       {searchQuery ? 'No nodes matched your query. Try different parameters.' : 'Your feed is currently empty. Start following nodes or share your first sprint.'}
                    </p>
@@ -688,23 +688,18 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
       </div>
 
       <div className="mt-10 pt-8 border-t border-card-border/50 flex items-center justify-between relative z-10">
-         <div className="flex items-center gap-4 sm:gap-10">
+         <div className="flex items-center gap-6 sm:gap-10">
             <button 
               onClick={() => {
                 toggleLikePost(post.id);
                 if (!post.isLiked) trackInteraction(post.id, 'like');
               }}
               className={cn(
-                "flex items-center gap-3 text-text-secondary transition-all group/btn",
-                post.isLiked ? "text-danger" : "hover:text-danger hover:scale-110"
+                "flex items-center gap-2 text-text-secondary transition-all group/btn",
+                post.isLiked ? "text-danger" : "hover:text-danger hover:scale-110 active:scale-95"
               )}
             >
-               <div className={cn(
-                 "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                 post.isLiked ? "bg-danger/10" : "bg-surface-muted"
-               )}>
-                 <Heart size={20} className={cn("transition-all", post.isLiked && "fill-danger")} />
-               </div>
+               <Heart size={20} className={cn("transition-all", post.isLiked && "fill-danger")} />
                <span className="text-[11px] font-black tabular-nums">{post.likes}</span>
             </button>
             
@@ -713,16 +708,15 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
                 onOpenThread();
                 trackInteraction(post.id, 'comment');
               }}
-              className="flex items-center gap-3 text-text-secondary hover:text-accent hover:scale-110 transition-all group/btn"
+              className="flex items-center gap-2 text-text-secondary hover:text-accent hover:scale-110 active:scale-95 transition-all group/btn"
             >
-               <div className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center transition-all group-hover/btn:bg-accent/10">
-                 <MessageSquare size={20} />
-               </div>
+               <MessageSquare size={20} />
                <span className="text-[11px] font-black tabular-nums">{post.comments}</span>
             </button>
             
-            <button className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary hover:text-text-main hover:scale-110 transition-all">
+            <button className="flex items-center gap-2 text-text-secondary hover:text-text-main hover:scale-110 active:scale-95 transition-all">
                <Share2 size={20} />
+               <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest">Share</span>
             </button>
          </div>
          
@@ -732,8 +726,8 @@ function PostCard({ post, onOpenThread }: { post: Post, onOpenThread: () => void
              if (!post.isSaved) trackInteraction(post.id, 'save');
            }}
            className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-            post.isSaved ? "bg-accent/10 text-accent" : "bg-surface-muted text-text-secondary hover:text-accent"
+            "transition-all hover:scale-110 active:scale-90",
+            post.isSaved ? "text-accent" : "text-text-secondary hover:text-accent"
           )}
          >
             <Bookmark size={20} className={post.isSaved ? "fill-accent" : ""} />
@@ -812,7 +806,7 @@ function CommentThreadModal({ post, onClose }: { post: Post, onClose: () => void
         className="relative w-full max-w-2xl bg-app-container rounded-[2rem] shadow-2xl overflow-hidden border border-card-border flex flex-col h-[85vh]"
       >
         <div className="p-6 border-b border-card-border flex justify-between items-center bg-card">
-           <h3 className="text-lg font-black uppercase tracking-widest text-text-main">Neural Thread</h3>
+           <h3 className="text-lg font-black uppercase tracking-widest text-text-main">Thread</h3>
            <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all">
              <X size={20} />
            </button>
@@ -828,15 +822,15 @@ function CommentThreadModal({ post, onClose }: { post: Post, onClose: () => void
                    <p className="text-[10px] font-bold text-text-secondary/40">{post.timestamp}</p>
                 </div>
               </div>
-              <p className="text-sm text-text-secondary leading-relaxed italic">"{post.content.slice(0, 150)}..."</p>
+              <p className="text-sm text-text-secondary leading-relaxed ">"{post.content.slice(0, 150)}..."</p>
            </div>
 
            <div className="space-y-6">
-              <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-text-secondary/40 ml-2">Discussion Pool</h4>
+              <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-text-secondary/40 ml-2">Comments</h4>
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                    <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-                   <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Syncing transmission...</p>
+                   <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Loading comments...</p>
                 </div>
               ) : comments.length > 0 ? (
                 comments.map(comment => (
@@ -859,7 +853,7 @@ function CommentThreadModal({ post, onClose }: { post: Post, onClose: () => void
                 ))
               ) : (
                 <div className="text-center py-20 opacity-30">
-                   <p className="text-[10px] font-black uppercase tracking-widest">No active waves in this channel.</p>
+                   <p className="text-[10px] font-black uppercase tracking-widest">No comments yet.</p>
                 </div>
               )}
            </div>

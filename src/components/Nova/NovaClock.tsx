@@ -90,7 +90,7 @@ export default function NovaClock() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <p className="text-sm text-text-main leading-relaxed italic border-l-4 border-success pl-4 py-2 bg-success/10">
+                  <p className="text-sm text-text-main leading-relaxed  border-l-4 border-success pl-4 py-2 bg-success/10">
                     "{capsule.content.text}"
                   </p>
 

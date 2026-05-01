@@ -556,7 +556,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
               <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-8 z-10 px-10">
                  <div className="text-center space-y-4 max-w-lg">
                     <h1 className="text-6xl font-black tracking-tighter text-text-main opacity-20">Start building your vision.</h1>
-                    <p className="text-lg font-medium text-text-secondary opacity-40 italic">Drop an image, write a goal, or map your next move.</p>
+                    <p className="text-lg font-medium text-text-secondary opacity-40 ">Drop an image, write a goal, or map your next move.</p>
                  </div>
                  <div className="flex flex-wrap justify-center gap-3 pointer-events-auto">
                     <QuickStartAction label="Add Image" onClick={() => addElement('image')} />
@@ -642,7 +642,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
           <div className="space-y-4">
              <span className="text-[10px] font-black uppercase tracking-widest text-accent">Main Goal</span>
              <h2 className="text-3xl font-black text-text-main tracking-tighter">{vision.title}</h2>
-             <p className="text-xl text-text-secondary font-medium italic border-l-4 border-accent/20 pl-8">{vision.description}</p>
+             <p className="text-xl text-text-secondary font-medium  border-l-4 border-accent/20 pl-8">{vision.description}</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">

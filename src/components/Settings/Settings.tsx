@@ -128,7 +128,7 @@ export default function Settings() {
                         </span>
                     </div>
 
-                    <p className="text-sm text-text-secondary leading-relaxed max-w-xl italic font-medium">
+                    <p className="text-sm text-text-secondary leading-relaxed max-w-xl  font-medium">
                       "{user.bio || 'Your destiny is being written in these pathways. Define your bio to anchor your identity.'}"
                     </p>
 
@@ -299,7 +299,7 @@ export default function Settings() {
 
           <div className="flex flex-wrap gap-4">
             <button className="px-10 py-4 bg-card text-danger border border-danger/20 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-danger/5 transition-all active:scale-95 shadow-lg shadow-danger/5">
-              Reset Neural Data
+              Reset App Data
             </button>
             <button className="px-10 py-4 bg-danger text-accent-contrast rounded-2xl font-black text-[10px] uppercase tracking-widest hover:brightness-95 shadow-2xl shadow-danger/20 transition-all active:scale-95">
               Deactivate Identity

@@ -7,30 +7,8 @@ import { create } from 'zustand';
 import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
-import { db, auth } from '../lib/firebase';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  getDoc, 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  addDoc, 
-  deleteDoc, 
-  orderBy, 
-  limit,
-  Timestamp,
-  serverTimestamp,
-  increment,
-  writeBatch,
-  getDocs
-} from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
+import { supabase } from '../lib/supabase';
 
-const isDbId = (id?: string | null) => Boolean(id && id.length > 5); // Firebase IDs can be shorter than UUIDs
 
 export const useStore = create<AppState>((set, get) => ({
   user: {
@@ -46,71 +24,7 @@ export const useStore = create<AppState>((set, get) => ({
     isGrinding: false,
   },
   circle: [],
-  visions: [
-    {
-      id: 'example-vision-1',
-      title: 'Neural Architecture Mastery',
-      description: 'Master the principles of biological and artificial neural networks through dedicated research and implementation.',
-      status: 'in-progress',
-      progress: 65,
-      tasks: [
-        { id: 'v1t1', text: 'Complete advanced calculus refresher', completed: true },
-        { id: 'v1t2', text: 'Build bio-realistic neuron simulation', completed: true },
-        { id: 'v1t3', text: 'Analyze cortical column patterns', completed: false }
-      ],
-      tags: ['AI', 'Neuroscience', 'Strategy'],
-      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 7,
-      notes: '',
-      proof: [],
-      elements: [
-        {
-          id: 'e1',
-          type: 'heading',
-          content: 'Mastering the Mind-Machine Interface',
-          x: 2500,
-          y: 2400,
-        },
-        {
-          id: 'e2',
-          type: 'quote',
-          content: 'The best way to predict the future is to invent it.',
-          metadata: { author: 'Alan Kay' },
-          x: 2400,
-          y: 2600,
-        }
-      ]
-    },
-    {
-      id: 'example-vision-2',
-      title: 'Global Exploration 2026',
-      description: 'Document the cultural evolution across 12 unique biomes while maintaining professional output.',
-      status: 'planning',
-      progress: 15,
-      tasks: [
-        { id: 'v2t1', text: 'Define priority nodes', completed: true },
-        { id: 'v2t2', text: 'Optimize lightweight gear setup', completed: false }
-      ],
-      tags: ['Travel', 'Documentation', 'Freedom'],
-      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 14,
-      notes: '',
-      proof: [],
-    },
-    {
-      id: 'example-vision-3',
-      title: 'Physical Prime Protocol',
-      description: 'Systematic optimization of biological performance through biomechanics and nutritional precision.',
-      status: 'idea',
-      progress: 0,
-      tasks: [
-        { id: 'v3t1', text: 'Baseline VO2 max testing', completed: false },
-        { id: 'v3t2', text: 'Calibrate micronutrient stack', completed: false }
-      ],
-      tags: ['Health', 'Biohacking'],
-      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
-      notes: '',
-      proof: [],
-    }
-  ],
+  visions: [],
   activities: [],
   sharedVisions: [],
   vitals: {
@@ -119,90 +33,10 @@ export const useStore = create<AppState>((set, get) => ({
     mood: 90,
     sleep: 64,
   },
-  folders: [
-    { id: 'f1', name: 'Strategic Insights', parentId: null, expanded: true },
-    { id: 'f2', name: 'Neural Models', parentId: 'f1', expanded: true }
-  ],
-  notes: [
-    {
-      id: 'n1',
-      title: 'The Compound Effect of Focus',
-      content: 'Small, consistent focus sessions yield exponential results in domain mastery. Prioritize deep sprints over shallow work.',
-      folderId: 'f1',
-      tags: ['System', 'Productivity'],
-      linkedVisionId: 'example-vision-1',
-      visibility: 'private',
-      createdAt: Date.now() - 1000 * 60 * 60 * 5,
-      updatedAt: Date.now() - 1000 * 60 * 60 * 5
-    },
-    {
-      id: 'n2',
-      title: 'Biome-Specific Adaptation',
-      content: 'When traveling between biomes, allow 72 hours for hormonal stabilization. Hydration protocols must be adjusted for altitude.',
-      folderId: 'f1',
-      tags: ['Travel', 'Biology'],
-      linkedVisionId: 'example-vision-2',
-      visibility: 'connections',
-      createdAt: Date.now() - 1000 * 60 * 60 * 24,
-      updatedAt: Date.now() - 1000 * 60 * 60 * 24
-    }
-  ],
+  folders: [],
+  notes: [],
   todos: [],
-  posts: [
-    {
-      id: '1',
-      userId: 'u1',
-      author: {
-        id: 'u1',
-        name: 'Alex Rivera',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-        handle: '@arivera'
-      },
-      content: 'Just finished a 90min Deep Sprint. Found a new mental model for handling async execution in high-load scenarios. Focus session was incredibly productive.',
-      timestamp: '2h ago',
-      likes: 24,
-      comments: 5,
-      saves: 3,
-      type: 'sprint',
-      visibility: 'public',
-      stats: { focusTime: 90 }
-    },
-    {
-      id: '2',
-      userId: 'u2',
-      author: {
-        id: 'u2',
-        name: 'Sarah Chen',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-        handle: '@schen_dev'
-      },
-      content: 'Consistency is a flywheel. The first 10 days are friction. The next 10 are momentum. Today is Day 31 of my 100 Day streak. Progress updated!',
-      timestamp: '4h ago',
-      likes: 89,
-      comments: 12,
-      saves: 10,
-      type: 'milestone',
-      visibility: 'public'
-    },
-    {
-      id: '3',
-      userId: 'u3',
-      author: {
-        id: 'u3',
-        name: 'Craziematez',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Craziematez',
-        handle: '@craziematez'
-      },
-      content: 'Visualizing goals isn\'t enough. We need to build systems that force us to see them even when we don\'t want to. That\'s why I use Visnova. Session complete.',
-      timestamp: '1d ago',
-      likes: 156,
-      comments: 20,
-      saves: 20,
-      type: 'insight',
-      visibility: 'public',
-      isSaved: true
-    }
-  ],
+  posts: [],
   focusPresets: [
     { id: 'p1', label: 'Deep Work', duration: 25, type: 'work' },
     { id: 'p2', label: 'Hyper Focus', duration: 50, type: 'work' },
@@ -247,7 +81,7 @@ export const useStore = create<AppState>((set, get) => ({
   })),
 
   addVision: async (vision) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
 
     const newVision: Vision = {
       id: Math.random().toString(36).substring(7),
@@ -268,16 +102,20 @@ export const useStore = create<AppState>((set, get) => ({
     if (userId) {
       try {
         const { id: _, ...visionData } = newVision;
-        const docRef = await addDoc(collection(db, 'visions'), { ...visionData, userId });
-        // ID is already in state, but we could sync it if we want the actual doc ID
-        // For simplicity, we'll keep the random ID for local UI and maybe use doc ID if needed.
-        // Actually, it's better to use the doc ID.
+        const { data, error } = await supabase
+          .from('visions')
+          .insert({ ...visionData, user_id: userId })
+          .select()
+          .single();
+
+        if (error) throw error;
+        
         set((state) => ({
-          visions: state.visions.map(v => v.id === newVision.id ? { ...v, id: docRef.id } : v)
+          visions: state.visions.map(v => v.id === newVision.id ? { ...v, id: data.id } : v)
         }));
-        return { ...newVision, id: docRef.id };
+        return { ...newVision, id: data.id };
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'visions');
+        console.error('Failed to create vision:', error);
       }
     }
     return newVision;
@@ -288,12 +126,10 @@ export const useStore = create<AppState>((set, get) => ({
       visions: state.visions.map((v) => (v.id === id ? { ...v, ...updates } : v)),
     }));
 
-    if (isDbId(id)) {
-      try {
-        await updateDoc(doc(db, 'visions', id), updates);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `visions/${id}`);
-      }
+    try {
+      await supabase.from('visions').update(updates).eq('id', id);
+    } catch (error) {
+      console.error('Failed to update vision:', error);
     }
   },
 
@@ -302,12 +138,10 @@ export const useStore = create<AppState>((set, get) => ({
       visions: state.visions.filter((v) => v.id !== id),
     }));
 
-    if (isDbId(id)) {
-      try {
-        await deleteDoc(doc(db, 'visions', id));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `visions/${id}`);
-      }
+    try {
+      await supabase.from('visions').delete().eq('id', id);
+    } catch (error) {
+      console.error('Failed to delete vision:', error);
     }
   },
 
@@ -316,19 +150,17 @@ export const useStore = create<AppState>((set, get) => ({
       visions: state.visions.map((v) => (v.id === id ? { ...v, status: newStatus } : v)),
     }));
 
-    if (isDbId(id)) {
-      try {
-        await updateDoc(doc(db, 'visions', id), { status: newStatus });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `visions/${id}`);
-      }
+    try {
+      await supabase.from('visions').update({ status: newStatus }).eq('id', id);
+    } catch (error) {
+      console.error('Failed to move vision:', error);
     }
   },
 
   reorderVisions: (visions) => set({ visions }),
 
   addActivity: async (activity) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     const newActivity: Activity = {
       ...activity,
       id: Math.random().toString(36).substring(7),
@@ -342,9 +174,14 @@ export const useStore = create<AppState>((set, get) => ({
 
     if (userId) {
       try {
-        await addDoc(collection(db, 'activities'), newActivity);
+        await supabase.from('activities').insert({
+          user_id: userId,
+          type: activity.type,
+          content: activity.content,
+          metadata: activity.metadata || {}
+        });
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'activities');
+        console.error('Failed to log activity:', error);
       }
     }
   },
@@ -366,18 +203,18 @@ export const useStore = create<AppState>((set, get) => ({
       user: { ...state.user, ...updates }
     }));
 
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (userId) {
       try {
-        const userRef = doc(db, 'users', userId);
-        const dbUpdates: any = { ...updates };
-        // Map any field names if they differ from AppState['user']
-        if (updates.name) dbUpdates.name = updates.name;
-        if (updates.email) dbUpdates.email = updates.email;
+        const dbUpdates: any = {};
+        if (updates.name) dbUpdates.display_name = updates.name;
+        if (updates.username) dbUpdates.username = updates.username;
+        if (updates.avatar) dbUpdates.avatar_url = updates.avatar;
+        if (updates.bio) dbUpdates.bio = updates.bio;
         
-        await updateDoc(userRef, dbUpdates);
+        await supabase.from('profiles').update(dbUpdates).eq('id', userId);
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+        console.error('Failed to update user profile:', error);
       }
     }
   },
@@ -388,12 +225,12 @@ export const useStore = create<AppState>((set, get) => ({
       user: { ...state.user, isGrinding: newIsGrinding }
     }));
     
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (userId) {
       try {
-        await updateDoc(doc(db, 'users', userId), { isGrinding: newIsGrinding });
+        await supabase.from('profiles').update({ is_grinding: newIsGrinding }).eq('id', userId);
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+        console.error('Failed to toggle grinding:', error);
       }
     }
   },
@@ -404,15 +241,6 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({
       vitals: { ...state.vitals, ...vitals }
     }));
-    
-    const userId = auth.currentUser?.uid;
-    if (userId) {
-      try {
-        await updateDoc(doc(db, 'users', userId), { vitals: { ...get().vitals, ...vitals } });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
-      }
-    }
   },
   addXp: async (amount) => {
     const { user } = get();
@@ -426,7 +254,7 @@ export const useStore = create<AppState>((set, get) => ({
         newXpData = {
           xp: newXp - nextLevelXp,
           level: state.user.level + 1,
-          rank: state.user.level + 1 > 25 ? 'System Sovereignty' : state.user.rank
+          rank: state.user.level + 1 > 25 ? 'Master' : state.user.rank
         };
       } else {
         newXpData = { xp: newXp };
@@ -437,12 +265,12 @@ export const useStore = create<AppState>((set, get) => ({
       };
     });
 
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     if (userId && newXpData) {
       try {
-        await updateDoc(doc(db, 'users', userId), newXpData);
+        await supabase.from('profiles').update(newXpData).eq('id', userId);
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+        console.error('Failed to update XP:', error);
       }
     }
   },
@@ -491,7 +319,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setDateNote: async (date, note) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
 
     set((state) => ({
       dateNotes: { ...state.dateNotes, [date]: note }
@@ -501,17 +329,18 @@ export const useStore = create<AppState>((set, get) => ({
       try {
         const journalId = `${userId}_${date}`;
         if (!note.trim()) {
-          await deleteDoc(doc(db, 'journal', journalId));
+          await supabase.from('journal').delete().eq('userId', userId).eq('date', date);
         } else {
-          await setDoc(doc(db, 'journal', journalId), {
+          const { error } = await supabase.from('journal').upsert({
             userId,
             date,
             note,
             updatedAt: Date.now()
           });
+          if (error) throw error;
         }
       } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, `journal/${userId}_${date}`);
+        console.error('Failed to set date note:', error);
       }
     }
   },
@@ -528,7 +357,7 @@ export const useStore = create<AppState>((set, get) => ({
   })),
 
   addFolder: async (folder) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     const tempId = Math.random().toString(36).substring(7);
 
     const newFolder = {
@@ -545,12 +374,13 @@ export const useStore = create<AppState>((set, get) => ({
     if (userId) {
       try {
         const { id: _, ...folderData } = newFolder;
-        const docRef = await addDoc(collection(db, 'folders'), { ...folderData, userId });
+        const { data, error } = await supabase.from('folders').insert({ ...folderData, userId }).select().single();
+        if (error) throw error;
         set((state) => ({
-          folders: state.folders.map(f => f.id === tempId ? { ...f, id: docRef.id } : f)
+          folders: state.folders.map(f => f.id === tempId ? { ...f, id: data.id } : f)
         }));
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'folders');
+        console.error('Failed to create folder:', error);
       }
     }
   },
@@ -560,12 +390,10 @@ export const useStore = create<AppState>((set, get) => ({
       folders: state.folders.map((f) => (f.id === id ? { ...f, ...updates } : f)),
     }));
 
-    if (isDbId(id)) {
-      try {
-        await updateDoc(doc(db, 'folders', id), updates);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `folders/${id}`);
-      }
+    try {
+      await supabase.from('folders').update(updates).eq('id', id);
+    } catch (error) {
+      console.error('Failed to update folder:', error);
     }
   },
 
@@ -575,17 +403,15 @@ export const useStore = create<AppState>((set, get) => ({
       notes: state.notes.map(n => n.folderId === id ? { ...n, folderId: null } : n),
     }));
 
-    if (isDbId(id)) {
-      try {
-        await deleteDoc(doc(db, 'folders', id));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `folders/${id}`);
-      }
+    try {
+      await supabase.from('folders').delete().eq('id', id);
+    } catch (error) {
+      console.error('Failed to delete folder:', error);
     }
   },
 
   addNote: async (note) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     const tempId = Math.random().toString(36).substring(7);
 
     const newNote = {
@@ -606,12 +432,13 @@ export const useStore = create<AppState>((set, get) => ({
     if (userId) {
       try {
         const { id: _, ...noteData } = newNote;
-        const docRef = await addDoc(collection(db, 'notes'), { ...noteData, userId });
+        const { data, error } = await supabase.from('notes').insert({ ...noteData, userId }).select().single();
+        if (error) throw error;
         set((state) => ({
-          notes: state.notes.map(n => n.id === tempId ? { ...n, id: docRef.id } : n)
+          notes: state.notes.map(n => n.id === tempId ? { ...n, id: data.id } : n)
         }));
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'notes');
+        console.error('Failed to add note:', error);
       }
     }
   },
@@ -621,12 +448,10 @@ export const useStore = create<AppState>((set, get) => ({
       notes: state.notes.map((n) => (n.id === id ? { ...n, ...updates, updatedAt: Date.now() } : n)),
     }));
 
-    if (isDbId(id)) {
-      try {
-        await updateDoc(doc(db, 'notes', id), { ...updates, updatedAt: Date.now() });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `notes/${id}`);
-      }
+    try {
+      await supabase.from('notes').update({ ...updates, updatedAt: Date.now() }).eq('id', id);
+    } catch (error) {
+      console.error('Failed to update note:', error);
     }
   },
 
@@ -635,17 +460,15 @@ export const useStore = create<AppState>((set, get) => ({
       notes: state.notes.filter((n) => n.id !== id),
     }));
 
-    if (isDbId(id)) {
-      try {
-        await deleteDoc(doc(db, 'notes', id));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `notes/${id}`);
-      }
+    try {
+      await supabase.from('notes').delete().eq('id', id);
+    } catch (error) {
+      console.error('Failed to delete note:', error);
     }
   },
 
   addTodo: async (text) => {
-    const userId = auth.currentUser?.uid;
+    const userId = get().session?.user?.id;
     const tempId = Math.random().toString(36).substring(7);
     const newTodo = { id: tempId, text, completed: false };
 
@@ -655,9 +478,9 @@ export const useStore = create<AppState>((set, get) => ({
 
     if (userId) {
       try {
-        await addDoc(collection(db, 'todos'), { userId, text, completed: false, createdAt: Date.now() });
+        await supabase.from('todos').insert({ user_id: userId, text, completed: false, created_at: new Date().toISOString() });
       } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, 'todos');
+        console.error('Failed to add todo:', error);
       }
     }
   },
@@ -675,18 +498,12 @@ export const useStore = create<AppState>((set, get) => ({
 
     if (!wasCompleted) {
       get().addXp(20);
-      get().updateVitals({
-        mood: Math.min(100, get().vitals.mood + 2),
-        energy: Math.max(0, get().vitals.energy - 2)
-      });
     }
 
-    if (isDbId(id)) {
-      try {
-        await updateDoc(doc(db, 'todos', id), { completed: !wasCompleted });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `todos/${id}`);
-      }
+    try {
+      await supabase.from('todos').update({ completed: !wasCompleted }).eq('id', id);
+    } catch (error) {
+      console.error('Failed to toggle todo:', error);
     }
   },
 
@@ -695,17 +512,16 @@ export const useStore = create<AppState>((set, get) => ({
       todos: state.todos.filter(t => t.id !== id)
     }));
 
-    if (isDbId(id)) {
-      try {
-        await deleteDoc(doc(db, 'todos', id));
-      } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `todos/${id}`);
-      }
+    try {
+      await supabase.from('todos').delete().eq('id', id);
+    } catch (error) {
+      console.error('Failed to delete todo:', error);
     }
   },
   
   addPost: async (post: any) => {
-    const userId = auth.currentUser?.uid;
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
     if (!userId) return;
 
     try {
@@ -717,6 +533,9 @@ export const useStore = create<AppState>((set, get) => ({
           type: post.type,
           caption: post.caption,
           content: post.content,
+          media: post.media || [],
+          tags: post.tags || [],
+          stats: post.stats || {},
           visibility: post.visibility || 'public'
         })
         .select()
@@ -724,58 +543,13 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (postError) throw postError;
 
-      // Special handling for Achievement/Milestone
-      if (post.type === 'achievement' && post.metadata) {
-        await supabase.from('achievements').insert({
-          user_id: userId,
-          title: post.metadata.title,
-          description: post.content,
-          image_url: post.media?.[0]?.url,
-          achieved_at: post.metadata.date ? new Date(post.metadata.date).toISOString() : new Date().toISOString()
-        });
-      }
-
-      if (post.type === 'milestone' && post.metadata) {
-        await supabase.from('milestones').insert({
-          user_id: userId,
-          title: post.metadata.title,
-          description: post.content,
-          target_date: post.metadata.date,
-          progress: post.metadata.progress || 0
-        });
-      }
-
-      // 2. Handle media if any
-      if (post.media && post.media.length > 0) {
-        const mediaToInsert = post.media.map((m: any) => ({
-          post_id: postData.id,
-          media_url: m.url,
-          media_type: m.type,
-          storage_path: m.storagePath
-        }));
-        await supabase.from('post_media').insert(mediaToInsert);
-      }
-
-      // 3. Handle tags
-      if (post.tags && post.tags.length > 0) {
-        const tagsToInsert = post.tags.map((tag: string) => ({
-          post_id: postData.id,
-          tag
-        }));
-        await supabase.from('post_tags').insert(tagsToInsert);
-      }
-
-      // 4. Handle mentions
-      if (post.mentions && post.mentions.length > 0) {
-        const mentionsToInsert = post.mentions.map((m: any) => ({
-          post_id: postData.id,
-          mentioned_user_id: m.userId
-        }));
-        await supabase.from('post_mentions').insert(mentionsToInsert);
+      // 2. Extra achievement/milestone logic (optional profiling)
+      if (post.type === 'achievement' || post.type === 'milestone') {
+         // Could track in global achievements table if needed
       }
 
       // Refresh feed
-      get().fetchPosts();
+      get().fetchPosts('latest');
       
       get().addToast({
         type: 'success',
@@ -789,22 +563,32 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   fetchPosts: async (tab?: 'recommended' | 'following' | 'latest') => {
-    const userId = auth.currentUser?.uid;
     try {
-      const { data, error } = await supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      let query = supabase
         .from('posts')
         .select(`
           *,
           author:profiles(*),
-          media:post_media(*),
-          tags:post_tags(tag),
-          mentions:post_mentions(mentioned_user_id),
           likes:post_likes(user_id),
           saves:saved_posts(user_id),
           comment_count:comments(count)
         `)
-        .order('created_at', { ascending: false });
+        .limit(20);
 
+      if (tab === 'latest') {
+        query = query.order('created_at', { ascending: false });
+      } else if (tab === 'following' && userId) {
+        const { data: follows } = await supabase.from('follows').select('following_id').eq('follower_id', userId);
+        const followingIds = follows?.map(f => f.following_id) || [];
+        query = query.in('user_id', followingIds).order('created_at', { ascending: false });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       const formattedPosts: Post[] = data.map((p: any) => ({
@@ -819,23 +603,21 @@ export const useStore = create<AppState>((set, get) => ({
         caption: p.caption,
         content: p.content,
         timestamp: new Date(p.created_at).toLocaleDateString(),
+        createdAt: p.created_at, // Keep raw for ranking
         likes: p.likes?.length || 0,
         comments: p.comment_count?.[0]?.count || 0,
         saves: p.saves?.length || 0,
-        isLiked: p.likes?.some((l: any) => l.user_id === userId),
-        isSaved: p.saves?.some((s: any) => s.user_id === userId),
+        isLiked: userId ? p.likes?.some((l: any) => l.user_id === userId) : false,
+        isSaved: userId ? p.saves?.some((s: any) => s.user_id === userId) : false,
         type: p.type,
         visibility: p.visibility,
-        media: p.media?.map((m: any) => ({ id: m.id, url: m.media_url, type: m.media_type })),
-        tags: p.tags?.map((t: any) => t.tag)
+        media: p.media || [],
+        tags: p.tags || []
       }));
 
-      const state = get();
       let finalPosts = formattedPosts;
-
-      if (tab === 'following') {
-        finalPosts = formattedPosts.filter(p => state.followingIds.includes(p.userId));
-      } else if (tab === 'recommended' || !tab) {
+      if (tab === 'recommended' || !tab) {
+        const state = get();
         finalPosts = rankPosts(formattedPosts, {
           userId: userId || null,
           followingIds: state.followingIds,
@@ -843,7 +625,6 @@ export const useStore = create<AppState>((set, get) => ({
           userInterests: state.userInterests
         });
       }
-      // 'latest' is already sorted by created_at in the query
 
       set({ posts: finalPosts });
     } catch (err) {
@@ -1349,144 +1130,86 @@ export const useStore = create<AppState>((set, get) => ({
     if ((state as any)._isFetchingUser === email) return;
     set({ _isFetchingUser: email } as any);
 
-    const userId = auth.currentUser?.uid;
-    if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
        set({ _isFetchingUser: null } as any);
        return;
     }
 
+    const userId = user.id;
+
     try {
-      // 1. Setup real-time listener for User Profile
-      const userRef = doc(db, 'users', userId);
-      onSnapshot(userRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const profile = snapshot.data();
-          set((state) => ({
-            user: { ...state.user, ...profile },
-            vitals: profile.vitals || state.vitals,
-            hasCompletedOnboarding: profile.hasCompletedOnboarding ?? state.hasCompletedOnboarding
-          }));
-        }
-      }, (error) => handleFirestoreError(error, OperationType.GET, `users/${userId}`));
+      // 1. Fetch Profile (Supabase)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-      // 2. Setup Visions listener
-      const visionsQuery = query(collection(db, 'visions'), where('userId', '==', userId));
-      onSnapshot(visionsQuery, (snapshot) => {
-        const visionsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Vision));
-        set({ visions: visionsData });
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'visions'));
-
-      // 3. Setup Circle listener
-      const circleQuery = query(collection(db, 'users'), limit(15));
-      onSnapshot(circleQuery, (snapshot) => {
-        const circleData = snapshot.docs
-          .filter(d => d.id !== userId)
-          .map(d => {
-            const data = d.data();
-            return {
-               id: d.id,
-               name: data.name || data.username || data.email?.split('@')[0] || 'Explorer',
-               avatar: data.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${d.id}`,
-               count: data.xp || 0,
-               isGrinding: data.isGrinding || false,
-               streak: data.streak || 0,
-               role: data.role || 'Explorer',
-               statusNote: data.statusNote || ''
-            };
-          });
-        set({ circle: circleData as CircleMember[] });
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'users'));
-
-      // 4. Setup Activities listener
-      const activitiesQuery = query(
-        collection(db, 'activities'), 
-        where('userId', '==', userId), 
-        orderBy('timestamp', 'desc'), 
-        limit(20)
-      );
-      onSnapshot(activitiesQuery, (snapshot) => {
-        const activitiesData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Activity));
-        set({ activities: activitiesData });
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'activities'));
-
-      // 5. Setup Notifications Real-time (via Supabase)
-      if (isSupabaseConfigured) {
-        get().fetchNotifications(); // Initial fetch
-
-        supabase
-          .channel('notifications')
-          .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'notifications',
-            filter: `user_id=eq.${userId}` 
-          }, () => {
-            get().fetchNotifications();
-          })
-          .subscribe();
+      if (profile) {
+        set((state) => ({
+          user: { 
+            ...state.user, 
+            name: profile.display_name || profile.full_name || 'Explorer',
+            email: user.email || '',
+            avatar: profile.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`,
+            bio: profile.bio,
+            username: profile.username,
+            role: profile.role,
+            xp: profile.xp || 0,
+            level: profile.level || 1,
+            streak: profile.streak || 0,
+            isGrinding: profile.is_grinding || false
+          },
+          hasCompletedOnboarding: profile.has_completed_onboarding ?? state.hasCompletedOnboarding
+        }));
       }
 
-      // 5. Setup Journal Entry listener
-      const journalQuery = query(collection(db, 'journal'), where('userId', '==', userId));
-      onSnapshot(journalQuery, (snapshot) => {
-        const dateNotesObj: Record<string, string> = {};
-        snapshot.docs.forEach(d => {
-          const data = d.data();
-          dateNotesObj[data.date] = data.note;
-        });
-        set({ dateNotes: dateNotesObj });
-      }, (error) => handleFirestoreError(error, OperationType.LIST, 'journal'));
+      // 2. Fetch Notifications (Initial)
+      get().fetchNotifications();
 
-      // 6. Setup Notes & Folders listener
-      const notesQuery = query(collection(db, 'notes'), where('userId', '==', userId));
-      onSnapshot(notesQuery, (snapshot) => {
-        const notesData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
-        set({ notes: notesData });
-      });
-
-      // 7. Supabase Real-time Sync for Social
+      // 3. Setup Supabase Real-time Sync for Social & Auth
       const syncSocial = async () => {
         // Fetch Follows
         const { data: follows } = await supabase.from('follows').select('following_id').eq('follower_id', userId);
         if (follows) set({ followingIds: follows.map(f => f.following_id) });
 
-        // Fetch Circles
-        const { data: circles } = await supabase.from('user_circles').select('circle_user_id, relation_type').eq('user_id', userId);
-        if (circles) {
-          const circleMap = circles.reduce((acc: any, c: any) => {
-            acc[c.circle_user_id] = c.relation_type;
-            return acc;
-          }, {});
-          set({ userCircles: circleMap });
-        }
-
-        // Fetch Interests
-        const { data: interests } = await supabase.from('user_interests').select('tag, weight').eq('user_id', userId);
-        if (interests) {
-          const interestMap = interests.reduce((acc: any, i: any) => {
-            acc[i.tag] = i.weight;
-            return acc;
-          }, {});
-          set({ userInterests: interestMap });
+        // Fetch Circles (Mocked legacy logic - keep for UI compatibility)
+        // In real prod, this should use a separate table
+        const { data: circleMembers } = await supabase.from('profiles').select('*').limit(15);
+        if (circleMembers) {
+           const formattedCircle = circleMembers
+             .filter(m => m.id !== userId)
+             .map(m => ({
+               id: m.id,
+               name: m.display_name || m.full_name || 'Explorer',
+               avatar: m.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${m.id}`,
+               count: m.xp || 0,
+               isGrinding: m.is_grinding || false,
+               streak: m.streak || 0,
+               role: m.role || 'Explorer'
+             }));
+           set({ circle: formattedCircle as CircleMember[] });
         }
       };
+      
       syncSocial();
 
-      const foldersQuery = query(collection(db, 'folders'), where('userId', '==', userId));
-      onSnapshot(foldersQuery, (snapshot) => {
-        const foldersData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
-        set({ folders: foldersData });
-      });
-
-      // 7. Todos listener
-      const todosQuery = query(collection(db, 'todos'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
-      onSnapshot(todosQuery, (snapshot) => {
-        const todosData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
-        set({ todos: todosData });
-      });
+      // Realtime Notifications
+      supabase
+        .channel('notifications')
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `user_id=eq.${userId}` 
+        }, () => {
+          get().fetchNotifications();
+        })
+        .subscribe();
 
     } catch (err) {
-      console.error('Failed to initialize Firestore listeners:', err);
+      console.error('Failed to initialize Supabase profile:', err);
     } finally {
       set({ _isFetchingUser: null } as any);
     }

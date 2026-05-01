@@ -70,7 +70,7 @@ export default function UserProfileModal() {
           {isLoading ? (
             <div className="h-96 flex flex-col items-center justify-center gap-4">
                <div className="w-10 h-10 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
-               <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Syncing Node...</p>
+               <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Loading Profile...</p>
             </div>
           ) : (
             <>
@@ -199,7 +199,7 @@ export default function UserProfileModal() {
                  <div className="grid grid-cols-2 gap-4 mb-10">
                     <div className="p-5 bg-card/50 rounded-3xl border border-card-border/50 group hover:border-accent/30 transition-colors">
                        <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest mb-1">Status Protocol</p>
-                       <p className="text-[13px] font-medium text-text-main leading-relaxed italic line-clamp-2">
+                       <p className="text-[13px] font-medium text-text-main leading-relaxed  line-clamp-2">
                           "{profile?.bio || 'In deep work mode. Zero distractions allowed.'}"
                        </p>
                     </div>

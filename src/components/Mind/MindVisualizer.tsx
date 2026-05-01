@@ -66,7 +66,7 @@ export default function MindVisualizer() {
                         ))}
                       </div>
                    </div>
-                   <p className="text-sm font-medium text-text-secondary/60 italic">"The derivation at step 3 is the key to decoupling the state." — Dr. Vance</p>
+                   <p className="text-sm font-medium text-text-secondary/60 ">"The derivation at step 3 is the key to decoupling the state." — Dr. Vance</p>
                 </div>
              </div>
           </div>

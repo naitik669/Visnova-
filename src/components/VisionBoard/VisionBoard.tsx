@@ -41,7 +41,7 @@ export default function VisionBoard() {
 
   const handleAddNew = async () => {
     const newVision = await addVision({
-      title: 'New Neural Vision',
+      title: 'New Vision',
       description: '',
       tags: [],
       status: 'idea',
@@ -50,7 +50,7 @@ export default function VisionBoard() {
     addActivity({
       type: 'created',
       userId: 'me',
-      description: `Primary strategic sequence started for New Neural Vision.`,
+      description: `Primary strategic sequence started for New Vision.`,
     });
   };
 

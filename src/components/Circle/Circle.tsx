@@ -24,7 +24,7 @@ export default function Circle() {
                   </div>
                   <div>
                     <h3 className="font-bold text-text-main text-lg tracking-tight">{vision.title}</h3>
-                    <p className="text-xs text-text-secondary font-medium italic opacity-70">{vision.notes}</p>
+                    <p className="text-xs text-text-secondary font-medium  opacity-70">{vision.notes}</p>
                   </div>
                 </div>
                 <button
@@ -87,7 +87,7 @@ export default function Circle() {
                      <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
                      <span className="text-[10px] font-black uppercase tracking-widest text-text-main">Status Active</span>
                   </div>
-                  <p className="text-[10px] font-bold text-text-secondary italic">Locked onto Objective Alpha</p>
+                  <p className="text-[10px] font-bold text-text-secondary ">Locked onto Objective Alpha</p>
                </div>
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function Circle() {
                 )}
               </div>
               <div className="space-y-1">
-                <h3 className="text-2xl font-bold text-text-main tracking-tight">{user.name} <span className="text-text-secondary font-light text-sm italic ml-2">(You)</span></h3>
+                <h3 className="text-2xl font-bold text-text-main tracking-tight">{user.name} <span className="text-text-secondary font-light text-sm  ml-2">(You)</span></h3>
                 <div className="flex items-center gap-4">
                    <div className="flex items-center gap-1.5 text-orange-500 font-bold text-xs uppercase tracking-widest">
                       <Flame size={14} fill="currentColor" /> {user.streak} Day Streak

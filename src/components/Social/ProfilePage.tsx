@@ -308,7 +308,7 @@ export default function ProfilePage() {
                   <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50 mb-6 flex items-center gap-2">
                     <BookOpen size={12} /> Identity Manifest
                   </h3>
-                  <p className="text-base font-medium text-text-main leading-relaxed italic opacity-80">
+                  <p className="text-base font-medium text-text-main leading-relaxed  opacity-80">
                     "{profile?.bio || "This user operates in silent mode. No biography transmitted."}"
                   </p>
                   <div className="mt-8 pt-8 border-t border-card-border space-y-6">
@@ -338,7 +338,7 @@ export default function ProfilePage() {
                   <ProfilePostCard key={post.id} post={post} />
                 ))}
                 {profilePosts.length === 0 && (
-                   <div className="text-center py-24 opacity-30 italic text-xs uppercase tracking-[0.4em] font-black bg-card rounded-[2.5rem] border border-dashed border-card-border">
+                   <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black bg-card rounded-[2.5rem] border border-dashed border-card-border">
                       Frequency quiet
                    </div>
                 )}
@@ -352,7 +352,7 @@ export default function ProfilePage() {
                 <ProfilePostCard key={post.id} post={post} />
               ))}
               {profilePosts.length === 0 && (
-                 <div className="text-center py-24 opacity-30 italic text-xs uppercase tracking-[0.4em] font-black">
+                 <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black">
                     No logged broadcasts
                  </div>
               )}
@@ -417,7 +417,7 @@ export default function ProfilePage() {
                {/* Account Settings */}
                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-1">
-                    <h3 className="text-xl font-bold text-text-main mb-2">Neural Link</h3>
+                    <h3 className="text-xl font-bold text-text-main mb-2">Profile</h3>
                     <p className="text-sm text-text-secondary">Update your core identity and credentials across the expanse.</p>
                   </div>
                   <div className="lg:col-span-2 system-card p-10 bg-card border-card-border shadow-2xl relative overflow-hidden">
@@ -437,7 +437,7 @@ export default function ProfilePage() {
                              <p className="text-sm font-bold text-accent tracking-widest uppercase mt-1">@{currentUser.username || 'user'}</p>
                            </div>
                         </div>
-                        <div className="p-6 bg-surface-muted rounded-2xl border border-card-border/50 italic opacity-80">
+                        <div className="p-6 bg-surface-muted rounded-2xl border border-card-border/50  opacity-80">
                            <p className="text-sm font-medium text-text-secondary leading-relaxed">"{currentUser.bio || 'Identify bio uncalibrated.'}"</p>
                         </div>
                         <button 
@@ -643,31 +643,24 @@ function ProfilePostCard({ post }: { post: Post }) {
         <button 
           onClick={() => toggleLikePost(post.id)}
           className={cn(
-            "flex items-center gap-3 text-text-secondary transition-all group/btn",
-            post.isLiked ? "text-danger scale-110" : "hover:text-danger hover:scale-110"
+            "flex items-center gap-2 text-text-secondary transition-all group/btn",
+            post.isLiked ? "text-danger" : "hover:text-danger hover:scale-110 active:scale-95"
           )}
         >
-          <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-            post.isLiked ? "bg-danger/10" : "bg-surface-muted"
-          )}>
-            <Heart size={20} className={cn("transition-all", post.isLiked && "fill-danger")} />
-          </div>
+          <Heart size={20} className={cn("transition-all", post.isLiked && "fill-danger")} />
           <span className="text-[11px] font-black tabular-nums">{post.likes}</span>
         </button>
         
-        <button className="flex items-center gap-3 text-text-secondary hover:text-accent hover:scale-110 transition-all group/btn">
-          <div className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center transition-all">
-            <MessageSquare size={20} />
-          </div>
+        <button className="flex items-center gap-2 text-text-secondary hover:text-accent hover:scale-110 active:scale-95 transition-all group/btn">
+          <MessageSquare size={20} />
           <span className="text-[11px] font-black tabular-nums">{post.comments}</span>
         </button>
         
         <button 
           onClick={() => toggleSavePost(post.id)}
           className={cn(
-            "ml-auto w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-            post.isSaved ? "bg-accent/10 text-accent" : "bg-surface-muted text-text-secondary hover:text-accent"
+            "ml-auto transition-all hover:scale-110 active:scale-90",
+            post.isSaved ? "text-accent" : "text-text-secondary hover:text-accent"
           )}
         >
           <Bookmark size={20} className={post.isSaved ? "fill-accent" : ""} />

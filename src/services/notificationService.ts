@@ -1,14 +1,14 @@
 import { supabase } from '../lib/supabase';
-import { auth } from '../lib/firebase';
 
-export type NotificationType = 'like' | 'comment' | 'follow' | 'mention' | 'reply';
+export type NotificationType = 'like' | 'comment' | 'follow' | 'mention' | 'reply' | 'achievement';
 
 export interface NotificationPayload {
   userId: string;
   actorId: string;
   type: NotificationType;
-  entityId?: string;
-  content?: string;
+  postId?: string;
+  commentId?: string;
+  message: string;
 }
 
 export const notificationService = {
@@ -22,13 +22,14 @@ export const notificationService = {
           user_id: payload.userId,
           actor_id: payload.actorId,
           type: payload.type,
-          entity_id: payload.entityId,
-          content: payload.content
+          post_id: payload.postId,
+          comment_id: payload.commentId,
+          message: payload.message
         });
 
       if (error) throw error;
     } catch (err) {
-      console.error('Failed to send notification:', err);
+      console.error('Failed to send notification via notificationService:', err);
     }
   },
 

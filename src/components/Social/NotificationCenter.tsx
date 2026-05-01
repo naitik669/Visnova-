@@ -41,7 +41,7 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
                   </div>
                   <div>
                      <h3 className="text-lg font-black text-text-main uppercase tracking-tight">Intelligence</h3>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Neural Alerts</p>
+                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Notifications</p>
                   </div>
                </div>
                {unreadNotificationCount > 0 && (
@@ -104,7 +104,7 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
                  onClick={onClose}
                  className="w-full h-12 rounded-xl bg-card border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main transition-colors"
                >
-                  Close Matrix
+                  Close
                </button>
             </div>
           </motion.div>

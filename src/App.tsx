@@ -27,7 +27,7 @@ import ToastViewport from './components/ToastViewport';
 import { cn } from './lib/utils';
 import { useStore } from './store/useStore';
 import FocusOverlay from './components/Dashboard/FocusOverlay';
-import { auth, db } from './lib/firebase';
+import { supabase } from './lib/supabase';
 
 function AccountabilityNudge() {
   const [visible, setVisible] = useState(false);
@@ -316,11 +316,10 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Handle Session Persistence & Firebase Listener
+  // Handle Session Persistence & Supabase Listener
   useEffect(() => {
     if (authInitialized) return;
     let cancelled = false;
-    let isFetching = false;
 
     // Failsafe timer to guarantee loading screen disappears
     const failSafe = setTimeout(() => {
@@ -328,51 +327,32 @@ export default function App() {
         setIsInitializingAuth(false);
         setAuthInitialized(true);
       }
-    }, 3000);
+    }, 2000);
 
-    const safeFetchUser = async (email: string) => {
-      if (isFetching || !email) return;
-      isFetching = true;
-      try {
-        await fetchUser(email);
-      } finally {
-        isFetching = false;
-      }
-    };
-
-    // 1. Setup Auth Listener
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (cancelled) return;
       
-      try {
-        if (firebaseUser) {
-          // Firebase user confirmed, fetch profile
-          if (firebaseUser.email) {
-            await safeFetchUser(firebaseUser.email);
-          }
-          
-          if (!authInitialized) {
-            addToast({ type: 'success', title: 'Welcome back', description: "We're loading your workspace." });
-          }
-        } else {
-          // No user, reset state or whatever
+      setSession(session);
+      
+      if (session?.user) {
+        await fetchUser(session.user.email || '');
+        if (!authInitialized) {
+          addToast({ type: 'success', title: 'Welcome back', description: "Session synchronized successfully." });
         }
-      } catch (err) {
-        console.error('Auth handler error:', err);
-      } finally {
-        if (!cancelled && !authInitialized) {
-           setIsInitializingAuth(false);
-           setAuthInitialized(true);
-        }
+      }
+      
+      if (!cancelled && !authInitialized) {
+         setIsInitializingAuth(false);
+         setAuthInitialized(true);
       }
     });
 
     return () => {
       cancelled = true;
       clearTimeout(failSafe);
-      unsubscribe();
+      subscription.unsubscribe();
     };
-  }, [fetchUser, addToast, authInitialized]);
+  }, [fetchUser, addToast, authInitialized, setSession]);
 
   if (isInitializingAuth) {
     return (

@@ -172,7 +172,7 @@ export default function VisionSetupOverlay({ vision, onComplete, onCancel }: Vis
                     type="text"
                     value={data.title}
                     onChange={e => setData({...data, title: e.target.value})}
-                    placeholder="e.g., Master Neural Networks"
+                    placeholder="e.g., Master Productivity Systems"
                     className="w-full h-16 px-6 rounded-2xl bg-card border border-card-border text-lg font-bold text-text-main focus:outline-none focus:border-accent transition-all placeholder:opacity-30"
                   />
                   <div className="flex flex-wrap gap-2 pt-2">

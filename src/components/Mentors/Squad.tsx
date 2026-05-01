@@ -87,7 +87,7 @@ export default function Squad() {
   return (
     <div className="max-w-[1500px] mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 pt-10">
       {view === 'map' ? (
-        <div className="h-[400px] flex items-center justify-center border-2 border-dashed border-card-border rounded-3xl opacity-30 italic text-sm text-center px-10">
+        <div className="h-[400px] flex items-center justify-center border-2 border-dashed border-card-border rounded-3xl opacity-30  text-sm text-center px-10">
            Vision Visualization Offline. Focus on direct tactical communication.
         </div>
       ) : (

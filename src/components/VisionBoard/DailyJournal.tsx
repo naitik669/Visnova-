@@ -179,7 +179,7 @@ export default function DailyJournal() {
                           onClick={handleStartEditing}
                           className="mt-8 text-[10px] font-black uppercase tracking-widest text-accent border-b-2 border-accent/20 hover:border-accent transition-all pb-1"
                         >
-                          Initialize Journal Node
+                          Initialize Journal
                         </button>
                       </div>
                     )}

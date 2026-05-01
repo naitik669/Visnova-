@@ -443,7 +443,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
           transition={{ delay: 0.1 }}
         >
           <h1 className="text-4xl font-extrabold tracking-tight text-text-main mb-2">VisNova</h1>
-          <p className="text-text-secondary font-medium italic opacity-70">Your Visionary Planner.</p>
+          <p className="text-text-secondary font-medium  opacity-70">Your Visionary Planner.</p>
         </motion.div>
 
         <motion.h2
@@ -551,7 +551,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
 
         <div className="relative py-2">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-card-border"></div></div>
-          <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-bg-base px-5 text-text-secondary opacity-40 italic">or</span></div>
+          <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-bg-base px-5 text-text-secondary opacity-40 ">or</span></div>
         </div>
 
         <button
@@ -965,7 +965,7 @@ function Screen6({ nextStep }: any) {
         </motion.div>
         <div className="space-y-3">
           <h2 className="text-6xl font-black text-text-main tracking-tighter leading-none">NOW PROVE IT.</h2>
-          <p className="text-xl text-accent font-bold italic tracking-tight opacity-80">Execution is the final authority.</p>
+          <p className="text-xl text-accent font-bold  tracking-tight opacity-80">Execution is the final authority.</p>
         </div>
       </div>
 
@@ -1207,7 +1207,7 @@ function ScreenInterests({ selectedInterests, setSelectedInterests, nextStep }: 
         <Sparkles size={32} />
       </div>
       <h2 className="text-4xl font-black text-text-main mb-4 uppercase tracking-tight">Select Interests</h2>
-      <p className="text-text-secondary font-medium mb-12 uppercase tracking-widest text-[11px] opacity-60">Personalize your neural feed</p>
+      <p className="text-text-secondary font-medium mb-12 uppercase tracking-widest text-[11px] opacity-60">Personalize your feed</p>
       
       <div className="grid grid-cols-2 gap-3 w-full mb-12">
         {ROLE_CATEGORIES.map(interest => (

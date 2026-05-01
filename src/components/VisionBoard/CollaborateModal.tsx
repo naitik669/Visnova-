@@ -94,13 +94,13 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
         <div className="flex-1 overflow-y-auto p-8 space-y-8 min-h-[400px]">
            {/* Section: Search Internal */}
            <div className="space-y-4">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary opacity-40">System Node Search</h4>
+              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary opacity-40">User Search</h4>
               <div className="relative group">
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 group-focus-within:text-accent transition-colors" />
                 <input 
                   type="text" 
                   autoFocus
-                  placeholder="Seach by name or neural handle..."
+                  placeholder="Seach by name or username..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-full h-14 pl-12 pr-6 rounded-2xl bg-bg-base border border-card-border focus:outline-none focus:border-accent/40 text-sm font-bold text-text-main transition-all"
@@ -126,7 +126,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
                    </div>
                  ))}
                  {filteredConnections.length === 0 && (
-                   <div className="text-center py-6 italic text-[10px] font-black opacity-30 text-text-secondary uppercase">No matching nodes found</div>
+                   <div className="text-center py-6  text-[10px] font-black opacity-30 text-text-secondary uppercase">No users found</div>
                  )}
               </div>
            </div>
@@ -145,7 +145,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
                        </div>
                        <div className="text-left">
                           <p className="text-xs font-black uppercase tracking-widest text-text-main">Copy Invite Link</p>
-                          <p className="text-[9px] font-bold text-text-secondary opacity-40">Direct neural synchronization</p>
+                          <p className="text-[9px] font-bold text-text-secondary opacity-40">Direct synchronization</p>
                        </div>
                     </div>
                     <ChevronRight size={16} className="text-text-secondary opacity-40 group-hover:translate-x-1 transition-transform" />
@@ -157,7 +157,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
                           <Mail size={18} />
                        </div>
                        <div className="text-left">
-                          <p className="text-xs font-black uppercase tracking-widest text-text-main">Invite via Neural Mail</p>
+                          <p className="text-xs font-black uppercase tracking-widest text-text-main">Invite via Direct Message</p>
                           <p className="text-[9px] font-bold text-text-secondary opacity-40">Standard transmission protocol</p>
                        </div>
                     </div>
@@ -171,7 +171,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
               <Shield size={20} />
            </div>
-           <p className="text-[9px] font-bold text-text-secondary leading-relaxed flex-1 italic opacity-60">
+           <p className="text-[9px] font-bold text-text-secondary leading-relaxed flex-1  opacity-60">
               Only managers can modify strategic core elements. Editors can contribute to layers and blueprints.
            </p>
         </div>

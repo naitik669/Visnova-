@@ -65,8 +65,8 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
               </div>
               <div>
                 <h3 className="text-2xl font-black text-text-main tracking-tight uppercase leading-tight mb-2">{vision.title}</h3>
-                <p className="text-xs text-text-secondary font-medium leading-relaxed line-clamp-3 italic opacity-60">
-                  {vision.description || 'Vision sequence ready for global synchronization.'}
+                <p className="text-xs text-text-secondary font-medium leading-relaxed line-clamp-3  opacity-60">
+                  {vision.description || 'Vision ready to be shared with the community.'}
                 </p>
               </div>
             </div>
@@ -113,7 +113,7 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
                    <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 ml-1">Additional Protocols</p>
                    <Toggle 
                     icon={Share2} 
-                    label="Remix Protocol" 
+                    label="Remixing" 
                     desc="Allow others to fork this vision" 
                     active={allowRemix} 
                     onToggle={() => setAllowRemix(!allowRemix)} 
@@ -134,13 +134,13 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
                 onClick={handlePublish}
                 className="w-full h-14 bg-accent text-accent-contrast font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all"
               >
-                {isPublic ? 'Deploy to Network' : 'Update Privacy Settings'}
+                {isPublic ? 'Publish to Feed' : 'Update Privacy Settings'}
               </button>
               <button 
                 onClick={onClose}
                 className="w-full h-10 text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
               >
-                Abort Protocol
+                Cancel
               </button>
             </div>
           </div>

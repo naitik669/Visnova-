@@ -20,7 +20,8 @@ import {
   Zap,
   Play,
   CheckCircle2,
-  Users
+  Users,
+  Search
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -111,7 +112,7 @@ export default function Dashboard() {
   const activeVisionsCount = (visions || []).filter(v => v.status === 'in-progress').length;
   const systemLoad = Math.min(100, activeVisionsCount * 25);
 
-  // 5. Neural Pulse Chart Data (Last 7 Days)
+  // 5. Activity Chart Data (Last 7 Days)
   const chartData = React.useMemo(() => {
     const data = [];
     for (let i = 6; i >= 0; i--) {
@@ -322,7 +323,7 @@ export default function Dashboard() {
                              if (isToday) {
                                const todayTasks = pendingTasks.filter(t => !t.completed);
                                if (todayTasks.length === 0) {
-                                 return <div className="text-[10px] text-text-secondary/40 font-medium px-2 italic">Optimal alignment. No urgent directives for today.</div>;
+                                 return <div className="text-[10px] text-text-secondary/40 font-medium px-2 ">Optimal alignment. No urgent directives for today.</div>;
                                }
                                return (
                                  <div className="flex flex-col gap-2">
@@ -335,7 +336,7 @@ export default function Dashboard() {
                                  </div>
                                );
                              }
-                             return <div className="text-[10px] text-text-secondary/40 font-medium px-2 italic">Future focus window clear.</div>;
+                             return <div className="text-[10px] text-text-secondary/40 font-medium px-2 ">Future focus window clear.</div>;
                           })()}
                        </div>
 
@@ -346,12 +347,12 @@ export default function Dashboard() {
           </div>
 
           {/* Bottom Row: My Projects (Visions) */}
-           {/* Neural Pulse Chart Section */}
+           {/* Activity Chart Section */}
            <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col gap-6">
               <div className="flex items-center justify-between px-2">
                  <div className="flex items-center gap-3">
                     <TrendingUp size={18} className="text-text-secondary" />
-                    <h3 className="text-[15px] font-semibold text-text-secondary">Neural Pulse</h3>
+                    <h3 className="text-[15px] font-semibold text-text-secondary">Activity</h3>
                  </div>
                  <div className="text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-accent/5 px-3 py-1 rounded-full">Weekly Output</div>
               </div>
@@ -372,7 +373,7 @@ export default function Dashboard() {
               </div>
            </div>
 
-           {/* Neural Pulse Area */}
+           {/* Activity Area */}
            <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col gap-6">
             <h3 className="text-[15px] font-semibold text-text-secondary ml-2">My projects</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
