@@ -1,0 +1,1762 @@
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence, type Variants } from 'motion/react';
+import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as ImageIcon, Users, Plus, Sparkles } from 'lucide-react';
+import { useStore } from '../../store/useStore';
+import { useNavigate } from 'react-router-dom';
+import { cn } from '../../lib/utils';
+import { auth, db } from '../../lib/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  sendPasswordResetEmail, 
+  onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+  sendEmailVerification,
+  signOut,
+  updatePassword
+} from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../../lib/firestoreUtils';
+
+type ProfileChoice = 'male' | 'female' | 'custom';
+
+const DEFAULT_PROFILE_AVATARS: Record<ProfileChoice, string> = {
+  male: 'https://api.dicebear.com/7.x/shapes/svg?seed=neutral-male&backgroundColor=d1d5db&shape1Color=9ca3af&shape2Color=4b5563&shape3Color=1f2937',
+  female: 'https://api.dicebear.com/7.x/shapes/svg?seed=neutral-female&backgroundColor=fce7f3&shape1Color=f472b6&shape2Color=db2777&shape3Color=831843',
+  custom: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22%3E%3Crect width=%22128%22 height=%22128%22 rx=%2240%22 fill=%22%23f9fafb%22/%3E%3Cpath d=%22M64 40v48M40 64h48%22 stroke=%22%239ca3af%22 stroke-width=%228%22 stroke-linecap=%22round%22/%3E%3C/svg%3E',
+};
+
+const AVATAR_LIBRARY = [
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Félix&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Jovan&backgroundColor=c0aede',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Sasha&backgroundColor=d1d4f9',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Toby&backgroundColor=b6e3f4',
+  'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=Gizmo&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=Beeper&backgroundColor=c0aede',
+  'https://api.dicebear.com/7.x/identicon/svg?seed=Zen&backgroundColor=f1f5f9',
+  'https://api.dicebear.com/7.x/shapes/svg?seed=Inspire&backgroundColor=ecfdf5',
+  'https://api.dicebear.com/7.x/big-smile/svg?seed=Joy&backgroundColor=fff7ed',
+  'https://api.dicebear.com/7.x/pixel-art/svg?seed=VisNova&backgroundColor=f0f9ff',
+  'https://api.dicebear.com/7.x/avataaars/svg?seed=Creative&backgroundColor=fdf2f8',
+];
+
+const DEFAULT_AVATAR_VALUES = Object.values(DEFAULT_PROFILE_AVATARS);
+
+const getAuthRedirectUrl = (path = '/auth/callback') => {
+  const configuredUrl = import.meta.env.VITE_APP_URL || import.meta.env.VITE_SITE_URL;
+  const baseUrl = (configuredUrl || window.location.origin).replace(/\/$/, '');
+  return `${baseUrl}${path}`;
+};
+
+function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any) {
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const addToast = useStore((state) => state.addToast);
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Credentials required.');
+      addToast({ type: 'error', title: 'Credentials required', description: 'Enter your email and password to continue.' });
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      if (!user.emailVerified) {
+        setError('Email not confirmed. Please check your inbox.');
+        // We could resend here or just tip them
+        setTimeout(() => nextStep(2), 1500);
+      } else {
+        // Correctly logged in, check if onboarded
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists() && userDoc.data().hasCompletedOnboarding) {
+            await useStore.getState().fetchUser(user.email!);
+            window.location.href = '/';
+          } else {
+            nextStep(3);
+          }
+        } catch (profileErr) {
+          console.error('Profile fetch failed:', profileErr);
+          nextStep(3);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-3">
+        <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent mb-2">
+          <CheckCircle2 size={24} />
+        </div>
+        <h2 className="text-3xl font-extrabold text-text-main tracking-tight leading-none">Welcome Back</h2>
+        <p className="text-sm text-text-secondary font-medium">Continue where you left off.</p>
+      </div>
+
+      <div className="space-y-3">
+        {error && (
+          <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
+            {error}
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Email</label>
+          <input
+            type="email"
+            placeholder="strategist@visnova.ai"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:border-accent transition-all font-medium"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center px-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">Password</label>
+            <button
+              onClick={() => setStep(12)}
+              className="text-[9px] font-black uppercase tracking-widest text-accent hover:underline"
+            >
+              Forgot?
+            </button>
+          </div>
+          <div className="relative group">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:border-accent transition-all font-medium pr-12"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <button
+          onClick={handleLogin}
+          disabled={isLoading}
+          className="w-full h-12 bg-text-main text-bg-base font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shadow-xl shadow-accent/10"
+        >
+          {isLoading ? 'Loading...' : 'Login'}
+        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={switchToSignup}
+            className="w-full text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 hover:opacity-100 transition-all py-1"
+          >
+            Don't have an account? Sign up
+          </button>
+          <button
+            onClick={() => {
+              localStorage.setItem('visnova_onboarded_v2', 'true');
+              window.location.href = '/';
+            }}
+            className="w-full text-[9px] font-black uppercase tracking-widest text-accent/40 hover:text-accent transition-all py-1 border border-accent/10 rounded-xl"
+          >
+            Dev: Skip to Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScreenForgotPassword({ email, setEmail, backToLogin }: any) {
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const addToast = useStore((state) => state.addToast);
+
+  const handleReset = async () => {
+    if (!email) {
+      setError('Entry point (email) required.');
+      addToast({ type: 'error', title: 'Email required', description: 'Enter the account email first.' });
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess('Recovery dispatch sent. Check your inbox.');
+      addToast({ type: 'success', title: 'Recovery sent', description: 'Check your inbox for the reset link.' });
+    } catch (resetError: any) {
+      setError(resetError.message);
+      addToast({ type: 'error', title: 'Recovery failed', description: resetError.message });
+    }
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-3">
+        <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent mb-2">
+          <Mail size={24} />
+        </div>
+        <h2 className="text-3xl font-extrabold text-text-main tracking-tight leading-none">Recover Account</h2>
+        <p className="text-sm text-text-secondary font-medium">We'll help you get back in.</p>
+      </div>
+
+      <div className="space-y-3">
+        {error && <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">{error}</div>}
+        {success && <div className="p-3 bg-success/10 border border-success/20 rounded-xl text-success text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">{success}</div>}
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Account Email</label>
+          <input
+            type="email"
+            placeholder="strategist@visnova.ai"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:border-accent transition-all font-medium"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <button
+          onClick={handleReset}
+          disabled={isLoading}
+          className="w-full h-12 bg-accent text-accent-contrast font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+        >
+          {isLoading ? 'Sending...' : 'Send Recovery Link'}
+        </button>
+        <button
+          onClick={backToLogin}
+          className="w-full text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 hover:opacity-100 transition-all py-2"
+        >
+          Return to login
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ScreenResetPassword({ nextStep }: any) {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const addToast = useStore((state) => state.addToast);
+
+  const handleUpdatePassword = async () => {
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    try {
+      if (auth.currentUser) {
+        await updatePassword(auth.currentUser, password);
+        sessionStorage.removeItem('visnova-auth-link-mode');
+        window.history.replaceState({}, document.title, '/onboarding');
+        addToast({ type: 'success', title: 'Password updated', description: 'Continue your VisNova setup.' });
+        nextStep(3);
+      } else {
+        setError('No active session found.');
+      }
+    } catch (updateError: any) {
+      setError(updateError.message);
+      addToast({ type: 'error', title: 'Password update failed', description: updateError.message });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-3">
+        <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent mb-2">
+          <KeyRound size={24} />
+        </div>
+        <h2 className="text-3xl font-extrabold text-text-main tracking-tight leading-none">Set New Password</h2>
+        <p className="text-sm text-text-secondary font-medium">Your recovery link is verified. Lock in fresh credentials.</p>
+      </div>
+
+      <div className="space-y-3">
+        {error && (
+          <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
+            {error}
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">New Password</label>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:border-accent transition-all font-medium pr-12"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Confirm Password</label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:border-accent transition-all font-medium pr-12"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
+            >
+              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={handleUpdatePassword}
+        disabled={isLoading}
+        className="w-full h-12 bg-accent text-accent-contrast font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+      >
+        {isLoading ? 'Updating...' : 'Update Password'}
+      </button>
+    </div>
+  );
+}
+
+// Components for the screens
+function Screen1({ name, setName, email, setEmail, password, setPassword, nextStep, handleGoogleLogin }: any) {
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [generalError, setGeneralError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const addToast = useStore((state) => state.addToast);
+
+  const validatePassword = (pass: string) => {
+    // At least one lowercase, uppercase, symbol, and number
+    const hasSmall = /[a-z]/.test(pass);
+    const hasCapital = /[A-Z]/.test(pass);
+    const hasNumber = /\d/.test(pass);
+    const hasSymbol = /[^a-zA-Z0-9\s]/.test(pass);
+    const hasLength = pass.length >= 8;
+
+    if (!hasLength) return 'At least 8 characters required';
+    if (!hasSmall) return 'Add a lowercase letter';
+    if (!hasCapital) return 'Add an uppercase letter';
+    if (!hasNumber) return 'Add a number';
+    if (!hasSymbol) return 'Add a special character';
+
+    return '';
+  };
+
+  const handleManualNext = async () => {
+    if (!name || !email || !password || !confirmPassword) {
+      setGeneralError('All fields are required.');
+      addToast({ type: 'error', title: 'Missing fields', description: 'Name, email, and password confirmation are required.' });
+      return;
+    }
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      addToast({ type: 'error', title: 'Mismatch', description: 'Passwords must be identical.' });
+      return;
+    }
+    const pError = validatePassword(password);
+    if (pError) {
+      setPasswordError(pError);
+      addToast({ type: 'error', title: 'Password needs work', description: pError });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setGeneralError('');
+    setPasswordError('');
+
+    // Trigger signup
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+      const user = userCredential.user;
+      
+      await sendEmailVerification(user);
+      
+      addToast({
+        type: 'success',
+        title: 'Account created',
+        description: 'Verification email sent. Please check your inbox.',
+      });
+      
+      nextStep(2);
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setGeneralError('Email already registered. Taking you to login...');
+        setTimeout(() => nextStep(11), 900);
+      } else {
+        setGeneralError(err.message || 'Signup failed');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <h1 className="text-4xl font-extrabold tracking-tight text-text-main mb-2">VisNova</h1>
+          <p className="text-text-secondary font-medium italic opacity-70">Your Visionary Planner.</p>
+        </motion.div>
+
+        <motion.h2
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-2xl font-bold text-text-main leading-tight"
+        >
+          Start building your future
+        </motion.h2>
+      </div>
+
+      <div className="space-y-3">
+        {generalError && (
+          <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
+            {generalError}
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Name</label>
+          <input
+            type="text"
+            placeholder="Enter your name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+            autoFocus
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Email</label>
+          <input
+            type="email"
+            placeholder="yourmail@example.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Password</label>
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter your password"
+              value={password}
+              onChange={e => {
+                setPassword(e.target.value);
+                if (passwordError) setPasswordError('');
+              }}
+              className={cn(
+                "w-full h-12 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
+                passwordError ? "border-accent/40 bg-accent/[0.02]" : "border-card-border focus:border-accent"
+              )}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Confirm Password</label>
+          <div className="relative">
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Re-enter password"
+              value={confirmPassword}
+              onChange={e => {
+                setConfirmPassword(e.target.value);
+                if (passwordError) setPasswordError('');
+              }}
+              className={cn(
+                "w-full h-12 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
+                passwordError ? "border-accent/40 bg-accent/[0.02]" : "border-card-border focus:border-accent"
+              )}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
+            >
+              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+          {passwordError && (
+            <p className="text-[9px] font-bold text-text-secondary/60 ml-1 mt-1 uppercase tracking-widest opacity-80">
+              {passwordError}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-1">
+        <button
+          onClick={handleManualNext}
+          disabled={isSubmitting}
+          className="w-full h-12 bg-accent text-accent-contrast font-bold rounded-2xl transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-95"
+        >
+          {isSubmitting ? 'Loading...' : 'Create account'}
+        </button>
+
+        <div className="relative py-2">
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-card-border"></div></div>
+          <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-bg-base px-5 text-text-secondary opacity-40 italic">or</span></div>
+        </div>
+
+        <button
+          onClick={handleGoogleLogin}
+          className="w-full h-12 bg-card border border-card-border rounded-2xl flex items-center justify-center gap-3 text-text-main font-bold hover:bg-surface-muted transition-all shadow-sm"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path
+              fill="#4285F4"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+            />
+          </svg>
+          Sign in with Google
+        </button>
+      </div>
+
+      <div className="space-y-4 text-center">
+        <p className="text-sm text-text-secondary font-medium">
+          Already have an account? <button onClick={() => nextStep(11)} className="text-accent hover:underline font-bold">Login</button>
+        </p>
+
+        <button
+          onClick={() => {
+            localStorage.setItem('visnova_onboarded_v2', 'true');
+            window.location.href = '/';
+          }}
+          className="w-full py-3 rounded-2xl border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary/30 hover:text-accent hover:border-accent/30 transition-all"
+        >
+          Dev Check: Skip Verification & Onboarding
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ScreenVerify({ email, nextStep }: any) {
+  const [isChecking, setIsChecking] = useState(false);
+  const [error, setError] = useState('');
+  const [isResending, setIsResending] = useState(false);
+
+  const checkVerification = async () => {
+    setIsChecking(true);
+    setError('');
+
+    try {
+      await auth.currentUser?.reload();
+      const user = auth.currentUser;
+
+      if (user?.emailVerified) {
+        console.log('User verified globally. Advancing...');
+        nextStep();
+      } else if (user) {
+        setError('Verification pending. Please check your email and click the link.');
+      } else {
+        setError('Try clicking the verification link in your email again.');
+      }
+    } catch (err) {
+      setError('Connection timeout. Please check your internet and try again.');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  // Poll for verification status every 5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      auth.currentUser?.reload().then(() => {
+        if (auth.currentUser?.emailVerified) {
+          nextStep();
+        }
+      });
+    }, 5000 * 3); // 15 seconds
+    return () => clearInterval(timer);
+  }, [nextStep]);
+
+  const handleResend = async () => {
+    setIsResending(true);
+    setError('');
+    try {
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        setError('A new verification link has been dispatched to your inbox.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Resend failed.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const getMailProviderLink = () => {
+    if (email.includes('gmail.com')) return 'https://mail.google.com';
+    if (email.includes('outlook.com') || email.includes('hotmail.com')) return 'https://outlook.live.com';
+    return null;
+  };
+
+  const mailLink = getMailProviderLink();
+
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-4 text-center">
+        <div className="w-20 h-20 bg-accent/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-accent animate-pulse">
+          <Mail size={40} />
+        </div>
+        <h2 className="text-4xl font-extrabold text-text-main tracking-tight">Check Your Inbox</h2>
+        <p className="text-sm text-text-secondary font-medium leading-relaxed">
+          We've sent a <span className="text-text-main font-bold">verification link</span> to <span className="text-accent underline font-bold">{email}</span>.
+        </p>
+
+        {mailLink && (
+          <a
+            href={mailLink}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-card border border-card-border rounded-xl text-[10px] font-black uppercase tracking-widest text-text-main hover:border-accent transition-all mt-2"
+          >
+            Open {email.includes('gmail') ? 'Gmail' : 'Outlook'}
+          </a>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        {error && (
+          <div className="p-4 bg-accent/5 border border-accent/10 rounded-2xl text-accent text-[9px] font-black uppercase tracking-widest text-center leading-normal animate-in fade-in slide-in-from-bottom-1">
+            {error}
+          </div>
+        )}
+
+        <button
+          onClick={checkVerification}
+          disabled={isChecking}
+          className="w-full h-16 bg-accent text-accent-contrast font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+        >
+          {isChecking ? 'Verifying...' : 'I have clicked the link'}
+        </button>
+
+        <div className="p-5 bg-card border border-card-border rounded-2xl space-y-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">Still nothing?</span>
+              <button
+                onClick={handleResend}
+                disabled={isResending}
+                className="text-[9px] font-black uppercase tracking-widest text-accent hover:underline disabled:opacity-40"
+              >
+                {isResending ? 'Sending...' : 'Resend link'}
+              </button>
+            </div>
+            <div className="flex flex-col gap-2 border-t border-card-border pt-3">
+               <button
+                onClick={() => window.location.reload()}
+                className="text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main opacity-40 hover:opacity-100 transition-all text-left flex items-center gap-1"
+              >
+                <ArrowLeft size={10} /> Change email address
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem('visnova_onboarded_v2', 'true');
+                  window.location.href = '/';
+                }}
+                className="text-[9px] font-black uppercase tracking-widest text-accent/40 hover:text-accent transition-all text-left mt-1"
+              >
+                Dev: Skip Verification
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Screen2({ interests, toggleInterest, interestOptions, nextStep }: any) {
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-2 text-center md:text-left">
+        <h2 className="text-4xl font-bold text-text-main leading-tight tracking-tight">What drives you?</h2>
+        <p className="text-sm text-text-secondary font-medium tracking-tight">Select your focus areas.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+         {interestOptions.map((opt: string) => {
+           const isSelected = interests.includes(opt);
+           return (
+             <button
+               key={opt}
+               onClick={() => toggleInterest(opt)}
+               className={cn(
+                 "h-14 px-5 rounded-2xl text-sm font-bold transition-all duration-300 border shadow-sm flex items-center justify-center gap-2",
+                 isSelected
+                   ? "bg-accent text-accent-contrast border-accent scale-[1.02] shadow-lg shadow-accent/20"
+                   : "bg-card border-card-border text-text-secondary hover:border-accent/30 hover:text-text-main"
+               )}
+             >
+               {opt}
+             </button>
+           );
+         })}
+      </div>
+
+      <div className="pt-6">
+        <button
+          onClick={nextStep}
+          disabled={interests.length < 2}
+          className="w-full h-12 bg-accent text-accent-contrast font-bold rounded-2xl disabled:opacity-50 disabled:bg-text-secondary transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-95"
+        >
+          {interests.length < 2 ? `Select ${2 - interests.length} more` : 'Proceed to Alignment'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Screen3({ intent, setIntent, nextStep }: any) {
+  useEffect(() => {
+    console.log('[Onboarding] Screen3 (Intent) mounted');
+  }, []);
+
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-2">
+        <h2 className="text-4xl font-bold text-text-main leading-tight tracking-tight">Your Goal</h2>
+        <p className="text-sm text-text-secondary font-medium">What is the most important thing you are building right now?</p>
+      </div>
+
+      <div className="space-y-5">
+        <div className="relative group">
+          <textarea
+            value={intent}
+            onChange={e => setIntent(e.target.value)}
+            placeholder="Example: Launch a profitable SaaS business by Q4..."
+            className="w-full h-40 p-6 rounded-3xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all resize-none text-lg font-medium leading-relaxed"
+            autoFocus
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60 ml-1">Suggestions</label>
+          <div className="flex flex-wrap gap-2">
+            {["Master Full-Stack Dev", "Run a Marathon", "Learn UI Design", "Write a Book"].map(sugg => (
+              <button
+                key={sugg}
+                onClick={() => setIntent(sugg)}
+                className="px-4 py-2 rounded-full bg-card border border-card-border text-[11px] font-bold text-text-secondary hover:border-accent hover:text-accent transition-all"
+              >
+                {sugg}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4">
+        <button
+          onClick={nextStep}
+          disabled={!intent.trim()}
+          className="w-full h-12 bg-accent text-accent-contrast font-bold rounded-2xl disabled:opacity-50 transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-95"
+        >
+          Anchor Objective
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Screen4({ commitment, setCommitment, nextStep }: any) {
+  const commitments = [
+    { id: 'casual', title: 'Casual Exploration', desc: 'Minimal pressure, exploring new horizons.' },
+    { id: 'consistent', title: 'Disciplined Growth', desc: "Daily commitment to progress and learning." },
+    { id: 'all-in', title: 'Absolute Mastery', desc: "Radical focus. Execution is the only option." },
+  ];
+
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-2">
+        <h2 className="text-4xl font-bold text-text-main leading-tight tracking-tight">Level of Ambition</h2>
+        <p className="text-sm text-text-secondary font-medium">How intense should your feedback loops be?</p>
+      </div>
+
+      <div className="space-y-3">
+        {commitments.map(c => {
+          const isSelected = commitment === c.id;
+          return (
+            <button
+              key={c.id}
+              onClick={() => setCommitment(c.id)}
+              className={cn(
+                "w-full text-left p-6 rounded-3xl transition-all duration-300 border flex items-center justify-between group",
+                isSelected
+                  ? "bg-accent text-accent-contrast border-accent scale-[1.02] shadow-xl shadow-accent/10"
+                  : "bg-card border-card-border hover:border-accent/30"
+              )}
+            >
+              <div className="space-y-1">
+                <h4 className={cn("font-bold text-lg", isSelected ? "text-accent-contrast" : "text-text-main")}>{c.title}</h4>
+                <p className={cn("text-xs font-medium", isSelected ? "text-accent-contrast/70" : "text-text-secondary/60")}>{c.desc}</p>
+              </div>
+              {isSelected && <CheckCircle2 size={24} className="text-accent-contrast bg-accent-contrast/20 rounded-full p-1" />}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="pt-6">
+        <button
+          onClick={nextStep}
+          disabled={!commitment}
+          className="w-full h-12 bg-accent text-accent-contrast font-bold rounded-2xl disabled:opacity-50 transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-95"
+        >
+          Confirm Trajectory
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Screen5({ interests, intent, nextStep }: any) {
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
+      <div className="space-y-2">
+        <h2 className="text-4xl font-bold text-text-main leading-tight tracking-tight">The Blueprint</h2>
+        <p className="text-sm text-text-secondary font-medium">Your initial strategy has been generated.</p>
+      </div>
+
+      <div className="space-y-3">
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="p-6 rounded-3xl bg-card space-y-4 border border-card-border shadow-xl shadow-accent/5"
+        >
+           <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent px-2.5 py-1.5 bg-accent/5 rounded-lg border border-accent/10">
+                 GOAL: {interests[0] || 'Goal'}
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                <span className="text-xs text-text-secondary font-black">ACTIVE</span>
+              </div>
+           </div>
+           <h3 className="font-bold text-text-main text-2xl leading-tight">{intent}</h3>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="p-6 rounded-3xl bg-card space-y-4 border border-card-border shadow-xl shadow-accent/5"
+        >
+          <h4 className="text-[10px] font-black text-text-secondary/60 uppercase tracking-widest">Next Steps</h4>
+          <ul className="space-y-3">
+             {["Plan your daily tasks", "Review your progress", "Stay aligned"].map((task, i) => (
+                <li key={i} className="flex items-center gap-4 text-sm text-text-main font-bold">
+                   <div className="w-6 h-6 rounded-lg border-2 border-card-border flex items-center justify-center bg-bg-base" />
+                   {task}
+                </li>
+             ))}
+          </ul>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="p-6 rounded-3xl bg-accent text-accent-contrast flex items-center gap-4 shadow-2xl shadow-accent/20"
+        >
+           <div className="w-12 h-12 rounded-2xl bg-accent-contrast/10 backdrop-blur-md border border-accent-contrast/20 flex items-center justify-center shrink-0">
+             <CheckCircle2 size={24} className="text-accent-contrast" />
+           </div>
+           <div>
+            <p className="text-sm font-bold">Commitment Verified</p>
+            <p className="text-[10px] text-accent-contrast/70 font-medium uppercase tracking-widest mt-0.5">Ready for deployment</p>
+           </div>
+        </motion.div>
+      </div>
+
+      <div className="pt-4">
+        <button
+          onClick={nextStep}
+          className="w-full h-12 bg-accent text-accent-contrast font-bold rounded-2xl hover:opacity-90 transition-all shadow-lg active:scale-95"
+        >
+          Finalize Identity
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Screen6({ nextStep }: any) {
+  return (
+    <div className="flex flex-col h-full justify-center max-w-md mx-auto w-full text-center space-y-12 py-10">
+      <div className="space-y-6">
+        <motion.div
+           initial={{ scale: 0.8, opacity: 0 }}
+           animate={{ scale: 1, opacity: 1 }}
+           transition={{ type: 'spring', damping: 12 }}
+           className="w-24 h-24 bg-accent rounded-full mx-auto flex items-center justify-center shadow-2xl shadow-accent/30"
+        >
+          <CheckCircle2 size={48} className="text-accent-contrast" />
+        </motion.div>
+        <div className="space-y-3">
+          <h2 className="text-6xl font-black text-text-main tracking-tighter leading-none">NOW PROVE IT.</h2>
+          <p className="text-xl text-accent font-bold italic tracking-tight opacity-80">Execution is the final authority.</p>
+        </div>
+      </div>
+
+      <button
+        onClick={nextStep}
+        className="mx-auto px-12 h-16 bg-text-main text-bg-base font-black uppercase tracking-[0.25em] text-xs rounded-full hover:scale-105 active:scale-95 transition-all shadow-2xl"
+      >
+        Personalize Identity
+      </button>
+    </div>
+  );
+}
+function Screen7({ avatar, setAvatar, name, setName, username, setUsername, bio, setBio, gender, setGender, currentUserId, nextStep }: any) {
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const addToast = useStore((state) => state.addToast);
+
+  const normalizeUsername = (val: string) => {
+    return val.toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '')
+      .slice(0, 20);
+  };
+
+  useEffect(() => {
+    if (!avatar) {
+      setAvatar(DEFAULT_PROFILE_AVATARS.male);
+    }
+  }, []);
+
+  const handleGenderToggle = (newGender: 'male' | 'female') => {
+    setGender(newGender);
+    // Auto-update avatar to default for gender if user hasn't explicitly picked a non-default one
+    if (!avatar || avatar.includes('dicebear.com/7.x/shapes/svg?seed=neutral-')) {
+       setAvatar(DEFAULT_PROFILE_AVATARS[newGender as ProfileChoice]);
+    }
+  };
+
+  const handleProceed = async () => {
+    const cleanUsername = normalizeUsername(username);
+    setUsername(cleanUsername);
+
+    if (!name || !username) {
+       addToast({ type: 'error', title: 'Data Missing', description: 'Name and Username are mandatory protocols.' });
+       return;
+    }
+
+    setIsCheckingUsername(true);
+    try {
+      const q = query(collection(db, 'users'), where('username', '==', username));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const found = querySnapshot.docs.find(d => d.id !== currentUserId);
+        if (found) {
+          setUsernameError('Username already synchronized in another sector.');
+          setIsCheckingUsername(false);
+          return;
+        }
+      }
+
+      nextStep();
+    } catch (err: any) {
+      nextStep();
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-6 w-full pb-10">
+      <div className="space-y-2">
+        <h2 className="text-4xl font-bold text-text-main leading-tight tracking-tight">Identity</h2>
+        <p className="text-sm text-text-secondary font-medium">Finalize your profile settings.</p>
+      </div>
+
+      {/* Avatar Integration */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-4 p-1">
+          <div className="relative group cursor-pointer" onClick={() => setShowLibrary(!showLibrary)}>
+             <div className="w-20 h-20 rounded-3xl border-4 border-bg-base overflow-hidden bg-card shadow-2xl transition-transform hover:scale-105 active:scale-95">
+                <img src={avatar || DEFAULT_PROFILE_AVATARS.male} className="w-full h-full object-cover" alt="User" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                   <ImageIcon size={20} />
+                </div>
+             </div>
+             <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-accent text-accent-contrast rounded-xl border-2 border-white flex items-center justify-center shadow-lg">
+                <Plus size={14} />
+             </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60">Profile Visualization</p>
+            <button 
+              type="button"
+              onClick={() => setShowLibrary(!showLibrary)}
+              className="text-xs font-bold text-accent hover:underline"
+            >
+              {showLibrary ? 'Lock Identity' : 'Expand Library'}
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {showLibrary && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              className="w-full bg-card border border-card-border rounded-3xl p-6 shadow-2xl relative z-20"
+            >
+              <div className="grid grid-cols-4 gap-3">
+                {[...AVATAR_LIBRARY].map((url) => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() => { setAvatar(url); setShowLibrary(false); }}
+                    className={cn(
+                      "aspect-square rounded-2xl overflow-hidden border-2 transition-all hover:scale-110 shadow-sm",
+                      avatar === url ? "border-accent ring-2 ring-accent/20" : "border-card-border opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    <img src={url} className="w-full h-full object-cover" alt="" />
+                  </button>
+                ))}
+                <label className="aspect-square rounded-2xl border-2 border-dashed border-card-border flex items-center justify-center cursor-pointer hover:border-accent hover:bg-accent/5 transition-all group">
+                   <Zap size={20} className="text-text-secondary/40 group-hover:text-accent transition-colors" />
+                   <input
+                     type="file"
+                     accept="image/*"
+                     className="hidden"
+                     onChange={(e) => {
+                       const file = e.target.files?.[0];
+                       if (file) {
+                         const url = URL.createObjectURL(file);
+                         setAvatar(url);
+                         setShowLibrary(false);
+                       }
+                     }}
+                   />
+                </label>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex gap-2">
+           {(['male', 'female'] as const).map(opt => (
+             <button
+               key={opt}
+               type="button"
+               onClick={() => handleGenderToggle(opt)}
+               className={cn(
+                 "flex-1 h-14 rounded-2xl flex flex-col items-center justify-center border-2 transition-all active:scale-95",
+                 gender === opt 
+                   ? "bg-accent/5 border-accent shadow-premium" 
+                   : "bg-surface border-card-border opacity-40 hover:opacity-100"
+               )}
+             >
+               <span className="text-[10px] font-black uppercase tracking-widest">{opt}</span>
+             </button>
+           ))}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60 ml-1">Display Name</label>
+          <input
+            type="text"
+            placeholder="How should we call you?"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full h-12 px-4 rounded-xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all font-bold"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60 ml-1">Username</label>
+          <div className="relative group">
+            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary/40 font-black text-sm">@</span>
+            <input
+              type="text"
+              placeholder="unique_id"
+              value={username}
+              onChange={e => {
+                setUsername(normalizeUsername(e.target.value));
+                setUsernameError('');
+              }}
+              className="w-full h-14 pl-10 pr-5 rounded-xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/20 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all font-bold tracking-tight"
+            />
+          </div>
+          {usernameError && (
+            <p className="text-[10px] font-bold uppercase tracking-widest text-accent ml-1 animate-in fade-in slide-in-from-left-1">{usernameError}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60 ml-1">Bio</label>
+          <textarea
+            placeholder="Tell the architect who you are..."
+            value={bio}
+            onChange={e => setBio(e.target.value)}
+            className="w-full h-24 p-5 rounded-xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all resize-none custom-scrollbar text-sm font-medium leading-relaxed"
+          />
+        </div>
+      </div>
+
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={handleProceed}
+          disabled={!name || !username || isCheckingUsername}
+          className="w-full h-14 bg-text-main text-bg-base font-black uppercase tracking-widest text-[11px] rounded-xl disabled:opacity-50 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-xl"
+        >
+          {isCheckingUsername ? 'Loading...' : 'Select your role'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const ROLE_CATEGORIES = [
+  'Growth', 'Lifestyle', 'Career', 'Money', 'Creativity', 'Coding', 'Study', 'Business', 'Fitness', 'Mindset', 'Productivity'
+];
+
+function ScreenInterests({ selectedInterests, setSelectedInterests, nextStep }: any) {
+  const toggleInterest = (interest: string) => {
+    if (selectedInterests.includes(interest)) {
+      setSelectedInterests(selectedInterests.filter((i: string) => i !== interest));
+    } else {
+      setSelectedInterests([...selectedInterests, interest]);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+      <div className="w-16 h-16 rounded-3xl bg-accent/10 flex items-center justify-center text-accent mb-8">
+        <Sparkles size={32} />
+      </div>
+      <h2 className="text-4xl font-black text-text-main mb-4 uppercase tracking-tight">Select Interests</h2>
+      <p className="text-text-secondary font-medium mb-12 uppercase tracking-widest text-[11px] opacity-60">Personalize your neural feed</p>
+      
+      <div className="grid grid-cols-2 gap-3 w-full mb-12">
+        {ROLE_CATEGORIES.map(interest => (
+          <button
+            key={interest}
+            onClick={() => toggleInterest(interest)}
+            className={cn(
+              "p-4 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest",
+              selectedInterests.includes(interest) 
+                ? "bg-accent border-accent text-white shadow-xl shadow-accent/20" 
+                : "bg-surface-muted border-card-border text-text-secondary hover:border-accent/40"
+            )}
+          >
+            {interest}
+          </button>
+        ))}
+      </div>
+      
+      <button
+        onClick={() => nextStep()}
+        disabled={selectedInterests.length === 0}
+        className="w-full h-16 rounded-2xl bg-accent text-accent-contrast text-xs font-black uppercase tracking-widest shadow-2xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100"
+      >
+        Sync & Initialize
+      </button>
+    </div>
+  );
+}
+
+function Screen8({ role, setRole, ROLE_CATEGORIES, handleComplete }: any) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredCategories = ROLE_CATEGORIES.map((category: any) => ({
+    ...category,
+    roles: category.roles.filter((r: string) => r.toLowerCase().includes(searchTerm.toLowerCase()))
+  })).filter((category: any) => category.roles.length > 0);
+
+  return (
+    <div className="flex flex-col h-full max-w-lg mx-auto w-full pt-10">
+      <div className="space-y-2 mb-8 shrink-0">
+        <h2 className="text-4xl font-bold text-text-main leading-tight tracking-tight">Identity Role</h2>
+        <p className="text-sm text-text-secondary font-medium">How do you define your current trajectory?</p>
+      </div>
+
+      <div className="sticky top-0 bg-bg-base z-10 py-4 mb-6">
+        <div className="relative group">
+          <input
+            type="text"
+            placeholder="Search roles (e.g. Developer, Founder...)"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full h-14 px-6 pr-12 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all font-medium shadow-sm"
+          />
+          <div className="absolute right-5 top-1/2 -translate-y-1/2 text-text-secondary/60">
+             <CheckCircle2 size={20} className={cn("transition-colors", searchTerm ? "text-accent" : "opacity-20")} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar space-y-10 pb-40 px-1">
+        {filteredCategories.map((category: any) => (
+          <div key={category.name} className="space-y-3">
+            <h4 className="text-[10px] font-black text-text-secondary/60 uppercase tracking-[0.2em] ml-1">{category.name}</h4>
+            <div className="flex flex-wrap gap-2.5">
+              {category.roles.map((r: string, rIdx: number) => {
+                const isSelected = role === r;
+                return (
+                  <button
+                    key={`${category.name}-${r}-${rIdx}`}
+                    onClick={() => setRole(r)}
+                    className={cn(
+                      "flex items-center gap-2.5 h-12 px-6 rounded-2xl text-sm font-bold transition-all duration-300 border shadow-sm",
+                      isSelected
+                        ? "bg-accent text-accent-contrast border-accent scale-[1.05] shadow-xl shadow-accent/20 z-10"
+                        : "bg-card border-card-border text-text-secondary hover:border-accent/30 hover:text-text-main"
+                    )}
+                  >
+                    {isSelected && <CheckCircle2 size={16} />}
+                    {r}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {filteredCategories.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-20 px-10 border-2 border-dashed border-card-border rounded-3xl"
+          >
+             <p className="text-text-secondary/60 font-bold mb-4">No VisNova mappings found for "{searchTerm}"</p>
+             <button
+               onClick={() => setRole(searchTerm)}
+               className="px-6 py-3 bg-accent text-accent-contrast font-bold rounded-2xl hover:scale-105 active:scale-95 transition-all"
+             >
+                Initialize Custom Role: {searchTerm}
+             </button>
+          </motion.div>
+        )}
+      </div>
+
+      <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center pointer-events-none z-50">
+        <button
+          onClick={handleComplete}
+          disabled={!role}
+          className="w-full max-w-sm h-16 bg-accent text-accent-contrast font-black uppercase tracking-[0.25em] text-xs rounded-2xl disabled:opacity-50 disabled:bg-text-secondary transition-all shadow-2xl shadow-accent/40 pointer-events-auto active:scale-95"
+        >
+          ENTER DASHBOARD
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Screen9({ handleForceStart }: { handleForceStart: () => void }) {
+  const [showFailsafe, setShowFailsafe] = useState(false);
+  const { hasCompletedOnboarding } = useStore();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!hasCompletedOnboarding) {
+        setShowFailsafe(true);
+      }
+    }, 4500); // Show failsafe after 4.5 seconds (reduced from 8)
+    return () => clearTimeout(timer);
+  }, [hasCompletedOnboarding]);
+
+  return (
+    <div className="flex flex-col h-full justify-center max-w-sm mx-auto w-full text-center space-y-10 py-10">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        className="mx-auto w-16 h-16 border-[6px] border-accent/5 border-t-accent rounded-full shadow-2xl shadow-accent/20"
+      />
+      <div className="space-y-3">
+        <h2 className="text-2xl font-black text-text-main tracking-tight uppercase">Setting up VisNova</h2>
+        <p className="text-sm text-text-secondary font-medium tracking-tight">Getting things ready...</p>
+      </div>
+
+      <div className="w-full bg-accent/5 rounded-full h-1.5 overflow-hidden">
+         <motion.div
+           initial={{ width: 0 }}
+           animate={{ width: "100%" }}
+           transition={{ duration: 1.5 }}
+           className="h-full bg-accent"
+         />
+      </div>
+
+      <AnimatePresence>
+        {showFailsafe && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4 pt-10"
+          >
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40">Connection seems sluggish</p>
+            <button
+              onClick={handleForceStart}
+              className="px-6 py-3 bg-text-main text-bg-base text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:scale-105 transition-all shadow-xl"
+            >
+              Skip to Dashboard
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export default function OnboardingFlow() {
+  const [step, setStep] = useState(() => {
+    const saved = localStorage.getItem('visnova_onboarding_step');
+    const parsed = saved ? parseInt(saved, 10) : 1;
+    // Never start on step 10 (transitional loading screen) after refresh
+    return (parsed === 10) ? 9 : parsed;
+  });
+  const [direction, setDirection] = useState(1);
+  const { completeOnboarding, addToast } = useStore();
+  const navigate = useNavigate();
+
+  const handleForceStart = () => {
+    localStorage.setItem('visnova_onboarded_v2', 'true');
+    useStore.setState({ hasCompletedOnboarding: true });
+    window.location.reload();
+  };
+
+  // Save step to localStorage
+  useEffect(() => {
+    localStorage.setItem('visnova_onboarding_step', step.toString());
+  }, [step]);
+
+  // State
+  const [name, setName] = useState(auth.currentUser?.displayName || '');
+  const [email, setEmail] = useState(auth.currentUser?.email || '');
+
+  // Sync state from session if it changes and we don't have local values yet
+  useEffect(() => {
+    if (auth.currentUser) {
+      setName(prev => prev || auth.currentUser?.displayName || '');
+      setEmail(prev => prev || auth.currentUser?.email || '');
+    }
+  }, [auth.currentUser]);
+
+  // Logging for debug
+  useEffect(() => {
+    console.log('[Onboarding] Current Step:', step);
+  }, [step]);
+
+  // Handle session-based redirection
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const isRecoveryMode = params.get('mode') === 'reset-password' || sessionStorage.getItem('visnova-auth-link-mode') === 'recovery';
+    if (isRecoveryMode) {
+      setStep(13);
+      return;
+    }
+
+    // If session exists and we are at the very beginning, advance past login/signup
+    if (auth.currentUser && (step === 1 || step === 11)) {
+       setStep(3);
+    }
+  }, [auth.currentUser?.uid, step === 1, step === 11]);
+
+  // Automatic progression for email confirmation
+  useEffect(() => {
+    if (auth.currentUser?.emailVerified && step === 2) {
+      console.log('Verification detected automatically. Progressing...');
+      nextStep();
+    }
+  }, [auth.currentUser, step]);
+
+  const handleGoogleLogin = async () => {
+    const addToast = useStore.getState().addToast;
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      
+      // If sign in is successful, check if onboarded
+      const user = auth.currentUser;
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && userDoc.data().hasCompletedOnboarding) {
+          await useStore.getState().fetchUser(user.email!);
+          window.location.href = '/';
+        } else {
+          nextStep(3); // Start onboarding
+        }
+      }
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      addToast({ type: 'error', title: 'Google sign-in failed', description: error.message });
+    }
+  };
+  const [password, setPassword] = useState('');
+  const [interests, setInterests] = useState<string[]>([]);
+  const [intent, setIntent] = useState('');
+  const [commitment, setCommitment] = useState('');
+  const [username, setUsername] = useState(() => localStorage.getItem('visnova_username') || '');
+  const [bio, setBio] = useState('');
+  const [gender, setGender] = useState<ProfileChoice>('male');
+  const [role, setRole] = useState('');
+  const [avatar, setAvatar] = useState(DEFAULT_PROFILE_AVATARS.male);
+
+  // Persistence for critical identity state
+  useEffect(() => {
+    if (username) localStorage.setItem('visnova_username', username);
+  }, [username]);
+
+  // Security: Ensure username is selected before allowing higher steps
+  // Removed problematic checkpoint to prevent looping
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const isRecoveryMode = params.get('mode') === 'reset-password' || sessionStorage.getItem('visnova-auth-link-mode') === 'recovery';
+    if (isRecoveryMode) {
+      setStep(13);
+    }
+  }, []);
+
+  const nextStep = useCallback((targetStep?: number | any) => {
+    setDirection(1);
+    if (typeof targetStep === 'number') {
+      setStep(targetStep);
+      return;
+    }
+    setStep((prev) => prev + 1);
+  }, []);
+
+  const prevStep = useCallback(() => {
+    setDirection(-1);
+    // If we're on Login (11) or ForgotPassword (12), go back to signup (1)
+    setStep((prev) => {
+      if (prev === 11 || prev === 12 || prev === 13) return 1;
+      if (prev <= 1) return 1;
+      return prev - 1;
+    });
+  }, []);
+
+  const handleComplete = async () => {
+    // Strictly require username
+    if (!username || username.trim().length === 0) {
+        if (step !== 8) setStep(8);
+        addToast({ type: 'info', title: 'Username required', description: 'Please choose a unique identifying handle before proceeding.' });
+        return;
+    }
+    
+    setStep(9.5);
+
+    try {
+      const currentUser = auth.currentUser;
+
+      await completeOnboarding({
+        name: name || 'Visionary Explorer',
+        email: email || currentUser?.email || 'explorer@visnova.ai',
+        password,
+        interests,
+        intent,
+        commitment,
+        username,
+        bio,
+        gender,
+        role,
+        avatar
+      });
+      // Final safety: ensuring it's true and persisted
+      localStorage.setItem('visnova_onboarded_v2', 'true');
+      useStore.setState({ hasCompletedOnboarding: true });
+    } catch (err) {
+      console.error('Finalization failed, but proceeding:', err);
+      // Ensure local state reflects completion even if API call fails
+      localStorage.setItem('visnova_onboarded_v2', 'true');
+      useStore.setState({ hasCompletedOnboarding: true });
+    }
+  };
+
+  const slideVariants: Variants = {
+    initial: (direction: number) => ({
+      x: direction > 0 ? '5%' : '-5%',
+      opacity: 0,
+      scale: 0.98
+    }),
+    animate: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+      transition: { duration: 0.4, ease: "easeOut" },
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? '5%' : '-5%',
+      opacity: 0,
+      scale: 0.98,
+      transition: { duration: 0.3, ease: 'easeIn' },
+    }),
+  };
+
+  const interestOptions = ['💻 Tech', '🤖 AI', '💼 Business', '📚 Study', '🌱 Growth', '🏃 Health', '✨ Lifestyle'];
+  const toggleInterest = (interest: string) => {
+    setInterests(prev =>
+      prev.includes(interest)
+        ? prev.filter(i => i !== interest)
+        : [...prev, interest]
+    );
+  };
+
+  const ROLE_CATEGORIES = [
+    {
+      name: "Tech & Builders",
+      roles: ["Software Developer", "Web Developer", "App Developer", "AI Engineer", "Machine Learning Engineer", "Data Scientist", "Data Analyst", "Cybersecurity Specialist", "Cloud Engineer", "DevOps Engineer", "Game Developer", "Blockchain Developer", "Robotics Engineer", "Embedded Systems Engineer"]
+    },
+    {
+      name: "Engineering",
+      roles: ["Mechanical Engineer", "Civil Engineer", "Electrical Engineer", "Electronics Engineer", "Aerospace Engineer", "Chemical Engineer", "Industrial Engineer"]
+    },
+    {
+      name: "Creators & Media",
+      roles: ["Content Creator", "YouTuber", "Video Editor", "Animator", "Filmmaker", "Photographer", "Graphic Designer", "UI/UX Designer", "Writer", "Blogger", "Podcaster", "Storyteller", "Meme Creator"]
+    },
+    {
+      name: "Business & Entrepreneurship",
+      roles: ["Entrepreneur", "Startup Founder", "Business Owner", "Marketer", "Digital Marketer", "Sales Specialist", "Product Manager", "Business Analyst", "Consultant", "Investor"]
+    },
+    {
+      name: "Academics & Students",
+      roles: ["Student", "Commerce Student", "Science Student", "Engineering Student", "Medical Student", "Law Student", "Researcher", "Scholar"]
+    },
+    {
+      name: "Health & Medical",
+      roles: ["Doctor", "Medical Professional", "Nurse", "Therapist", "Psychologist", "Fitness Coach", "Nutritionist", "Personal Trainer"]
+    },
+    {
+      name: "Lifestyle & Self-Development",
+      roles: ["Self-Improver", "Discipline Builder", "Productivity Enthusiast", "Learner", "Explorer"]
+    },
+    {
+      name: "Creative Arts",
+      roles: ["Musician", "Rapper", "Singer", "Painter", "Illustrator", "Dancer", "Actor"]
+    },
+    {
+      name: "Other / Flexible",
+      roles: ["Freelancer", "Side Hustler", "Multi-skilled", "Generalist"]
+    }
+  ];
+
+  const renderCurrentStep = () => {
+    switch (step) {
+      case 1: return <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} />;
+      case 11:
+        return <ScreenLogin
+          email={email} setEmail={setEmail}
+          nextStep={nextStep}
+          switchToSignup={() => nextStep(1)}
+          setStep={setStep}
+        />;
+      case 12:
+        return <ScreenForgotPassword
+          email={email} setEmail={setEmail}
+          backToLogin={() => nextStep(11)}
+        />;
+      case 13: return <ScreenResetPassword nextStep={nextStep} />;
+      case 2: return <ScreenVerify email={email} nextStep={nextStep} />;
+      case 3: return <Screen2 interests={interests} toggleInterest={toggleInterest} interestOptions={interestOptions} nextStep={nextStep} />;
+      case 4: return <Screen3 intent={intent} setIntent={setIntent} nextStep={nextStep} />;
+      case 5: return <Screen4 commitment={commitment} setCommitment={setCommitment} nextStep={nextStep} />;
+      case 6: return <Screen5 interests={interests} intent={intent} nextStep={nextStep} />;
+      case 7: return <Screen6 nextStep={nextStep} />;
+      case 8: return <Screen7 avatar={avatar} setAvatar={setAvatar} name={name} setName={setName} username={username} setUsername={setUsername} bio={bio} setBio={setBio} gender={gender} setGender={setGender} currentUserId={auth.currentUser?.uid} nextStep={nextStep} />;
+      case 9: return <Screen8 role={role} setRole={setRole} ROLE_CATEGORIES={ROLE_CATEGORIES} handleComplete={handleComplete} />;
+      case 9.5: return <Screen9 handleForceStart={handleForceStart} />;
+      case 10: return null; 
+      default:
+        console.warn('Unknown step encountered:', step);
+        return (
+          <div className="flex flex-col items-center justify-center flex-1 space-y-6 text-center">
+            <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center text-accent">
+              <Zap size={32} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-text-main tracking-tight">System Out of Sync</h3>
+              <p className="text-sm text-text-secondary max-w-[200px] mx-auto">We couldn't determine your current setup step.</p>
+            </div>
+            <button
+              onClick={() => setStep(1)}
+              className="px-8 h-12 bg-accent text-accent-contrast font-bold rounded-xl shadow-lg shadow-accent/20 transition-all hover:scale-105 active:scale-95"
+            >
+              Reset Session
+            </button>
+          </div>
+        );
+    }
+  };
+
+  const usesIntroCard = [1, 2, 3, 11, 12, 13].includes(step);
+
+  return (
+    <div className="h-screen bg-bg-base flex flex-col font-sans overflow-hidden p-3 sm:p-4">
+      {/* Dynamic Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/5 rounded-full blur-[120px]" />
+         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/5 rounded-full blur-[120px]" />
+      </div>
+
+      {/* Top Header */}
+      <div className="h-14 sm:h-16 px-2 sm:px-5 flex items-center justify-between z-10 relative shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
+             <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
+          </div>
+          <span className="text-sm font-black uppercase tracking-[0.3em] text-text-main">VisNova</span>
+        </div>
+
+        {step < 10 && (
+          <div className="flex items-center gap-4">
+            {auth.currentUser && (
+              <button
+                onClick={async () => {
+                  await signOut(auth);
+                  window.location.reload();
+                }}
+                className="text-[10px] font-black uppercase tracking-widest text-accent/60 hover:text-accent transition-all bg-accent/5 px-3 py-1.5 rounded-lg border border-accent/10"
+              >
+                Sign Out
+              </button>
+            )}
+            <button
+              onClick={prevStep}
+              className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-secondary/60 hover:text-text-main transition-colors"
+            >
+              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+              Back
+            </button>
+          </div>
+        )}
+
+        <div className="ml-auto hidden md:flex items-center gap-5">
+            {step < 10 && (step >= 8 || username) && (
+              <button
+                onClick={handleForceStart}
+                className="text-[9px] font-black uppercase tracking-widest text-accent/40 hover:text-accent transition-all hover:scale-105 active:scale-95 px-3 py-1.5 rounded-lg border border-accent/10 hover:bg-accent/5"
+              >
+                Skip to Dashbord
+              </button>
+            )}
+           {step < 10 && (
+             <div className="flex gap-1">
+               {[1,2,3,4,5,6,7,8,9].map(s => (
+                 <div
+                   key={s}
+                   className={cn(
+                     "h-1 transition-all duration-500",
+                     step === s ? "w-8 bg-accent" : s < step ? "w-4 bg-accent/20" : "w-4 bg-card-border"
+                   )}
+                 />
+               ))}
+             </div>
+           )}
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 min-h-0 relative flex items-center justify-center">
+        <AnimatePresence custom={direction} mode="wait">
+          <motion.div
+            key={step}
+            custom={direction}
+            variants={slideVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="absolute inset-0 flex items-center justify-center p-1 sm:p-3 overflow-hidden"
+          >
+            <div
+              className={cn(
+                "w-full max-h-full overflow-y-auto custom-scrollbar",
+                usesIntroCard
+                  ? "max-w-[520px] rounded-[2rem] border border-card-border bg-card/90 p-5 sm:p-7 shadow-2xl shadow-accent/10 backdrop-blur-xl"
+                  : "max-w-[1180px] p-2 sm:p-6"
+              )}
+            >
+              {renderCurrentStep()}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Footer Meta */}
+      <div className="h-8 sm:h-10 px-4 flex items-center justify-center pointer-events-none opacity-40 shrink-0">
+         <span className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest">Protocol v4.1 // System-Sync Enabled</span>
+      </div>
+    </div>
+  );
+}

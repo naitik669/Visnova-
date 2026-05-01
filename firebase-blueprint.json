@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and vitals",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "username": { "type": "string" },
+        "gender": { "type": "string" },
+        "bio": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "role": { "type": "string" },
+        "rank": { "type": "string" },
+        "level": { "type": "number" },
+        "xp": { "type": "number" },
+        "streak": { "type": "number" },
+        "dailyIntention": { "type": "string" },
+        "isGrinding": { "type": "boolean" },
+        "statusNote": { "type": "string" },
+        "vitals": {
+          "type": "object",
+          "properties": {
+            "focus": { "type": "number" },
+            "energy": { "type": "number" },
+            "mood": { "type": "number" },
+            "sleep": { "type": "number" }
+          }
+        },
+        "hasCompletedOnboarding": { "type": "boolean" },
+        "tutorialCompleted": { "type": "boolean" },
+        "theme": { "type": "string" },
+        "lastActive": { "type": "number" }
+      },
+      "required": ["name", "email"]
+    },
+    "Vision": {
+      "title": "Vision",
+      "description": "A long-term goal or vision project",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "progress": { "type": "number" },
+        "status": { "type": "string", "enum": ["idea", "planning", "in-progress", "completed"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "publishSettings": { "type": "object" }
+      },
+      "required": ["userId", "title", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task or sub-task within a vision",
+      "type": "object",
+      "properties": {
+        "visionId": { "type": "string" },
+        "text": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "parentId": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["visionId", "text"]
+    },
+    "VisionElement": {
+      "title": "Vision Element",
+      "description": "An element on the creative canvas",
+      "type": "object",
+      "properties": {
+        "visionId": { "type": "string" },
+        "type": { "type": "string" },
+        "content": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "scale": { "type": "number" },
+        "rotation": { "type": "number" },
+        "zIndex": { "type": "number" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["visionId", "type"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "A user activity log entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "visionId": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "description": { "type": "string" }
+      },
+      "required": ["userId", "type", "timestamp"]
+    },
+    "JournalEntry": {
+      "title": "Journal Entry",
+      "description": "A daily journal entry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "required": ["userId", "date", "note"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "A community feed post",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "likes": { "type": "number" },
+        "comments": { "type": "number" },
+        "type": { "type": "string" },
+        "stats": { "type": "object" }
+      },
+      "required": ["userId", "content", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Primary user profiles"
+    },
+    "visions": {
+      "schema": "Vision",
+      "description": "User visions"
+    },
+    "visions/{visionId}/tasks": {
+      "schema": "Task",
+      "description": "Tasks associated with a vision"
+    },
+    "visions/{visionId}/elements": {
+      "schema": "VisionElement",
+      "description": "Canvas elements associated with a vision"
+    },
+    "activities": {
+      "schema": "Activity",
+      "description": "Global activity feed (or user specific if preferred)"
+    },
+    "journal": {
+      "schema": "JournalEntry",
+      "description": "Daily reflections"
+    },
+    "posts": {
+      "schema": "Post",
+      "description": "Community feed posts"
+    }
+  }
+}

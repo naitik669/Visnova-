@@ -1,0 +1,120 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is number && ts <= request.time.toMillis();
+    }
+
+    // --- Entity Validations ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 255 &&
+             (!('username' in data) || (data.username is string && data.username.size() <= 30)) &&
+             (!('xp' in data) || (data.xp is number && data.xp >= 0)) &&
+             (!('level' in data) || (data.level is number && data.level >= 1));
+    }
+
+    function isValidVision(data) {
+      return data.keys().hasAll(['userId', 'title', 'status', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.status in ['idea', 'planning', 'in-progress', 'completed'] &&
+             data.createdAt is number;
+    }
+
+    function isValidTask(data, visionId) {
+      return data.keys().hasAll(['visionId', 'text', 'completed']) &&
+             data.visionId == visionId &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 500 &&
+             data.completed is bool;
+    }
+
+    // --- Rules ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (
+        // Enforce that you can only list common fields (though rules can't enforce field subsets in list easily, 
+        // we enforce query constraints if needed)
+        // For now, allow listing circle members
+        request.query.limit <= 20
+      );
+      allow create: if isOwner(userId) && isValidUser(incoming()) && incoming().email == request.auth.token.email;
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        // Action: Update Profile
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatar', 'username', 'gender', 'bio', 'tags', 'role', 'statusNote', 'isGrinding', 'dailyIntention', 'theme', 'vitals', 'xp', 'level', 'rank', 'streak', 'hasCompletedOnboarding', 'tutorialCompleted', 'lastActive'])
+      );
+    }
+
+    match /visions/{visionId} {
+      allow read: if isSignedIn() && (existing().userId == request.auth.uid || existing().publishSettings.visibility == 'public');
+      allow create: if isSignedIn() && isValidVision(incoming());
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && isValidVision(incoming()) && (
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'status', 'progress', 'tags', 'notes', 'proof', 'color', 'updatedAt', 'isPublished', 'publishSettings', 'collaborators'])
+      );
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+
+      match /tasks/{taskId} {
+        allow read: if isSignedIn() && get(/databases/$(database)/documents/visions/$(visionId)).data.userId == request.auth.uid;
+        allow write: if isSignedIn() && get(/databases/$(database)/documents/visions/$(visionId)).data.userId == request.auth.uid && isValidTask(incoming(), visionId);
+      }
+
+      match /elements/{elementId} {
+        allow read: if isSignedIn() && get(/databases/$(database)/documents/visions/$(visionId)).data.userId == request.auth.uid;
+        allow write: if isSignedIn() && get(/databases/$(database)/documents/visions/$(visionId)).data.userId == request.auth.uid;
+      }
+    }
+
+    match /activities/{activityId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    match /journal/{entryId} {
+      // entryId is likely userId + date
+      allow read, write: if isSignedIn() && incoming().userId == request.auth.uid;
+    }
+
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        // Allow anyone to like, but only author to edit content
+        (incoming().userId == existing().userId && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'type', 'stats'])) ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes']))
+      );
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}
