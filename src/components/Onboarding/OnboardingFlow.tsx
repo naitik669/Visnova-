@@ -64,6 +64,7 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any
 
       if (user) {
         addToast({ type: 'success', title: 'Login successful', description: 'Accessing your dashboard...' });
+        await useStore.getState().ensureCurrentUserProfile();
         // Correctly logged in, check if onboarded via profile
         try {
           const { data: profile } = await supabase
@@ -85,8 +86,12 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any
                 setStep(10);
              }
           } else {
-            // No profile yet, go to start of onboarding
-            nextStep(3);
+            const fallbackProfile = await useStore.getState().ensureCurrentUserProfile();
+            if (fallbackProfile?.onboarded) {
+              setStep(10);
+            } else {
+              nextStep(3);
+            }
           }
         } catch (profileErr) {
           console.error('Profile fetch during login failed:', profileErr);
@@ -417,6 +422,9 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
       });
 
       if (signupError) throw signupError;
+      if (data.user) {
+        await useStore.getState().ensureCurrentUserProfile();
+      }
       
       addToast({
         type: 'success',

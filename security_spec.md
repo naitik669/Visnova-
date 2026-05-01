@@ -1,4 +1,4 @@
-# Security Specification - Visnova
+# Security Specification - VisNova
 
 ## Data Invariants
 - A `Vision` must belong to a `userId`.

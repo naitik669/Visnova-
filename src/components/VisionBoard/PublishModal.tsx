@@ -30,7 +30,7 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
     addToast({
       type: 'success',
       title: isPublic ? 'Vision Published' : 'Vision Privated',
-      description: isPublic ? 'Your vision is now visible to the Visnova community.' : 'Your vision is now private.'
+      description: isPublic ? 'Your vision is now visible to the VisNova community.' : 'Your vision is now private.'
     });
     onClose();
   };

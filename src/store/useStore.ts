@@ -1300,21 +1300,10 @@ export const useStore = create<AppState>((set, get) => ({
         console.error('Error checking profile:', error);
       }
 
-      // 2. If not found, try to insert (with a small delay to allow triggers to finish if they are running)
+      // 2. If not found, upsert immediately. The database trigger handles normal signup sync;
+      // this is a fast fallback for older accounts or delayed auth events.
       if (!profile) {
-        console.log('Profile not found, waiting briefly for potential trigger...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Final check before insert
-        const { data: finalCheck } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-          
-        if (finalCheck) return finalCheck;
-
-        console.log('Inserting new profile for:', userId);
+        console.log('Profile not found, upserting fallback profile for:', userId);
         const userMetadata = session.user.user_metadata || {};
         const displayName = userMetadata.display_name || userMetadata.full_name || userMetadata.name || 'Explorer';
         const avatarUrl = userMetadata.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`;
@@ -1322,7 +1311,7 @@ export const useStore = create<AppState>((set, get) => ({
         
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: userId,
             email: session.user.email,
             full_name: displayName,
@@ -1334,17 +1323,12 @@ export const useStore = create<AppState>((set, get) => ({
             xp: 0,
             level: 1,
             streak: 0
-          })
+          }, { onConflict: 'id' })
           .select()
           .single();
         
         if (insertError) {
-          console.error('Insert profile failed:', insertError);
-          // If insert failed due to duplicate key, try fetching again
-          if (insertError.code === '23505') {
-            const { data: retryProfile } = await supabase.from('profiles').select('*').eq('id', userId).single();
-            return retryProfile;
-          }
+          console.error('Upsert profile failed:', insertError);
           throw insertError;
         }
         return newProfile;
