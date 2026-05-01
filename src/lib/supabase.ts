@@ -13,8 +13,21 @@ export const isSupabaseConfigured = () => {
   return !!supabaseUrl && !!supabaseAnonKey && supabaseUrl !== 'your-project-url';
 };
 
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out. Please try again.`)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timeoutId!);
+  }
+};
+
 export const uploadMedia = async (file: File, bucket: string = 'post-images') => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await withTimeout(supabase.auth.getSession(), 10000, 'Checking your session');
   if (!session?.user) {
     throw new Error('You must be signed in to upload images.');
   }
@@ -35,12 +48,16 @@ export const uploadMedia = async (file: File, bucket: string = 'post-images') =>
     throw new Error('File size exceeds 10MB limit');
   }
 
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false
-    });
+  const { error } = await withTimeout(
+    supabase.storage
+      .from(bucket)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      }),
+    30000,
+    'Media upload'
+  );
 
   if (error) {
     console.error('Storage Upload Error:', error);

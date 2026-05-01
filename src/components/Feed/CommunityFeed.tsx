@@ -496,7 +496,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useStore();
+  const { user, addToast } = useStore();
 
   useEffect(() => {
     if (mentionSearch && mentionSearch.query.length >= 1) {
@@ -609,6 +609,11 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
       }
     } catch (err) {
       console.error('Submission failed:', err);
+      addToast({
+        type: 'error',
+        title: 'Post failed',
+        description: err instanceof Error ? err.message : 'Could not finish uploading this post.'
+      });
     } finally {
       setIsSubmitting(false);
     }

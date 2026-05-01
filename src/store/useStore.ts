@@ -65,6 +65,19 @@ function normalizePostTag(tag: string) {
   return tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 }
 
+async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out. Please try again.`)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timeoutId!);
+  }
+}
+
 export const useStore = create<AppState>((set, get) => ({
   user: {
     id: undefined,
@@ -1145,22 +1158,26 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       console.log('Attempting to add post for user:', userId);
       // 0. Ensure profile exists
-      await get().ensureCurrentUserProfile();
+      await withTimeout(get().ensureCurrentUserProfile(), 10000, 'Preparing your profile');
 
       // 1. Insert core post data
       console.log('Inserting post data...', post);
-      const { data: postData, error: postError } = await supabase
-        .from('posts')
-        .insert({
-          user_id: userId,
-          type: post.type,
-          caption: post.caption,
-          content: post.content || '',
-          visibility: post.visibility || 'public',
-          metadata: post.metadata || {}
-        })
-        .select()
-        .single();
+      const { data: postData, error: postError } = await withTimeout<any>(
+        supabase
+          .from('posts')
+          .insert({
+            user_id: userId,
+            type: post.type,
+            caption: post.caption,
+            content: post.content || '',
+            visibility: post.visibility || 'public',
+            metadata: post.metadata || {}
+          })
+          .select()
+          .single(),
+        15000,
+        'Creating post'
+      );
 
       if (postError) {
         if (postError.message.includes('public.posts')) {
@@ -1175,14 +1192,18 @@ export const useStore = create<AppState>((set, get) => ({
       // 2. Insert Media
       if (post.media && post.media.length > 0) {
         console.log('Inserting media...', post.media);
-        const { error: mediaError } = await supabase
-          .from('post_media')
-          .insert(post.media.map((m: any) => ({
-            post_id: postId,
-            media_url: m.url,
-            media_type: m.type,
-            storage_path: m.storagePath || null
-          })));
+        const { error: mediaError } = await withTimeout<any>(
+          supabase
+            .from('post_media')
+            .insert(post.media.map((m: any) => ({
+              post_id: postId,
+              media_url: m.url,
+              media_type: m.type,
+              storage_path: m.storagePath || null
+            }))),
+          10000,
+          'Attaching media'
+        );
         if (mediaError) {
           console.error('Media insertion error:', mediaError);
           // Don't throw here? Maybe media failed but post is okay. 
@@ -1196,12 +1217,16 @@ export const useStore = create<AppState>((set, get) => ({
         const uniqueTags = Array.from(new Set(post.tags.map((t: string) => normalizePostTag(t)).filter(Boolean)));
         if (uniqueTags.length > 0) {
           console.log('Inserting tags...', uniqueTags);
-          const { error: tagsError } = await supabase
-            .from('post_tags')
-            .insert(uniqueTags.map((t: string) => ({
-              post_id: postId,
-              tag: t
-            })));
+          const { error: tagsError } = await withTimeout<any>(
+            supabase
+              .from('post_tags')
+              .insert(uniqueTags.map((t: string) => ({
+                post_id: postId,
+                tag: t
+              }))),
+            10000,
+            'Saving hashtags'
+          );
           if (tagsError) {
             console.error('Tags insertion error:', tagsError);
              // Not critical, but good to know
@@ -1212,12 +1237,16 @@ export const useStore = create<AppState>((set, get) => ({
       // 4. Insert Mentions
       if (post.mentions && post.mentions.length > 0) {
         console.log('Inserting mentions...', post.mentions);
-        const { error: mentionsError } = await supabase
-          .from('post_mentions')
-          .insert(post.mentions.map((m: any) => ({
-            post_id: postId,
-            mentioned_user_id: m.userId
-          })));
+        const { error: mentionsError } = await withTimeout<any>(
+          supabase
+            .from('post_mentions')
+            .insert(post.mentions.map((m: any) => ({
+              post_id: postId,
+              mentioned_user_id: m.userId
+            }))),
+          10000,
+          'Saving mentions'
+        );
         if (mentionsError) {
           console.error('Mentions insertion error:', mentionsError);
         }
@@ -1232,7 +1261,9 @@ export const useStore = create<AppState>((set, get) => ({
 
       // Refresh feed
       console.log('Refreshing feed...');
-      await get().fetchPosts('latest');
+      get().fetchPosts('latest').catch((error) => {
+        console.error('Failed to refresh feed after posting:', error);
+      });
       
       get().addToast({
         type: 'success',
