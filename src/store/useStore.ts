@@ -240,7 +240,6 @@ export const useStore = create<AppState>((set, get) => ({
 
         if (data.onboarded) {
           localStorage.setItem('visnova_onboarded_v2', 'true');
-          get().fetchDashboardData();
         }
       } else {
         const newProfile = await get().ensureCurrentUserProfile();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
@@ -62,7 +62,40 @@ export default function ProfilePage() {
     avatar: currentUser.avatar
   });
 
-  const targetId = (selectedProfileId === 'me' || !selectedProfileId) ? (session?.user?.id || currentUser.id) : selectedProfileId;
+  const targetId = useMemo(
+    () => (selectedProfileId === 'me' || !selectedProfileId) ? (session?.user?.id || currentUser.id) : selectedProfileId,
+    [selectedProfileId, session?.user?.id, currentUser.id]
+  );
+
+  const mapProfilePost = (p: any): Post => ({
+    id: p.id,
+    userId: p.user_id,
+    author: {
+      id: p.author?.id || p.user_id,
+      name: p.author?.display_name || p.author?.full_name || 'Explorer',
+      avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
+      handle: `@${p.author?.username || 'user'}`
+    },
+    caption: p.caption,
+    content: p.content || '',
+    timestamp: new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+    createdAt: new Date(p.created_at).getTime(),
+    likes: p.likes?.[0]?.count || 0,
+    comments: p.comment_count?.[0]?.count || 0,
+    saves: p.saves?.[0]?.count || 0,
+    isLiked: false,
+    isSaved: false,
+    type: p.type || 'update',
+    visibility: p.visibility || 'public',
+    media: p.media?.map((m: any) => ({
+      id: m.id,
+      url: m.media_url,
+      type: m.media_type
+    })) || [],
+    tags: p.post_tags?.map((t: any) => t.tag) || [],
+    metadata: p.metadata,
+    stats: p.stats
+  });
 
   const fetchProfileData = async () => {
     if (!targetId) {
@@ -80,10 +113,26 @@ export default function ProfilePage() {
         .from('profiles')
         .select('*')
         .eq('id', targetId)
-        .single();
+        .maybeSingle();
       
       if (profileError) throw profileError;
-      setProfile(profileData);
+      if (!profileData && targetId === session?.user?.id) {
+        setProfile({
+          id: targetId,
+          email: currentUser.email,
+          full_name: currentUser.name,
+          display_name: currentUser.name,
+          username: currentUser.username,
+          avatar_url: currentUser.avatar,
+          bio: currentUser.bio,
+          role: currentUser.role,
+          level: currentUser.level,
+          streak: currentUser.streak,
+          created_at: new Date().toISOString()
+        });
+      } else {
+        setProfile(profileData);
+      }
 
       // Fetch Follow Status
       if (selectedProfileId !== 'me' && session?.user) {
@@ -113,12 +162,27 @@ export default function ProfilePage() {
         .order('created_at', { ascending: false });
       setMilestones(milestoneData || []);
 
-      // Filter Posts from store
-      const filtered = allPosts.filter(p => p.userId === targetId);
-      setProfilePosts(filtered);
+      const { data: postData, error: postError } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          author:profiles(*),
+          likes:post_likes(count),
+          saves:saved_posts(count),
+          comment_count:comments(count),
+          media:post_media(*),
+          post_tags(*)
+        `)
+        .eq('user_id', targetId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (postError) throw postError;
+      setProfilePosts((postData || []).map(mapProfilePost));
 
     } catch (err) {
       console.error('Error fetching profile:', err);
+      setProfilePosts(allPosts.filter(p => p.userId === targetId));
       // If profile not found, we shouldn't be stuck forever
       setIsLoading(false);
     } finally {
@@ -133,7 +197,7 @@ export default function ProfilePage() {
       return;
     }
     fetchProfileData();
-  }, [targetId, allPosts, session?.user]);
+  }, [targetId, session?.user?.id]);
 
   const setActiveTab = (tab: string) => {
     setSearchParams({ tab });

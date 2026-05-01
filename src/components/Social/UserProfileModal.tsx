@@ -24,28 +24,49 @@ export default function UserProfileModal() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!selectedProfileId) return;
-      setIsLoading(true);
       const targetId = selectedProfileId === 'me' ? session?.user?.id : selectedProfileId;
+      if (!targetId) {
+        setProfile(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
       
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', targetId)
-          .single();
+          .maybeSingle();
         
         if (error) throw error;
-        setProfile(data);
+        if (!data && targetId === session?.user?.id) {
+          setProfile({
+            id: targetId,
+            email: currentUser.email,
+            full_name: currentUser.name,
+            display_name: currentUser.name,
+            username: currentUser.username,
+            avatar_url: currentUser.avatar,
+            bio: currentUser.bio,
+            role: currentUser.role,
+            level: currentUser.level,
+            streak: currentUser.streak,
+          });
+        } else {
+          setProfile(data);
+        }
       } catch (err) {
         console.error('Error fetching modal profile:', err);
+        setProfile(null);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchProfile();
-  }, [selectedProfileId, session?.user?.id]);
+  }, [selectedProfileId, session?.user?.id, currentUser]);
 
   if (!selectedProfileId) return null;
 
