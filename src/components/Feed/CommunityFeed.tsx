@@ -506,6 +506,77 @@ export default function CommunityFeed() {
   );
 }
 
+const rgbToHex = (r: number, g: number, b: number) =>
+  `#${[r, g, b].map(value => value.toString(16).padStart(2, '0')).join('')}`;
+
+const extractDominantColors = (file: File, limit = 5): Promise<string[]> => {
+  return new Promise((resolve) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) {
+          resolve([]);
+          return;
+        }
+
+        const size = 80;
+        const ratio = Math.min(size / image.width, size / image.height, 1);
+        canvas.width = Math.max(1, Math.round(image.width * ratio));
+        canvas.height = Math.max(1, Math.round(image.height * ratio));
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        const buckets = new Map<string, { count: number, r: number, g: number, b: number }>();
+
+        for (let index = 0; index < pixels.length; index += 16) {
+          const alpha = pixels[index + 3];
+          if (alpha < 128) continue;
+          const r = pixels[index];
+          const g = pixels[index + 1];
+          const b = pixels[index + 2];
+          if (r > 245 && g > 245 && b > 245) continue;
+          if (r < 10 && g < 10 && b < 10) continue;
+
+          const bucketKey = `${Math.round(r / 32) * 32}-${Math.round(g / 32) * 32}-${Math.round(b / 32) * 32}`;
+          const existing = buckets.get(bucketKey) || { count: 0, r: 0, g: 0, b: 0 };
+          existing.count += 1;
+          existing.r += r;
+          existing.g += g;
+          existing.b += b;
+          buckets.set(bucketKey, existing);
+        }
+
+        const colors = Array.from(buckets.values())
+          .sort((a, b) => b.count - a.count)
+          .slice(0, limit)
+          .map(bucket => rgbToHex(
+            Math.round(bucket.r / bucket.count),
+            Math.round(bucket.g / bucket.count),
+            Math.round(bucket.b / bucket.count)
+          ));
+
+        resolve(colors);
+      } catch (error) {
+        console.warn('Dominant color extraction failed:', error);
+        resolve([]);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve([]);
+    };
+
+    image.src = url;
+  });
+};
+
 function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: any) => Promise<boolean> }) {
   const [content, setContent] = useState('');
   const [caption, setCaption] = useState('');
@@ -606,10 +677,12 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
       const uploadedMedia = [];
       for (const img of images) {
         const result = await uploadMedia(img.file, 'post-images', session?.user?.id);
+        const dominantColors = await extractDominantColors(img.file);
         uploadedMedia.push({
           url: result.publicUrl,
           type: 'image' as const,
-          storagePath: result.filePath
+          storagePath: result.filePath,
+          dominantColors
         });
       }
 
@@ -625,7 +698,13 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
         media: uploadedMedia,
         tags,
         mentions: finalMentions,
-        metadata: (type === 'achievement' || type === 'milestone') ? { title, date } : undefined
+        metadata: {
+          ...((type === 'achievement' || type === 'milestone') ? { title, date } : {}),
+          imageDominantColors: uploadedMedia.map(media => ({
+            url: media.url,
+            colors: media.dominantColors
+          }))
+        }
       });
 
       if (success) {

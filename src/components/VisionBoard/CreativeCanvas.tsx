@@ -8,7 +8,6 @@ import {
 import { cn } from '../../lib/utils';
 import { 
   X, 
-  GripVertical, 
   Type, 
   Link as LinkIcon, 
   FileText, 
@@ -20,9 +19,7 @@ import {
   ArrowRight,
   Maximize2,
   Trash2,
-  Lock,
-  MoreVertical,
-  CheckSquare
+  MoreVertical
 } from 'lucide-react';
 
 interface CreativeCanvasProps {
@@ -30,6 +27,25 @@ interface CreativeCanvasProps {
   updateVision: (id: string, updates: Partial<Vision>) => void;
   onActiveChange?: (active: boolean) => void;
 }
+
+const STICKER_GALLERY = [
+  { label: 'Rocket', value: '\u{1F680}', color: '#fee2e2' },
+  { label: 'Spark', value: '\u2728', color: '#fef3c7' },
+  { label: 'Target', value: '\u{1F3AF}', color: '#dbeafe' },
+  { label: 'Idea', value: '\u{1F4A1}', color: '#fef9c3' },
+  { label: 'Fire', value: '\u{1F525}', color: '#ffedd5' },
+  { label: 'Growth', value: '\u{1F331}', color: '#dcfce7' },
+  { label: 'Star', value: '\u2B50', color: '#fef3c7' },
+  { label: 'Heart', value: '\u{1F49C}', color: '#ede9fe' },
+  { label: 'Check', value: '\u2705', color: '#dcfce7' },
+  { label: 'Warning', value: '\u26A0\uFE0F', color: '#fef3c7' },
+  { label: 'Money', value: '\u{1F4B8}', color: '#dcfce7' },
+  { label: 'Mind', value: '\u{1F9E0}', color: '#fce7f3' },
+  { label: 'Build', value: '\u{1F6E0}\uFE0F', color: '#e5e7eb' },
+  { label: 'Time', value: '\u23F3', color: '#e0f2fe' },
+  { label: 'Win', value: '\u{1F3C6}', color: '#fef3c7' },
+  { label: 'Flag', value: '\u{1F6A9}', color: '#fee2e2' }
+];
 
 export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVision, onActiveChange }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -41,6 +57,22 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   const addElement = (element: VisionElement) => {
     updateVision(vision.id, { elements: [...elements, element] });
+  };
+
+  const addSticker = (sticker: typeof STICKER_GALLERY[number], x = 2500, y = 2500) => {
+    addElement({
+      id: Math.random().toString(36).substring(7),
+      type: 'emoji',
+      content: sticker.value,
+      x,
+      y,
+      width: 96,
+      height: 96,
+      metadata: {
+        title: sticker.label,
+        color: sticker.color
+      }
+    });
   };
 
   const updateElement = (id: string, updates: Partial<VisionElement>) => {
@@ -100,6 +132,19 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setTempConnectorEnd(null);
   };
 
+  const getCanvasPointFromEvent = (e: React.DragEvent) => {
+    const bounds = e.currentTarget.getBoundingClientRect();
+    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
+    const scale = transformState?.scale || 1;
+    const positionX = transformState?.positionX || 0;
+    const positionY = transformState?.positionY || 0;
+
+    return {
+      x: (e.clientX - bounds.left - positionX) / scale,
+      y: (e.clientY - bounds.top - positionY) / scale
+    };
+  };
+
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
     if (linkingFromId && tempConnectorEnd) {
       // We need to account for zooming and panning if we want accuracy, 
@@ -110,6 +155,17 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   const handleCanvasDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    const dropPoint = getCanvasPointFromEvent(e);
+    const stickerPayload = e.dataTransfer.getData('application/x-visnova-sticker');
+    if (stickerPayload) {
+      try {
+        addSticker(JSON.parse(stickerPayload), dropPoint.x - 48, dropPoint.y - 48);
+        return;
+      } catch (error) {
+        console.warn('Sticker payload could not be read:', error);
+      }
+    }
+
     const file = Array.from(e.dataTransfer.files || []).find(item => item.type.startsWith('image/'));
     if (!file) return;
 
@@ -121,8 +177,8 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         id: Math.random().toString(36).substring(7),
         type: 'image',
         content: result,
-        x: 2500,
-        y: 2500,
+        x: dropPoint.x - 160,
+        y: dropPoint.y - 120,
         metadata: { title: file.name }
       });
     };
@@ -216,6 +272,32 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
               <div className="bg-card/80 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
                 <ControlButton onClick={() => resetTransform()} icon={<Maximize2 size={18} />} label="Reset View" />
                 <ControlButton onClick={() => centerView()} icon={<Target size={18} />} label="Center" />
+              </div>
+            </div>
+            <div className="absolute left-6 top-6 z-40 w-72 bg-card/90 backdrop-blur-xl border border-card-border rounded-2xl shadow-2xl p-4 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent">Graphics Library</p>
+                  <h3 className="text-sm font-black text-text-main uppercase tracking-tight">Stickers</h3>
+                </div>
+                <span className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest">Drag or click</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {STICKER_GALLERY.map(sticker => (
+                  <button
+                    key={sticker.label}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData('application/x-visnova-sticker', JSON.stringify(sticker));
+                      event.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    onClick={() => addSticker(sticker)}
+                    className="aspect-square rounded-xl border border-card-border bg-surface-muted hover:border-accent hover:bg-accent/5 transition-all text-2xl flex items-center justify-center shadow-sm active:scale-95"
+                    title={sticker.label}
+                  >
+                    {sticker.value}
+                  </button>
+                ))}
               </div>
             </div>
           </>
@@ -429,6 +511,16 @@ const ElementContent: React.FC<{ element: VisionElement }> = ({ element }) => {
              <Quote size={18} className="text-black" />
              <span className="text-[10px] font-black uppercase tracking-widest text-black">Note</span>
           </div>
+        </div>
+      );
+    case 'emoji':
+      return (
+        <div
+          className="w-24 h-24 rounded-3xl border border-card-border shadow-2xl flex items-center justify-center text-5xl bg-card"
+          style={{ backgroundColor: element.metadata?.color || '#fff' }}
+          title={element.metadata?.title || 'Sticker'}
+        >
+          {element.content}
         </div>
       );
     case 'image':
