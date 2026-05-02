@@ -278,7 +278,7 @@ export default function NotesSystem() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#fcfcfc] overflow-hidden relative">
         {/* Top Header - Reduced size and condensed content */}
-        {!isJournalFullView && (
+        {!isJournalFullView && activeTab === 'library' && (
           <header className={cn(
             "flex items-center justify-between px-8 md:px-12 border-b border-card-border/30 bg-white/50 backdrop-blur-sm shrink-0 transition-all duration-500",
             activeTab === 'journal' ? "h-20" : "h-28"
@@ -328,7 +328,7 @@ export default function NotesSystem() {
         {/* Content Section */}
         <div className={cn(
           "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
-          isJournalFullView ? "p-0" : "px-8 md:px-12 py-10"
+          isJournalFullView ? "p-0" : activeTab === 'journal' ? "px-4 md:px-8 py-4" : "px-8 md:px-12 py-10"
         )}>
           <AnimatePresence mode="wait">
             {selectedNote ? (
@@ -341,7 +341,7 @@ export default function NotesSystem() {
             ) : (
               <div className={cn(
                 "mx-auto transition-all duration-700",
-                isJournalFullView ? "max-w-none h-full" : "max-w-[1600px] space-y-16"
+                isJournalFullView ? "max-w-none h-full" : activeTab === 'journal' ? "max-w-[1800px] space-y-6" : "max-w-[1600px] space-y-16"
               )}>
                 {activeTab === 'library' && (
                   <section className="space-y-8">
@@ -392,10 +392,10 @@ export default function NotesSystem() {
                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div className="space-y-1">
                           <h3 className="text-xl font-black text-text-main tracking-tight uppercase">
-                            {activeTab === 'library' ? 'Work Records' : 'Chronicle'}
+                            {activeTab === 'library' ? 'Work Records' : 'JOURNAL'}
                           </h3>
                           <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">
-                            {activeTab === 'library' ? 'Project documentation' : 'Recursive memory loop'}
+                            {activeTab === 'library' ? 'Project documentation' : 'Daily writing space'}
                           </p>
                         </div>
                         <div className="flex items-center gap-4 self-start sm:self-auto">
@@ -448,7 +448,7 @@ export default function NotesSystem() {
                               content,
                               note_type: 'journal',
                               journal_date: format(selectedDate, 'yyyy-MM-dd'),
-                              mood: updates?.mood || '✍️',
+                              mood: updates?.mood || '',
                               ...updates
                             });
                           }
@@ -531,7 +531,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   const [pages, setPages] = useState<string[]>((entry?.content || '').split(JOURNAL_PAGE_BREAK));
   const [currentPage, setCurrentPage] = useState(0);
   const [title, setTitle] = useState(entry?.title || '');
-  const [mood, setMood] = useState(entry?.mood || '✍️');
+  const [mood, setMood] = useState(entry?.mood || '');
   const [location, setLocation] = useState(entry?.location || '');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(entry?.updatedAt || null);
@@ -543,7 +543,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
     setPages(nextPages.length > 0 ? nextPages : ['']);
     setCurrentPage(0);
     setTitle(entry?.title || '');
-    setMood(entry?.mood || '✍️');
+    setMood(entry?.mood || '');
     setLocation(entry?.location || '');
     setLastSaved(entry?.updatedAt || null);
   }, [entry, selectedDate]);
@@ -833,18 +833,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
 
             {/* Metadata & Actions */}
             <div className="pt-8 border-t border-card-border/30 space-y-8">
-              <div className="flex flex-wrap items-center gap-3">
-                 <div className="flex gap-2 bg-surface-muted p-1 rounded-xl border border-card-border/50">
-                    {['😊', '🚀', '🧠', '🔥', '💪'].map(e => (
-                      <button 
-                        key={e} 
-                        onClick={() => setMood(e)}
-                        className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-all", mood === e ? "bg-white shadow-sm scale-110" : "opacity-40 hover:opacity-100 hover:bg-white/50")}
-                      >
-                        {e}
-                      </button>
-                    ))}
-                 </div>
+               <div className="flex flex-wrap items-center gap-3">
                  <div className="flex items-center gap-2 px-4 h-12 bg-surface-muted rounded-xl border border-card-border/50">
                     <MapPin size={14} className="text-text-secondary/40" />
                     <input 
@@ -1204,25 +1193,7 @@ function NoteEditor({ note, onClose, updateNote }: { note: Note, onClose: () => 
       <div className="flex-1 overflow-y-auto custom-scrollbar pt-12 pb-24 px-10">
         <div className="max-w-3xl mx-auto space-y-12">
           {note.note_type === 'journal' && (
-            <div className="flex items-center gap-4">
-               <div className="w-16 h-16 rounded-2xl bg-accent/5 flex items-center justify-center text-3xl">
-                 {note.mood || '✍️'}
-               </div>
-               <div className="space-y-1">
-                 <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{format(note.createdAt, 'EEEE, MMM dd')}</h4>
-                 <div className="flex gap-2">
-                    {['😊', '🚀', '🧠', '🔥', '🌊'].map(emoji => (
-                      <button 
-                        key={emoji} 
-                        onClick={() => updateNote(note.id, { mood: emoji })}
-                        className={cn("w-8 h-8 rounded-lg text-sm flex items-center justify-center transition-all", note.mood === emoji ? "bg-accent/10 scale-110 shadow-sm" : "hover:bg-[#fafafa]")}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                 </div>
-               </div>
-            </div>
+            <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{format(note.createdAt, 'EEEE, MMM dd')}</h4>
           )}
 
           <input
