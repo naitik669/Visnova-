@@ -43,6 +43,7 @@ import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { CommentThreadModal, ImageLightbox, PostEditModal } from '../Feed/CommunityFeed';
 import VerifiedBadge from '../VerifiedBadge';
+import { notificationService } from '../../services/notificationService';
 
 export default function ProfilePage() {
   const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow, fetchProfileStats } = useStore();
@@ -1035,6 +1036,14 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
               setIsLiked(wasLiked);
               setLikeCount(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1));
               useStore.getState().addToast({ type: 'error', title: 'Like failed', description: 'Could not update this like.' });
+            } else if (!wasLiked && post.userId !== currentUserId) {
+              await notificationService.send({
+                userId: post.userId,
+                actorId: currentUserId,
+                type: 'like',
+                postId: post.id,
+                message: 'liked your post'
+              });
             }
           }}
           className={cn(
@@ -1078,6 +1087,14 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
             if (error) {
               setIsSaved(wasSaved);
               useStore.getState().addToast({ type: 'error', title: 'Save failed', description: 'Could not update saved posts.' });
+            } else if (!wasSaved && post.userId !== currentUserId) {
+              await notificationService.send({
+                userId: post.userId,
+                actorId: currentUserId,
+                type: 'save',
+                postId: post.id,
+                message: 'saved your post'
+              });
             }
           }}
           className={cn(

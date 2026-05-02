@@ -178,7 +178,7 @@ export default function NotesSystem() {
   return (
     <div className={cn(
       "flex bg-[#fcfcfc] transition-all duration-700 font-sans relative overflow-hidden",
-      isJournalFullView ? "h-screen fixed inset-0 z-[100]" : "h-[calc(100vh-7rem)]"
+      isJournalFullView ? "h-screen fixed inset-0 z-[100]" : "h-full min-h-[calc(100vh-3rem)]"
     )}>
       {/* 1. Left Support Sidebar - Hidden with animation on Journal or Full View */}
       <AnimatePresence>
@@ -636,7 +636,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   return (
     <div className={cn(
       "mx-auto transition-all duration-700 font-sans",
-      fullView ? "w-full h-screen bg-[#fcfcfc] overflow-hidden" : "max-w-6xl py-4"
+      fullView ? "w-full h-screen bg-[#fcfcfc] overflow-hidden" : "w-full max-w-none py-4"
     )}>
       {fullView && (
         <div className="h-16 flex items-center justify-between px-10 border-b border-card-border/30 bg-white/50 backdrop-blur-md">
@@ -1218,7 +1218,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="h-full flex flex-col bg-white overflow-hidden rounded-[2.5rem]"
+      className="fixed inset-0 z-[120] flex flex-col bg-white overflow-hidden"
     >
       <div className="h-20 flex items-center justify-between px-8 border-b border-[#f9f9f9] shrink-0">
          <div className="flex items-center gap-6">
@@ -1248,8 +1248,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pt-12 pb-24 px-10">
-        <div className="max-w-3xl mx-auto space-y-12">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pt-12 pb-24 px-8 md:px-16">
+        <div className="max-w-6xl mx-auto space-y-12">
           {note.note_type === 'journal' && (
             <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{format(note.createdAt, 'EEEE, MMM dd')}</h4>
           )}
@@ -1268,7 +1268,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               e.target.style.height = 'auto';
               e.target.style.height = e.target.scrollHeight + 'px';
             }}
-            className="w-full text-lg text-[#666] bg-transparent border-none focus:outline-none resize-none placeholder:text-[#eee] leading-loose font-medium min-h-[300px]"
+            className="w-full text-lg text-[#666] bg-transparent border-none focus:outline-none resize-none placeholder:text-[#eee] leading-loose font-medium min-h-[60vh]"
             placeholder="Log details..."
             style={{ height: 'auto' }}
           />

@@ -70,7 +70,7 @@ export default function VisionBoard() {
   };
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto space-y-32 animate-in fade-in slide-in-from-bottom-8 duration-1000 pb-60 px-6 sm:px-12 pt-20">
+    <div className="w-full max-w-none mx-auto space-y-24 animate-in fade-in slide-in-from-bottom-8 duration-1000 pb-48 px-2 sm:px-4 pt-8">
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-16">
         <div className="space-y-4 max-w-4xl">
            <div className="flex items-center gap-4 text-accent/60">

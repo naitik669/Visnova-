@@ -10,6 +10,7 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
   const getIcon = (type: string) => {
     switch (type) {
       case 'like': return <Heart size={14} className="text-danger fill-danger" />;
+      case 'save': return <Check size={14} className="text-success" />;
       case 'comment': return <MessageCircle size={14} className="text-accent" />;
       case 'follow': return <UserPlus size={14} className="text-success" />;
       case 'reply': return <Reply size={14} className="text-warning" />;
@@ -74,7 +75,7 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
                      <div className="flex-1 text-left">
                         <p className="text-[11px] font-semibold text-text-main">
                            <span className="font-black uppercase tracking-widest mr-1">{n.actor?.display_name || 'System'}</span>
-                           {n.content || 'interacted with you'}
+                           {n.message || n.content || 'interacted with you'}
                         </p>
                         <div className="flex items-center gap-2 mt-1.5 opacity-40">
                            <Clock size={10} />

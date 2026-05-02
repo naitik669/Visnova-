@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-export type NotificationType = 'like' | 'comment' | 'follow' | 'mention' | 'reply' | 'achievement';
+export type NotificationType = 'like' | 'save' | 'comment' | 'follow' | 'mention' | 'reply' | 'achievement';
 
 export interface NotificationPayload {
   userId: string;
@@ -26,12 +26,43 @@ export const notificationService = {
           type: payload.type,
           post_id: payload.postId,
           comment_id: payload.commentId,
-          message: payload.message
+          message: payload.message,
+          is_read: false
         });
 
       if (error) throw error;
     } catch (err) {
       console.error('Failed to send notification via notificationService:', err);
+    }
+  },
+
+  async sendMany(payloads: NotificationPayload[]) {
+    const uniquePayloads = Array.from(
+      new Map(
+        payloads
+          .filter(payload => payload.userId && payload.actorId && payload.userId !== payload.actorId)
+          .map(payload => [`${payload.userId}:${payload.actorId}:${payload.type}:${payload.postId || ''}:${payload.commentId || ''}`, payload])
+      ).values()
+    );
+
+    if (uniquePayloads.length === 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .insert(uniquePayloads.map(payload => ({
+          user_id: payload.userId,
+          actor_id: payload.actorId,
+          type: payload.type,
+          post_id: payload.postId,
+          comment_id: payload.commentId,
+          message: payload.message,
+          is_read: false
+        })));
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to send notifications via notificationService:', err);
     }
   },
 

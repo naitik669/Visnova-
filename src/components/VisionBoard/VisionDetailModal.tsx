@@ -233,7 +233,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
   const { updateVision, deleteVision, notes, addNote, shareVision } = useStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('board');
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const [newTask, setNewTask] = useState('');
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);

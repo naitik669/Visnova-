@@ -390,7 +390,7 @@ export default function App() {
               <FloatingTimer />
               <VisionAssistant />
               <main className="flex-1 min-w-0 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
-                <div className="flex-1 p-4 sm:p-6 lg:p-8 xl:p-10 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <div className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/feed" element={<CommunityFeed />} />

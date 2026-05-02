@@ -69,6 +69,55 @@ function normalizeUsernameInput(username: string) {
   return username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '').slice(0, 24);
 }
 
+function extractMentionUsernames(text: string) {
+  return Array.from(new Set((text.match(/@([a-z0-9_]{3,24})/gi) || [])
+    .map(match => normalizeUsernameInput(match.replace('@', '')))
+    .filter(Boolean)));
+}
+
+async function notifyMentionedUsers({
+  actorId,
+  postId,
+  commentId,
+  mentions,
+  message
+}: {
+  actorId: string;
+  postId?: string;
+  commentId?: string;
+  mentions: Array<{ userId?: string; username?: string }>;
+  message: string;
+}) {
+  const mentionedIds = new Set(mentions.map(mention => mention.userId).filter(Boolean) as string[]);
+  const missingUsernames = Array.from(new Set(
+    mentions
+      .filter(mention => !mention.userId && mention.username)
+      .map(mention => normalizeUsernameInput(mention.username || ''))
+      .filter(Boolean)
+  ));
+
+  if (missingUsernames.length > 0) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('username', missingUsernames);
+    if (error) {
+      console.error('Failed to resolve mention notifications:', error);
+    } else {
+      (data || []).forEach((profile: any) => mentionedIds.add(profile.id));
+    }
+  }
+
+  await notificationService.sendMany(Array.from(mentionedIds).map(userId => ({
+    userId,
+    actorId,
+    type: 'mention',
+    postId,
+    commentId,
+    message
+  })));
+}
+
 const defaultUser: AppState['user'] = {
   id: undefined,
   name: 'Explorer',
@@ -1394,6 +1443,10 @@ export const useStore = create<AppState>((set, get) => ({
         }
       }
 
+      const textMentions = extractMentionUsernames(`${post.caption || ''} ${post.content || ''}`)
+        .map(username => ({ username }));
+      const notificationMentions = [...(post.mentions || []), ...textMentions];
+
       // 4. Insert Mentions
       if (post.mentions && post.mentions.length > 0) {
         console.log('Inserting mentions...', post.mentions);
@@ -1410,6 +1463,15 @@ export const useStore = create<AppState>((set, get) => ({
         if (mentionsError) {
           console.error('Mentions insertion error:', mentionsError);
         }
+      }
+
+      if (notificationMentions.length > 0) {
+        await notifyMentionedUsers({
+          actorId: userId,
+          postId,
+          mentions: notificationMentions,
+          message: 'mentioned you in a post'
+        });
       }
 
       const localPost = toLocalPost(postData, { ...post, metadata: postMetadata }, get().user);
@@ -1504,6 +1566,15 @@ export const useStore = create<AppState>((set, get) => ({
             .insert(nextMentions.map(mention => ({ post_id: id, mentioned_user_id: mention.userId })));
           if (insertMentionsError) throw insertMentionsError;
         }
+
+        const textMentions = extractMentionUsernames(`${updates.caption || ''} ${updates.content || ''}`)
+          .map(username => ({ username }));
+        await notifyMentionedUsers({
+          actorId: userId,
+          postId: id,
+          mentions: [...nextMentions, ...textMentions],
+          message: 'mentioned you in an updated post'
+        });
       }
 
       get().addToast({ type: 'success', title: 'Post updated', description: 'Your changes are live.' });
@@ -2208,7 +2279,7 @@ export const useStore = create<AppState>((set, get) => ({
         if (error) throw error;
         // Send Notification
         if (post.userId !== userId) {
-          notificationService.send({
+          await notificationService.send({
             userId: post.userId,
             actorId: userId,
             type: 'like',
@@ -2259,6 +2330,15 @@ export const useStore = create<AppState>((set, get) => ({
       } else {
         const { error } = await supabase.from('saved_posts').insert({ post_id: id, user_id: userId });
         if (error) throw error;
+        if (post.userId !== userId) {
+          await notificationService.send({
+            userId: post.userId,
+            actorId: userId,
+            type: 'save',
+            postId: id,
+            message: 'saved your post'
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to toggle save:', err);
@@ -2303,13 +2383,24 @@ export const useStore = create<AppState>((set, get) => ({
       const { posts } = get();
       const post = posts.find(p => p.id === postId);
       if (post && post.userId !== userId) {
-        notificationService.send({
+        await notificationService.send({
           userId: post.userId,
           actorId: userId,
           type: parentId ? 'reply' : 'comment',
           postId,
           commentId: data.id,
           message: parentId ? 'replied to your comment' : 'commented on your post'
+        });
+      }
+
+      const mentionUsernames = extractMentionUsernames(trimmedContent);
+      if (mentionUsernames.length > 0) {
+        await notifyMentionedUsers({
+          actorId: userId,
+          postId,
+          commentId: data.id,
+          mentions: mentionUsernames.map(username => ({ username })),
+          message: 'mentioned you in a comment'
         });
       }
 
@@ -2368,7 +2459,7 @@ export const useStore = create<AppState>((set, get) => ({
           }
         }));
         // Notify
-        notificationService.send({
+        await notificationService.send({
           userId: followingId,
           actorId: userId,
           type: 'follow',
