@@ -1348,11 +1348,117 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  updatePost: async (id: string, updates: Partial<Post>) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'You need to be signed in to edit posts.' });
+      return false;
+    }
+
+    const previousPosts = get().posts;
+    const nextTags = Array.from(new Set((updates.tags || []).map(normalizePostTag).filter(Boolean)));
+    const nextMentions = Array.from(
+      new Map((updates.mentions || []).filter(m => m.userId).map(m => [m.userId, m])).values()
+    );
+    const postUpdates: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (updates.caption !== undefined) postUpdates.caption = updates.caption;
+    if (updates.content !== undefined) postUpdates.content = updates.content;
+    if (updates.type !== undefined) postUpdates.type = updates.type;
+    if (updates.metadata !== undefined) postUpdates.metadata = updates.metadata;
+    if (updates.visibility !== undefined) postUpdates.visibility = updates.visibility;
+
+    set((state) => ({
+      posts: state.posts.map(post => post.id === id ? {
+        ...post,
+        ...updates,
+        tags: updates.tags !== undefined ? nextTags : post.tags,
+        mentions: updates.mentions !== undefined ? nextMentions : post.mentions
+      } : post)
+    }));
+
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .update(postUpdates)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data?.id) throw new Error('Post was not updated. Please refresh and try again.');
+
+      if (updates.tags !== undefined) {
+        const { error: deleteTagsError } = await supabase.from('post_tags').delete().eq('post_id', id);
+        if (deleteTagsError) throw deleteTagsError;
+        if (nextTags.length > 0) {
+          const { error: insertTagsError } = await supabase
+            .from('post_tags')
+            .insert(nextTags.map(tag => ({ post_id: id, tag })));
+          if (insertTagsError) throw insertTagsError;
+        }
+      }
+
+      if (updates.mentions !== undefined) {
+        const { error: deleteMentionsError } = await supabase.from('post_mentions').delete().eq('post_id', id);
+        if (deleteMentionsError) throw deleteMentionsError;
+        if (nextMentions.length > 0) {
+          const { error: insertMentionsError } = await supabase
+            .from('post_mentions')
+            .insert(nextMentions.map(mention => ({ post_id: id, mentioned_user_id: mention.userId })));
+          if (insertMentionsError) throw insertMentionsError;
+        }
+      }
+
+      get().addToast({ type: 'success', title: 'Post updated', description: 'Your changes are live.' });
+      return true;
+    } catch (err) {
+      console.error('Failed to update post:', err);
+      set({ posts: previousPosts });
+      get().addToast({ type: 'error', title: 'Update failed', description: 'Could not update this post. Please try again.' });
+      return false;
+    }
+  },
+
+  archivePost: async (id: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'You need to be signed in to archive posts.' });
+      return false;
+    }
+
+    const previousPosts = get().posts;
+    set((state) => ({ posts: state.posts.filter(post => post.id !== id) }));
+
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .update({ visibility: 'archived', updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data?.id) throw new Error('Post was not archived. Please refresh and try again.');
+
+      get().addToast({ type: 'success', title: 'Post archived', description: 'You can view it from your profile archive.' });
+      return true;
+    } catch (err) {
+      console.error('Failed to archive post:', err);
+      set({ posts: previousPosts });
+      get().addToast({ type: 'error', title: 'Archive failed', description: 'Could not archive this post. Please try again.' });
+      return false;
+    }
+  },
+
   deletePost: async (id: string) => {
     const userId = get().session?.user?.id;
-    const post = get().posts.find(p => p.id === id);
 
-    if (!userId || !post || post.userId !== userId) {
+    if (!userId) {
       get().addToast({ type: 'error', title: 'Delete unavailable', description: 'You can only delete your own posts.' });
       return false;
     }

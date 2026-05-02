@@ -23,7 +23,9 @@ import {
   Loader2,
   Trash2,
   UserPlus,
-  VolumeX
+  VolumeX,
+  Edit3,
+  Archive
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
@@ -311,7 +313,7 @@ export default function CommunityFeed() {
                    value={searchQuery}
                    onChange={(e) => setSearchQuery(e.target.value)}
                    placeholder="Search posts, creators, or topics" 
-                   className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest text-text-main placeholder:text-text-secondary/20 h-10 w-full"
+                   className="bg-transparent border-none outline-none text-sm font-semibold text-text-main placeholder:text-text-secondary/30 h-10 w-full"
                  />
               </div>
             )}
@@ -400,8 +402,8 @@ export default function CommunityFeed() {
                        <div className="flex items-center gap-3">
                          <img src={u.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${u.id}`} className="w-10 h-10 rounded-xl" alt={u.username} />
                          <div>
-                            <p className="text-[11px] font-black text-text-main uppercase">{u.display_name || 'Explorer'}</p>
-                            <p className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest">@{u.username}</p>
+                            <p className="text-sm font-bold text-text-main">{u.display_name || 'Explorer'}</p>
+                            <p className="text-xs font-semibold text-text-secondary/50">@{u.username}</p>
                          </div>
                        </div>
                        <button 
@@ -447,6 +449,8 @@ export default function CommunityFeed() {
                         onOpenThread={() => setSelectedPostForThread(post)}
                         onHashtagClick={handleHashtagClick}
                         onPostDeleted={(postId) => setHashtagPosts(prev => prev.filter(p => p.id !== postId))}
+                        onPostArchived={(postId) => setHashtagPosts(prev => prev.filter(p => p.id !== postId))}
+                        onPostUpdated={(postId, updates) => setHashtagPosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
                         onAuthorMuted={(authorId) => setHashtagPosts(prev => prev.filter(p => p.userId !== authorId))}
                       />
                    ))}
@@ -835,10 +839,116 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   );
 }
 
-function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorMuted }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void, onPostDeleted?: (postId: string) => void, onAuthorMuted?: (authorId: string) => void }) {
-  const { toggleLikePost, toggleSavePost, trackInteraction, session, followingIds, toggleFollow, deletePost, muteUserPosts } = useStore();
+export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: () => void, onSave: (updates: Partial<Post>) => Promise<boolean> }) {
+  const [caption, setCaption] = useState(post.caption || '');
+  const [content, setContent] = useState(post.content || '');
+  const [type, setType] = useState<Post['type']>(post.type || 'update');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!caption.trim() && !content.trim()) return;
+    setIsSaving(true);
+    const tags = Array.from(new Set([...extractHashtags(content), ...extractHashtags(caption)].filter(Boolean)));
+    const mentions = (post.mentions || []).filter(mention =>
+      content.includes(`@${mention.username}`) || caption.includes(`@${mention.username}`)
+    );
+    const success = await onSave({
+      caption,
+      content,
+      type,
+      tags,
+      mentions,
+      metadata: post.metadata
+    });
+    setIsSaving(false);
+    if (success) onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-overlay/80 backdrop-blur-md"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+        className="relative w-full max-w-2xl bg-app-container rounded-[2rem] shadow-2xl overflow-hidden border border-card-border p-6 sm:p-8"
+      >
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
+              <Edit3 size={18} />
+            </div>
+            <h3 className="text-lg font-black text-text-main tracking-tight uppercase font-display">Edit Post</h3>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {(['update', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
+              <button
+                key={t}
+                onClick={() => setType(t)}
+                className={cn(
+                  "px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all shrink-0",
+                  type === t
+                    ? "bg-accent border-accent text-accent-contrast shadow-lg shadow-accent/20"
+                    : "bg-surface-muted border-card-border text-text-secondary opacity-60 hover:opacity-100 hover:border-accent/30"
+                )}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Post caption"
+            className="w-full h-24 bg-card border border-card-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
+          />
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Post content"
+            className="w-full h-44 bg-card border border-card-border rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
+          />
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-card-border/50">
+            <button
+              onClick={onClose}
+              className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-surface-muted transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving || (!caption.trim() && !content.trim())}
+              className="px-8 py-3 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Edit3 size={16} />}
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpdated, onPostArchived, onAuthorMuted }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void, onPostDeleted?: (postId: string) => void, onPostUpdated?: (postId: string, updates: Partial<Post>) => void, onPostArchived?: (postId: string) => void, onAuthorMuted?: (authorId: string) => void }) {
+  const { toggleLikePost, toggleSavePost, trackInteraction, session, followingIds, toggleFollow, deletePost, updatePost, archivePost, muteUserPosts } = useStore();
   const hasTrackedView = useRef(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const currentUserId = session?.user?.id;
   const isOwnPost = post.userId === currentUserId;
   const isFollowingAuthor = followingIds.includes(post.userId);
@@ -957,17 +1067,40 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorM
                 </button>
               )}
               {isOwnPost ? (
-                <button
-                  onClick={async () => {
-                    if (!confirm('Delete this post? This cannot be undone.')) return;
-                    setIsMenuOpen(false);
-                    const deleted = await deletePost(post.id);
-                    if (deleted) onPostDeleted?.(post.id);
-                  }}
-                  className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
-                >
-                   <Trash2 size={14} /> Delete Post
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsEditOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                  >
+                    <Edit3 size={14} /> Edit Post
+                  </button>
+                  {post.visibility !== 'archived' && (
+                    <button
+                      onClick={async () => {
+                        setIsMenuOpen(false);
+                        const archived = await archivePost(post.id);
+                        if (archived) onPostArchived?.(post.id);
+                      }}
+                      className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                    >
+                      <Archive size={14} /> Archive Post
+                    </button>
+                  )}
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Delete this post? This cannot be undone.')) return;
+                      setIsMenuOpen(false);
+                      const deleted = await deletePost(post.id);
+                      if (deleted) onPostDeleted?.(post.id);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                  >
+                     <Trash2 size={14} /> Delete Post
+                  </button>
+                </>
               ) : (
                 <>
                   <button
@@ -1134,6 +1267,19 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorM
             <Bookmark size={20} className={post.isSaved ? "fill-accent" : ""} />
          </button>
       </div>
+      <AnimatePresence>
+        {isEditOpen && (
+          <PostEditModal
+            post={post}
+            onClose={() => setIsEditOpen(false)}
+            onSave={async (updates) => {
+              const updated = await updatePost(post.id, updates);
+              if (updated) onPostUpdated?.(post.id, updates);
+              return updated;
+            }}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

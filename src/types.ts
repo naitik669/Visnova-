@@ -264,6 +264,8 @@ export interface AppState {
   toggleTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
   addPost: (post: any) => Promise<boolean>;
+  updatePost: (id: string, updates: Partial<Post>) => Promise<boolean>;
+  archivePost: (id: string) => Promise<boolean>;
   deletePost: (id: string) => Promise<boolean>;
   muteUserPosts: (userId: string) => Promise<boolean>;
   toggleLikePost: (id: string) => Promise<void>;
@@ -308,7 +310,7 @@ export interface Post {
   isSaved?: boolean;
   isLiked?: boolean;
   type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement';
-  visibility: 'public' | 'private' | 'friends';
+  visibility: 'public' | 'private' | 'friends' | 'archived';
   createdAt?: number;
   media?: {
     id: string;

@@ -36,18 +36,19 @@ import {
   Trophy,
   Flag,
   Users,
-  Trash2
+  Trash2,
+  Archive
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
-import { CommentThreadModal } from '../Feed/CommunityFeed';
+import { CommentThreadModal, PostEditModal } from '../Feed/CommunityFeed';
 
 export default function ProfilePage() {
   const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow } = useStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'achievements' | 'settings';
+  const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'archived' | 'achievements' | 'settings';
   
   const [profile, setProfile] = useState<any>(null);
   const [profilePosts, setProfilePosts] = useState<Post[]>([]);
@@ -70,6 +71,7 @@ export default function ProfilePage() {
     () => (selectedProfileId === 'me' || !selectedProfileId) ? (session?.user?.id || currentUser.id) : selectedProfileId,
     [selectedProfileId, session?.user?.id, currentUser.id]
   );
+  const isOwnProfile = !!targetId && targetId === session?.user?.id;
 
   const mapProfilePost = (p: any): Post => ({
     id: p.id,
@@ -170,7 +172,7 @@ export default function ProfilePage() {
         .order('created_at', { ascending: false });
       setMilestones(milestoneData || []);
 
-      const { data: postData, error: postError } = await supabase
+      let postsQuery = supabase
         .from('posts')
         .select(`
           *,
@@ -185,6 +187,12 @@ export default function ProfilePage() {
         .eq('user_id', targetId)
         .order('created_at', { ascending: false })
         .limit(50);
+
+      if (targetId !== session?.user?.id) {
+        postsQuery = postsQuery.eq('visibility', 'public');
+      }
+
+      const { data: postData, error: postError } = await postsQuery;
 
       if (postError) throw postError;
 
@@ -241,11 +249,13 @@ export default function ProfilePage() {
     setIsFollowing(!isFollowing);
   };
 
+  const visibleProfilePosts = profilePosts.filter(post => post.visibility !== 'archived');
+  const archivedProfilePosts = profilePosts.filter(post => post.visibility === 'archived');
   const savedPosts = allPosts.filter(p => p.isSaved);
 
   const stats = [
     { label: 'Level', value: profile?.level || 1, icon: Trophy, color: 'text-warning' },
-    { label: 'Posts', value: profilePosts.length, icon: MessageSquare, color: 'text-success' },
+    { label: 'Posts', value: visibleProfilePosts.length, icon: MessageSquare, color: 'text-success' },
     { label: 'Streak', value: profile?.streak || 0, icon: Zap, color: 'text-accent' },
     { label: 'Achievements', value: achievements.length, icon: Award, color: 'text-danger' },
   ];
@@ -269,6 +279,7 @@ export default function ProfilePage() {
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'posts', label: 'Posts' },
+    ...(isOwnProfile ? [{ id: 'archived', label: 'Archived' }] : []),
     { id: 'achievements', label: 'Trophies' }
   ];
 
@@ -438,15 +449,17 @@ export default function ProfilePage() {
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50 mb-6 flex items-center gap-2 ml-2">
                   <LayoutGrid size={12} /> Recent Activity
                 </h3>
-                {profilePosts.slice(0, 3).map(post => (
+                {visibleProfilePosts.slice(0, 3).map(post => (
                   <ProfilePostCard
                     key={post.id}
                     post={post}
                     onOpenThread={() => setSelectedPostForThread(post)}
                     onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
+                    onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
+                    onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
                   />
                 ))}
-                {profilePosts.length === 0 && (
+                {visibleProfilePosts.length === 0 && (
                    <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black bg-card rounded-[2.5rem] border border-dashed border-card-border">
                       Frequency quiet
                    </div>
@@ -457,17 +470,43 @@ export default function ProfilePage() {
 
           {activeTab === 'posts' && (
             <div className="max-w-3xl mx-auto space-y-6">
-              {profilePosts.map(post => (
+              {visibleProfilePosts.map(post => (
                 <ProfilePostCard
                   key={post.id}
                   post={post}
                   onOpenThread={() => setSelectedPostForThread(post)}
                   onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
+                  onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
+                  onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
                 />
               ))}
-              {profilePosts.length === 0 && (
+              {visibleProfilePosts.length === 0 && (
                  <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black">
                     No logged broadcasts
+                 </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'archived' && isOwnProfile && (
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="px-2 pb-2 flex items-center gap-3 text-text-secondary/50">
+                <Archive size={14} />
+                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Archived posts</p>
+              </div>
+              {archivedProfilePosts.map(post => (
+                <ProfilePostCard
+                  key={post.id}
+                  post={post}
+                  onOpenThread={() => setSelectedPostForThread(post)}
+                  onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
+                  onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
+                  onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
+                />
+              ))}
+              {archivedProfilePosts.length === 0 && (
+                 <div className="text-center py-24 opacity-30 text-xs uppercase tracking-[0.4em] font-black">
+                    No archived posts
                  </div>
               )}
             </div>
@@ -699,13 +738,14 @@ export default function ProfilePage() {
   );
 }
 
-function ProfilePostCard({ post, onOpenThread, onDeleted }: { post: Post, onOpenThread: () => void, onDeleted?: (postId: string) => void }) {
-  const { deletePost, session } = useStore();
+function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived }: { post: Post, onOpenThread: () => void, onDeleted?: (postId: string) => void, onUpdated?: (postId: string, updates: Partial<Post>) => void, onArchived?: (postId: string) => void }) {
+  const { deletePost, updatePost, archivePost, session } = useStore();
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(!!post.isLiked);
   const [isSaved, setIsSaved] = useState(!!post.isSaved);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const isOwnPost = post.userId === session?.user?.id;
   const currentUserId = session?.user?.id;
 
@@ -771,6 +811,11 @@ function ProfilePostCard({ post, onOpenThread, onDeleted }: { post: Post, onOpen
               <Trophy size={14} /> Achievement Post
             </div>
           )}
+          {post.visibility === 'archived' && (
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-text-main/5 text-text-secondary text-[8px] font-black uppercase tracking-widest border border-card-border">
+              <Archive size={14} /> Archived
+            </div>
+          )}
           <span className="text-[10px] font-black text-text-secondary/30 uppercase tracking-[0.3em] flex items-center gap-2">
              <Clock size={12} /> {post.timestamp}
           </span>
@@ -792,6 +837,27 @@ function ProfilePostCard({ post, onOpenThread, onDeleted }: { post: Post, onOpen
                   exit={{ opacity: 0, scale: 0.96, y: -4 }}
                   className="absolute top-full right-0 mt-2 w-44 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2"
                 >
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsEditOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                  >
+                    <Edit3 size={14} /> Edit Post
+                  </button>
+                  {post.visibility !== 'archived' && (
+                    <button
+                      onClick={async () => {
+                        setIsMenuOpen(false);
+                        const archived = await archivePost(post.id);
+                        if (archived) onArchived?.(post.id);
+                      }}
+                      className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                    >
+                      <Archive size={14} /> Archive Post
+                    </button>
+                  )}
                   <button
                     onClick={async () => {
                       if (!confirm('Delete this post? This cannot be undone.')) return;
@@ -922,6 +988,19 @@ function ProfilePostCard({ post, onOpenThread, onDeleted }: { post: Post, onOpen
           <Bookmark size={20} className={isSaved ? "fill-accent" : ""} />
         </button>
       </div>
+      <AnimatePresence>
+        {isEditOpen && (
+          <PostEditModal
+            post={post}
+            onClose={() => setIsEditOpen(false)}
+            onSave={async (updates) => {
+              const updated = await updatePost(post.id, updates);
+              if (updated) onUpdated?.(post.id, updates);
+              return updated;
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
