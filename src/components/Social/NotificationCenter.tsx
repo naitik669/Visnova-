@@ -32,7 +32,7 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
-            className="absolute top-16 right-0 w-80 sm:w-96 max-h-[80vh] bg-card border border-card-border rounded-[2rem] shadow-2xl z-[101] overflow-hidden flex flex-col"
+            className="fixed left-20 bottom-6 w-80 sm:w-96 max-h-[80vh] bg-card border border-card-border rounded-[2rem] shadow-2xl z-[101] overflow-hidden flex flex-col"
           >
             <div className="p-6 border-b border-card-border flex items-center justify-between bg-surface-muted/30">
                <div className="flex items-center gap-3">

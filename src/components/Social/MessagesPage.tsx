@@ -33,6 +33,19 @@ type ChatMessage = {
 const displayName = (profile?: ProfileLite) => profile?.display_name || profile?.full_name || profile?.username || 'Explorer';
 const avatarFor = (profile?: ProfileLite) => profile?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${profile?.id || 'visnova'}`;
 const cleanProfileSearch = (query: string) => query.trim().replace(/^@/, '');
+const dateKeyFor = (value: string) => new Date(value).toDateString();
+const formatMessageTime = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const formatMessageDate = (value: string) => {
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const shortDate = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (date.toDateString() === today.toDateString()) return `Today, ${shortDate}`;
+  if (date.toDateString() === yesterday.toDateString()) return `Yesterday, ${shortDate}`;
+  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+};
 
 export default function MessagesPage() {
   const { session, addToast } = useStore();
@@ -342,14 +355,30 @@ export default function MessagesPage() {
                   <div className="h-full flex items-center justify-center text-center">
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">No messages yet. Start the thread.</p>
                   </div>
-                ) : messages.map((message) => {
+                ) : messages.map((message, index) => {
                   const isMine = message.user_id === currentUserId;
+                  const previous = messages[index - 1];
+                  const showDateDivider = !previous || dateKeyFor(previous.created_at) !== dateKeyFor(message.created_at);
                   return (
-                    <motion.div key={message.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn('flex', isMine ? 'justify-end' : 'justify-start')}>
-                      <div className={cn('max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed border', isMine ? 'bg-accent text-accent-contrast border-accent' : 'bg-card text-text-main border-card-border')}>
-                        {message.content}
-                      </div>
-                    </motion.div>
+                    <div key={message.id} className="space-y-4">
+                      {showDateDivider && (
+                        <div className="flex items-center gap-3 py-2">
+                          <div className="h-px flex-1 bg-card-border" />
+                          <span className="px-3 py-1 rounded-full bg-card border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary/50">
+                            {formatMessageDate(message.created_at)}
+                          </span>
+                          <div className="h-px flex-1 bg-card-border" />
+                        </div>
+                      )}
+                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn('flex', isMine ? 'justify-end' : 'justify-start')}>
+                        <div className={cn('max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed border', isMine ? 'bg-accent text-accent-contrast border-accent' : 'bg-card text-text-main border-card-border')}>
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                          <p className={cn('mt-2 text-[9px] font-black uppercase tracking-widest', isMine ? 'text-accent-contrast/60 text-right' : 'text-text-secondary/40')}>
+                            {formatMessageTime(message.created_at)}
+                          </p>
+                        </div>
+                      </motion.div>
+                    </div>
                   );
                 })}
               </div>

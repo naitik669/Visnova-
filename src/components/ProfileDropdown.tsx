@@ -44,7 +44,7 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
     { icon: MessageSquare, label: 'Your Posts', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=posts'); onClose(); } },
     { icon: Bookmark, label: 'Saved', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=saved'); onClose(); } },
     { icon: Settings, label: 'Settings', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=settings'); onClose(); } },
-    { icon: Bell, label: 'Notifications', onClick: () => { /* No-op for now */ onClose(); } },
+    { icon: Bell, label: 'Notifications', onClick: () => { window.dispatchEvent(new Event('open-visnova-notifications')); onClose(); } },
     { icon: HelpCircle, label: 'Help / Support', onClick: () => { window.dispatchEvent(new Event('open-visnova-help')); onClose(); } },
   ];
 
@@ -56,7 +56,7 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          className="absolute right-0 top-full mt-2 w-64 bg-card border border-card-border rounded-[1.5rem] shadow-2xl p-2 z-[100] overflow-hidden"
+          className="fixed left-20 bottom-6 w-64 bg-card border border-card-border rounded-[1.5rem] shadow-2xl p-2 z-[100] overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-card-border mb-1">
             <p className="text-sm font-bold text-text-main truncate">{user.name}</p>
