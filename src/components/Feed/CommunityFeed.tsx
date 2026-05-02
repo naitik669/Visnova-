@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Zap,
@@ -41,6 +42,128 @@ const extractHashtags = (text: string) => {
   const matches = text.match(/(^|\s)#([a-zA-Z0-9_-]+)/g) || [];
   return matches.map(tag => normalizeHashtag(tag.trim()));
 };
+
+function DiscoverCommunitiesPreview() {
+  const [communities, setCommunities] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { session, addToast } = useStore();
+  const currentUserId = session?.user?.id;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCommunities = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('communities')
+        .select('*, members:community_members(user_id, role)')
+        .order('created_at', { ascending: false })
+        .limit(4);
+
+      if (cancelled) return;
+      if (error) {
+        console.error('Failed to load community preview:', error);
+        setCommunities([]);
+      } else {
+        setCommunities(data || []);
+      }
+      setIsLoading(false);
+    };
+
+    loadCommunities();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const joinCommunity = async (communityId: string) => {
+    if (!currentUserId) {
+      addToast({ type: 'error', title: 'Login required', description: 'Sign in to join communities.' });
+      return;
+    }
+
+    const { error } = await supabase
+      .from('community_members')
+      .insert({ community_id: communityId, user_id: currentUserId, role: 'member' });
+
+    if (error && error.code !== '23505') {
+      addToast({ type: 'error', title: 'Join failed', description: 'Could not join this community.' });
+      return;
+    }
+
+    setCommunities(prev => prev.map(community => community.id === communityId ? {
+      ...community,
+      members: [
+        ...(community.members || []).filter((member: any) => member.user_id !== currentUserId),
+        { user_id: currentUserId, role: 'member' }
+      ]
+    } : community));
+    addToast({ type: 'success', title: 'Joined community', description: 'Open Community Spaces to start a thread.' });
+  };
+
+  return (
+    <div className="space-y-6 pt-10 border-t border-card-border/30">
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 flex items-center gap-2">
+          <Plus size={12} /> Discover Communities
+        </h3>
+        <Link to="/communities" className="text-[9px] font-black uppercase tracking-widest text-accent hover:text-accent/70 transition-colors">
+          Open Spaces
+        </Link>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div key={index} className="system-card p-6 animate-pulse">
+              <div className="w-28 h-4 bg-card rounded mb-4" />
+              <div className="w-full h-3 bg-card rounded" />
+            </div>
+          ))}
+        </div>
+      ) : communities.length === 0 ? (
+        <div className="system-card p-8 text-center">
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">No real communities yet.</p>
+          <Link to="/communities" className="inline-flex mt-4 h-10 px-5 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest items-center">
+            Create One
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {communities.map(community => {
+            const joined = community.members?.some((member: any) => member.user_id === currentUserId);
+            return (
+              <div key={community.id} className="system-card p-6 flex items-center justify-between group">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-12 h-12 rounded-2xl bg-text-main/5 flex items-center justify-center text-text-secondary shrink-0">
+                    <Users size={24} />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-text-main truncate">{community.name}</h4>
+                    <p className="text-[10px] font-bold text-text-secondary">
+                      {community.members?.length || 0} Members / {community.category || 'General'}
+                    </p>
+                  </div>
+                </div>
+                {joined ? (
+                  <Link to="/communities" className="h-8 px-4 rounded-lg border border-accent/30 text-accent text-[8px] font-black uppercase tracking-widest flex items-center">
+                    Open
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => joinCommunity(community.id)}
+                    className="h-8 px-4 rounded-lg bg-accent text-accent-contrast text-[8px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+                  >
+                    Join
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CommunityFeed() {
   const [activeTab, setActiveTab] = useState<'feed' | 'explore' | 'saved'>('feed');
@@ -457,30 +580,7 @@ export default function CommunityFeed() {
                 </div>
              </div>
 
-             {/* Discover Circles */}
-             <div className="space-y-6 pt-10 border-t border-card-border/30">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 flex items-center gap-2">
-                  <Plus size={12} /> Discover Communities
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   {[1, 2, 3, 4].map(i => (
-                     <div key={`discover-${i}`} className="system-card p-6 flex items-center justify-between group">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 rounded-2xl bg-text-main/5 flex items-center justify-center text-text-secondary">
-                              <Users size={24} />
-                           </div>
-                           <div>
-                              <h4 className="font-bold text-text-main">Circle Theta {i}</h4>
-                              <p className="text-[10px] font-bold text-text-secondary">4/8 Members • 12k Total XP</p>
-                           </div>
-                        </div>
-                        <button className="h-8 px-4 rounded-lg bg-accent text-accent-contrast text-[8px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
-                           Join
-                        </button>
-                     </div>
-                   ))}
-                </div>
-             </div>
+             <DiscoverCommunitiesPreview />
           </div>
         )}
       </div>

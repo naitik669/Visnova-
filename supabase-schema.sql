@@ -358,3 +358,127 @@ CREATE POLICY "System analytics restricted" ON public.analytics_events FOR INSER
 ALTER TABLE public.vision_shares ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public Vision Shares Access" ON public.vision_shares;
 CREATE POLICY "Public Vision Shares Access" ON public.vision_shares FOR ALL USING (true) WITH CHECK (true);
+
+-- COMMUNITY SPACES
+CREATE TABLE IF NOT EXISTS public.communities (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  description TEXT DEFAULT '',
+  category TEXT DEFAULT 'general',
+  icon TEXT DEFAULT 'spark',
+  color TEXT DEFAULT '#7c3aed',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.community_members (
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'moderator', 'member')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (community_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.community_threads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  community_id UUID NOT NULL REFERENCES public.communities(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'discussion' CHECK (kind IN ('discussion', 'achievement', 'question')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.community_thread_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  thread_id UUID NOT NULL REFERENCES public.community_threads(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_communities_owner_id ON public.communities(owner_id);
+CREATE INDEX IF NOT EXISTS idx_community_members_user_id ON public.community_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_community_threads_community_id_created ON public.community_threads(community_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_community_threads_user_id ON public.community_threads(user_id);
+CREATE INDEX IF NOT EXISTS idx_community_thread_messages_thread_id_created ON public.community_thread_messages(thread_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_community_thread_messages_user_id ON public.community_thread_messages(user_id);
+
+ALTER TABLE public.communities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.community_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.community_threads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.community_thread_messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Communities are discoverable" ON public.communities;
+CREATE POLICY "Communities are discoverable" ON public.communities FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Level five users can create communities" ON public.communities;
+CREATE POLICY "Level five users can create communities" ON public.communities FOR INSERT WITH CHECK (
+  auth.uid() = owner_id
+  AND EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE profiles.id = auth.uid()
+      AND COALESCE(profiles.level, 1) >= 5
+  )
+);
+
+DROP POLICY IF EXISTS "Owners can update their communities" ON public.communities;
+CREATE POLICY "Owners can update their communities" ON public.communities FOR UPDATE USING (auth.uid() = owner_id) WITH CHECK (auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Owners can delete their communities" ON public.communities;
+CREATE POLICY "Owners can delete their communities" ON public.communities FOR DELETE USING (auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Community members are visible" ON public.community_members;
+CREATE POLICY "Community members are visible" ON public.community_members FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can join communities" ON public.community_members;
+CREATE POLICY "Users can join communities" ON public.community_members FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can leave communities" ON public.community_members;
+CREATE POLICY "Users can leave communities" ON public.community_members FOR DELETE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Members can read community threads" ON public.community_threads;
+CREATE POLICY "Members can read community threads" ON public.community_threads FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.community_members
+    WHERE community_members.community_id = community_threads.community_id
+      AND community_members.user_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Members can create community threads" ON public.community_threads;
+CREATE POLICY "Members can create community threads" ON public.community_threads FOR INSERT WITH CHECK (
+  auth.uid() = user_id
+  AND EXISTS (
+    SELECT 1 FROM public.community_members
+    WHERE community_members.community_id = community_threads.community_id
+      AND community_members.user_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Thread owners can update threads" ON public.community_threads;
+CREATE POLICY "Thread owners can update threads" ON public.community_threads FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Members can read thread messages" ON public.community_thread_messages;
+CREATE POLICY "Members can read thread messages" ON public.community_thread_messages FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.community_threads
+    JOIN public.community_members ON community_members.community_id = community_threads.community_id
+    WHERE community_threads.id = community_thread_messages.thread_id
+      AND community_members.user_id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Members can send thread messages" ON public.community_thread_messages;
+CREATE POLICY "Members can send thread messages" ON public.community_thread_messages FOR INSERT WITH CHECK (
+  auth.uid() = user_id
+  AND EXISTS (
+    SELECT 1 FROM public.community_threads
+    JOIN public.community_members ON community_members.community_id = community_threads.community_id
+    WHERE community_threads.id = community_thread_messages.thread_id
+      AND community_members.user_id = auth.uid()
+  )
+);

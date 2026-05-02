@@ -24,6 +24,7 @@ import UserProfileModal from './components/Social/UserProfileModal';
 import NotificationCenter from './components/Social/NotificationCenter';
 import ProfilePage from './components/Social/ProfilePage';
 import MessagesPage from './components/Social/MessagesPage';
+import CommunitySpaces from './components/Community/CommunitySpaces';
 import ProfileDropdown from './components/ProfileDropdown';
 import ToastViewport from './components/ToastViewport';
 import { cn } from './lib/utils';
@@ -100,6 +101,7 @@ function Sidebar() {
     { icon: Book, label: 'Journal', path: '/journal' },
     { icon: BookOpen, label: 'Library', path: '/notes' },
     { icon: Users, label: 'Circle', path: '/circle' },
+    { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
     { icon: User, label: 'Profile', path: '/profile' },
     { icon: Clock, label: 'Timeline', path: '/nova' },
@@ -296,6 +298,9 @@ function MobileNav() {
       <Link to="/circle" className={cn(location.pathname === '/circle' ? "text-accent" : "text-text-secondary/50")}>
         <Users size={22} />
       </Link>
+      <Link to="/communities" className={cn(location.pathname === '/communities' ? "text-accent" : "text-text-secondary/50")}>
+        <Globe size={22} />
+      </Link>
       <Link to="/profile" className={cn(location.pathname === '/profile' ? "text-accent" : "text-text-secondary/50")}>
         <User size={22} />
       </Link>
@@ -410,6 +415,7 @@ export default function App() {
                     <Route path="/feed" element={<CommunityFeed />} />
                     <Route path="/vision" element={<VisionBoard />} />
                     <Route path="/circle" element={<Circle />} />
+                    <Route path="/communities" element={<CommunitySpaces />} />
                     <Route path="/messages" element={<MessagesPage />} />
                     <Route path="/notes" element={<NotesSystem />} />
                     <Route path="/journal" element={<NotesSystem />} />
