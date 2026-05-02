@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { getAuthRedirectUrl, supabase, isSupabaseConfigured } from '../lib/supabase';
 import { format } from 'date-fns';
 
 export enum OperationType {
@@ -559,7 +559,11 @@ export const useStore = create<AppState>((set, get) => ({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: getAuthRedirectUrl('/auth/callback'),
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         }
       });
       if (error) throw error;

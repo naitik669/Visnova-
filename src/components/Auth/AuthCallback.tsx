@@ -11,7 +11,12 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const params = new URLSearchParams(window.location.search);
+        const hasOAuthCode = params.has('code');
+        const result = hasOAuthCode
+          ? await supabase.auth.exchangeCodeForSession(window.location.href)
+          : await supabase.auth.getSession();
+        const { data: { session }, error } = result;
         if (error) throw error;
 
         if (session) {

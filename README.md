@@ -12,6 +12,8 @@ Set this value in Vercel environment variables:
 
 ```env
 VITE_APP_URL=https://vis-nova-mx2l.vercel.app
+VITE_SUPABASE_URL=https://mmzlgntkhkeextqjaagi.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
 ```
 
 ## Auth Redirect Setup
@@ -21,7 +23,7 @@ Google OAuth must use Supabase's callback URL, not the Vercel app callback URL.
 Add this in Google Cloud Console -> OAuth Client -> Authorized redirect URIs:
 
 ```text
-https://YOUR-SUPABASE-PROJECT.supabase.co/auth/v1/callback
+https://mmzlgntkhkeextqjaagi.supabase.co/auth/v1/callback
 ```
 
 Add these in Supabase -> Authentication -> URL Configuration -> Redirect URLs:
@@ -29,6 +31,8 @@ Add these in Supabase -> Authentication -> URL Configuration -> Redirect URLs:
 ```text
 https://vis-nova-mx2l.vercel.app/auth/callback
 https://vis-nova-mx2l.vercel.app/onboarding
+http://localhost:3000/auth/callback
+http://localhost:3000/onboarding
 ```
 
 ## Run Locally
@@ -38,6 +42,6 @@ https://vis-nova-mx2l.vercel.app/onboarding
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Copy [.env.example](.env.example) to `.env.local`, then set `VITE_SUPABASE_ANON_KEY` and `GEMINI_API_KEY`
 3. Run the app:
    `npm run dev`

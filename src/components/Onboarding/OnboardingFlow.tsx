@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as Ima
 import { useStore } from '../../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
-import { supabase } from '../../lib/supabase';
+import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
 
@@ -30,12 +30,6 @@ const AVATAR_LIBRARY = [
 ];
 
 const DEFAULT_AVATAR_VALUES = Object.values(DEFAULT_PROFILE_AVATARS);
-
-const getAuthRedirectUrl = (path = '/auth/callback') => {
-  const configuredUrl = import.meta.env.VITE_APP_URL || import.meta.env.VITE_SITE_URL;
-  const baseUrl = (configuredUrl || window.location.origin).replace(/\/$/, '');
-  return `${baseUrl}${path}`;
-};
 
 function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any) {
   const [password, setPassword] = useState('');
@@ -1457,7 +1451,11 @@ export default function OnboardingFlow() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: getAuthRedirectUrl('/auth/callback'),
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         }
       });
       if (error) throw error;

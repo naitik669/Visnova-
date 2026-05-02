@@ -62,6 +62,7 @@ export default function NotesSystem() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isLibrarySidebarHovered, setIsLibrarySidebarHovered] = useState(false);
 
   const journalEntry = useMemo(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -169,14 +170,19 @@ export default function NotesSystem() {
         {!isJournalFullView && activeTab !== 'journal' && (
           <motion.aside 
             initial={{ x: -280, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
+            animate={{ x: 0, opacity: 1, width: isLibrarySidebarHovered ? 256 : 72 }}
             exit={{ x: -280, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="w-16 md:w-64 flex flex-col border-r border-card-border/50 bg-white shrink-0"
+            onMouseEnter={() => setIsLibrarySidebarHovered(true)}
+            onMouseLeave={() => setIsLibrarySidebarHovered(false)}
+            className="flex flex-col border-r border-card-border/50 bg-white shrink-0 overflow-hidden"
           >
-            <div className="p-6 md:p-8 flex flex-col gap-10 h-full">
+            <div className={cn(
+              "flex flex-col h-full transition-all duration-300",
+              isLibrarySidebarHovered ? "p-6 md:p-8 gap-10" : "px-2 py-6 gap-8"
+            )}>
               {/* Add New Section like in image */}
-              <div className="hidden md:block">
+              <div className={cn(isLibrarySidebarHovered ? "block" : "hidden")}>
                 <button 
                   onClick={() => handleCreateNote(activeTab)}
                   className="w-full h-12 flex items-center justify-center gap-3 bg-accent text-white rounded-2xl font-bold text-xs shadow-xl shadow-accent/10 hover:scale-[1.02] transition-all"
@@ -194,6 +200,7 @@ export default function NotesSystem() {
                     active={sidebarFilter === 'all'} 
                     onClick={() => { setSidebarFilter('all'); setSelectedFolder(null); }} 
                     label="All Notes"
+                    expanded={isLibrarySidebarHovered}
                   />
                   <SidebarIconBtn 
                     key="btn-favorites"
@@ -201,6 +208,7 @@ export default function NotesSystem() {
                     active={sidebarFilter === 'favorites'} 
                     onClick={() => setSidebarFilter('favorites')} 
                     label="Favorites"
+                    expanded={isLibrarySidebarHovered}
                   />
                   <SidebarIconBtn 
                     key="btn-recent"
@@ -208,6 +216,7 @@ export default function NotesSystem() {
                     active={sidebarFilter === 'recent'} 
                     onClick={() => setSidebarFilter('recent')} 
                     label="Recent"
+                    expanded={isLibrarySidebarHovered}
                   />
                   <SidebarIconBtn 
                     key="btn-trash"
@@ -215,10 +224,11 @@ export default function NotesSystem() {
                     active={sidebarFilter === 'trash'} 
                     onClick={() => setSidebarFilter('trash')} 
                     label="Trash"
+                    expanded={isLibrarySidebarHovered}
                   />
                 </div>
                 
-                <div className="pt-6 border-t border-card-border/30 hidden md:block">
+                <div className={cn("pt-6 border-t border-card-border/30", isLibrarySidebarHovered ? "block" : "hidden")}>
                   <div className="flex items-center justify-between ml-4 mb-4">
                     <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40">Folders</p>
                     <button 
@@ -249,7 +259,7 @@ export default function NotesSystem() {
                 </div>
               </nav>
 
-              <div className="hidden md:block mt-auto border-t border-card-border/30 pt-6">
+              <div className={cn("mt-auto border-t border-card-border/30 pt-6", isLibrarySidebarHovered ? "block" : "hidden")}>
                  <div className="flex items-center gap-3 px-2">
                     <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-accent/10">
                        <img src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} className="w-full h-full object-cover" alt="User" />
@@ -985,7 +995,7 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
   );
 }
 
-function SidebarIconBtn({ icon, active, onClick, label }: any) {
+function SidebarIconBtn({ icon, active, onClick, label, expanded }: any) {
   return (
     <button
       onClick={onClick}
@@ -995,8 +1005,12 @@ function SidebarIconBtn({ icon, active, onClick, label }: any) {
       )}
     >
       <div className={cn("shrink-0 transition-transform", active ? "scale-110" : "group-hover:scale-110")}>{icon}</div>
-      <span className={cn("hidden md:block text-[11px] font-bold tracking-tight", active ? "opacity-100" : "opacity-70 group-hover:opacity-100")}>{label}</span>
-      {active && <div className="absolute left-0 w-1 h-5 bg-white/40 rounded-r-full hidden md:block" />}
+      <span className={cn(
+        "text-[11px] font-bold tracking-tight transition-all duration-200 whitespace-nowrap",
+        expanded ? "opacity-100 translate-x-0" : "pointer-events-none w-0 opacity-0 -translate-x-2 overflow-hidden",
+        active ? "opacity-100" : "opacity-70 group-hover:opacity-100"
+      )}>{label}</span>
+      {active && <div className={cn("absolute left-0 w-1 h-5 bg-white/40 rounded-r-full", expanded ? "block" : "hidden")} />}
     </button>
   );
 }

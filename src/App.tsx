@@ -317,6 +317,7 @@ export default function App() {
   } = useStore();
   
   const isPasswordRecovery = sessionStorage.getItem('visnova-auth-link-mode') === 'recovery' || new URLSearchParams(window.location.search).get('mode') === 'reset-password';
+  const isAuthCallbackPath = window.location.pathname === '/auth/callback';
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -362,7 +363,7 @@ export default function App() {
     );
   }
 
-  const showOnboarding = (!session || (!profileLoading && !hasCompletedOnboarding)) || isPasswordRecovery;
+  const showOnboarding = isAuthCallbackPath || (!session || (!profileLoading && !hasCompletedOnboarding)) || isPasswordRecovery;
 
   return (
     <Router>
@@ -378,6 +379,7 @@ export default function App() {
             className="absolute inset-0 z-50 bg-bg-base"
           >
             <Routes>
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="*" element={<OnboardingFlow />} />
             </Routes>
           </motion.div>
@@ -387,9 +389,9 @@ export default function App() {
             initial={{ opacity: 0, scale: 1.02, filter: 'blur(5px)' }}
             animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
             transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-            className="min-h-screen bg-bg-base lg:p-6 flex items-center justify-center font-sans selection:bg-accent selection:text-accent-contrast relative z-0"
+            className="min-h-screen bg-bg-base flex items-center justify-center font-sans selection:bg-accent selection:text-accent-contrast relative z-0"
           >
-            <div className="w-full max-w-[1600px] h-screen lg:h-[94vh] bg-app-container lg:rounded-[2rem] shadow-2xl overflow-hidden relative flex">
+            <div className="w-full h-screen bg-app-container shadow-2xl overflow-hidden relative flex">
               <AnimatePresence>
                 {isFocusMode && <FocusOverlay />}
                 <AccountabilityNudge />
@@ -400,9 +402,9 @@ export default function App() {
               <Sidebar />
               <FloatingTimer />
               <VisionAssistant />
-              <main className="flex-1 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
+              <main className="flex-1 min-w-0 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
                 <Topbar />
-                <div className="flex-1 p-6 lg:p-10 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <div className="flex-1 p-4 sm:p-6 lg:p-8 xl:p-10 overflow-y-auto overflow-x-hidden custom-scrollbar">
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/feed" element={<CommunityFeed />} />
