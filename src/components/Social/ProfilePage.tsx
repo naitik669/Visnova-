@@ -167,7 +167,7 @@ export default function ProfilePage() {
         .from('posts')
         .select(`
           *,
-          author:profiles(*),
+          author:profiles!posts_user_id_fkey(*),
           likes:post_likes(count),
           saves:saved_posts(count),
           comment_count:comments(count),

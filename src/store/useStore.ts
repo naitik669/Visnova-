@@ -65,6 +65,40 @@ function normalizePostTag(tag: string) {
   return tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 }
 
+function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
+  const createdAt = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+  return {
+    id: row.id,
+    userId: row.user_id,
+    author: {
+      id: row.user_id,
+      name: author.name || 'Explorer',
+      avatar: author.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${row.user_id}`,
+      handle: `@${author.username || 'user'}`
+    },
+    caption: row.caption ?? draft.caption,
+    content: row.content ?? draft.content ?? '',
+    timestamp: format(new Date(createdAt), 'MMM d, yyyy'),
+    createdAt,
+    likes: 0,
+    comments: 0,
+    saves: 0,
+    isLiked: false,
+    isSaved: false,
+    type: row.type || draft.type || 'update',
+    visibility: row.visibility || draft.visibility || 'public',
+    media: draft.media?.map((m: any) => ({
+      id: m.id || m.storagePath || m.url,
+      url: m.url,
+      type: m.type
+    })) || [],
+    tags: draft.tags || [],
+    mentions: draft.mentions || [],
+    stats: row.stats || {},
+    metadata: row.metadata || draft.metadata || {}
+  };
+}
+
 async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
@@ -1149,6 +1183,11 @@ export const useStore = create<AppState>((set, get) => ({
   addPost: async (post: any) => {
     const session = get().session;
     const userId = session?.user?.id;
+    const clientPostId = `post_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const postMetadata = {
+      ...(post.metadata || {}),
+      client_post_id: clientPostId
+    };
     
     if (!userId) {
       get().addToast({
@@ -1170,22 +1209,39 @@ export const useStore = create<AppState>((set, get) => ({
 
       // 1. Insert core post data
       console.log('Inserting post data...', post);
-      const { data: postData, error: postError } = await withTimeout<any>(
-        supabase
-          .from('posts')
-          .insert({
-            user_id: userId,
-            type: post.type,
-            caption: post.caption,
-            content: post.content || '',
-            visibility: post.visibility || 'public',
-            metadata: post.metadata || {}
-          })
-          .select()
-          .single(),
-        15000,
-        'Creating post'
-      );
+      const insertPost = () => supabase
+        .from('posts')
+        .insert({
+          user_id: userId,
+          type: post.type,
+          caption: post.caption,
+          content: post.content || '',
+          visibility: post.visibility || 'public',
+          metadata: postMetadata
+        })
+        .select('id, user_id, type, caption, content, visibility, metadata, stats, created_at, updated_at')
+        .single();
+
+      let postResult: any;
+      try {
+        postResult = await withTimeout<any>(insertPost(), 30000, 'Creating post');
+      } catch (insertError: any) {
+        if (!insertError?.message?.includes('timed out')) throw insertError;
+        console.warn('Post insert response timed out; attempting to recover created post:', insertError);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        postResult = await withTimeout<any>(
+          supabase
+            .from('posts')
+            .select('id, user_id, type, caption, content, visibility, metadata, stats, created_at, updated_at')
+            .eq('user_id', userId)
+            .filter('metadata->>client_post_id', 'eq', clientPostId)
+            .maybeSingle(),
+          10000,
+          'Confirming post'
+        );
+      }
+
+      const { data: postData, error: postError } = postResult;
 
       if (postError) {
         if (postError.message.includes('public.posts')) {
@@ -1193,6 +1249,9 @@ export const useStore = create<AppState>((set, get) => ({
         }
         console.error('Post insertion error:', postError);
         throw postError;
+      }
+      if (!postData?.id) {
+        throw new Error('Post could not be confirmed. Please refresh the feed before trying again.');
       }
       const postId = postData.id;
       console.log('Post inserted with ID:', postId);
@@ -1214,9 +1273,7 @@ export const useStore = create<AppState>((set, get) => ({
         );
         if (mediaError) {
           console.error('Media insertion error:', mediaError);
-          // Don't throw here? Maybe media failed but post is okay. 
-          // Actually, better to throw if it's supposed to be there.
-          throw mediaError;
+          get().addToast({ type: 'error', title: 'Media warning', description: 'Post was created, but some media could not be attached.' });
         }
       }
 
@@ -1259,6 +1316,11 @@ export const useStore = create<AppState>((set, get) => ({
           console.error('Mentions insertion error:', mentionsError);
         }
       }
+
+      const localPost = toLocalPost(postData, { ...post, metadata: postMetadata }, get().user);
+      set((state) => ({
+        posts: [localPost, ...state.posts.filter(p => p.id !== localPost.id)]
+      }));
 
       // 5. XP and Reward
       get().addXp(50);
@@ -1375,7 +1437,7 @@ export const useStore = create<AppState>((set, get) => ({
         .from('posts')
         .select(`
           *,
-          author:profiles(*),
+          author:profiles!posts_user_id_fkey(*),
           likes:post_likes(count),
           saves:saved_posts(count),
           comment_count:comments(count),
