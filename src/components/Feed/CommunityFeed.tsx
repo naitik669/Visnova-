@@ -18,10 +18,12 @@ import {
   Trophy,
   Flag,
   Search,
-  Shield,
   AtSign,
   Hash,
-  Loader2
+  Loader2,
+  Trash2,
+  UserPlus,
+  VolumeX
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
@@ -423,12 +425,14 @@ export default function CommunityFeed() {
                        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">No posts found for this search.</p>
                      </div>
                    ) : visiblePosts.slice(0, 10).map((post, idx) => (
-                     <PostCard 
+                     <PostCard
                        key={`explore-${post.id}-${idx}`} 
-                       post={post} 
-                       onOpenThread={() => setSelectedPostForThread(post)} 
-                       onHashtagClick={handleHashtagClick}
-                     />
+                        post={post}
+                        onOpenThread={() => setSelectedPostForThread(post)}
+                        onHashtagClick={handleHashtagClick}
+                        onPostDeleted={(postId) => setHashtagPosts(prev => prev.filter(p => p.id !== postId))}
+                        onAuthorMuted={(authorId) => setHashtagPosts(prev => prev.filter(p => p.userId !== authorId))}
+                      />
                    ))}
                 </div>
              </div>
@@ -815,10 +819,12 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   );
 }
 
-function PostCard({ post, onOpenThread, onHashtagClick }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void }) {
-  const { toggleLikePost, toggleSavePost, trackInteraction, session } = useStore();
+function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorMuted }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void, onPostDeleted?: (postId: string) => void, onAuthorMuted?: (authorId: string) => void }) {
+  const { toggleLikePost, toggleSavePost, trackInteraction, session, followingIds, toggleFollow, deletePost, muteUserPosts } = useStore();
   const hasTrackedView = useRef(false);
   const currentUserId = session?.user?.id;
+  const isOwnPost = post.userId === currentUserId;
+  const isFollowingAuthor = followingIds.includes(post.userId);
 
   useEffect(() => {
     if (!hasTrackedView.current) {
@@ -891,55 +897,68 @@ function PostCard({ post, onOpenThread, onHashtagClick }: { post: Post, onOpenTh
           </button>
           
           <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2 opacity-0 scale-95 pointer-events-none group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:pointer-events-auto transition-all">
-             <button 
-               onClick={async () => {
-                 if (!currentUserId) return;
-                 
-                 const { error } = await supabase.from('reports').insert({
-                   reporter_id: currentUserId,
-                   target_id: post.id,
-                   target_type: 'post',
-                   reason: 'User Reported'
-                 });
+              {!isOwnPost && (
+                <button
+                  onClick={async () => {
+                    if (!currentUserId) return;
 
-                 if (error) {
-                   useStore.getState().addToast({ type: 'error', title: 'Report failed', description: 'Could not send report.' });
-                   return;
-                 }
+                    const { error } = await supabase.from('reports').insert({
+                      reporter_id: currentUserId,
+                      target_id: post.id,
+                      target_type: 'post',
+                      reason: 'User Reported'
+                    });
 
-                 useStore.getState().addActivity({
-                   type: 'social',
-                   description: 'Reported post for moderation'
-                 });
-                 useStore.getState().addToast({ type: 'success', title: 'Post reported', description: 'Thank you for keeping the community safe.' });
-               }}
-               className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
-             >
-                <Flag size={14} /> Report Post
-             </button>
-             {post.userId !== currentUserId && (
-               <button 
-                 onClick={async () => {
-                   if (!currentUserId) return;
+                    if (error) {
+                      useStore.getState().addToast({ type: 'error', title: 'Report failed', description: 'Could not send report.' });
+                      return;
+                    }
 
-                   const { error } = await supabase.from('user_blocks').insert({
-                     blocker_id: currentUserId,
-                     blocked_id: post.userId
-                   });
-
-                   if (error) {
-                     useStore.getState().addToast({ type: 'error', title: 'Block failed', description: 'Could not block user.' });
-                     return;
-                   }
-
-                   useStore.getState().addToast({ type: 'success', title: 'User blocked', description: 'You will no longer see posts from this user.' });
-                 }}
-                 className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
-               >
-                  <Shield size={14} /> Block User
-               </button>
-             )}
-          </div>
+                    useStore.getState().addActivity({
+                      type: 'social',
+                      description: 'Reported post for moderation'
+                    });
+                    useStore.getState().addToast({ type: 'success', title: 'Post reported', description: 'Thank you for keeping the community safe.' });
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                >
+                  <Flag size={14} /> Report Post
+                </button>
+              )}
+              {isOwnPost ? (
+                <button
+                  onClick={async () => {
+                    if (!confirm('Delete this post? This cannot be undone.')) return;
+                    const deleted = await deletePost(post.id);
+                    if (deleted) onPostDeleted?.(post.id);
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                >
+                   <Trash2 size={14} /> Delete Post
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={async () => {
+                      await toggleFollow(post.userId);
+                      trackInteraction(post.id, 'follow');
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                  >
+                    <UserPlus size={14} /> {isFollowingAuthor ? 'Unfollow User' : 'Follow User'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const muted = await muteUserPosts(post.userId);
+                      if (muted) onAuthorMuted?.(post.userId);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                  >
+                    <VolumeX size={14} /> Mute Posts
+                  </button>
+                </>
+              )}
+           </div>
         </div>
       </div>
 

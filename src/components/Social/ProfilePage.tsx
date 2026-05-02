@@ -35,7 +35,8 @@ import {
   LayoutGrid,
   Trophy,
   Flag,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
@@ -414,7 +415,7 @@ export default function ProfilePage() {
                   <LayoutGrid size={12} /> Recent Activity
                 </h3>
                 {profilePosts.slice(0, 3).map(post => (
-                  <ProfilePostCard key={post.id} post={post} />
+                  <ProfilePostCard key={post.id} post={post} onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))} />
                 ))}
                 {profilePosts.length === 0 && (
                    <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black bg-card rounded-[2.5rem] border border-dashed border-card-border">
@@ -428,7 +429,7 @@ export default function ProfilePage() {
           {activeTab === 'posts' && (
             <div className="max-w-3xl mx-auto space-y-6">
               {profilePosts.map(post => (
-                <ProfilePostCard key={post.id} post={post} />
+                <ProfilePostCard key={post.id} post={post} onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))} />
               ))}
               {profilePosts.length === 0 && (
                  <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black">
@@ -656,8 +657,9 @@ export default function ProfilePage() {
   );
 }
 
-function ProfilePostCard({ post }: { post: Post }) {
-  const { toggleLikePost, toggleSavePost } = useStore();
+function ProfilePostCard({ post, onDeleted }: { post: Post, onDeleted?: (postId: string) => void }) {
+  const { toggleLikePost, toggleSavePost, deletePost, session } = useStore();
+  const isOwnPost = post.userId === session?.user?.id;
   
   return (
     <div className="system-card p-6 sm:p-10 bg-card border-card-border group relative overflow-hidden transition-all hover:border-accent/20">
@@ -684,9 +686,25 @@ function ProfilePostCard({ post }: { post: Post }) {
              <Clock size={12} /> {post.timestamp}
           </span>
         </div>
-        <button className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all shrink-0">
-          <MoreHorizontal size={18} />
-        </button>
+        {isOwnPost && (
+          <div className="relative group/menu">
+            <button className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all shrink-0">
+              <MoreHorizontal size={18} />
+            </button>
+            <div className="absolute top-full right-0 mt-2 w-44 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2 opacity-0 scale-95 pointer-events-none group-focus-within/menu:opacity-100 group-focus-within/menu:scale-100 group-focus-within/menu:pointer-events-auto transition-all">
+              <button
+                onClick={async () => {
+                  if (!confirm('Delete this post? This cannot be undone.')) return;
+                  const deleted = await deletePost(post.id);
+                  if (deleted) onDeleted?.(post.id);
+                }}
+                className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+              >
+                <Trash2 size={14} /> Delete Post
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 relative z-10 space-y-4">

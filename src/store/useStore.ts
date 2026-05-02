@@ -1348,6 +1348,61 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  deletePost: async (id: string) => {
+    const userId = get().session?.user?.id;
+    const post = get().posts.find(p => p.id === id);
+
+    if (!userId || !post || post.userId !== userId) {
+      get().addToast({ type: 'error', title: 'Delete unavailable', description: 'You can only delete your own posts.' });
+      return false;
+    }
+
+    const previousPosts = get().posts;
+    set((state) => ({ posts: state.posts.filter(p => p.id !== id) }));
+
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
+      return true;
+    } catch (err) {
+      console.error('Failed to delete post:', err);
+      set({ posts: previousPosts });
+      get().addToast({ type: 'error', title: 'Delete failed', description: 'Could not remove this post. Please try again.' });
+      return false;
+    }
+  },
+
+  muteUserPosts: async (mutedUserId: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId || userId === mutedUserId) return false;
+
+    const previousPosts = get().posts;
+    set((state) => ({ posts: state.posts.filter(p => p.userId !== mutedUserId) }));
+
+    try {
+      const { error } = await supabase
+        .from('user_blocks')
+        .upsert({ blocker_id: userId, blocked_id: mutedUserId }, { onConflict: 'blocker_id,blocked_id' });
+
+      if (error) throw error;
+
+      get().addToast({ type: 'success', title: 'Posts muted', description: 'You will no longer see posts from this user.' });
+      return true;
+    } catch (err) {
+      console.error('Failed to mute posts:', err);
+      set({ posts: previousPosts });
+      get().addToast({ type: 'error', title: 'Mute failed', description: 'Could not mute this user right now.' });
+      return false;
+    }
+  },
+
   ensureCurrentUserProfile: async () => {
     const session = get().session;
     if (!session?.user) return null;
@@ -1446,6 +1501,17 @@ export const useStore = create<AppState>((set, get) => ({
           mentions:post_mentions(*, user:profiles(username))
         `)
         .eq('visibility', 'public');
+
+      if (userId) {
+        const { data: mutedUsers } = await supabase
+          .from('user_blocks')
+          .select('blocked_id')
+          .eq('blocker_id', userId);
+        const mutedIds = mutedUsers?.map((block: any) => block.blocked_id).filter(Boolean) || [];
+        if (mutedIds.length > 0) {
+          query = query.not('user_id', 'in', `(${mutedIds.join(',')})`);
+        }
+      }
 
       if (tab === 'latest') {
         query = query.order('created_at', { ascending: false }).limit(20);

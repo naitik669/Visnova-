@@ -264,6 +264,8 @@ export interface AppState {
   toggleTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
   addPost: (post: any) => Promise<boolean>;
+  deletePost: (id: string) => Promise<boolean>;
+  muteUserPosts: (userId: string) => Promise<boolean>;
   toggleLikePost: (id: string) => Promise<void>;
   toggleSavePost: (id: string) => Promise<void>;
   fetchPosts: (tab?: 'recommended' | 'following' | 'latest') => Promise<void>;
