@@ -15,6 +15,7 @@ export interface SuggestedUser {
   display_name: string;
   avatar_url: string;
   bio?: string;
+  verified?: boolean;
   reason?: string;
   score: number;
   is_following: boolean;
@@ -119,7 +120,7 @@ export async function getSuggestedUsers(currentUserId: string | null): Promise<S
 
     // 2. Fetch blocks to exclude (bidirectional)
     const { data: blocks } = await supabase
-      .from('user_blocks')
+      .from('blocked_users')
       .select('blocker_id, blocked_id')
       .or(`blocker_id.eq.${currentUserId},blocked_id.eq.${currentUserId}`);
     
@@ -139,6 +140,7 @@ export async function getSuggestedUsers(currentUserId: string | null): Promise<S
         avatar_url,
         bio,
         interests,
+        verified,
         created_at
       `)
       .not('id', 'in', `(${Array.from(followingIds).concat(Array.from(blockedIds)).join(',') || '00000000-0000-0000-0000-000000000000'})`)
@@ -202,6 +204,7 @@ export async function getSuggestedUsers(currentUserId: string | null): Promise<S
         display_name: cand.display_name || cand.username || 'Explorer',
         avatar_url: cand.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${cand.id}`,
         bio: cand.bio,
+        verified: !!cand.verified,
         reason,
         score: Number(score.toFixed(2)),
         is_following: false

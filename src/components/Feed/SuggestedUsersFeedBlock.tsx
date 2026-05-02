@@ -4,6 +4,7 @@ import { Users, UserPlus, Check, User, ArrowRight } from 'lucide-react';
 import { getSuggestedUsers, SuggestedUser } from '../../services/discoveryService';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
+import VerifiedBadge from '../VerifiedBadge';
 
 export function SuggestedUsersFeedBlock() {
   const { user: currentUser, toggleFollow, followingIds } = useStore();
@@ -40,7 +41,7 @@ export function SuggestedUsersFeedBlock() {
           </div>
           <div>
             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-main">Suggested users</h3>
-            <p className="text-[9px] font-medium text-text-secondary opacity-60 uppercase tracking-widest mt-0.5">Based on your visionary profile</p>
+            <p className="text-[9px] font-medium text-text-secondary opacity-60 uppercase tracking-widest mt-0.5">Based on shared interests</p>
           </div>
         </div>
       </div>
@@ -93,8 +94,9 @@ function SuggestedUserCard({ user, onFollow, isFollowing }: { user: SuggestedUse
           </div>
         </button>
 
-        <h4 className="text-[11px] font-black text-text-main uppercase tracking-tight truncate w-full mb-0.5 group-hover:text-accent transition-colors">
+        <h4 className="text-[11px] font-black text-text-main uppercase tracking-tight truncate w-full mb-0.5 group-hover:text-accent transition-colors flex items-center justify-center gap-1">
           {user.display_name}
+          <VerifiedBadge verified={user.verified} className="scale-90" />
         </h4>
         <p className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest mb-3">
           @{user.username}
@@ -118,7 +120,7 @@ function SuggestedUserCard({ user, onFollow, isFollowing }: { user: SuggestedUse
           >
             {isFollowing ? (
               <>
-                <Check size={12} /> Linked
+                <Check size={12} /> Following
               </>
             ) : (
               <>

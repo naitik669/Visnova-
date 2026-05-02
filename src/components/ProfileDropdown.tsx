@@ -14,7 +14,7 @@ interface ProfileDropdownProps {
 export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProps) {
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, addToast } = useStore();
+  const { user, setSelectedProfileId } = useStore();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -40,12 +40,12 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
   };
 
   const menuItems = [
-    { icon: User, label: 'Profile', onClick: () => { navigate('/profile'); onClose(); } },
-    { icon: MessageSquare, label: 'Your Posts', onClick: () => { navigate('/profile?tab=posts'); onClose(); } },
-    { icon: Bookmark, label: 'Saved', onClick: () => { navigate('/profile?tab=saved'); onClose(); } },
-    { icon: Settings, label: 'Settings', onClick: () => { navigate('/profile?tab=settings'); onClose(); } },
+    { icon: User, label: 'Profile', onClick: () => { setSelectedProfileId('me'); navigate('/profile'); onClose(); } },
+    { icon: MessageSquare, label: 'Your Posts', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=posts'); onClose(); } },
+    { icon: Bookmark, label: 'Saved', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=saved'); onClose(); } },
+    { icon: Settings, label: 'Settings', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=settings'); onClose(); } },
     { icon: Bell, label: 'Notifications', onClick: () => { /* No-op for now */ onClose(); } },
-    { icon: HelpCircle, label: 'Help / Support', onClick: () => { /* No-op for now */ onClose(); } },
+    { icon: HelpCircle, label: 'Help / Support', onClick: () => { window.dispatchEvent(new Event('open-visnova-help')); onClose(); } },
   ];
 
   return (

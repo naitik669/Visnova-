@@ -22,6 +22,35 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 ALTER TABLE public.profiles
 ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'prefer_not_say' CHECK (gender IN ('male', 'female', 'prefer_not_say'));
 
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS verified_reason TEXT,
+ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+
+CREATE OR REPLACE FUNCTION public.prevent_user_verification_changes()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL AND (
+    NEW.verified IS DISTINCT FROM OLD.verified OR
+    NEW.verified_reason IS DISTINCT FROM OLD.verified_reason OR
+    NEW.verified_at IS DISTINCT FROM OLD.verified_at
+  ) THEN
+    RAISE EXCEPTION 'Verification fields can only be changed by an admin.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS prevent_user_verification_changes ON public.profiles;
+CREATE TRIGGER prevent_user_verification_changes
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_user_verification_changes();
+
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_username_unique_idx
 ON public.profiles (lower(username))
 WHERE username IS NOT NULL AND username <> '';
@@ -278,10 +307,10 @@ CREATE TABLE IF NOT EXISTS public.user_interests (
 ALTER TABLE public.user_circles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_interests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can manage their own circles" ON public.user_circles FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage their own circles" ON public.user_circles FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can manage their own interests" ON public.user_interests FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Public interest access" ON public.user_interests FOR SELECT USING (true);
-CREATE POLICY "Public circle access" ON public.user_circles FOR SELECT USING (true);
+CREATE POLICY "Users can read relevant circles" ON public.user_circles FOR SELECT USING (auth.uid() = user_id OR auth.uid() = circle_user_id);
 
 -- VISION SHARES
 CREATE TABLE IF NOT EXISTS public.vision_shares (

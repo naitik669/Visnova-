@@ -65,6 +65,10 @@ function normalizePostTag(tag: string) {
   return tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 }
 
+function normalizeUsernameInput(username: string) {
+  return username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '').slice(0, 24);
+}
+
 const defaultUser: AppState['user'] = {
   id: undefined,
   name: 'Explorer',
@@ -95,6 +99,9 @@ function toProfileUser(profile: any, fallbackEmail = ''): AppState['user'] {
     bio: profile.bio || '',
     statusNote: profile.status_note || '',
     role: profile.role || 'Explorer',
+    mainGoal: profile.main_goal || '',
+    interests: profile.interests || [],
+    verified: !!profile.verified,
   };
 }
 
@@ -117,6 +124,8 @@ function privateStateReset() {
     userInterests: {},
     userCircles: {},
     followingIds: [],
+    followerCounts: {},
+    followingCounts: {},
     notifications: [],
     unreadNotificationCount: 0,
   };
@@ -131,7 +140,8 @@ function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
       id: row.user_id,
       name: author.name || 'Explorer',
       avatar: author.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${row.user_id}`,
-      handle: `@${author.username || 'user'}`
+      handle: `@${author.username || 'user'}`,
+      verified: author.verified
     },
     caption: row.caption ?? draft.caption,
     content: row.content ?? draft.content ?? '',
@@ -198,6 +208,8 @@ export const useStore = create<AppState>((set, get) => ({
   userInterests: {},
   userCircles: {},
   followingIds: [],
+  followerCounts: {},
+  followingCounts: {},
   notifications: [],
   unreadNotificationCount: 0,
   achievements: [],
@@ -274,6 +286,7 @@ export const useStore = create<AppState>((set, get) => ({
         get().fetchNotes(),
         get().fetchJournalEntries(),
         get().fetchFeedContext(),
+        get().fetchCircleData(),
         get().fetchNotifications(),
       ]);
     } catch (error) {
@@ -677,23 +690,88 @@ export const useStore = create<AppState>((set, get) => ({
     set({ tutorialCompleted: false });
   },
   updateUser: async (updates) => {
-    set((state) => ({
-      user: { ...state.user, ...updates }
-    }));
-
     const userId = get().session?.user?.id;
-    if (userId) {
-      try {
-        const dbUpdates: any = {};
-        if (updates.name) dbUpdates.display_name = updates.name;
-        if (updates.username) dbUpdates.username = updates.username;
-        if (updates.avatar) dbUpdates.avatar_url = updates.avatar;
-        if (updates.bio) dbUpdates.bio = updates.bio;
-        
-        await supabase.from('profiles').update(dbUpdates).eq('id', userId);
-      } catch (error) {
-        console.error('Failed to update user profile:', error);
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing your profile.' });
+      return false;
+    }
+
+    const previousUser = get().user;
+    const previousProfile = get().profile;
+
+    try {
+      const dbUpdates: any = {};
+      const nextUserUpdates: Partial<AppState['user']> = {};
+
+      if (updates.name !== undefined) {
+        const displayName = String(updates.name || '').trim();
+        if (!displayName) throw new Error('Display name is required.');
+        dbUpdates.display_name = displayName;
+        dbUpdates.full_name = displayName;
+        nextUserUpdates.name = displayName;
       }
+
+      if (updates.username !== undefined) {
+        const normalizedUsername = normalizeUsernameInput(String(updates.username || ''));
+        if (!/^[a-z0-9_]{3,24}$/.test(normalizedUsername)) {
+          throw new Error('Use 3-24 lowercase letters, numbers, or underscores for your username.');
+        }
+
+        if (normalizedUsername !== previousUser.username) {
+          const { data: available, error: availabilityError } = await supabase.rpc('is_username_available', {
+            candidate_username: normalizedUsername,
+            current_user_id: userId
+          });
+          if (availabilityError) throw availabilityError;
+          if (!available) throw new Error('Username is already taken.');
+        }
+
+        dbUpdates.username = normalizedUsername;
+        nextUserUpdates.username = normalizedUsername;
+      }
+
+      if (updates.avatar !== undefined) {
+        dbUpdates.avatar_url = updates.avatar || null;
+        nextUserUpdates.avatar = updates.avatar;
+      }
+      if (updates.bio !== undefined) {
+        dbUpdates.bio = updates.bio || '';
+        nextUserUpdates.bio = updates.bio || '';
+      }
+      if (updates.role !== undefined) {
+        dbUpdates.role = updates.role || null;
+        nextUserUpdates.role = updates.role || '';
+        nextUserUpdates.rank = updates.role || previousUser.rank;
+      }
+      if (updates.mainGoal !== undefined) {
+        dbUpdates.main_goal = updates.mainGoal || '';
+        nextUserUpdates.mainGoal = updates.mainGoal || '';
+      }
+      if (updates.interests !== undefined) {
+        dbUpdates.interests = updates.interests || [];
+        nextUserUpdates.interests = updates.interests || [];
+      }
+
+      dbUpdates.updated_at = new Date().toISOString();
+
+      if (Object.keys(dbUpdates).length <= 1) return true;
+
+      set((state) => ({
+        user: { ...state.user, ...nextUserUpdates },
+        profile: state.profile ? { ...state.profile, ...dbUpdates } : state.profile
+      }));
+
+      const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', userId);
+      if (error) throw error;
+
+      await get().loadUserProfile(userId);
+      get().addToast({ type: 'success', title: 'Profile updated', description: 'Your profile changes were saved.' });
+      return true;
+    } catch (error: any) {
+      console.error('Failed to update user profile:', error);
+      set({ user: previousUser, profile: previousProfile });
+      get().addToast({ type: 'error', title: 'Profile update failed', description: error.message || 'Could not save profile.' });
+      return false;
     }
   },
   toggleGrinding: async () => {
@@ -1602,6 +1680,37 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  fetchProfileStats: async (profileId: string) => {
+    const currentUserId = get().session?.user?.id;
+    try {
+      const [followersRes, followingRes, followingStatusRes] = await Promise.all([
+        supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', profileId),
+        supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', profileId),
+        currentUserId && currentUserId !== profileId
+          ? supabase.from('follows').select('following_id').match({ follower_id: currentUserId, following_id: profileId }).maybeSingle()
+          : Promise.resolve({ data: null, error: null })
+      ]);
+
+      if (followersRes.error) throw followersRes.error;
+      if (followingRes.error) throw followingRes.error;
+      if ((followingStatusRes as any).error) throw (followingStatusRes as any).error;
+
+      const followersCount = followersRes.count || 0;
+      const followingCount = followingRes.count || 0;
+      const isFollowing = !!(followingStatusRes as any).data;
+
+      set((state) => ({
+        followerCounts: { ...state.followerCounts, [profileId]: followersCount },
+        followingCounts: { ...state.followingCounts, [profileId]: followingCount }
+      }));
+
+      return { followersCount, followingCount, isFollowing };
+    } catch (error) {
+      console.error('Failed to fetch profile stats:', error);
+      return { followersCount: get().followerCounts[profileId] || 0, followingCount: get().followingCounts[profileId] || 0, isFollowing: get().followingIds.includes(profileId) };
+    }
+  },
+
   fetchPosts: async (tab?: 'recommended' | 'following' | 'latest' | 'saved') => {
     try {
       const session = get().session;
@@ -1644,7 +1753,8 @@ export const useStore = create<AppState>((set, get) => ({
             id: p.author?.id || p.user_id,
             name: p.author?.display_name || p.author?.full_name || 'Explorer',
             avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
-            handle: `@${p.author?.username || 'user'}`
+            handle: `@${p.author?.username || 'user'}`,
+            verified: !!p.author?.verified
           },
           caption: p.caption,
           content: p.content || '',
@@ -1770,7 +1880,8 @@ export const useStore = create<AppState>((set, get) => ({
           id: p.author?.id,
           name: p.author?.display_name || p.author?.full_name || 'Explorer',
           avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
-          handle: `@${p.author?.username || 'user'}`
+          handle: `@${p.author?.username || 'user'}`,
+          verified: !!p.author?.verified
         },
         caption: p.caption,
         content: p.content || '',
@@ -1912,15 +2023,18 @@ export const useStore = create<AppState>((set, get) => ({
     if (!userId) return;
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('user_circles')
         .upsert({ user_id: userId, circle_user_id: targetUserId, relation_type: type }, { onConflict: 'user_id,circle_user_id' });
+      if (error) throw error;
       
       set(state => ({
         userCircles: { ...state.userCircles, [targetUserId]: type }
       }));
+      await get().fetchCircleData();
     } catch (err) {
       console.error('Failed to add to circle:', err);
+      get().addToast({ type: 'error', title: 'Circle failed', description: 'Could not update this circle relationship.' });
     }
   },
 
@@ -1929,18 +2043,97 @@ export const useStore = create<AppState>((set, get) => ({
     if (!userId) return;
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('user_circles')
         .delete()
         .match({ user_id: userId, circle_user_id: targetUserId });
+      if (error) throw error;
       
       set(state => {
         const next = { ...state.userCircles };
         delete next[targetUserId];
         return { userCircles: next };
       });
+      await get().fetchCircleData();
     } catch (err) {
       console.error('Failed to remove from circle:', err);
+      get().addToast({ type: 'error', title: 'Circle failed', description: 'Could not remove this circle relationship.' });
+    }
+  },
+
+  fetchCircleData: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      set({ circle: [], userCircles: {} });
+      return;
+    }
+
+    try {
+      const [followingRes, followersRes, circleRes] = await Promise.all([
+        supabase
+          .from('follows')
+          .select('following:profiles!follows_following_id_fkey(id, display_name, full_name, username, avatar_url, role, streak, is_grinding, status_note, verified)')
+          .eq('follower_id', userId),
+        supabase
+          .from('follows')
+          .select('follower:profiles!follows_follower_id_fkey(id, display_name, full_name, username, avatar_url, role, streak, is_grinding, status_note, verified)')
+          .eq('following_id', userId),
+        supabase
+          .from('user_circles')
+          .select('relation_type, profile:profiles!user_circles_circle_user_id_fkey(id, display_name, full_name, username, avatar_url, role, streak, is_grinding, status_note, verified)')
+          .eq('user_id', userId)
+      ]);
+
+      if (followingRes.error) throw followingRes.error;
+      if (followersRes.error) throw followersRes.error;
+      if (circleRes.error) throw circleRes.error;
+
+      const followingIds = new Set((followingRes.data || []).map((row: any) => row.following?.id).filter(Boolean));
+      const followerIds = new Set((followersRes.data || []).map((row: any) => row.follower?.id).filter(Boolean));
+      const relationMap: Record<string, 'friend' | 'close_friend' | 'collaborator'> = {};
+      (circleRes.data || []).forEach((row: any) => {
+        if (row.profile?.id) relationMap[row.profile.id] = row.relation_type;
+      });
+
+      const byId = new Map<string, any>();
+      (followingRes.data || []).forEach((row: any) => {
+        if (row.following?.id) byId.set(row.following.id, row.following);
+      });
+      (followersRes.data || []).forEach((row: any) => {
+        if (row.follower?.id) byId.set(row.follower.id, row.follower);
+      });
+      (circleRes.data || []).forEach((row: any) => {
+        if (row.profile?.id) byId.set(row.profile.id, row.profile);
+      });
+
+      const formattedCircle: CircleMember[] = Array.from(byId.values()).map((profile: any) => {
+        const isFollowing = followingIds.has(profile.id);
+        const isFollower = followerIds.has(profile.id);
+        const labeledRelation = relationMap[profile.id];
+        const relation = labeledRelation || (isFollowing && isFollower ? 'mutual' : isFollowing ? 'following' : 'follower');
+        return {
+          id: profile.id,
+          name: profile.display_name || profile.full_name || profile.username || 'Explorer',
+          username: profile.username || 'user',
+          avatar: profile.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${profile.id}`,
+          count: 0,
+          isGrinding: !!profile.is_grinding,
+          streak: profile.streak || 0,
+          statusNote: profile.status_note || '',
+          role: profile.role || 'Explorer',
+          verified: !!profile.verified,
+          relation
+        };
+      });
+
+      set({
+        circle: formattedCircle,
+        userCircles: relationMap,
+        followingIds: Array.from(followingIds)
+      });
+    } catch (err) {
+      console.error('Failed to fetch circle data:', err);
+      get().addToast({ type: 'error', title: 'Circle failed', description: 'Could not load your circle.' });
     }
   },
 
@@ -2135,11 +2328,11 @@ export const useStore = create<AppState>((set, get) => ({
     const userId = get().session?.user?.id;
     if (!userId) {
       get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to follow people.' });
-      return;
+      return null;
     }
     if (userId === followingId) {
       get().addToast({ type: 'info', title: 'That is you', description: 'You cannot follow your own profile.' });
-      return;
+      return null;
     }
 
     try {
@@ -2155,13 +2348,24 @@ export const useStore = create<AppState>((set, get) => ({
         const { error } = await supabase.from('follows').delete().match({ follower_id: userId, following_id: followingId });
         if (error) throw error;
         set(state => ({
-          followingIds: state.followingIds.filter(id => id !== followingId)
+          followingIds: state.followingIds.filter(id => id !== followingId),
+          followerCounts: {
+            ...state.followerCounts,
+            [followingId]: Math.max(0, (state.followerCounts[followingId] || 1) - 1)
+          }
         }));
+        get().fetchProfileStats(followingId).catch(error => console.error('Failed to refresh follow stats:', error));
+        get().fetchCircleData().catch(error => console.error('Failed to refresh circle:', error));
+        return false;
       } else {
         const { error } = await supabase.from('follows').insert({ follower_id: userId, following_id: followingId });
         if (error) throw error;
         set(state => ({
-          followingIds: [...state.followingIds, followingId]
+          followingIds: state.followingIds.includes(followingId) ? state.followingIds : [...state.followingIds, followingId],
+          followerCounts: {
+            ...state.followerCounts,
+            [followingId]: (state.followerCounts[followingId] || 0) + 1
+          }
         }));
         // Notify
         notificationService.send({
@@ -2170,10 +2374,14 @@ export const useStore = create<AppState>((set, get) => ({
           type: 'follow',
           message: 'started following you'
         });
+        get().fetchProfileStats(followingId).catch(error => console.error('Failed to refresh follow stats:', error));
+        get().fetchCircleData().catch(error => console.error('Failed to refresh circle:', error));
+        return true;
       }
     } catch (err) {
       console.error('Failed to toggle follow:', err);
       get().addToast({ type: 'error', title: 'Follow failed', description: 'Could not update this follow. Please try again.' });
+      return null;
     }
   },
 
@@ -2355,30 +2563,14 @@ export const useStore = create<AppState>((set, get) => ({
 
       // 2. Fetch Notifications (Initial)
       get().fetchNotifications();
+      get().fetchCircleData();
 
       // 3. Setup Supabase Real-time Sync for Social & Auth
       const syncSocial = async () => {
         // Fetch Follows
         const { data: follows } = await supabase.from('follows').select('following_id').eq('follower_id', userId);
         if (follows) set({ followingIds: follows.map(f => f.following_id) });
-
-        // Fetch Circles (Mocked legacy logic - keep for UI compatibility)
-        // In real prod, this should use a separate table
-        const { data: circleMembers } = await supabase.from('profiles').select('*').limit(15);
-        if (circleMembers) {
-           const formattedCircle = circleMembers
-             .filter(m => m.id !== userId)
-             .map(m => ({
-               id: m.id,
-               name: m.display_name || m.full_name || 'Explorer',
-               avatar: m.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${m.id}`,
-               count: m.xp || 0,
-               isGrinding: m.is_grinding || false,
-               streak: m.streak || 0,
-               role: m.role || 'Explorer'
-             }));
-           set({ circle: formattedCircle as CircleMember[] });
-        }
+        await get().fetchCircleData();
       };
       
       syncSocial();

@@ -17,7 +17,6 @@ import {
   Bookmark,
   Share2,
   Calendar,
-  Shield,
   Award,
   Sparkles,
   User as UserIcon,
@@ -43,9 +42,10 @@ import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { CommentThreadModal, ImageLightbox, PostEditModal } from '../Feed/CommunityFeed';
+import VerifiedBadge from '../VerifiedBadge';
 
 export default function ProfilePage() {
-  const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow } = useStore();
+  const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow, fetchProfileStats } = useStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'archived' | 'achievements' | 'settings';
@@ -57,8 +57,12 @@ export default function ProfilePage() {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const [editData, setEditData] = useState({
     name: currentUser.name,
     username: currentUser.username || '',
@@ -80,7 +84,8 @@ export default function ProfilePage() {
       id: p.author?.id || p.user_id,
       name: p.author?.display_name || p.author?.full_name || 'Explorer',
       avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
-      handle: `@${p.author?.username || 'user'}`
+      handle: `@${p.author?.username || 'user'}`,
+      verified: !!p.author?.verified
     },
     caption: p.caption,
     content: p.content || '',
@@ -138,6 +143,7 @@ export default function ProfilePage() {
           role: currentUser.role,
           level: currentUser.level,
           streak: currentUser.streak,
+          verified: currentUser.verified,
           created_at: new Date().toISOString()
         });
       } else {
@@ -145,16 +151,10 @@ export default function ProfilePage() {
       }
 
       // Fetch Follow Status
-      if (selectedProfileId !== 'me' && session?.user) {
-        const { data: followData } = await supabase
-          .from('follows')
-          .select('*')
-          .match({ follower_id: session.user.id, following_id: targetId })
-          .maybeSingle();
-        setIsFollowing(!!followData);
-      } else {
-        setIsFollowing(false);
-      }
+      const stats = await fetchProfileStats(targetId);
+      setFollowersCount(stats.followersCount);
+      setFollowingCount(stats.followingCount);
+      setIsFollowing(stats.isFollowing);
 
       // Fetch Achievements
       const { data: achievementData } = await supabase
@@ -237,16 +237,40 @@ export default function ProfilePage() {
     setSearchParams({ tab });
   };
 
+  const startEditingProfile = () => {
+    setEditData({
+      name: profile?.display_name || profile?.full_name || currentUser.name,
+      username: profile?.username || currentUser.username || '',
+      bio: profile?.bio || currentUser.bio || '',
+      role: profile?.role || currentUser.role || '',
+      avatar: profile?.avatar_url || currentUser.avatar
+    });
+    setActiveTab('settings');
+    setIsEditingProfile(true);
+  };
+
   const handleSaveProfile = async () => {
-    await updateUser(editData);
-    setIsEditingProfile(false);
-    fetchProfileData();
+    if (usernameStatus === 'checking' || usernameStatus === 'taken' || usernameStatus === 'invalid') return;
+    setIsSavingProfile(true);
+    const success = await updateUser(editData);
+    setIsSavingProfile(false);
+    if (success) {
+      setIsEditingProfile(false);
+      fetchProfileData();
+    }
   };
 
   const handleToggleFollow = async () => {
     if (!targetId) return;
-    await toggleFollow(targetId);
-    setIsFollowing(!isFollowing);
+    const nextFollowing = await toggleFollow(targetId);
+    if (nextFollowing !== null) {
+      setIsFollowing(nextFollowing);
+      setFollowersCount(count => Math.max(0, count + (nextFollowing ? 1 : -1)));
+      const stats = await fetchProfileStats(targetId);
+      setFollowersCount(stats.followersCount);
+      setFollowingCount(stats.followingCount);
+      setIsFollowing(stats.isFollowing);
+    }
   };
 
   const visibleProfilePosts = profilePosts.filter(post => post.visibility !== 'archived');
@@ -256,9 +280,48 @@ export default function ProfilePage() {
   const stats = [
     { label: 'Level', value: profile?.level || 1, icon: Trophy, color: 'text-warning' },
     { label: 'Posts', value: visibleProfilePosts.length, icon: MessageSquare, color: 'text-success' },
+    { label: 'Followers', value: followersCount, icon: Users, color: 'text-accent' },
+    { label: 'Following', value: followingCount, icon: Heart, color: 'text-danger' },
     { label: 'Streak', value: profile?.streak || 0, icon: Zap, color: 'text-accent' },
-    { label: 'Achievements', value: achievements.length, icon: Award, color: 'text-danger' },
   ];
+
+  useEffect(() => {
+    if (!isEditingProfile) return;
+    const clean = editData.username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '').slice(0, 24);
+    if (clean !== editData.username) {
+      setEditData(data => ({ ...data, username: clean }));
+      return;
+    }
+    if (!/^[a-z0-9_]{3,24}$/.test(clean)) {
+      setUsernameStatus('invalid');
+      return;
+    }
+    if (clean === (profile?.username || currentUser.username)) {
+      setUsernameStatus('available');
+      return;
+    }
+
+    let cancelled = false;
+    setUsernameStatus('checking');
+    const timer = window.setTimeout(async () => {
+      const { data, error } = await supabase.rpc('is_username_available', {
+        candidate_username: clean,
+        current_user_id: session?.user?.id
+      });
+      if (cancelled) return;
+      if (error) {
+        console.error('Username availability check failed:', error);
+        setUsernameStatus('idle');
+        return;
+      }
+      setUsernameStatus(data ? 'available' : 'taken');
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [editData.username, isEditingProfile, profile?.username, currentUser.username, session?.user?.id]);
 
   const themes = [
     { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main' },
@@ -308,16 +371,19 @@ export default function ProfilePage() {
                 alt={profile?.full_name} 
               />
             </div>
-            <div className="absolute -bottom-2 -right-2 w-14 h-14 bg-accent rounded-2xl flex items-center justify-center text-accent-contrast shadow-xl border-4 border-app-container z-20">
-               <Shield size={24} />
-            </div>
+            {profile?.verified && (
+              <div className="absolute -bottom-2 -right-2 w-14 h-14 bg-card rounded-2xl flex items-center justify-center text-accent shadow-xl border-4 border-app-container z-20">
+                 <VerifiedBadge verified={true} className="scale-125" />
+              </div>
+            )}
           </div>
 
           <div className="flex-1 pb-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <h1 className="text-4xl font-black text-text-main tracking-tight uppercase flex items-center gap-4">
-                  {profile?.full_name || profile?.display_name}
+                  {profile?.display_name || profile?.full_name || 'Explorer'}
+                  <VerifiedBadge verified={!!profile?.verified} className="shrink-0" />
                   <span className="text-[11px] bg-accent/10 border border-accent/20 text-accent px-4 py-1.5 rounded-full uppercase tracking-[0.2em] font-black">
                     LVL {profile?.level || 1} {profile?.role || 'Explorer'}
                   </span>
@@ -329,7 +395,12 @@ export default function ProfilePage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-card-border" />
                   <div className="flex items-center gap-2">
                      <Users size={14} className="text-text-secondary opacity-40" />
-                     <span className="text-xs font-bold text-text-secondary tabular-nums">42.1k Followers</span>
+                     <span className="text-xs font-bold text-text-secondary tabular-nums">{followersCount.toLocaleString()} Followers</span>
+                  </div>
+                  <span className="w-1.5 h-1.5 rounded-full bg-card-border" />
+                  <div className="flex items-center gap-2">
+                     <Heart size={14} className="text-text-secondary opacity-40" />
+                     <span className="text-xs font-bold text-text-secondary tabular-nums">{followingCount.toLocaleString()} Following</span>
                   </div>
                 </div>
               </div>
@@ -337,7 +408,7 @@ export default function ProfilePage() {
                  { (selectedProfileId === 'me' || targetId === session?.user?.id) ? (
                    <>
                     <button 
-                      onClick={() => setIsEditingProfile(true)}
+                      onClick={startEditingProfile}
                       className="h-12 px-8 rounded-2xl bg-surface-muted border border-card-border text-text-secondary text-[11px] font-black uppercase tracking-widest hover:bg-card-dark hover:text-text-main transition-all flex items-center gap-3"
                     >
                         <Edit3 size={18} /> Edit Profile
@@ -461,7 +532,7 @@ export default function ProfilePage() {
                 ))}
                 {visibleProfilePosts.length === 0 && (
                    <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black bg-card rounded-[2.5rem] border border-dashed border-card-border">
-                      Frequency quiet
+                      No posts yet.
                    </div>
                 )}
               </div>
@@ -482,7 +553,7 @@ export default function ProfilePage() {
               ))}
               {visibleProfilePosts.length === 0 && (
                  <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black">
-                    No logged broadcasts
+                    No posts yet.
                  </div>
               )}
             </div>
@@ -565,7 +636,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === 'settings' && selectedProfileId === 'me' && (
+          {activeTab === 'settings' && isOwnProfile && (
             <div className="space-y-12 pb-12">
                {/* Account Settings */}
                <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -586,7 +657,10 @@ export default function ProfilePage() {
                               </div>
                            </div>
                            <div>
-                             <p className="text-2xl font-black text-text-main tracking-tight uppercase font-display">{currentUser.name}</p>
+                             <p className="text-2xl font-black text-text-main tracking-tight uppercase font-display flex items-center gap-2">
+                               {currentUser.name}
+                               <VerifiedBadge verified={currentUser.verified} />
+                             </p>
                              <p className="text-sm font-bold text-accent tracking-widest uppercase mt-1">@{currentUser.username || 'user'}</p>
                            </div>
                         </div>
@@ -594,7 +668,7 @@ export default function ProfilePage() {
                            <p className="text-sm font-medium text-text-secondary leading-relaxed">"{currentUser.bio || 'Bio not set.'}"</p>
                         </div>
                         <button 
-                          onClick={() => setIsEditingProfile(true)}
+                          onClick={startEditingProfile}
                           className="px-10 py-4 bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 shadow-xl shadow-accent/20 transition-all font-display"
                         >
                           Edit Profile
@@ -620,6 +694,18 @@ export default function ProfilePage() {
                                 onChange={e => setEditData({...editData, username: e.target.value})}
                                 className="w-full h-14 px-6 rounded-2xl bg-surface-muted border border-card-border text-text-main focus:outline-none focus:border-accent font-bold text-sm transition-all"
                               />
+                              <p className={cn(
+                                "text-[10px] font-bold uppercase tracking-widest ml-2",
+                                usernameStatus === 'available' ? 'text-success' :
+                                usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'text-danger' :
+                                'text-text-secondary/50'
+                              )}>
+                                {usernameStatus === 'checking' && 'Checking...'}
+                                {usernameStatus === 'available' && 'Available'}
+                                {usernameStatus === 'taken' && 'Username taken'}
+                                {usernameStatus === 'invalid' && 'Use 3-24 lowercase letters, numbers, or underscores.'}
+                                {usernameStatus === 'idle' && 'Lowercase letters, numbers, and underscores only.'}
+                              </p>
                             </div>
                          </div>
                          <div className="space-y-3">
@@ -631,8 +717,17 @@ export default function ProfilePage() {
                             />
                          </div>
                          <div className="flex gap-4">
-                            <button onClick={handleSaveProfile} className="flex-1 h-14 bg-accent text-accent-contrast rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 shadow-xl shadow-accent/20">
-                              <Check size={18} /> Update Profile
+                            <button
+                              onClick={handleSaveProfile}
+                              disabled={isSavingProfile || usernameStatus === 'checking' || usernameStatus === 'taken' || usernameStatus === 'invalid'}
+                              className="flex-1 h-14 bg-accent text-accent-contrast rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 shadow-xl shadow-accent/20 disabled:opacity-50 disabled:grayscale"
+                            >
+                              {isSavingProfile ? (
+                                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Check size={18} />
+                              )}
+                              {isSavingProfile ? 'Saving...' : 'Update Profile'}
                             </button>
                             <button onClick={() => setIsEditingProfile(false)} className="px-10 h-14 bg-surface-muted rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border border-card-border flex items-center justify-center gap-3 hover:bg-card-dark transition-all">
                               <X size={18} /> Cancel

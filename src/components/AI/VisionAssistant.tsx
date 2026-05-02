@@ -1,77 +1,125 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Send, X, Bot, Sparkles, Brain, Shrink, Maximize2, Terminal, Zap } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
+import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { BookOpen, CheckSquare, HelpCircle, ListChecks, Maximize2, MessageCircleQuestion, Shrink, Target, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
-import Markdown from 'react-markdown';
 
-const SYSTEM_INSTRUCTION = `You are "The Strategist", the Vision Assistant for VisNova - Design your Future, a high-performance vision board and productivity ecosystem.
-Your goal is to help users maintain their "Strategic Alignment" with their goals.
-You have access to the user's current context (visions, notes, vitals).
+type HelpQuestion = {
+  id: string;
+  label: string;
+  icon: typeof HelpCircle;
+  kind: 'data' | 'static';
+};
 
-Be concise, practical but encouraging, and use the user's "Architect" persona.
-Use formatting like bolding and bullet points for clarity.
-If asked to help plan something, provide a structured breakdown.`;
+const questions: HelpQuestion[] = [
+  { id: 'ongoing_tasks', label: 'What are my ongoing tasks?', icon: CheckSquare, kind: 'data' },
+  { id: 'unchecked_tasks', label: 'Show my unchecked tasks.', icon: ListChecks, kind: 'data' },
+  { id: 'visions_progress', label: 'What visions are in progress?', icon: Target, kind: 'data' },
+  { id: 'recent_notes', label: 'What notes did I create recently?', icon: BookOpen, kind: 'data' },
+  { id: 'create_post', label: 'How do I create a post?', icon: MessageCircleQuestion, kind: 'static' },
+  { id: 'create_vision', label: 'How do I create a vision?', icon: Target, kind: 'static' },
+  { id: 'vault_journal', label: 'How do I use Vault and Journal?', icon: BookOpen, kind: 'static' },
+  { id: 'change_username', label: 'How do I change my username?', icon: HelpCircle, kind: 'static' },
+  { id: 'focus_today', label: 'What should I focus on today?', icon: CheckSquare, kind: 'data' }
+];
+
+const staticAnswers: Record<string, string[]> = {
+  create_post: ['Open Feed.', 'Use the composer at the top.', 'Add a caption, text, or image, then choose Post.'],
+  create_vision: ['Open Vision.', 'Choose the create button.', 'Add a clear title and details, then save it.'],
+  vault_journal: ['Vault is for notes you want to keep and organize.', 'Journal is for date-based thoughts and reflections.', 'Both save to your Notes section.'],
+  change_username: ['Open Profile.', 'Choose Edit Profile.', 'Enter a lowercase username with 3-24 letters, numbers, or underscores, then save.']
+};
 
 export default function VisionAssistant() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
-    { role: 'assistant', content: 'Strategic link active. Architect, how shall we optimize your vision trajectory today?' }
-  ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const { visions, notes, vitals, user } = useStore();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [activeQuestion, setActiveQuestion] = useState<string>('ongoing_tasks');
+  const [answerLines, setAnswerLines] = useState<string[]>(['Choose a question to get quick help.']);
+  const [isLoading, setIsLoading] = useState(false);
+  const { session, addToast } = useStore();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const active = useMemo(() => questions.find(q => q.id === activeQuestion) || questions[0], [activeQuestion]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const openHelp = () => setIsOpen(true);
+    window.addEventListener('open-visnova-help', openHelp);
+    return () => window.removeEventListener('open-visnova-help', openHelp);
+  }, []);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const requireUserId = () => {
+    const userId = session?.user?.id;
+    if (!userId) {
+      addToast({ type: 'error', title: 'Login required', description: 'Sign in to use Help.' });
+      return null;
+    }
+    return userId;
+  };
 
-    const userMessage = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+  const showQuestion = async (question: HelpQuestion) => {
+    setActiveQuestion(question.id);
+    if (question.kind === 'static') {
+      setAnswerLines(staticAnswers[question.id] || ['No help article found yet.']);
+      return;
+    }
+
+    const userId = requireUserId();
+    if (!userId) return;
+
     setIsLoading(true);
-
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      if (question.id === 'recent_notes') {
+        const { data, error } = await supabase
+          .from('notes')
+          .select('title, note_type, created_at')
+          .eq('user_id', userId)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (error) throw error;
+        setAnswerLines((data || []).length
+          ? data.map((note: any) => `${note.title || 'Untitled note'} - ${note.note_type || 'vault'} - ${new Date(note.created_at).toLocaleDateString()}`)
+          : ['No recent notes yet.']);
+        return;
+      }
 
-      const context = {
-        user: { name: user.name, rank: user.rank, level: user.level },
-        activeVisions: visions.filter(v => v.status === 'in-progress').map(v => ({ title: v.title, tasks: v.tasks })),
-        recentNotes: notes.slice(0, 3).map(n => ({ title: n.title, content: n.content.substring(0, 100) })),
-        vitals: vitals
-      };
+      if (question.id === 'visions_progress') {
+        const { data, error } = await supabase
+          .from('visions')
+          .select('title, progress, status')
+          .eq('user_id', userId)
+          .neq('status', 'completed')
+          .order('updated_at', { ascending: false })
+          .limit(8);
+        if (error) throw error;
+        setAnswerLines((data || []).length
+          ? data.map((vision: any) => `${vision.title || 'Untitled vision'} - ${vision.progress || 0}% - ${vision.status || 'idea'}`)
+          : ['No ongoing visions.']);
+        return;
+      }
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          { role: 'user', parts: [{ text: `Context: ${JSON.stringify(context)}\n\nUser Message: ${userMessage}` }] }
-        ],
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          temperature: 0.7,
-        },
-      });
+      const [tasksRes, todosRes] = await Promise.all([
+        supabase.from('tasks').select('text, vision_id').eq('user_id', userId).eq('completed', false).limit(10),
+        supabase.from('todos').select('text').eq('user_id', userId).eq('completed', false).limit(10)
+      ]);
+      if (tasksRes.error) throw tasksRes.error;
+      if (todosRes.error) throw todosRes.error;
 
-      const assistantMessage = response.text || "Communication error. Re-syncing...";
-      setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
-    } catch (error) {
-      console.error('Gemini Error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "Vision feedback error. Check your API uplink." }]);
+      const taskLines = (tasksRes.data || []).map((task: any) => `Task: ${task.text}`);
+      const todoLines = (todosRes.data || []).map((todo: any) => `Todo: ${todo.text}`);
+      const combined = [...taskLines, ...todoLines];
+
+      if (question.id === 'focus_today') {
+        setAnswerLines(combined.length
+          ? [`Start with: ${combined[0].replace(/^(Task|Todo):\s*/, '')}`, ...combined.slice(1, 4)]
+          : ['No unchecked tasks yet. Add a small next step to one vision.']);
+      } else {
+        setAnswerLines(combined.length ? combined : ['No unchecked tasks yet.']);
+      }
+    } catch (error: any) {
+      console.error('Help query failed:', error);
+      setAnswerLines(['I could not load that data right now.']);
+      addToast({ type: 'error', title: 'Help failed', description: error.message || 'Could not load this answer.' });
     } finally {
       setIsLoading(false);
     }
@@ -79,137 +127,97 @@ export default function VisionAssistant() {
 
   return (
     <>
-      {/* Toggle Button */}
       {!isOpen && (
         <motion.button
-          initial={{ scale: 0, opacity: 0 }}
+          initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
+          whileHover={{ y: -2, scale: 1.03 }}
+          whileTap={{ scale: 0.96 }}
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-8 left-8 lg:left-auto lg:right-12 z-[100] w-16 h-16 rounded-2xl bg-accent text-accent-contrast shadow-2xl shadow-accent/40 flex items-center justify-center group active:scale-90 transition-all"
+          className="fixed bottom-8 left-8 lg:left-auto lg:right-12 z-[100] w-16 h-16 rounded-2xl bg-accent text-accent-contrast shadow-2xl shadow-accent/30 flex items-center justify-center transition-all"
+          aria-label="Open VisNova Help"
         >
-          <div className="absolute inset-0 bg-accent rounded-2xl animate-ping opacity-20 pointer-events-none" />
-          <Sparkles size={28} className="group-hover:scale-110 transition-transform" />
+          <HelpCircle size={28} />
         </motion.button>
       )}
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 100, scale: 0.9, filter: 'blur(10px)' }}
+            initial={{ opacity: 0, y: 80, scale: 0.96 }}
             animate={{
               opacity: 1,
               y: 0,
               scale: 1,
-              filter: 'blur(0px)',
-              height: isMinimized ? '80px' : '650px',
-              width: isMinimized ? '300px' : '450px'
+              height: isMinimized ? '80px' : '620px',
+              width: isMinimized ? '300px' : '460px'
             }}
-            exit={{ opacity: 0, y: 100, scale: 0.9, filter: 'blur(10px)' }}
+            exit={{ opacity: 0, y: 80, scale: 0.96 }}
             className={cn(
               "fixed bottom-8 right-8 z-[200] bg-card border border-card-border shadow-2xl flex flex-col overflow-hidden max-w-[calc(100vw-4rem)] max-h-[calc(100vh-4rem)]",
-              isMinimized ? "rounded-2xl" : "rounded-[2.5rem]"
+              isMinimized ? "rounded-2xl" : "rounded-[2rem]"
             )}
           >
-            {/* Header */}
             <div className="p-6 border-b border-card-border flex items-center justify-between bg-surface-muted">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                  <Terminal size={18} />
+                  <HelpCircle size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-text-main tracking-tight uppercase">Vision Strategist</h3>
-                  <p className="text-[10px] font-bold text-accent tracking-[0.2em] uppercase origin-left scale-90">Strategist v4.2.0</p>
+                  <h3 className="text-sm font-black text-text-main tracking-tight uppercase">VisNova Help</h3>
+                  <p className="text-[10px] font-bold text-text-secondary/50 tracking-[0.2em] uppercase">Quick answers</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsMinimized(!isMinimized)}
-                  className="p-2 text-text-secondary hover:text-text-main transition-colors"
-                >
+                <button onClick={() => setIsMinimized(!isMinimized)} className="p-2 text-text-secondary hover:text-text-main transition-colors">
                   {isMinimized ? <Maximize2 size={16} /> : <Shrink size={16} />}
                 </button>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-2 text-text-secondary hover:text-text-main transition-colors"
-                >
+                <button onClick={() => setIsOpen(false)} className="p-2 text-text-secondary hover:text-text-main transition-colors">
                   <X size={16} />
                 </button>
               </div>
             </div>
 
             {!isMinimized && (
-              <>
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar bg-card/50">
-                  {messages.map((m, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: m.role === 'user' ? 20 : -20 }}
-                      animate={{ opacity: 1, x: 0 }}
+              <div className="grid grid-cols-1 sm:grid-cols-[190px_1fr] flex-1 min-h-0">
+                <div className="p-4 border-r border-card-border overflow-y-auto space-y-2">
+                  {questions.map(question => (
+                    <button
+                      key={question.id}
+                      onClick={() => showQuestion(question)}
                       className={cn(
-                        "flex flex-col gap-2 max-w-[85%]",
-                        m.role === 'user' ? "ml-auto items-end" : "items-start"
+                        "w-full text-left p-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all",
+                        activeQuestion === question.id ? "bg-accent text-accent-contrast" : "text-text-secondary hover:bg-surface-muted hover:text-text-main"
                       )}
                     >
-                      <div className={cn(
-                        "p-5 rounded-3xl text-sm leading-relaxed",
-                        m.role === 'user'
-                          ? "bg-accent text-accent-contrast font-bold shadow-xl shadow-accent/10 rounded-tr-none"
-                          : "bg-surface-muted border border-card-border text-text-main rounded-tl-none"
-                      )}>
-                        <div className="markdown-body">
-                           <Markdown>{m.content}</Markdown>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 px-2">
-                        {m.role === 'user' ? user.name : 'Strategist'}
-                      </span>
-                    </motion.div>
+                      <question.icon size={14} />
+                      {question.label}
+                    </button>
                   ))}
-                  {isLoading && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex items-center gap-3 text-accent"
-                    >
-                      <Zap size={14} className="animate-pulse" />
-                      <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Calculating Trajectory...</span>
-                    </motion.div>
-                  )}
-                  <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
-                <div className="p-8 bg-card border-t border-card-border">
-                  <form
-                    onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                    className="flex gap-4"
-                  >
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Planning execution trajectory..."
-                        className="w-full h-14 pl-6 pr-12 rounded-2xl bg-surface-muted border border-card-border text-sm focus:outline-none focus:border-accent/40 transition-all font-medium text-text-main placeholder:text-text-secondary/40"
-                      />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-text-secondary">
-                        <kbd className="px-1.5 py-0.5 rounded border border-card-border text-[9px] bg-card">⏎</kbd>
-                      </div>
+                <div className="p-6 overflow-y-auto">
+                  <div className="flex items-center gap-3 mb-6">
+                    <active.icon size={18} className="text-accent" />
+                    <h4 className="text-sm font-black uppercase tracking-tight text-text-main">{active.label}</h4>
+                  </div>
+
+                  {isLoading ? (
+                    <div className="flex items-center gap-3 text-text-secondary">
+                      <div className="w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Loading...</span>
                     </div>
-                    <button
-                      type="submit"
-                      disabled={!input.trim() || isLoading}
-                      className="w-14 h-14 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-accent/20 disabled:opacity-50 disabled:grayscale"
-                    >
-                      <Send size={20} />
-                    </button>
-                  </form>
-                  <p className="mt-4 text-[9px] text-center text-text-secondary/40 font-black uppercase tracking-widest">
-                    AI Insights powered by Vision Core 3.1
-                  </p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {answerLines.map((line, index) => (
+                        <li key={`${line}-${index}`} className="p-4 rounded-2xl bg-surface-muted border border-card-border text-sm text-text-secondary leading-relaxed font-medium">
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              </>
+              </div>
             )}
           </motion.div>
         )}

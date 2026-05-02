@@ -151,6 +151,9 @@ export interface CircleMember {
   streak: number;
   statusNote?: string;
   role?: string;
+  username?: string;
+  verified?: boolean;
+  relation?: 'following' | 'follower' | 'mutual' | 'friend' | 'close_friend' | 'collaborator';
 }
 
 export interface FocusSession {
@@ -188,6 +191,9 @@ export interface AppState {
     dailyIntention?: string;
     isGrinding: boolean;
     statusNote?: string;
+    mainGoal?: string;
+    interests?: string[];
+    verified?: boolean;
   };
   visions: Vision[];
   sharedVisions: Vision[];
@@ -204,6 +210,8 @@ export interface AppState {
   userInterests: Record<string, number>;
   userCircles: Record<string, 'friend' | 'close_friend' | 'collaborator'>;
   followingIds: string[];
+  followerCounts: Record<string, number>;
+  followingCounts: Record<string, number>;
   notifications: any[];
   unreadNotificationCount: number;
   authLoading: boolean;
@@ -213,6 +221,7 @@ export interface AppState {
   updateUserInterests: (interests: string[]) => Promise<void>;
   addToCircle: (targetUserId: string, type: 'friend' | 'close_friend' | 'collaborator') => Promise<void>;
   removeFromCircle: (targetUserId: string) => Promise<void>;
+  fetchCircleData: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   hasCompletedOnboarding: boolean;
@@ -228,7 +237,7 @@ export interface AppState {
   setSession: (session: any | null) => void;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
   removeToast: (id: string) => void;
-  updateUser: (updates: Partial<AppState['user']>) => void;
+  updateUser: (updates: Partial<AppState['user']>) => Promise<boolean>;
   toggleGrinding: () => void;
   updateCircleMember: (id: string, updates: Partial<CircleMember>) => void;
   addVision: (vision: Partial<Vision>) => Promise<Vision>;
@@ -274,12 +283,13 @@ export interface AppState {
   toggleSavePost: (id: string) => Promise<void>;
   fetchPosts: (tab?: 'recommended' | 'following' | 'latest' | 'saved') => Promise<void>;
   fetchFeedContext: () => Promise<void>;
+  fetchProfileStats: (profileId: string) => Promise<{ followersCount: number; followingCount: number; isFollowing: boolean }>;
   ensureCurrentUserProfile: () => Promise<any>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateOnboardingStep: (step: number) => Promise<void>;
   addComment: (postId: string, content: string, parentId?: string) => Promise<any>;
-  toggleFollow: (followingId: string) => Promise<void>;
+  toggleFollow: (followingId: string) => Promise<boolean | null>;
   achievements: Achievement[];
   milestones: Milestone[];
   shareVision: (visionId: string, receiverEmail: string) => Promise<void>;
@@ -302,6 +312,7 @@ export interface Post {
     name: string;
     avatar: string;
     handle: string;
+    verified?: boolean;
   };
   caption?: string;
   content: string;
@@ -339,6 +350,7 @@ export interface Comment {
     name: string;
     avatar: string;
     handle: string;
+    verified?: boolean;
   };
   content: string;
   timestamp: string;

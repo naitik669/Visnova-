@@ -76,6 +76,35 @@ CREATE UNIQUE INDEX IF NOT EXISTS profiles_username_unique_idx
 ON public.profiles (lower(username))
 WHERE username IS NOT NULL AND username <> '';
 
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS verified_reason TEXT,
+ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+
+CREATE OR REPLACE FUNCTION public.prevent_user_verification_changes()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL AND (
+    NEW.verified IS DISTINCT FROM OLD.verified OR
+    NEW.verified_reason IS DISTINCT FROM OLD.verified_reason OR
+    NEW.verified_at IS DISTINCT FROM OLD.verified_at
+  ) THEN
+    RAISE EXCEPTION 'Verification fields can only be changed by an admin.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS prevent_user_verification_changes ON public.profiles;
+CREATE TRIGGER prevent_user_verification_changes
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_user_verification_changes();
+
 CREATE OR REPLACE FUNCTION public.is_username_available(candidate_username TEXT, current_user_id UUID DEFAULT NULL)
 RETURNS BOOLEAN
 LANGUAGE sql

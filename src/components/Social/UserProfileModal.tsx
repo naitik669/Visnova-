@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
-import { X, Sparkles, Map, BookOpen, MessageCircle, Link2, MapPin, Plus, Shield, Zap, Award, Users } from 'lucide-react';
+import { X, MessageCircle, Plus, Zap, Users, Heart } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import VerifiedBadge from '../VerifiedBadge';
 
 export default function UserProfileModal() {
-  const { selectedProfileId, setSelectedProfileId, user: currentUser, session, userCircles, addToCircle, removeFromCircle, toggleFollow, followingIds } = useStore();
+  const { selectedProfileId, setSelectedProfileId, user: currentUser, session, userCircles, addToCircle, removeFromCircle, toggleFollow, followingIds, fetchProfileStats } = useStore();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingFollow, setIsLoadingFollow] = useState(false);
   const [showCircleMenu, setShowCircleMenu] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   const currentCircle = selectedProfileId ? userCircles[selectedProfileId] : null;
 
@@ -53,10 +56,14 @@ export default function UserProfileModal() {
             role: currentUser.role,
             level: currentUser.level,
             streak: currentUser.streak,
+            verified: currentUser.verified,
           });
         } else {
           setProfile(data);
         }
+        const stats = await fetchProfileStats(targetId);
+        setFollowersCount(stats.followersCount);
+        setFollowingCount(stats.followingCount);
       } catch (err) {
         console.error('Error fetching modal profile:', err);
         setProfile(null);
@@ -66,7 +73,7 @@ export default function UserProfileModal() {
     };
 
     fetchProfile();
-  }, [selectedProfileId, session?.user?.id, currentUser]);
+  }, [selectedProfileId, session?.user?.id, currentUser, fetchProfileStats]);
 
   if (!selectedProfileId) return null;
 
@@ -111,8 +118,8 @@ export default function UserProfileModal() {
                       <div className="w-32 h-32 rounded-[2rem] p-1 bg-app-container shadow-2xl">
                         <img src={profile?.avatar_url || 'https://api.dicebear.com/7.x/shapes/svg?seed=' + profile?.id} alt={profile?.full_name} className="w-full h-full rounded-[1.8rem] object-cover border-2 border-card-border bg-card" />
                       </div>
-                      <div className="absolute -bottom-2 -right-2 bg-accent text-accent-contrast w-10 h-10 rounded-xl border-4 border-app-container flex items-center justify-center shadow-lg">
-                        <Shield size={18} />
+                      <div className="absolute -bottom-2 -right-2 bg-card text-accent w-10 h-10 rounded-xl border-4 border-app-container flex items-center justify-center shadow-lg">
+                        <VerifiedBadge verified={!!profile?.verified} />
                       </div>
                    </div>
 
@@ -121,8 +128,9 @@ export default function UserProfileModal() {
                         <div className="space-y-1">
                           <h2 className="text-3xl font-black text-text-main tracking-tight uppercase flex items-center gap-3">
                             {profile?.full_name || profile?.display_name || 'Explorer'}
+                            <VerifiedBadge verified={!!profile?.verified} className="shrink-0" />
                           </h2>
-                          <p className="text-xs font-black text-accent uppercase tracking-[0.2em]">{profile?.role || 'Vison Architect'} • LVL {profile?.level || 1}</p>
+                          <p className="text-xs font-black text-accent uppercase tracking-[0.2em]">{profile?.role || 'Vision Builder'} - LVL {profile?.level || 1}</p>
                         </div>
                         {selectedProfileId === 'me' ? (
                           <button 
@@ -140,7 +148,15 @@ export default function UserProfileModal() {
                                onClick={async () => {
                                  if (isLoadingFollow) return;
                                  setIsLoadingFollow(true);
-                                 await toggleFollow(selectedProfileId!);
+                                 const nextFollowing = await toggleFollow(selectedProfileId!);
+                                 if (nextFollowing !== null) {
+                                   const targetId = selectedProfileId === 'me' ? session?.user?.id : selectedProfileId;
+                                   if (targetId) {
+                                     const stats = await fetchProfileStats(targetId);
+                                     setFollowersCount(stats.followersCount);
+                                     setFollowingCount(stats.followingCount);
+                                   }
+                                 }
                                  setIsLoadingFollow(false);
                                }}
                                className={cn(
@@ -180,7 +196,7 @@ export default function UserProfileModal() {
                                      className="absolute top-full right-0 mt-2 w-48 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2 overflow-hidden"
                                    >
                                       <div className="p-3 border-b border-card-border/50 mb-1">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40">Circle Protocol</p>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40">Circle</p>
                                       </div>
                                       {(['friend', 'close_friend', 'collaborator'] as const).map(type => (
                                         <button
@@ -218,18 +234,25 @@ export default function UserProfileModal() {
                  {/* Identity Summary */}
                  <div className="grid grid-cols-2 gap-4 mb-10">
                     <div className="p-5 bg-card/50 rounded-3xl border border-card-border/50 group hover:border-accent/30 transition-colors">
-                       <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest mb-1">Status Protocol</p>
+                       <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest mb-1">Bio</p>
                        <p className="text-[13px] font-medium text-text-main leading-relaxed  line-clamp-2">
-                          "{profile?.bio || 'In deep work mode. Zero distractions allowed.'}"
+                          "{profile?.bio || 'No biography provided.'}"
                        </p>
                     </div>
-                    <div className="p-5 bg-card/50 rounded-3xl border border-card-border/50 group hover:border-accent/30 transition-colors flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
-                           <Award size={20} />
+                    <div className="p-5 bg-card/50 rounded-3xl border border-card-border/50 group hover:border-accent/30 transition-colors grid grid-cols-2 gap-4">
+                        <div>
+                        <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center border border-accent/20 mb-2">
+                           <Users size={20} />
+                        </div>
+                           <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest">Followers</p>
+                           <p className="text-lg font-black text-text-main tabular-nums">{followersCount.toLocaleString()}</p>
                         </div>
                         <div>
-                           <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest">Active Streak</p>
-                           <p className="text-lg font-black text-text-main tabular-nums">{profile?.streak || 0} Days</p>
+                        <div className="w-10 h-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center border border-danger/20 mb-2">
+                           <Heart size={20} />
+                        </div>
+                           <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest">Following</p>
+                           <p className="text-lg font-black text-text-main tabular-nums">{followingCount.toLocaleString()}</p>
                         </div>
                     </div>
                  </div>
@@ -258,7 +281,7 @@ export default function UserProfileModal() {
                       }}
                       className="px-10 h-14 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all"
                     >
-                       View Matrix
+                       View Profile
                     </button>
                  </div>
               </div>

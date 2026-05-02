@@ -32,6 +32,7 @@ import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
 import { Post, Comment } from '../../types';
 import { uploadMedia, supabase } from '../../lib/supabase';
+import VerifiedBadge from '../VerifiedBadge';
 // Removed Firebase auth import
 
 import { TrendingTopicsSection } from './TrendingTopicsSection';
@@ -215,7 +216,7 @@ export default function CommunityFeed() {
       const searchUsers = async () => {
         const { data } = await supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url, bio, level')
+          .select('id, username, display_name, avatar_url, bio, level, verified')
           .or(`username.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
           .limit(6);
         if (data) setSearchedUsers(data);
@@ -233,7 +234,8 @@ export default function CommunityFeed() {
       id: p.author?.id || p.user_id,
       name: p.author?.display_name || p.author?.full_name || 'Explorer',
       avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
-      handle: `@${p.author?.username || 'user'}`
+      handle: `@${p.author?.username || 'user'}`,
+      verified: !!p.author?.verified
     },
     caption: p.caption,
     content: p.content || '',
@@ -527,7 +529,10 @@ export default function CommunityFeed() {
                        <div className="flex items-center gap-3">
                          <img src={u.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${u.id}`} className="w-10 h-10 rounded-xl" alt={u.username} />
                          <div>
-                            <p className="text-sm font-bold text-text-main">{u.display_name || 'Explorer'}</p>
+                            <p className="text-sm font-bold text-text-main flex items-center gap-2">
+                              {u.display_name || 'Explorer'}
+                              <VerifiedBadge verified={!!u.verified} className="scale-90" />
+                            </p>
                             <p className="text-xs font-semibold text-text-secondary/50">@{u.username}</p>
                          </div>
                        </div>
@@ -1220,7 +1225,10 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
             <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-success border-2 border-card" />
           </div>
           <div>
-            <h4 className="text-base font-bold text-text-main tracking-tight leading-none mb-1 group-hover:text-accent transition-colors font-display uppercase">{post.author.name}</h4>
+            <h4 className="text-base font-bold text-text-main tracking-tight leading-none mb-1 group-hover:text-accent transition-colors font-display uppercase flex items-center gap-2">
+              {post.author.name}
+              <VerifiedBadge verified={post.author.verified} />
+            </h4>
             <div className="flex items-center gap-2">
               <p className="text-[10px] font-black text-text-secondary/40 tracking-widest uppercase">{post.author.handle}</p>
               <span className="w-1 h-1 rounded-full bg-card-border" />
@@ -1534,7 +1542,8 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
         author: {
           name: c.author?.display_name || c.author?.full_name || 'Explorer',
           avatar: c.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${c.user_id}`,
-          handle: `@${c.author?.username || 'user'}`
+          handle: `@${c.author?.username || 'user'}`,
+          verified: !!c.author?.verified
         },
         content: c.content,
         timestamp: new Date(c.created_at).toLocaleDateString()
@@ -1610,7 +1619,10 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
                      <div className="flex-1">
                         <div className="bg-card p-5 rounded-2xl border border-card-border group-hover:border-accent/10 transition-colors">
                            <div className="flex justify-between items-start mb-2">
-                              <h5 className="text-[10px] font-black text-text-main uppercase tracking-widest group-hover:text-accent transition-colors">{comment.author.name}</h5>
+                              <h5 className="text-[10px] font-black text-text-main uppercase tracking-widest group-hover:text-accent transition-colors flex items-center gap-2">
+                                {comment.author.name}
+                                <VerifiedBadge verified={comment.author.verified} className="scale-90" />
+                              </h5>
                               <span className="text-[9px] font-black text-text-secondary/30 uppercase">{comment.timestamp}</span>
                            </div>
                            <p className="text-sm text-text-secondary leading-relaxed font-medium">{comment.content}</p>
@@ -1635,7 +1647,7 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
               <textarea 
                  value={commentText}
                  onChange={e => setCommentText(e.target.value)}
-                 placeholder="Input your observation..."
+                 placeholder="Write a comment..."
                  className="w-full bg-surface-muted border border-card-border rounded-2xl p-5 pr-16 text-sm font-medium focus:outline-none focus:border-accent transition-all resize-none h-24"
               />
               <button 

@@ -1,14 +1,97 @@
-import { motion } from 'motion/react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
-import { Zap, Shield, Flame, Target, Trophy, Clock, Users } from 'lucide-react';
+import { Check, Clock, Plus, Target, Users } from 'lucide-react';
+import VerifiedBadge from '../VerifiedBadge';
+import { getSuggestedUsers, SuggestedUser } from '../../services/discoveryService';
+import { supabase } from '../../lib/supabase';
+import { Post } from '../../types';
+
+const relationLabels: Record<string, string> = {
+  following: 'Following',
+  follower: 'Follower',
+  mutual: 'Mutual',
+  friend: 'Friend',
+  close_friend: 'Close friend',
+  collaborator: 'Collaborator'
+};
 
 export default function Circle() {
-  const { circle, user, sharedVisions, acceptVision } = useStore();
+  const { circle, user, sharedVisions, acceptVision, fetchCircleData, followingIds, toggleFollow, setSelectedProfileId } = useStore();
+  const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
+  const [activity, setActivity] = useState<Post[]>([]);
+  const circleIds = useMemo(() => new Set(circle.map(member => member.id)), [circle]);
+
+  useEffect(() => {
+    fetchCircleData();
+  }, [fetchCircleData]);
+
+  useEffect(() => {
+    const loadSuggestions = async () => {
+      if (!user.id) return;
+      const nextSuggestions = await getSuggestedUsers(user.id);
+      setSuggestions(nextSuggestions.filter(candidate => !circleIds.has(candidate.id) && !followingIds.includes(candidate.id)));
+    };
+    loadSuggestions();
+  }, [user.id, circleIds, followingIds]);
+
+  useEffect(() => {
+    const loadActivity = async () => {
+      const ids = Array.from(circleIds);
+      if (ids.length === 0) {
+        setActivity([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*, author:profiles!posts_user_id_fkey(*)')
+        .eq('visibility', 'public')
+        .in('user_id', ids)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.error('Failed to load circle activity:', error);
+        setActivity([]);
+        return;
+      }
+
+      setActivity((data || []).map((post: any) => ({
+        id: post.id,
+        userId: post.user_id,
+        author: {
+          id: post.author?.id || post.user_id,
+          name: post.author?.display_name || post.author?.full_name || 'Explorer',
+          avatar: post.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${post.user_id}`,
+          handle: `@${post.author?.username || 'user'}`,
+          verified: !!post.author?.verified
+        },
+        caption: post.caption,
+        content: post.content || '',
+        timestamp: new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        createdAt: new Date(post.created_at).getTime(),
+        likes: 0,
+        comments: 0,
+        saves: 0,
+        isLiked: false,
+        isSaved: false,
+        type: post.type || 'update',
+        visibility: post.visibility || 'public'
+      })));
+    };
+    loadActivity();
+  }, [circleIds]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in duration-700 pb-20 pt-10">
-      {/* Shared Visions Section */}
+    <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in duration-700 pb-20 pt-10">
+      <section className="px-2">
+        <h1 className="text-3xl font-black text-text-main tracking-tight uppercase mb-3">Circle</h1>
+        <p className="max-w-2xl text-sm text-text-secondary leading-relaxed">
+          Your Circle helps you stay connected with people you follow, collaborators, and progress partners.
+        </p>
+      </section>
+
       {sharedVisions.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-3 px-2">
@@ -24,14 +107,14 @@ export default function Circle() {
                   </div>
                   <div>
                     <h3 className="font-bold text-text-main text-lg tracking-tight">{vision.title}</h3>
-                    <p className="text-xs text-text-secondary font-medium  opacity-70">{vision.notes}</p>
+                    <p className="text-xs text-text-secondary font-medium opacity-70">{vision.notes}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => acceptVision(vision.id)}
                   className="px-6 py-2 bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-accent/20"
                 >
-                  Join Strategic Mission
+                  Accept Vision
                 </button>
               </div>
             ))}
@@ -39,128 +122,101 @@ export default function Circle() {
         </section>
       )}
 
-      {/* Grid of circle members */}
-      <div className="grid grid-cols-1 gap-6">
-        {circle.map((member) => (
-          <div key={member.id} className="system-card p-8 bg-card border-card-border flex flex-col md:flex-row items-center justify-between gap-8 group hover:border-accent/30 transition-all">
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                <img
-                  src={member.avatar}
-                  alt={member.name}
-                  className={cn(
-                    "w-20 h-20 rounded-3xl border-4 border-bg-base shadow-xl transition-all",
-                    member.isGrinding ? "ring-4 ring-accent ring-offset-4 scale-105" : "grayscale opacity-50"
-                  )}
-                />
-                {member.isGrinding && (
-                  <div className="absolute -top-3 -right-3 px-3 py-1 bg-accent text-accent-contrast text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg animate-bounce">
-                    Grinding
-                  </div>
-                )}
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-2xl font-bold text-text-main tracking-tight">{member.name}</h3>
-                <div className="flex items-center gap-4">
-                   <div className="flex items-center gap-1.5 text-orange-500 font-bold text-xs uppercase tracking-widest">
-                      <Flame size={14} fill="currentColor" /> {member.streak} Day Streak
-                   </div>
-                   <div className="w-1 h-1 rounded-full bg-card-border" />
-                   <div className="text-text-secondary text-xs font-bold uppercase tracking-widest">
-                      {member.count} Sessions Today
-                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-10">
-               <div className="text-center">
-                  <p className="text-[10px] font-black uppercase text-text-secondary/60 mb-1">Consistency Index</p>
-                  <p className={cn(
-                    "text-2xl font-black tabular-nums",
-                    member.count > 5 ? "text-accent" : "text-text-main"
-                  )}>{Math.min(100, member.count * 12)}%</p>
-               </div>
-               <div className="w-px h-10 bg-card-border" />
-               <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                     <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-text-main">Status Active</span>
-                  </div>
-                  <p className="text-[10px] font-bold text-text-secondary ">Locked onto Objective Alpha</p>
-               </div>
-            </div>
-          </div>
-        ))}
-
-        {/* Your personal card in the circle view */}
-        <div className="system-card p-8 bg-accent/[0.02] border-accent/20 border-dashed flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className={cn(
-                    "w-20 h-20 rounded-3xl border-4 border-bg-base shadow-xl transition-all",
-                    user.isGrinding ? "ring-4 ring-accent ring-offset-4 scale-105" : ""
-                  )}
-                />
-                {user.isGrinding && (
-                  <div className="absolute -top-3 -right-3 px-3 py-1 bg-accent text-accent-contrast text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                    Current Focus
-                  </div>
-                )}
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-2xl font-bold text-text-main tracking-tight">{user.name} <span className="text-text-secondary font-light text-sm  ml-2">(You)</span></h3>
-                <div className="flex items-center gap-4">
-                   <div className="flex items-center gap-1.5 text-orange-500 font-bold text-xs uppercase tracking-widest">
-                      <Flame size={14} fill="currentColor" /> {user.streak} Day Streak
-                   </div>
-                   <div className="w-1 h-1 rounded-full bg-card-border" />
-                   <div className="text-text-secondary text-xs font-bold uppercase tracking-widest">
-                      Rank: {user.rank}
-                   </div>
-                </div>
-              </div>
-            </div>
-
-            <button className="px-8 py-3 rounded-2xl border-2 border-accent/20 text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-accent-contrast transition-all">
-              Invite to Circle
-            </button>
+      <section className="space-y-6">
+        <div className="flex items-center gap-3 px-2">
+          <Users size={20} className="text-accent" />
+          <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-main">My Circle</h2>
         </div>
-      </div>
 
-      {/* Circle Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <div className="system-card p-8 space-y-4">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center">
-               <Flame size={20} />
-            </div>
-            <div>
-               <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Circle Streak</p>
-               <h4 className="text-3xl font-bold text-text-main">412 Days</h4>
-            </div>
-         </div>
-         <div className="system-card p-8 space-y-4">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center">
-               <Zap size={20} />
-            </div>
-            <div>
-               <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Total Focus</p>
-               <h4 className="text-3xl font-bold text-text-main">1.2k Sessions</h4>
-            </div>
-         </div>
-         <div className="system-card p-8 space-y-4 border-accent/20">
-            <div className="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center">
-               <Trophy size={20} />
-            </div>
-            <div>
-               <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Active Rank</p>
-               <h4 className="text-3xl font-bold text-text-main">Apex Squad</h4>
-            </div>
-         </div>
-      </div>
+        {circle.length === 0 ? (
+          <div className="system-card p-12 bg-card border-dashed border-card-border text-center">
+            <p className="text-sm font-bold text-text-secondary">Your circle is empty. Follow people to build your circle.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {circle.map((member) => (
+              <div key={member.id} className="system-card p-6 bg-card border-card-border flex items-center justify-between gap-5 group hover:border-accent/30 transition-all">
+                <button onClick={() => setSelectedProfileId(member.id)} className="flex items-center gap-4 min-w-0 text-left">
+                  <img src={member.avatar} alt={member.name} className="w-16 h-16 rounded-2xl border border-card-border object-cover shadow-lg" />
+                  <div className="min-w-0">
+                    <h3 className="text-base font-black text-text-main uppercase tracking-tight flex items-center gap-2 truncate">
+                      {member.name}
+                      <VerifiedBadge verified={member.verified} />
+                    </h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50 truncate">@{member.username || 'user'}</p>
+                    <p className="mt-2 inline-flex px-3 py-1 rounded-lg bg-surface-muted border border-card-border text-[8px] font-black uppercase tracking-widest text-text-secondary">
+                      {relationLabels[member.relation || 'following']}
+                    </p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => toggleFollow(member.id)}
+                  className={cn(
+                    "h-10 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all",
+                    followingIds.includes(member.id)
+                      ? "bg-surface-muted border border-card-border text-text-secondary"
+                      : "bg-accent text-accent-contrast"
+                  )}
+                >
+                  {followingIds.includes(member.id) ? <Check size={13} /> : <Plus size={13} />}
+                  {followingIds.includes(member.id) ? 'Following' : 'Follow'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-5">
+          <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-main px-2">Suggested People</h2>
+          {suggestions.length === 0 ? (
+            <div className="system-card p-8 bg-card border-card-border text-sm text-text-secondary">No suggestions right now.</div>
+          ) : (
+            suggestions.slice(0, 5).map((candidate) => (
+              <div key={candidate.id} className="system-card p-5 bg-card border-card-border flex items-center justify-between gap-4">
+                <button onClick={() => setSelectedProfileId(candidate.id)} className="flex items-center gap-4 min-w-0 text-left">
+                  <img src={candidate.avatar_url} alt={candidate.display_name} className="w-12 h-12 rounded-xl border border-card-border object-cover" />
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-black uppercase text-text-main flex items-center gap-2 truncate">
+                      {candidate.display_name}
+                      <VerifiedBadge verified={candidate.verified} />
+                    </h3>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-text-secondary/50">@{candidate.username}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-accent/80 mt-1">{candidate.reason}</p>
+                  </div>
+                </button>
+                <button onClick={() => toggleFollow(candidate.id)} className="h-10 px-4 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                  <Plus size={13} /> Follow
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="space-y-5">
+          <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-main px-2">Activity</h2>
+          {activity.length === 0 ? (
+            <div className="system-card p-8 bg-card border-card-border text-sm text-text-secondary">No recent circle activity.</div>
+          ) : (
+            activity.map((post) => (
+              <button key={post.id} onClick={() => setSelectedProfileId(post.author.id)} className="system-card p-5 bg-card border-card-border w-full text-left hover:border-accent/30 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <img src={post.author.avatar} alt={post.author.name} className="w-9 h-9 rounded-xl border border-card-border" />
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-text-main flex items-center gap-2">
+                      {post.author.name}
+                      <VerifiedBadge verified={post.author.verified} className="scale-90" />
+                    </p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-text-secondary/40 flex items-center gap-1"><Clock size={10} /> {post.timestamp}</p>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-text-secondary line-clamp-2">{post.caption || post.content || 'Posted an update.'}</p>
+              </button>
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 }
