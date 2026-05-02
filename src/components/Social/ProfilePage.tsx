@@ -41,6 +41,7 @@ import {
 import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
+import { CommentThreadModal } from '../Feed/CommunityFeed';
 
 export default function ProfilePage() {
   const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow } = useStore();
@@ -50,6 +51,7 @@ export default function ProfilePage() {
   
   const [profile, setProfile] = useState<any>(null);
   const [profilePosts, setProfilePosts] = useState<Post[]>([]);
+  const [selectedPostForThread, setSelectedPostForThread] = useState<Post | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -95,6 +97,10 @@ export default function ProfilePage() {
       type: m.media_type
     })) || [],
     tags: p.post_tags?.map((t: any) => t.tag) || [],
+    mentions: p.mentions?.map((m: any) => ({
+      userId: m.mentioned_user_id,
+      username: m.user?.username || 'user'
+    })) || [],
     metadata: p.metadata,
     stats: p.stats
   });
@@ -173,14 +179,32 @@ export default function ProfilePage() {
           saves:saved_posts(count),
           comment_count:comments(count),
           media:post_media(*),
-          post_tags(*)
+          post_tags(*),
+          mentions:post_mentions(*, user:profiles(username))
         `)
         .eq('user_id', targetId)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (postError) throw postError;
-      setProfilePosts((postData || []).map(mapProfilePost));
+
+      let myLikes: string[] = [];
+      let mySaves: string[] = [];
+      const postIds = (postData || []).map((post: any) => post.id);
+      if (session?.user?.id && postIds.length > 0) {
+        const [likesRes, savesRes] = await Promise.all([
+          supabase.from('post_likes').select('post_id').eq('user_id', session.user.id).in('post_id', postIds),
+          supabase.from('saved_posts').select('post_id').eq('user_id', session.user.id).in('post_id', postIds)
+        ]);
+        myLikes = likesRes.data?.map(like => like.post_id) || [];
+        mySaves = savesRes.data?.map(save => save.post_id) || [];
+      }
+
+      setProfilePosts((postData || []).map((post: any) => ({
+        ...mapProfilePost(post),
+        isLiked: myLikes.includes(post.id),
+        isSaved: mySaves.includes(post.id)
+      })));
 
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -415,7 +439,12 @@ export default function ProfilePage() {
                   <LayoutGrid size={12} /> Recent Activity
                 </h3>
                 {profilePosts.slice(0, 3).map(post => (
-                  <ProfilePostCard key={post.id} post={post} onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))} />
+                  <ProfilePostCard
+                    key={post.id}
+                    post={post}
+                    onOpenThread={() => setSelectedPostForThread(post)}
+                    onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
+                  />
                 ))}
                 {profilePosts.length === 0 && (
                    <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black bg-card rounded-[2.5rem] border border-dashed border-card-border">
@@ -429,7 +458,12 @@ export default function ProfilePage() {
           {activeTab === 'posts' && (
             <div className="max-w-3xl mx-auto space-y-6">
               {profilePosts.map(post => (
-                <ProfilePostCard key={post.id} post={post} onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))} />
+                <ProfilePostCard
+                  key={post.id}
+                  post={post}
+                  onOpenThread={() => setSelectedPostForThread(post)}
+                  onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
+                />
               ))}
               {profilePosts.length === 0 && (
                  <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black">
@@ -653,13 +687,68 @@ export default function ProfilePage() {
           )}
         </motion.div>
       </AnimatePresence>
+      <AnimatePresence>
+        {selectedPostForThread && (
+          <CommentThreadModal
+            post={selectedPostForThread}
+            onClose={() => setSelectedPostForThread(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function ProfilePostCard({ post, onDeleted }: { post: Post, onDeleted?: (postId: string) => void }) {
-  const { toggleLikePost, toggleSavePost, deletePost, session } = useStore();
+function ProfilePostCard({ post, onOpenThread, onDeleted }: { post: Post, onOpenThread: () => void, onDeleted?: (postId: string) => void }) {
+  const { deletePost, session } = useStore();
+  const navigate = useNavigate();
+  const [isLiked, setIsLiked] = useState(!!post.isLiked);
+  const [isSaved, setIsSaved] = useState(!!post.isSaved);
+  const [likeCount, setLikeCount] = useState(post.likes);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isOwnPost = post.userId === session?.user?.id;
+  const currentUserId = session?.user?.id;
+
+  const handleHashtagClick = (tag: string) => {
+    sessionStorage.setItem('visnova-feed-hashtag', tag);
+    navigate('/feed');
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('nav-hashtag', { detail: tag }));
+    }, 0);
+  };
+
+  const renderInteractiveText = (text: string, mentions?: Post['mentions']) => {
+    const parts = text.split(/(@\w+|#[a-zA-Z0-9_-]+)/g);
+    return parts.map((part, index) => {
+      const mention = mentions?.find(m => `@${m.username}`.toLowerCase() === part.toLowerCase());
+      if (mention) {
+        return (
+          <button
+            key={`${part}-${index}`}
+            onClick={() => useStore.getState().setSelectedProfileId(mention.userId)}
+            className="text-accent hover:underline font-bold"
+          >
+            {part}
+          </button>
+        );
+      }
+      if (part.startsWith('#')) {
+        const tag = part.replace(/^#/, '').trim();
+        if (tag) {
+          return (
+            <button
+              key={`${part}-${index}`}
+              onClick={() => handleHashtagClick(tag)}
+              className="text-accent hover:underline font-bold"
+            >
+              {part}
+            </button>
+          );
+        }
+      }
+      return part;
+    });
+  };
   
   return (
     <div className="system-card p-6 sm:p-10 bg-card border-card-border group relative overflow-hidden transition-all hover:border-accent/20">
@@ -687,33 +776,61 @@ function ProfilePostCard({ post, onDeleted }: { post: Post, onDeleted?: (postId:
           </span>
         </div>
         {isOwnPost && (
-          <div className="relative group/menu">
-            <button className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => setIsMenuOpen(open => !open)}
+              className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all shrink-0"
+            >
               <MoreHorizontal size={18} />
             </button>
-            <div className="absolute top-full right-0 mt-2 w-44 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2 opacity-0 scale-95 pointer-events-none group-focus-within/menu:opacity-100 group-focus-within/menu:scale-100 group-focus-within/menu:pointer-events-auto transition-all">
-              <button
-                onClick={async () => {
-                  if (!confirm('Delete this post? This cannot be undone.')) return;
-                  const deleted = await deletePost(post.id);
-                  if (deleted) onDeleted?.(post.id);
-                }}
-                className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
-              >
-                <Trash2 size={14} /> Delete Post
-              </button>
-            </div>
+
+            <AnimatePresence>
+              {isMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                  className="absolute top-full right-0 mt-2 w-44 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2"
+                >
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Delete this post? This cannot be undone.')) return;
+                      setIsMenuOpen(false);
+                      const deleted = await deletePost(post.id);
+                      if (deleted) onDeleted?.(post.id);
+                    }}
+                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                  >
+                    <Trash2 size={14} /> Delete Post
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
 
       <div className="mt-6 relative z-10 space-y-4">
         {post.caption && (
-          <h5 className="text-lg font-black text-text-main tracking-tight uppercase font-display leading-tight">{post.caption}</h5>
+          <h5 className="text-lg font-black text-text-main tracking-tight uppercase font-display leading-tight">{renderInteractiveText(post.caption, post.mentions)}</h5>
         )}
         <p className="text-sm text-text-secondary leading-relaxed font-semibold opacity-80">
-          {post.content}
+          {renderInteractiveText(post.content, post.mentions)}
         </p>
+
+        {post.tags && post.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {post.tags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => handleHashtagClick(tag)}
+                className="px-3 py-1.5 rounded-full bg-surface-muted text-[9px] font-black text-text-secondary/60 uppercase tracking-widest border border-card-border hover:text-accent transition-colors"
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
 
         {post.stats && (
           <div className="mt-6 p-6 bg-surface-muted/30 rounded-[2rem] border border-card-border flex items-center gap-8 group/stat transition-all hover:bg-surface-muted">
@@ -738,29 +855,71 @@ function ProfilePostCard({ post, onDeleted }: { post: Post, onDeleted?: (postId:
 
       <div className="mt-10 pt-8 border-t border-card-border/50 flex items-center gap-10 relative z-10">
         <button 
-          onClick={() => toggleLikePost(post.id)}
+          onClick={async () => {
+            if (!currentUserId) return;
+            const wasLiked = isLiked;
+            setIsLiked(!wasLiked);
+            setLikeCount(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
+
+            const { error } = wasLiked
+              ? await supabase.from('post_likes').delete().match({ post_id: post.id, user_id: currentUserId })
+              : await supabase.from('post_likes').insert({ post_id: post.id, user_id: currentUserId });
+
+            if (error) {
+              setIsLiked(wasLiked);
+              setLikeCount(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1));
+              useStore.getState().addToast({ type: 'error', title: 'Like failed', description: 'Could not update this like.' });
+            }
+          }}
           className={cn(
             "flex items-center gap-2 text-text-secondary transition-all group/btn",
-            post.isLiked ? "text-danger" : "hover:text-danger hover:scale-110 active:scale-95"
+            isLiked ? "text-danger" : "hover:text-danger hover:scale-110 active:scale-95"
           )}
         >
-          <Heart size={20} className={cn("transition-all", post.isLiked && "fill-danger")} />
-          <span className="text-[11px] font-black tabular-nums">{post.likes}</span>
+          <Heart size={20} className={cn("transition-all", isLiked && "fill-danger")} />
+          <span className="text-[11px] font-black tabular-nums">{likeCount}</span>
         </button>
-        
-        <button className="flex items-center gap-2 text-text-secondary hover:text-accent hover:scale-110 active:scale-95 transition-all group/btn">
+
+        <button
+          onClick={onOpenThread}
+          className="flex items-center gap-2 text-text-secondary hover:text-accent hover:scale-110 active:scale-95 transition-all group/btn"
+        >
           <MessageSquare size={20} />
           <span className="text-[11px] font-black tabular-nums">{post.comments}</span>
         </button>
-        
-        <button 
-          onClick={() => toggleSavePost(post.id)}
+
+        <button
+          onClick={() => {
+            const url = `${window.location.origin}/post/${post.id}`;
+            navigator.clipboard.writeText(url);
+            useStore.getState().addToast({ type: 'info', title: 'Link copied', description: 'Post reference saved to clipboard.' });
+          }}
+          className="flex items-center gap-2 text-text-secondary hover:text-text-main hover:scale-110 active:scale-95 transition-all"
+        >
+          <Share2 size={20} />
+        </button>
+
+        <button
+          onClick={async () => {
+            if (!currentUserId) return;
+            const wasSaved = isSaved;
+            setIsSaved(!wasSaved);
+
+            const { error } = wasSaved
+              ? await supabase.from('saved_posts').delete().match({ post_id: post.id, user_id: currentUserId })
+              : await supabase.from('saved_posts').insert({ post_id: post.id, user_id: currentUserId });
+
+            if (error) {
+              setIsSaved(wasSaved);
+              useStore.getState().addToast({ type: 'error', title: 'Save failed', description: 'Could not update saved posts.' });
+            }
+          }}
           className={cn(
             "ml-auto transition-all hover:scale-110 active:scale-90",
-            post.isSaved ? "text-accent" : "text-text-secondary hover:text-accent"
+            isSaved ? "text-accent" : "text-text-secondary hover:text-accent"
           )}
         >
-          <Bookmark size={20} className={post.isSaved ? "fill-accent" : ""} />
+          <Bookmark size={20} className={isSaved ? "fill-accent" : ""} />
         </button>
       </div>
     </div>

@@ -53,9 +53,25 @@ export default function CommunityFeed() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const pendingHashtag = sessionStorage.getItem('visnova-feed-hashtag');
+    if (pendingHashtag) {
+      sessionStorage.removeItem('visnova-feed-hashtag');
+      setActiveTab('explore');
+      setSearchQuery(`#${normalizeHashtag(pendingHashtag)}`);
+    }
+
     const handleNavExplore = () => setActiveTab('explore');
+    const handleNavHashtag = (event: Event) => {
+      const tag = (event as CustomEvent<string>).detail;
+      setActiveTab('explore');
+      if (tag) setSearchQuery(`#${normalizeHashtag(tag)}`);
+    };
     window.addEventListener('nav-explore', handleNavExplore);
-    return () => window.removeEventListener('nav-explore', handleNavExplore);
+    window.addEventListener('nav-hashtag', handleNavHashtag);
+    return () => {
+      window.removeEventListener('nav-explore', handleNavExplore);
+      window.removeEventListener('nav-hashtag', handleNavHashtag);
+    };
   }, []);
 
   useEffect(() => {
@@ -822,6 +838,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
 function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorMuted }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void, onPostDeleted?: (postId: string) => void, onAuthorMuted?: (authorId: string) => void }) {
   const { toggleLikePost, toggleSavePost, trackInteraction, session, followingIds, toggleFollow, deletePost, muteUserPosts } = useStore();
   const hasTrackedView = useRef(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const currentUserId = session?.user?.id;
   const isOwnPost = post.userId === currentUserId;
   const isFollowingAuthor = followingIds.includes(post.userId);
@@ -891,16 +908,30 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorM
             </div>
           </div>
         </div>
-        <div className="relative group/menu">
-          <button className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all">
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMenuOpen(open => !open);
+            }}
+            className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all"
+          >
             <MoreHorizontal size={20} />
           </button>
-          
-          <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2 opacity-0 scale-95 pointer-events-none group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:pointer-events-auto transition-all">
+
+          <AnimatePresence>
+            {isMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                className="absolute top-full right-0 mt-2 w-48 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2"
+              >
               {!isOwnPost && (
                 <button
                   onClick={async () => {
                     if (!currentUserId) return;
+                    setIsMenuOpen(false);
 
                     const { error } = await supabase.from('reports').insert({
                       reporter_id: currentUserId,
@@ -929,6 +960,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorM
                 <button
                   onClick={async () => {
                     if (!confirm('Delete this post? This cannot be undone.')) return;
+                    setIsMenuOpen(false);
                     const deleted = await deletePost(post.id);
                     if (deleted) onPostDeleted?.(post.id);
                   }}
@@ -940,6 +972,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorM
                 <>
                   <button
                     onClick={async () => {
+                      setIsMenuOpen(false);
                       await toggleFollow(post.userId);
                       trackInteraction(post.id, 'follow');
                     }}
@@ -949,6 +982,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorM
                   </button>
                   <button
                     onClick={async () => {
+                      setIsMenuOpen(false);
                       const muted = await muteUserPosts(post.userId);
                       if (muted) onAuthorMuted?.(post.userId);
                     }}
@@ -958,7 +992,9 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorM
                   </button>
                 </>
               )}
-           </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -1102,7 +1138,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onAuthorM
   );
 }
 
-function CommentThreadModal({ post, onClose }: { post: Post, onClose: () => void }) {
+export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () => void }) {
   const { addComment, user } = useStore();
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
