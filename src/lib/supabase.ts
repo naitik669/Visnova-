@@ -40,12 +40,17 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: str
   }
 };
 
-export const uploadMedia = async (file: File, bucket: string = 'post-images') => {
-  const { data: { session } } = await withTimeout(supabase.auth.getSession(), 10000, 'Checking your session');
-  if (!session?.user) {
+export const uploadMedia = async (file: File, bucket: string = 'post-images', currentUserId?: string) => {
+  let userId = currentUserId;
+
+  if (!userId) {
+    const { data: { session } } = await withTimeout(supabase.auth.getSession(), 20000, 'Checking your session');
+    userId = session?.user?.id;
+  }
+
+  if (!userId) {
     throw new Error('You must be signed in to upload images.');
   }
-  const userId = session.user.id;
 
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
@@ -69,7 +74,7 @@ export const uploadMedia = async (file: File, bucket: string = 'post-images') =>
         cacheControl: '3600',
         upsert: false
       }),
-    30000,
+    60000,
     'Media upload'
   );
 

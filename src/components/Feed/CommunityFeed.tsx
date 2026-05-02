@@ -516,7 +516,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, addToast } = useStore();
+  const { user, session, addToast } = useStore();
 
   useEffect(() => {
     if (mentionSearch && mentionSearch.query.length >= 1) {
@@ -601,7 +601,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
     try {
       const uploadedMedia = [];
       for (const img of images) {
-        const result = await uploadMedia(img.file);
+        const result = await uploadMedia(img.file, 'post-images', session?.user?.id);
         uploadedMedia.push({
           url: result.publicUrl,
           type: 'image' as const,
