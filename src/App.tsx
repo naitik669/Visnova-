@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Plus, Search, Bell, Menu, Compass, Sun, Moon, Palette, Brain, Clock, Globe, X, BookOpen, Book, User, LogOut, MessageCircle } from 'lucide-react';
+import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Plus, Search, Bell, Menu, Compass, Sun, Moon, Palette, Clock, Globe, X, BookOpen, User, LogOut, MessageCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -98,8 +98,7 @@ function Sidebar() {
     { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Target, label: 'Visions', path: '/vision', id: 'nav-vision' },
-    { icon: Book, label: 'Journal', path: '/journal' },
-    { icon: BookOpen, label: 'Library', path: '/notes' },
+    { icon: BookOpen, label: 'Notes', path: '/notes' },
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
@@ -361,7 +360,7 @@ export default function App() {
             <div className="w-2 h-2 bg-accent rounded-full animate-ping" />
          </motion.div>
          <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">Synchronizing</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">Loading</span>
             <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-text-secondary opacity-40">Loading your profile data...</span>
          </div>
       </div>

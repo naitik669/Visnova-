@@ -20,10 +20,8 @@ export default function AuthCallback() {
         if (error) throw error;
 
         if (session) {
-          setSession(session);
-          
           const store = useStore.getState();
-          // Ensure profile exists
+          setSession(session);
           const profile = await store.ensureCurrentUserProfile();
           
           if (profile) {
@@ -60,8 +58,8 @@ export default function AuthCallback() {
         className="w-12 h-12 border-4 border-accent/10 border-t-accent rounded-full mb-8"
       />
       <div className="space-y-2 animate-pulse">
-        <h2 className="text-sm font-black uppercase tracking-[0.4em] text-text-main">Securing Connection</h2>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary opacity-60">Establishing session...</p>
+        <h2 className="text-sm font-black uppercase tracking-[0.4em] text-text-main">Setting up your workspace...</h2>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary opacity-60">Loading your session</p>
       </div>
     </div>
   );

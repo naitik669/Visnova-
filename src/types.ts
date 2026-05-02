@@ -101,7 +101,7 @@ export interface Note {
   id: string;
   title: string;
   content: string;
-  note_type: 'library' | 'journal';
+  note_type: 'vault' | 'journal' | 'library';
   folderId: string | null;
   tags: string[];
   linkedVisionId: string | null;
@@ -169,6 +169,8 @@ export interface ToastMessage {
 }
 
 export interface AppState {
+  authUser: any | null;
+  profile: any | null;
   user: {
     id?: string;
     name: string;
@@ -270,7 +272,7 @@ export interface AppState {
   muteUserPosts: (userId: string) => Promise<boolean>;
   toggleLikePost: (id: string) => Promise<void>;
   toggleSavePost: (id: string) => Promise<void>;
-  fetchPosts: (tab?: 'recommended' | 'following' | 'latest') => Promise<void>;
+  fetchPosts: (tab?: 'recommended' | 'following' | 'latest' | 'saved') => Promise<void>;
   fetchFeedContext: () => Promise<void>;
   ensureCurrentUserProfile: () => Promise<any>;
   signInWithGoogle: () => Promise<void>;
@@ -284,7 +286,7 @@ export interface AppState {
   toggleVisionTask: (visionId: string, taskId: string) => void;
   acceptVision: (visionId: string) => Promise<void>;
   fetchUser: () => Promise<void>;
-  completeOnboarding: (data: { name: string, email: string, interests: string[], intent: string, commitment: string, username?: string, gender?: 'male' | 'female' | 'custom', bio?: string, tags?: string[], avatar?: string, role?: string, password?: string }) => void;
+  completeOnboarding: (data: { name: string, email: string, interests: string[], intent: string, commitment: string, username?: string, gender?: 'male' | 'female' | 'custom', bio?: string, tags?: string[], avatar?: string, role?: string, password?: string }) => Promise<void>;
   session: any | null;
   isFocusMode: boolean;
   focusSession: FocusSession;

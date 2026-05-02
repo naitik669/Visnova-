@@ -52,20 +52,18 @@ export const uploadMedia = async (file: File, bucket: string = 'post-images', cu
     throw new Error('You must be signed in to upload images.');
   }
 
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Unsupported file type. Please upload PNG, JPEG, or WebP images.');
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('Image size exceeds 10MB limit.');
+  }
+
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
   const filePath = `${userId}/posts/${fileName}`;
-
-  // Validate file type
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime'];
-  if (!allowedTypes.includes(file.type)) {
-    throw new Error('Unsupported file type. Please use common image or video formats.');
-  }
-
-  // Validate file size (10MB)
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error('File size exceeds 10MB limit');
-  }
 
   const { error } = await withTimeout(
     supabase.storage

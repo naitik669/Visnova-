@@ -202,11 +202,13 @@ export default function CommunityFeed() {
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      await fetchPosts(feedSubTab);
+      await fetchPosts(activeTab === 'saved' ? 'saved' : feedSubTab);
       setIsLoading(false);
     };
-    load();
-  }, [feedSubTab]);
+    if (activeTab === 'feed' || activeTab === 'saved') {
+      load();
+    }
+  }, [activeTab, feedSubTab, fetchPosts]);
 
   useEffect(() => {
     if (activeTab === 'explore' && !searchQuery.trim().startsWith('#') && searchQuery.trim().length >= 2) {
@@ -340,7 +342,7 @@ export default function CommunityFeed() {
   const renderFeedItems = () => {
     const items: React.ReactNode[] = [];
     
-    if (filteredPosts.length === 0) {
+    if (visiblePosts.length === 0) {
       const emptyMessages = {
         recommended: searchQuery ? 'No posts matched your query.' : 'No posts yet. Share your first progress update.',
         following: 'You are not following anyone yet. Follow creators to build your feed.',
@@ -370,7 +372,7 @@ export default function CommunityFeed() {
       );
     }
 
-    filteredPosts.forEach((post, idx) => {
+    visiblePosts.forEach((post, idx) => {
       items.push(
         <PostCard 
           key={`${post.id || 'post'}-${idx}`} 
@@ -386,7 +388,7 @@ export default function CommunityFeed() {
       }
     });
 
-    if (filteredPosts.length > 0 && filteredPosts.length < 5) {
+    if (activeTab === 'feed' && visiblePosts.length > 0 && visiblePosts.length < 5) {
       items.push(<SuggestedUsersFeedBlock key="suggested-end" />);
     }
 
@@ -1347,7 +1349,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                 <Trophy size={14} /> Achievement Unlocked
               </div>
               {post.metadata?.title && (
-                <p className="text-sm font-bold text-warning/80 ml-2 italic tracking-tight">{post.metadata.title}</p>
+                <p className="text-sm font-bold text-warning/80 ml-2 tracking-tight">{post.metadata.title}</p>
               )}
             </div>
           )}
@@ -1357,7 +1359,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                 <Flag size={14} /> Milestone Mastered
               </div>
               {post.metadata?.title && (
-                <p className="text-sm font-bold text-success/80 ml-2 italic tracking-tight">{post.metadata.title}</p>
+                <p className="text-sm font-bold text-success/80 ml-2 tracking-tight">{post.metadata.title}</p>
               )}
             </div>
           )}

@@ -482,3 +482,97 @@ CREATE POLICY "Members can send thread messages" ON public.community_thread_mess
       AND community_members.user_id = auth.uid()
   )
 );
+
+-- CORE STABILIZATION CONTRACT
+-- Safe to run against existing projects; keeps auth, onboarding, notes, feed, and blocks aligned.
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_gender_check;
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_gender_check
+  CHECK (gender IS NULL OR gender IN ('male', 'female', 'custom', 'prefer_not_say'));
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarded BOOLEAN DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarding_step INTEGER DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS main_goal TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS focus INTEGER DEFAULT 85;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS energy INTEGER DEFAULT 72;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS mood INTEGER DEFAULT 90;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS sleep INTEGER DEFAULT 64;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status_note TEXT;
+
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT '';
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS proof TEXT[] DEFAULT '{}';
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS elements JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private';
+ALTER TABLE public.visions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS sub_tasks JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE public.todos ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE public.todos ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS note_type TEXT DEFAULT 'vault';
+UPDATE public.notes SET note_type = 'vault' WHERE note_type = 'library';
+ALTER TABLE public.notes ALTER COLUMN note_type SET DEFAULT 'vault';
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT false;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS mood TEXT;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS journal_date DATE;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE public.notes ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+CREATE TABLE IF NOT EXISTS public.blocked_users (
+  blocker_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  blocked_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (blocker_id, blocked_id)
+);
+
+INSERT INTO public.blocked_users (blocker_id, blocked_id, created_at)
+SELECT blocker_id, blocked_id, created_at
+FROM public.user_blocks
+ON CONFLICT (blocker_id, blocked_id) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_blocked_users_blocked_id ON public.blocked_users(blocked_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON public.tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_vision_id ON public.tasks(vision_id);
+CREATE INDEX IF NOT EXISTS idx_notes_user_type_date ON public.notes(user_id, note_type, journal_date DESC);
+CREATE INDEX IF NOT EXISTS idx_folders_user_id ON public.folders(user_id);
+CREATE INDEX IF NOT EXISTS idx_post_media_post_id ON public.post_media(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_post_id ON public.comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_user_id ON public.comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+
+ALTER TABLE public.blocked_users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS blocked_users_select_own ON public.blocked_users;
+DROP POLICY IF EXISTS blocked_users_insert_own ON public.blocked_users;
+DROP POLICY IF EXISTS blocked_users_delete_own ON public.blocked_users;
+CREATE POLICY blocked_users_select_own ON public.blocked_users FOR SELECT USING (auth.uid() = blocker_id);
+CREATE POLICY blocked_users_insert_own ON public.blocked_users FOR INSERT WITH CHECK (auth.uid() = blocker_id AND blocker_id <> blocked_id);
+CREATE POLICY blocked_users_delete_own ON public.blocked_users FOR DELETE USING (auth.uid() = blocker_id);
+
+UPDATE storage.buckets
+SET public = true,
+    file_size_limit = 10485760,
+    allowed_mime_types = ARRAY['image/png','image/jpeg','image/webp']::text[]
+WHERE id = 'post-images';
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+SELECT 'post-images', 'post-images', true, 10485760, ARRAY['image/png','image/jpeg','image/webp']::text[]
+WHERE NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'post-images');
+
+DROP POLICY IF EXISTS post_images_select_public ON storage.objects;
+DROP POLICY IF EXISTS post_images_insert_own_folder ON storage.objects;
+DROP POLICY IF EXISTS post_images_update_own_folder ON storage.objects;
+DROP POLICY IF EXISTS post_images_delete_own_folder ON storage.objects;
+CREATE POLICY post_images_select_public ON storage.objects FOR SELECT USING (bucket_id = 'post-images');
+CREATE POLICY post_images_insert_own_folder ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'post-images' AND (select auth.uid())::text = (storage.foldername(name))[1]);
+CREATE POLICY post_images_update_own_folder ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'post-images' AND (select auth.uid())::text = (storage.foldername(name))[1]) WITH CHECK (bucket_id = 'post-images' AND (select auth.uid())::text = (storage.foldername(name))[1]);
+CREATE POLICY post_images_delete_own_folder ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'post-images' AND (select auth.uid())::text = (storage.foldername(name))[1]);

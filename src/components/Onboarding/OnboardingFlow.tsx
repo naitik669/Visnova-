@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as Ima
 import { useStore } from '../../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
-import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
 
@@ -71,13 +71,9 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any
              // Existing account found - skip onboarding or resume
              await useStore.getState().loadUserProfile(user.id);
              if (profile.onboarded) {
-                setStep(10); // Or use navigate if available
-             } else {
-                // If they have a profile but not marked onboarded, we can still skip to 9.5 (Final review) or just Finish
-                // User said: "skip the rest onboarding flow for existing accounts"
-                await supabase.from('profiles').update({ onboarded: true }).eq('id', user.id);
-                useStore.setState({ hasCompletedOnboarding: true });
                 setStep(10);
+             } else {
+                nextStep(profile.onboarding_step && profile.onboarding_step > 0 ? profile.onboarding_step : 3);
              }
           } else {
             const fallbackProfile = await useStore.getState().ensureCurrentUserProfile();
@@ -695,15 +691,6 @@ function ScreenVerify({ email, nextStep }: any) {
               >
                 <ArrowLeft size={10} /> Change email address
               </button>
-              <button
-                onClick={() => {
-                  localStorage.setItem('visnova_onboarded_v2', 'true');
-                  window.location.href = '/';
-                }}
-                className="text-[9px] font-black uppercase tracking-widest text-accent/40 hover:text-accent transition-all text-left mt-1"
-              >
-                Dev: Skip Verification
-              </button>
             </div>
           </div>
         </div>
@@ -986,8 +973,13 @@ function Screen7({ avatar, setAvatar, name, setName, username, setUsername, bio,
     setUsername(cleanUsername);
 
     if (!name || !username) {
-       addToast({ type: 'error', title: 'Data Missing', description: 'Name and Username are mandatory protocols.' });
+       addToast({ type: 'error', title: 'Profile required', description: 'Name and username are required.' });
        return;
+    }
+
+    if (!/^[a-z0-9_]{3,24}$/.test(cleanUsername)) {
+      setUsernameError('Use 3-24 lowercase letters, numbers, or underscores.');
+      return;
     }
 
     setIsCheckingUsername(true);
@@ -995,11 +987,11 @@ function Screen7({ avatar, setAvatar, name, setName, username, setUsername, bio,
       const { data: existingUser, error: checkError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('username', username)
+        .ilike('username', cleanUsername)
         .maybeSingle();
 
       if (existingUser && existingUser.id !== currentUserId) {
-        setUsernameError('Username already synchronized in another sector.');
+        setUsernameError('Username is already taken.');
         setIsCheckingUsername(false);
         return;
       }
@@ -1446,29 +1438,8 @@ export default function OnboardingFlow() {
   }, [session?.user, step]);
 
   const handleGoogleLogin = async () => {
-    const addToast = useStore.getState().addToast;
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: getAuthRedirectUrl('/auth/callback'),
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        }
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      console.error('Google sign-in error:', error);
-      addToast({ type: 'error', title: 'Google sign-in failed', description: error.message });
-    }
+    await useStore.getState().signInWithGoogle();
   };
-
-  // Persistence for critical identity state
-  useEffect(() => {
-    if (username) localStorage.setItem('visnova_username', username);
-  }, [username]);
 
   const nextStep = useCallback((targetStep?: number | any) => {
     setDirection(1);
@@ -1546,7 +1517,7 @@ export default function OnboardingFlow() {
     }),
   };
 
-  const interestOptions = ['💻 Tech', '🤖 AI', '💼 Business', '📚 Study', '🌱 Growth', '🏃 Health', '✨ Lifestyle'];
+  const interestOptions = ['Tech', 'Business', 'Study', 'Growth', 'Health', 'Creative', 'Lifestyle'];
   const toggleInterest = (interest: string) => {
     setInterests(prev =>
       prev.includes(interest)
@@ -1558,7 +1529,7 @@ export default function OnboardingFlow() {
   const ROLE_CATEGORIES = [
     {
       name: "Tech & Builders",
-      roles: ["Software Developer", "Web Developer", "App Developer", "AI Engineer", "Machine Learning Engineer", "Data Scientist", "Data Analyst", "Cybersecurity Specialist", "Cloud Engineer", "DevOps Engineer", "Game Developer", "Blockchain Developer", "Robotics Engineer", "Embedded Systems Engineer"]
+      roles: ["Software Developer", "Web Developer", "App Developer", "Data Scientist", "Data Analyst", "Cybersecurity Specialist", "Cloud Engineer", "DevOps Engineer", "Game Developer", "Blockchain Developer", "Robotics Engineer", "Embedded Systems Engineer"]
     },
     {
       name: "Engineering",
@@ -1737,7 +1708,7 @@ export default function OnboardingFlow() {
 
       {/* Footer Meta */}
       <div className="h-8 sm:h-10 px-4 flex items-center justify-center pointer-events-none opacity-40 shrink-0">
-         <span className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest">Protocol v4.1 // System-Sync Enabled</span>
+         <span className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest">VisNova setup</span>
       </div>
     </div>
   );
