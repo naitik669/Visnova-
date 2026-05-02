@@ -39,6 +39,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   const elements = vision.elements || [];
 
+  const addElement = (element: VisionElement) => {
+    updateVision(vision.id, { elements: [...elements, element] });
+  };
+
   const updateElement = (id: string, updates: Partial<VisionElement>) => {
     const newElements = elements.map(el => el.id === id ? { ...el, ...updates } : el);
     updateVision(vision.id, { elements: newElements });
@@ -104,10 +108,33 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     }
   };
 
+  const handleCanvasDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = Array.from(e.dataTransfer.files || []).find(item => item.type.startsWith('image/'));
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      if (!result) return;
+      addElement({
+        id: Math.random().toString(36).substring(7),
+        type: 'image',
+        content: result,
+        x: 2500,
+        y: 2500,
+        metadata: { title: file.name }
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div 
       className="flex-1 relative overflow-hidden bg-bg-base/20 group/canvas select-none"
       onMouseMove={handleCanvasMouseMove}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleCanvasDrop}
     >
       <TransformWrapper
         ref={transformWrapperRef}
@@ -265,6 +292,29 @@ const CanvasElement: React.FC<{
           <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-card border border-card-border rounded-xl shadow-2xl p-1.5 flex items-center gap-1 animate-in fade-in zoom-in slide-in-from-bottom-2">
             <button onClick={onDelete} className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-all" title="Delete"><Trash2 size={14} /></button>
             <div className="w-px h-4 bg-card-border mx-1" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = window.prompt('Edit content', element.content);
+                if (next !== null) onUpdate({ content: next });
+              }}
+              className="p-2 text-text-secondary hover:bg-surface-muted rounded-lg transition-all"
+              title="Edit Text"
+            >
+              <Type size={14} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const current = element.metadata?.color || '#fef08a';
+                const next = window.prompt('Color hex', current);
+                if (next) onUpdate({ metadata: { ...(element.metadata || {}), color: next } });
+              }}
+              className="p-2 text-text-secondary hover:bg-surface-muted rounded-lg transition-all"
+              title="Color"
+            >
+              <CircleIcon size={14} />
+            </button>
             <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -397,8 +447,13 @@ const ElementContent: React.FC<{ element: VisionElement }> = ({ element }) => {
       return (
         <div className={cn(
           "max-w-xl",
-          element.type === 'heading' ? "text-5xl font-black tracking-tighter text-text-main" : "text-xl font-bold tracking-tight text-text-secondary"
-        )}>
+          element.type === 'heading' ? "text-5xl font-black tracking-tighter" : "text-xl font-bold tracking-tight"
+        )}
+        style={{
+          color: element.metadata?.color || (element.type === 'heading' ? 'var(--text-main)' : 'var(--text-secondary)'),
+          fontFamily: element.metadata?.fontFamily,
+          fontSize: element.metadata?.fontSize
+        }}>
           {element.content}
         </div>
       );
@@ -443,6 +498,8 @@ const ElementContent: React.FC<{ element: VisionElement }> = ({ element }) => {
           style={{ 
             width: element.width || 120, 
             height: element.height || 120,
+            backgroundColor: element.metadata?.color ? `${element.metadata.color}22` : undefined,
+            borderColor: element.metadata?.color || undefined,
             borderRadius: element.metadata?.shapeType === 'circle' ? '50%' : '12px',
             transform: element.metadata?.shapeType === 'diamond' ? 'rotate(45deg)' : undefined
           }}

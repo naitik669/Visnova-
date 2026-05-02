@@ -247,6 +247,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   const saveTimeout = useRef<any>(null);
+  const imageImportRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (vision && historyIndex === -1) {
@@ -317,10 +318,16 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
 
   const addElement = (type: VisionElement['type'], content: string = '', metadata: any = {}) => {
     if (!vision) return;
+    const defaults: Partial<Record<VisionElement['type'], string>> = {
+      image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&q=80&w=1200',
+      link: 'https://example.com',
+      note: 'Checklist item\nNext step\nProof to collect',
+      quote: 'The future is built in small daily proofs.'
+    };
     const newElement: VisionElement = {
       id: Math.random().toString(36).substring(7),
       type,
-      content,
+      content: content || defaults[type] || '',
       x: 2500 + (Math.random() * 200 - 100), // Center of the 5000x5000 canvas
       y: 2500 + (Math.random() * 200 - 100),
       scale: 1,
@@ -328,6 +335,24 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
       metadata
     };
     handleUpdateElements([...(vision.elements || []), newElement]);
+  };
+
+  const importImageFile = (file: File) => {
+    if (!vision) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      if (!result) return;
+      addElement('image', result, { title: file.name });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addGraphic = (shapeType: 'rectangle' | 'circle' | 'diamond') => {
+    addElement('shape', shapeType === 'circle' ? '' : 'Label', {
+      shapeType,
+      color: shapeType === 'circle' ? '#10b981' : shapeType === 'diamond' ? '#8b5cf6' : '#3b82f6'
+    });
   };
 
   const handleMultiImport = (items: any[]) => {
@@ -532,8 +557,8 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                            <GridItem key="grid-resource" icon={<LinkIcon size={20} />} label="Resource" onClick={() => addElement('link')} />
                            <GridItem key="grid-checklist" icon={<CheckSquare size={20} />} label="Checklist" onClick={() => addElement('note')} />
                            <GridItem key="grid-quote" icon={<Quote size={20} />} label="Quote" onClick={() => addElement('quote')} />
-                           <GridItem key="grid-graphics" icon={<Sparkles size={20} />} label="Graphics" onClick={() => {}} />
-                           <GridItem key="grid-import" icon={<Users size={20} />} label="Import" onClick={() => {}} />
+                           <GridItem key="grid-graphics" icon={<Sparkles size={20} />} label="Graphics" onClick={() => addGraphic('circle')} />
+                           <GridItem key="grid-import" icon={<Users size={20} />} label="Import" onClick={() => imageImportRef.current?.click()} />
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -547,6 +572,17 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                     >
                        <Plus size={32} />
                     </button>
+                    <input
+                      ref={imageImportRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) importImageFile(file);
+                        e.target.value = '';
+                      }}
+                    />
                  </div>
                )}
             </div>
@@ -559,10 +595,11 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                     <p className="text-lg font-medium text-text-secondary opacity-40 ">Drop an image, write a goal, or map your next move.</p>
                  </div>
                  <div className="flex flex-wrap justify-center gap-3 pointer-events-auto">
-                    <QuickStartAction label="Add Image" onClick={() => addElement('image')} />
+                    <QuickStartAction label="Add Image" onClick={() => imageImportRef.current?.click()} />
                     <QuickStartAction label="Write Goal" onClick={() => addElement('heading', 'Main Goal')} />
                     <QuickStartAction label="Strategic Note" onClick={() => addElement('note')} />
                     <QuickStartAction label="Inspire" onClick={() => addElement('quote')} />
+                    <QuickStartAction label="Add Shape" onClick={() => addGraphic('rectangle')} />
                  </div>
               </div>
             )}

@@ -34,7 +34,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays } from 'date-fns';
+import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { Note, Folder as FolderType } from '../../types';
@@ -63,6 +63,7 @@ export default function NotesSystem() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLibrarySidebarHovered, setIsLibrarySidebarHovered] = useState(false);
+  const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('all');
 
   const journalEntry = useMemo(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -124,6 +125,12 @@ export default function NotesSystem() {
       if (activeTab === 'library' && selectedFolder) {
         result = result.filter(n => n.folderId === selectedFolder);
       }
+
+      if (timeFilter === 'today') {
+        result = result.filter(n => isToday(n.updatedAt));
+      } else if (timeFilter === 'week') {
+        result = result.filter(n => isThisWeek(n.updatedAt));
+      }
     }
 
     // Search (applies to both trash and normal views)
@@ -137,7 +144,15 @@ export default function NotesSystem() {
     }
 
     return result;
-  }, [notes, activeTab, sidebarFilter, searchQuery, selectedFolder]);
+  }, [notes, activeTab, sidebarFilter, searchQuery, selectedFolder, timeFilter]);
+
+  const filteredFolders = useMemo(() => {
+    if (timeFilter === 'all') return folders;
+    return folders.filter(folder => {
+      const folderNotes = notes.filter(n => n.folderId === folder.id && !n.isDeleted && n.note_type === 'library');
+      return folderNotes.some(note => timeFilter === 'today' ? isToday(note.updatedAt) : isThisWeek(note.updatedAt));
+    });
+  }, [folders, notes, timeFilter]);
 
   const selectedNote = useMemo(() => 
     notes.find(n => n.id === selectedNoteId), 
@@ -337,6 +352,7 @@ export default function NotesSystem() {
                 note={selectedNote} 
                 onClose={() => setSelectedNoteId(null)}
                 updateNote={updateNote}
+                folders={folders}
               />
             ) : (
               <div className={cn(
@@ -351,22 +367,27 @@ export default function NotesSystem() {
                         <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">Directory Layout</p>
                       </div>
                       <div className="flex bg-surface-muted p-1 rounded-xl border border-card-border/50 self-start sm:self-auto">
-                        {['Today', 'This Week', 'All'].map((t) => (
+                        {[
+                          { label: 'Today', value: 'today' as const },
+                          { label: 'This Week', value: 'week' as const },
+                          { label: 'All', value: 'all' as const }
+                        ].map((t) => (
                           <button 
-                            key={t}
+                            key={t.value}
+                            onClick={() => setTimeFilter(t.value)}
                             className={cn(
                               "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                              t === 'This Week' ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
+                              timeFilter === t.value ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
                             )}
                           >
-                            {t}
+                            {t.label}
                           </button>
                         ))}
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8 gap-6">
-                       {folders.map((folder, idx) => (
+                       {filteredFolders.map((folder, idx) => (
                          <FolderCard 
                            key={folder.id || `folder-${idx}`} 
                            folder={folder}
@@ -376,7 +397,7 @@ export default function NotesSystem() {
                        ))}
                        <button 
                          onClick={() => setIsFolderModalOpen(true)}
-                         className="aspect-[4/3] rounded-[2rem] border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-3"
+                         className="aspect-[4/3] rounded-lg border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-3"
                        >
                           <div className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
                              <Plus size={20} />
@@ -400,15 +421,20 @@ export default function NotesSystem() {
                         </div>
                         <div className="flex items-center gap-4 self-start sm:self-auto">
                           <div className="flex bg-surface-muted p-1 rounded-xl border border-card-border/50">
-                            {['Today', 'This Week', 'All'].map((t) => (
+                            {[
+                              { label: 'Today', value: 'today' as const },
+                              { label: 'This Week', value: 'week' as const },
+                              { label: 'All', value: 'all' as const }
+                            ].map((t) => (
                               <button 
-                                key={t}
+                                key={t.value}
+                                onClick={() => setTimeFilter(t.value)}
                                 className={cn(
                                   "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                                  t === 'All' ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
+                                  timeFilter === t.value ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
                                 )}
                               >
-                                {t}
+                                {t.label}
                               </button>
                             ))}
                           </div>
@@ -478,7 +504,7 @@ export default function NotesSystem() {
                         {viewMode === 'grid' && (
                           <button 
                             onClick={() => handleCreateNote('library')}
-                            className="aspect-square sm:aspect-[4/5] rounded-[2.5rem] border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
+                            className="aspect-square sm:aspect-[4/5] rounded-lg border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
                           >
                              <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
                                 <Plus size={24} />
@@ -535,8 +561,11 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   const [location, setLocation] = useState(entry?.location || '');
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(entry?.updatedAt || null);
+  const [isEditingLockedEntry, setIsEditingLockedEntry] = useState(false);
   const stickerInputRef = useRef<HTMLInputElement>(null);
   const content = pages[currentPage] || '';
+  const isPastEntry = isBefore(startOfDay(selectedDate), startOfDay(new Date()));
+  const isLocked = isPastEntry && !isEditingLockedEntry;
 
   useEffect(() => {
     const nextPages = (entry?.content || '').split(JOURNAL_PAGE_BREAK);
@@ -546,9 +575,11 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
     setMood(entry?.mood || '');
     setLocation(entry?.location || '');
     setLastSaved(entry?.updatedAt || null);
+    setIsEditingLockedEntry(false);
   }, [entry, selectedDate]);
 
   const handleSave = async () => {
+    if (isLocked) return;
     setIsSaving(true);
     try {
       await onSave(pages.join(JOURNAL_PAGE_BREAK), { title: title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`, mood, location });
@@ -571,11 +602,13 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   const setContent = updateCurrentPage;
 
   const addNotebookPage = () => {
+    if (isLocked) return;
     setPages(prev => [...prev, '']);
     setCurrentPage(pages.length);
   };
 
   const addSticker = (sticker: string) => {
+    if (isLocked) return;
     updateCurrentPage(prev => `${prev}${prev ? ' ' : ''}${sticker}`);
   };
 
@@ -619,6 +652,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             <div className="flex items-center gap-6">
               <button
                 onClick={addNotebookPage}
+                disabled={isLocked}
                 className="w-10 h-10 rounded-xl bg-surface-muted border border-card-border flex items-center justify-center text-accent hover:bg-accent hover:text-white transition-all"
                 title="Add page"
               >
@@ -628,7 +662,11 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                 <Star size={14} className={streak > 0 ? "text-accent fill-accent" : "text-text-secondary/20"} />
                 <span className="text-[10px] font-black text-text-main uppercase tracking-widest">{streak} Day Streak</span>
               </div>
-              <button onClick={handleSave} className="h-10 px-6 rounded-xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10">Save Record</button>
+              {isLocked ? (
+                <button onClick={() => setIsEditingLockedEntry(true)} className="h-10 px-6 rounded-xl bg-text-main text-white text-[10px] font-black uppercase tracking-widest shadow-lg">Edit Locked Entry</button>
+              ) : (
+                <button onClick={handleSave} className="h-10 px-6 rounded-xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10">Save Record</button>
+              )}
            </div>
         </div>
       )}
@@ -682,6 +720,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             <div className="space-y-2">
               <h2 className="text-4xl font-black text-text-main tracking-tighter uppercase">{format(selectedDate, 'EEEE')}</h2>
               <p className="text-xs font-bold text-accent uppercase tracking-[0.3em] opacity-60">{format(selectedDate, 'MMMM dd, yyyy')}</p>
+              {isLocked && <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Locked until you click edit</p>}
             </div>
 
             {/* Memory / Visual Card */}
@@ -749,6 +788,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               ))}
               <button
                 onClick={addNotebookPage}
+                disabled={isLocked}
                 className="h-10 rounded-xl border border-dashed border-card-border text-accent flex items-center justify-center hover:bg-accent/5 transition-all"
                 title="Add notebook page"
               >
@@ -789,6 +829,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                   <button
                     key={sticker}
                     onClick={() => addSticker(sticker)}
+                    disabled={isLocked}
                     className="px-3 h-8 rounded-lg bg-white border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/40 transition-all"
                   >
                     {sticker}
@@ -796,6 +837,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                 ))}
                 <button
                   onClick={() => stickerInputRef.current?.click()}
+                  disabled={isLocked}
                   className="px-3 h-8 rounded-lg bg-white border border-card-border text-[9px] font-black uppercase tracking-widest text-accent flex items-center gap-2 hover:border-accent/40 transition-all"
                 >
                   <ImageIcon size={12} /> Import
@@ -816,17 +858,23 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
 
             {/* Editor Area */}
             <div className="flex-1 flex flex-col space-y-6">
+               <div className="absolute top-8 right-10 text-right pointer-events-none">
+                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-text-secondary/30">Written</p>
+                 <p className="text-xs font-black text-accent uppercase tracking-widest">{format(selectedDate, 'MMM dd, yyyy')}</p>
+               </div>
                <input 
                  value={title}
                  onChange={(e) => setTitle(e.target.value)}
+                 readOnly={isLocked}
                  placeholder="Journal Entry Title"
                  className="text-2xl font-black text-text-main placeholder:text-text-secondary/20 bg-transparent border-none focus:outline-none uppercase tracking-tight"
                />
                <textarea 
                  value={content}
                  onChange={(e) => setContent(e.target.value)}
+                 readOnly={isLocked}
                  placeholder="Write your thoughts for today..."
-                 className="flex-1 w-full text-base font-medium text-text-secondary leading-relaxed bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20"
+                 className={cn("flex-1 w-full text-base font-medium text-text-secondary leading-relaxed bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20", isLocked && "cursor-default opacity-70")}
                  style={{ backgroundImage: 'linear-gradient(transparent, transparent 31px, #f1f1f1 31px)', backgroundSize: '100% 32px' }}
                />
             </div>
@@ -839,6 +887,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                     <input 
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
+                      readOnly={isLocked}
                       placeholder="Origin"
                       className="bg-transparent border-none focus:outline-none text-[10px] font-black tracking-widest uppercase text-text-secondary"
                     />
@@ -865,13 +914,22 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                   )}
                 </div>
                 {!fullView && (
-                  <button 
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="h-12 px-10 rounded-2xl bg-accent text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    Preserve Entry
-                  </button>
+                  isLocked ? (
+                    <button
+                      onClick={() => setIsEditingLockedEntry(true)}
+                      className="h-12 px-10 rounded-2xl bg-text-main text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:scale-105 active:scale-95 transition-all"
+                    >
+                      Edit Entry
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="h-12 px-10 rounded-2xl bg-accent text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      Preserve Entry
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -1019,7 +1077,7 @@ function FolderCard({ folder, active, onClick }: { folder: any, active: boolean,
     <button 
       onClick={onClick} 
       className={cn(
-        "aspect-[4/3] rounded-[2rem] p-6 flex flex-col justify-between transition-all group relative overflow-hidden text-left",
+        "aspect-[4/3] rounded-lg p-6 flex flex-col justify-between transition-all group relative overflow-hidden text-left",
         active ? "bg-accent text-white shadow-xl scale-[1.02] ring-2 ring-accent/20" : "bg-white border border-card-border hover:shadow-lg"
       )}
     >
@@ -1073,7 +1131,7 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
   return (
     <div 
       onClick={onClick}
-      className="aspect-square sm:aspect-[4/5] p-8 rounded-[2.5rem] bg-white border border-card-border hover:border-accent/40 hover:shadow-2xl transition-all group cursor-pointer flex flex-col relative overflow-hidden"
+      className="aspect-square sm:aspect-[4/5] p-8 rounded-lg bg-white border border-card-border hover:border-accent/40 hover:shadow-2xl transition-all group cursor-pointer flex flex-col relative overflow-hidden"
     >
        {/* Card background accent like in image */}
        <div className="absolute top-0 left-0 w-full h-1.5 bg-accent/5 group-hover:bg-accent transition-colors" />
@@ -1132,7 +1190,7 @@ function TabButton({ active, onClick, label, icon }: any) {
   );
 }
 
-function NoteEditor({ note, onClose, updateNote }: { note: Note, onClose: () => void, updateNote: (id: string, updates: Partial<Note>) => void }) {
+function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClose: () => void, updateNote: (id: string, updates: Partial<Note>) => void, folders: FolderType[] }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { deleteNote } = useStore();
 
@@ -1216,6 +1274,21 @@ function NoteEditor({ note, onClose, updateNote }: { note: Note, onClose: () => 
           />
 
           <div className="space-y-10 pt-16 border-t border-[#f5f5f5]">
+            {note.note_type === 'library' && (
+              <div className="flex items-center gap-3">
+                <Folder size={16} className="text-accent" />
+                <select
+                  value={note.folderId || ''}
+                  onChange={(e) => updateNote(note.id, { folderId: e.target.value || null })}
+                  className="h-11 px-4 rounded-lg bg-[#fafafa] border border-[#eee] text-xs font-bold text-text-main focus:outline-none focus:border-accent"
+                >
+                  <option value="">No folder</option>
+                  {folders.map(folder => (
+                    <option key={folder.id} value={folder.id}>{folder.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               <div className="flex items-center gap-2 px-4 h-10 rounded-xl bg-[#fafafa] border border-[#eee] text-[#ccc]">
                 <Tag size={14} />

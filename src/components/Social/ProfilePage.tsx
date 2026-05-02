@@ -42,7 +42,7 @@ import {
 import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
-import { CommentThreadModal, PostEditModal } from '../Feed/CommunityFeed';
+import { CommentThreadModal, ImageLightbox, PostEditModal } from '../Feed/CommunityFeed';
 
 export default function ProfilePage() {
   const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow } = useStore();
@@ -746,6 +746,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const isOwnPost = post.userId === session?.user?.id;
   const currentUserId = session?.user?.id;
 
@@ -913,9 +914,13 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
         )}
         
         {post.media && post.media.length > 0 && (
-          <div className="mt-6 rounded-3xl overflow-hidden border border-card-border aspect-video bg-surface-muted">
+          <button
+            onClick={() => setExpandedImage(post.media?.[0]?.url || null)}
+            className="mt-6 rounded-3xl overflow-hidden border border-card-border aspect-video bg-surface-muted relative group/media w-full text-left"
+          >
              <img src={post.media[0].url} alt="dispatch media" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
+             <span className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/50 text-white text-[9px] font-black uppercase tracking-widest opacity-0 group-hover/media:opacity-100 transition-opacity">Expand</span>
+          </button>
         )}
       </div>
 
@@ -998,6 +1003,15 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
               if (updated) onUpdated?.(post.id, updates);
               return updated;
             }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {expandedImage && (
+          <ImageLightbox
+            src={expandedImage}
+            alt={`${post.author.name} post image`}
+            onClose={() => setExpandedImage(null)}
           />
         )}
       </AnimatePresence>

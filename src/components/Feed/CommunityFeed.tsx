@@ -944,11 +944,40 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
   );
 }
 
+export function ImageLightbox({ src, alt, onClose }: { src: string, alt: string, onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/85 backdrop-blur-md"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        className="relative z-10 max-w-[92vw] max-h-[88vh]"
+      >
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 w-10 h-10 rounded-xl bg-white/10 border border-white/20 text-white flex items-center justify-center hover:bg-white/20 transition-all"
+        >
+          <X size={20} />
+        </button>
+        <img src={src} alt={alt} className="max-w-[92vw] max-h-[88vh] object-contain rounded-2xl shadow-2xl" />
+      </motion.div>
+    </div>
+  );
+}
+
 function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpdated, onPostArchived, onAuthorMuted }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void, onPostDeleted?: (postId: string) => void, onPostUpdated?: (postId: string, updates: Partial<Post>) => void, onPostArchived?: (postId: string) => void, onAuthorMuted?: (authorId: string) => void }) {
   const { toggleLikePost, toggleSavePost, trackInteraction, session, followingIds, toggleFollow, deletePost, updatePost, archivePost, muteUserPosts } = useStore();
   const hasTrackedView = useRef(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const currentUserId = session?.user?.id;
   const isOwnPost = post.userId === currentUserId;
   const isFollowingAuthor = followingIds.includes(post.userId);
@@ -1188,9 +1217,14 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
             post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"
           )}>
             {post.media.map((item, idx) => (
-              <div key={idx} className="relative rounded-3xl overflow-hidden border border-card-border aspect-[16/10] bg-surface-muted">
+              <button
+                key={idx}
+                onClick={() => setExpandedImage(item.url)}
+                className="relative rounded-3xl overflow-hidden border border-card-border aspect-[16/10] bg-surface-muted text-left group/media"
+              >
                 <img src={item.url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="post media" />
-              </div>
+                <span className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/50 text-white text-[9px] font-black uppercase tracking-widest opacity-0 group-hover/media:opacity-100 transition-opacity">Expand</span>
+              </button>
             ))}
           </div>
         )}
@@ -1277,6 +1311,15 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
               if (updated) onPostUpdated?.(post.id, updates);
               return updated;
             }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {expandedImage && (
+          <ImageLightbox
+            src={expandedImage}
+            alt={`${post.author.name} post image`}
+            onClose={() => setExpandedImage(null)}
           />
         )}
       </AnimatePresence>
