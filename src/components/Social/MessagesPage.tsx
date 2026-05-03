@@ -375,6 +375,7 @@ export default function MessagesPage() {
                           <p className="whitespace-pre-wrap">{message.content}</p>
                           <p className={cn('mt-2 text-[9px] font-black uppercase tracking-widest', isMine ? 'text-accent-contrast/60 text-right' : 'text-text-secondary/40')}>
                             {formatMessageTime(message.created_at)}
+                            {isMine && <span className="ml-2">Sent</span>}
                           </p>
                         </div>
                       </motion.div>

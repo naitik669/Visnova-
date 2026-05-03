@@ -40,7 +40,7 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: str
   }
 };
 
-export const uploadMedia = async (file: File, bucket: string = 'post-images', currentUserId?: string) => {
+const getCurrentUserId = async (currentUserId?: string) => {
   let userId = currentUserId;
 
   if (!userId) {
@@ -49,8 +49,14 @@ export const uploadMedia = async (file: File, bucket: string = 'post-images', cu
   }
 
   if (!userId) {
-    throw new Error('You must be signed in to upload images.');
+    throw new Error('You must be signed in to upload files.');
   }
+
+  return userId;
+};
+
+export const uploadMedia = async (file: File, bucket: string = 'post-images', currentUserId?: string) => {
+  const userId = await getCurrentUserId(currentUserId);
 
   const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
   if (!allowedTypes.includes(file.type)) {
@@ -83,6 +89,85 @@ export const uploadMedia = async (file: File, bucket: string = 'post-images', cu
 
   const { data: { publicUrl } } = supabase.storage
     .from(bucket)
+    .getPublicUrl(filePath);
+
+  return { publicUrl, filePath };
+};
+
+export const uploadAvatar = async (file: File, currentUserId?: string) => {
+  const userId = await getCurrentUserId(currentUserId);
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Unsupported avatar type. Please upload PNG, JPEG, or WebP images.');
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('Avatar size exceeds 5MB limit.');
+  }
+
+  const fileExt = file.name.split('.').pop() || 'jpg';
+  const filePath = `${userId}/profile/avatar-${Date.now()}.${fileExt}`;
+
+  const { error } = await withTimeout(
+    supabase.storage
+      .from('avatars')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      }),
+    60000,
+    'Avatar upload'
+  );
+
+  if (error) {
+    console.error('Avatar Upload Error:', error);
+    throw new Error(`Avatar upload failed: ${error.message}`);
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(filePath);
+
+  return { publicUrl, filePath };
+};
+
+export const uploadAudioNote = async (file: File, currentUserId?: string) => {
+  const userId = await getCurrentUserId(currentUserId);
+  const allowedTypes = ['audio/webm', 'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Unsupported audio type. Please upload WebM, MP3, MP4, WAV, or OGG audio.');
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    throw new Error('Audio note exceeds 25MB limit.');
+  }
+
+  const extensionByType: Record<string, string> = {
+    'audio/webm': 'webm',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'audio/wav': 'wav',
+    'audio/ogg': 'ogg'
+  };
+  const fileExt = file.name.includes('.') ? file.name.split('.').pop() : extensionByType[file.type] || 'webm';
+  const filePath = `${userId}/notes/audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
+
+  const { error } = await withTimeout(
+    supabase.storage
+      .from('note-audio')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      }),
+    60000,
+    'Audio note upload'
+  );
+
+  if (error) {
+    console.error('Audio Upload Error:', error);
+    throw new Error(`Audio upload failed: ${error.message}`);
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('note-audio')
     .getPublicUrl(filePath);
 
   return { publicUrl, filePath };

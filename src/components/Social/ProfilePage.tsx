@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
@@ -41,6 +41,7 @@ import {
 import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
+import { uploadAvatar } from '../../lib/supabase';
 import { CommentThreadModal, ImageLightbox, PostEditModal } from '../Feed/CommunityFeed';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
@@ -63,7 +64,9 @@ export default function ProfilePage() {
   
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [editData, setEditData] = useState({
     name: currentUser.name,
     username: currentUser.username || '',
@@ -258,6 +261,23 @@ export default function ProfilePage() {
     if (success) {
       setIsEditingProfile(false);
       fetchProfileData();
+    }
+  };
+
+  const handleAvatarFile = async (file: File) => {
+    setIsUploadingAvatar(true);
+    try {
+      const { publicUrl } = await uploadAvatar(file, session?.user?.id);
+      setEditData(data => ({ ...data, avatar: publicUrl }));
+      const success = await updateUser({ avatar: publicUrl });
+      if (success) {
+        setProfile((current: any) => current ? { ...current, avatar_url: publicUrl } : current);
+      }
+    } catch (error: any) {
+      console.error('Failed to update profile photo:', error);
+      useStore.getState().addToast({ type: 'error', title: 'Photo failed', description: error.message || 'Could not update your profile photo.' });
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -677,6 +697,51 @@ export default function ProfilePage() {
                       </div>
                     ) : (
                       <div className="space-y-8 relative z-10">
+                         <div className="flex flex-col sm:flex-row sm:items-center gap-6 rounded-3xl bg-surface-muted/50 border border-card-border p-5">
+                            <div className="relative">
+                              <img
+                                src={editData.avatar || currentUser.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${currentUser.id || 'visnova'}`}
+                                className="w-24 h-24 rounded-3xl object-cover border-4 border-card shadow-xl"
+                                alt="Profile preview"
+                              />
+                              {isUploadingAvatar && (
+                                <div className="absolute inset-0 rounded-3xl bg-overlay/50 flex items-center justify-center text-white">
+                                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-black uppercase tracking-widest text-text-main">Profile Photo</p>
+                              <p className="text-xs font-medium text-text-secondary mt-1">Upload a PNG, JPEG, or WebP image up to 5MB.</p>
+                              <div className="flex flex-wrap gap-3 mt-4">
+                                <button
+                                  onClick={() => avatarInputRef.current?.click()}
+                                  disabled={isUploadingAvatar}
+                                  className="h-11 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
+                                >
+                                  <Camera size={14} />
+                                  {isUploadingAvatar ? 'Uploading...' : 'Change Photo'}
+                                </button>
+                                <button
+                                  onClick={() => setEditData(data => ({ ...data, avatar: '' }))}
+                                  className="h-11 px-5 rounded-2xl bg-card border border-card-border text-text-secondary text-[10px] font-black uppercase tracking-widest hover:text-danger transition-colors"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                              <input
+                                ref={avatarInputRef}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                className="hidden"
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  if (file) handleAvatarFile(file);
+                                  event.target.value = '';
+                                }}
+                              />
+                            </div>
+                         </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-3">
                               <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Name</label>

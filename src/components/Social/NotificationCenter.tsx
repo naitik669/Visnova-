@@ -1,11 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
 import { Bell, Heart, MessageCircle, UserPlus, Reply, Clock, Check, Trash2, Zap } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-  const { notifications, markNotificationRead, unreadNotificationCount } = useStore();
+  const { notifications, markNotificationRead, markAllNotificationsRead, unreadNotificationCount } = useStore();
+
+  useEffect(() => {
+    if (isOpen && unreadNotificationCount > 0) {
+      const timer = window.setTimeout(() => {
+        markAllNotificationsRead();
+      }, 300);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isOpen, unreadNotificationCount, markAllNotificationsRead]);
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -41,7 +50,7 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
                      <Bell size={20} />
                   </div>
                   <div>
-                     <h3 className="text-lg font-black text-text-main uppercase tracking-tight">Intelligence</h3>
+                     <h3 className="text-lg font-black text-text-main uppercase tracking-tight">Notifications</h3>
                      <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Notifications</p>
                   </div>
                </div>
@@ -94,8 +103,8 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
                    <div className="w-16 h-16 rounded-[1.5rem] bg-surface-muted flex items-center justify-center mb-4 opacity-40">
                       <Zap size={24} className="text-text-secondary" />
                    </div>
-                   <h4 className="text-xs font-black text-text-secondary uppercase tracking-widest">Clear Frequency</h4>
-                   <p className="text-[9px] text-text-secondary/40 mt-1 uppercase tracking-widest">No social syncs detected.</p>
+                   <h4 className="text-xs font-black text-text-secondary uppercase tracking-widest">All caught up</h4>
+                   <p className="text-[9px] text-text-secondary/40 mt-1 uppercase tracking-widest">No notifications yet.</p>
                 </div>
               )}
             </div>

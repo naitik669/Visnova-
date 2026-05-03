@@ -557,7 +557,6 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                            <GridItem key="grid-resource" icon={<LinkIcon size={20} />} label="Resource" onClick={() => addElement('link')} />
                            <GridItem key="grid-checklist" icon={<CheckSquare size={20} />} label="Checklist" onClick={() => addElement('note')} />
                            <GridItem key="grid-quote" icon={<Quote size={20} />} label="Quote" onClick={() => addElement('quote')} />
-                           <GridItem key="grid-graphics" icon={<Sparkles size={20} />} label="Graphics" onClick={() => addGraphic('circle')} />
                            <GridItem key="grid-import" icon={<Users size={20} />} label="Import" onClick={() => imageImportRef.current?.click()} />
                         </motion.div>
                       )}
@@ -599,7 +598,6 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                     <QuickStartAction label="Write Goal" onClick={() => addElement('heading', 'Main Goal')} />
                     <QuickStartAction label="Strategic Note" onClick={() => addElement('note')} />
                     <QuickStartAction label="Inspire" onClick={() => addElement('quote')} />
-                    <QuickStartAction label="Add Shape" onClick={() => addGraphic('rectangle')} />
                  </div>
               </div>
             )}

@@ -113,6 +113,7 @@ export interface Note {
   journal_date?: string; // yyyy-MM-dd
   location?: string;
   image_url?: string;
+  audio_url?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -224,6 +225,7 @@ export interface AppState {
   fetchCircleData: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
   hasCompletedOnboarding: boolean;
   tutorialCompleted: boolean;
   isDashboardLoading: boolean;

@@ -1149,6 +1149,7 @@ export const useStore = create<AppState>((set, get) => ({
       journal_date: note.journal_date,
       location: note.location,
       image_url: note.image_url,
+      audio_url: note.audio_url,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       ...note,
@@ -1173,6 +1174,7 @@ export const useStore = create<AppState>((set, get) => ({
         journal_date: noteData.journal_date,
         location: noteData.location,
         image_url: noteData.image_url,
+        audio_url: noteData.audio_url,
         user_id: userId,
         created_at: new Date(noteData.createdAt).toISOString()
       }).select().single();
@@ -1205,6 +1207,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.journal_date !== undefined) dbUpdates.journal_date = updates.journal_date;
       if (updates.location !== undefined) dbUpdates.location = updates.location;
       if (updates.image_url !== undefined) dbUpdates.image_url = updates.image_url;
+      if (updates.audio_url !== undefined) dbUpdates.audio_url = updates.audio_url;
       dbUpdates.updated_at = new Date().toISOString();
 
       await supabase.from('notes').update(dbUpdates).eq('id', id);
@@ -1242,6 +1245,7 @@ export const useStore = create<AppState>((set, get) => ({
         journal_date: n.journal_date,
         location: n.location,
         image_url: n.image_url,
+        audio_url: n.audio_url,
         createdAt: new Date(n.created_at).getTime(),
         updatedAt: new Date(n.updated_at).getTime()
       }));
@@ -2242,6 +2246,17 @@ export const useStore = create<AppState>((set, get) => ({
     set(state => ({
       notifications: state.notifications.map(n => n.id === id ? { ...n, is_read: true } : n),
       unreadNotificationCount: Math.max(0, state.unreadNotificationCount - 1)
+    }));
+  },
+
+  markAllNotificationsRead: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    await notificationService.markAllAsRead(userId);
+    set(state => ({
+      notifications: state.notifications.map(n => ({ ...n, is_read: true })),
+      unreadNotificationCount: 0
     }));
   },
 
