@@ -62,6 +62,7 @@ import { useNavigate } from 'react-router-dom';
 import { CreativeCanvas } from './CreativeCanvas';
 import PublishModal from './PublishModal';
 import CollaborateModal from './CollaborateModal';
+import { supabase } from '../../lib/supabase';
 
 interface VisionDetailModalProps {
   vision: Vision | null;
@@ -489,7 +490,11 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                         </div>
                      </div>
                    ))}
-                   <button className="w-9 h-9 rounded-full bg-accent/10 border-2 border-dashed border-accent/20 flex items-center justify-center text-accent hover:bg-accent/20 transition-all">
+                   <button
+                      onClick={() => setShowCollaborateModal(true)}
+                      className="w-9 h-9 rounded-full bg-accent/10 border-2 border-dashed border-accent/20 flex items-center justify-center text-accent hover:bg-accent/20 transition-all"
+                      title="Invite collaborators"
+                   >
                       <Plus size={16} />
                    </button>
                 </div>
@@ -623,15 +628,21 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
 /// --- Internal Helper Components ---
 
 function ExecutionPlan({ vision }: { vision: Vision }) {
-  const { notes, updateVision } = useStore();
+  const { notes, updateVision, session, addToast } = useStore();
+  const [taskText, setTaskText] = useState('');
+  const [isAddingTask, setIsAddingTask] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const handleToggleTask = (taskId: string) => {
+    const task = vision.tasks.find(t => t.id === taskId);
+    const parentTask = task ? null : vision.tasks.find(t => t.subTasks?.some(st => st.id === taskId));
+    if (!task && !parentTask) return;
+    const nextCompleted = task ? !task.completed : !parentTask!.subTasks!.find(st => st.id === taskId)!.completed;
     const updatedTasks = vision.tasks.map(t => {
-      if (t.id === taskId) return { ...t, completed: !t.completed };
+      if (t.id === taskId) return { ...t, completed: nextCompleted };
       if (t.subTasks) {
         return {
           ...t,
@@ -641,6 +652,32 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
       return t;
     });
     updateVision(vision.id, { tasks: updatedTasks });
+    if (parentTask) {
+      const updatedParent = updatedTasks.find(t => t.id === parentTask.id);
+      supabase
+        .from('tasks')
+        .update({ sub_tasks: updatedParent?.subTasks || [], updated_at: new Date().toISOString() })
+        .eq('id', parentTask.id)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Failed to update blueprint subtask:', error);
+            addToast({ type: 'error', title: 'Subtask failed', description: 'Could not save this subtask change.' });
+          }
+        });
+      return;
+    }
+
+    supabase
+      .from('tasks')
+      .update({ completed: nextCompleted, updated_at: new Date().toISOString() })
+      .eq('id', taskId)
+      .then(({ error }) => {
+        if (error) {
+          console.error('Failed to update blueprint task:', error);
+          addToast({ type: 'error', title: 'Task failed', description: 'Could not save this task change.' });
+          updateVision(vision.id, { tasks: vision.tasks });
+        }
+      });
   };
 
   const handleAddSubTask = (parentId: string, text: string) => {
@@ -654,11 +691,86 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
       return t;
     });
     updateVision(vision.id, { tasks: updatedTasks });
+    const parent = updatedTasks.find(t => t.id === parentId);
+    if (parent) {
+      supabase
+        .from('tasks')
+        .update({ sub_tasks: parent.subTasks || [], updated_at: new Date().toISOString() })
+        .eq('id', parentId)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Failed to save subtask:', error);
+            addToast({ type: 'error', title: 'Subtask failed', description: 'Could not save this subtask.' });
+          }
+        });
+    }
   };
 
   const handleUpdatePriority = (taskId: string, priority: 'low' | 'medium' | 'high') => {
     const updatedTasks = vision.tasks.map(t => t.id === taskId ? { ...t, priority } : t);
     updateVision(vision.id, { tasks: updatedTasks });
+    supabase
+      .from('tasks')
+      .update({ priority, updated_at: new Date().toISOString() })
+      .eq('id', taskId)
+      .then(({ error }) => {
+        if (error) {
+          console.error('Failed to save task priority:', error);
+          addToast({ type: 'error', title: 'Priority failed', description: 'Could not save this priority.' });
+        }
+      });
+  };
+
+  const handleAddTask = async (event?: FormEvent) => {
+    event?.preventDefault();
+    const text = taskText.trim();
+    const userId = session?.user?.id;
+    if (!text) return;
+    if (!userId) {
+      addToast({ type: 'error', title: 'Login required', description: 'Sign in to add blueprint tasks.' });
+      return;
+    }
+
+    setIsAddingTask(true);
+    const tempTask: Task = {
+      id: `temp-${Date.now()}`,
+      text,
+      completed: false,
+      priority: 'low',
+      subTasks: []
+    };
+    updateVision(vision.id, { tasks: [...vision.tasks, tempTask] });
+    setTaskText('');
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: userId,
+        vision_id: vision.id,
+        text,
+        completed: false,
+        priority: 'low',
+        sub_tasks: []
+      })
+      .select('*')
+      .single();
+
+    setIsAddingTask(false);
+    if (error) {
+      console.error('Failed to add blueprint task:', error);
+      addToast({ type: 'error', title: 'Task failed', description: error.message || 'Could not add this task.' });
+      updateVision(vision.id, { tasks: vision.tasks });
+      return;
+    }
+
+    const savedTask: Task = {
+      id: data.id,
+      text: data.text,
+      completed: data.completed,
+      priority: data.priority || 'low',
+      subTasks: data.sub_tasks || []
+    };
+    updateVision(vision.id, { tasks: [...vision.tasks, savedTask] });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -693,7 +805,24 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
                 </div>
              </div>
              <div className="space-y-8">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Action Steps</h3>
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Action Steps</h3>
+                  <form onSubmit={handleAddTask} className="flex gap-3">
+                    <input
+                      value={taskText}
+                      onChange={(event) => setTaskText(event.target.value)}
+                      placeholder="Add a task or next move..."
+                      className="min-w-0 flex-1 h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-bold text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isAddingTask || !taskText.trim()}
+                      className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <Plus size={16} /> Add
+                    </button>
+                  </form>
+                </div>
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -704,6 +833,11 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="space-y-4">
+                      {vision.tasks.length === 0 && (
+                        <div className="p-8 rounded-[2rem] border border-dashed border-card-border text-center text-xs font-black uppercase tracking-widest text-text-secondary/40">
+                          No tasks yet. Add the first action step.
+                        </div>
+                      )}
                       {vision.tasks.map((t, idx) => (
                         <SortableTaskItem
                           key={t.id || idx}

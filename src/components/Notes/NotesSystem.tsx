@@ -1068,43 +1068,29 @@ function SidebarIconBtn({ icon, active, onClick, label, expanded }: any) {
 }
 
 function FolderCard({ folder, active, onClick }: { folder: any, active: boolean, onClick: () => void }) {
-  const colors = [
-    'bg-blue-50 text-blue-500 border-blue-100',
-    'bg-orange-50 text-orange-500 border-orange-100',
-    'bg-purple-50 text-purple-500 border-purple-100',
-    'bg-emerald-50 text-emerald-500 border-emerald-100',
-    'bg-rose-50 text-rose-500 border-rose-100'
-  ];
-  const colorIndex = (folder.name.length % colors.length);
-  const colorClass = colors[colorIndex];
-
   return (
     <button 
       onClick={onClick} 
       className={cn(
-        "aspect-[4/3] rounded-lg p-6 flex flex-col justify-between transition-all group relative overflow-hidden text-left",
-        active ? "bg-accent text-white shadow-xl scale-[1.02] ring-2 ring-accent/20" : "bg-white border border-card-border hover:shadow-lg"
+        "h-36 flex flex-col items-center justify-center gap-3 transition-all group text-center",
+        active ? "scale-[1.03]" : "hover:-translate-y-1"
       )}
     >
-       <div className={cn(
-         "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-         active ? "bg-white/20" : folder.color ? "text-white border border-black/5" : colorClass
-       )}
-       style={folder.color && !active ? { backgroundColor: folder.color } : undefined}
-       >
-          <Folder size={20} fill={active ? "white" : folder.color ? "white" : "currentColor"} strokeWidth={active || folder.color ? 0 : 2} />
-       </div>
-       <div>
-         <p className={cn("text-xs font-black uppercase tracking-tight truncate", active ? "text-white" : "text-text-main")}>{folder.name}</p>
-         <p className={cn("text-[9px] font-bold uppercase tracking-widest mt-1 opacity-50", active ? "text-white" : "text-text-secondary")}>
-           Collection
-         </p>
-       </div>
-       {active && (
-         <div className="absolute top-4 right-4 group-hover:rotate-12 transition-transform">
-            <MoreVertical size={14} className="opacity-40" />
-         </div>
-       )}
+       <Folder
+         size={72}
+         strokeWidth={1.4}
+         fill={active ? "var(--accent)" : (folder.color || "var(--card-dark)")}
+         className={cn(
+           "drop-shadow-sm transition-all",
+           active ? "text-accent" : "text-text-secondary/40 group-hover:text-accent"
+         )}
+       />
+       <p className={cn(
+         "w-full px-2 text-xs font-bold tracking-tight truncate",
+         active ? "text-accent" : "text-text-main"
+       )}>
+         {folder.name}
+       </p>
     </button>
   );
 }
@@ -1233,15 +1219,25 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const chunks: BlobPart[] = [];
-      const recorder = new MediaRecorder(stream);
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+        'audio/ogg'
+      ];
+      const mimeType = preferredTypes.find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       recorderRef.current = recorder;
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunks.push(event.data);
       };
       recorder.onstop = () => {
         stream.getTracks().forEach(track => track.stop());
-        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-        const file = new File([blob], `audio-note-${Date.now()}.webm`, { type: blob.type || 'audio/webm' });
+        const recordedType = (recorder.mimeType || mimeType || 'audio/webm').split(';')[0];
+        const extension = recordedType.includes('mp4') ? 'm4a' : recordedType.includes('ogg') ? 'ogg' : 'webm';
+        const blob = new Blob(chunks, { type: recordedType });
+        const file = new File([blob], `audio-note-${Date.now()}.${extension}`, { type: recordedType });
         attachAudioFile(file);
       };
       recorder.start();
@@ -1304,7 +1300,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
            <input
              ref={audioInputRef}
              type="file"
-             accept="audio/webm,audio/mpeg,audio/mp4,audio/wav,audio/ogg"
+             accept="audio/webm,audio/webm;codecs=opus,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/m4a,audio/wav,audio/x-wav,audio/ogg,application/ogg"
              className="hidden"
              onChange={(event) => {
                const file = event.target.files?.[0];

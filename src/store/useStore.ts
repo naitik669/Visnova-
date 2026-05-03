@@ -276,7 +276,7 @@ export const useStore = create<AppState>((set, get) => ({
     totalTime: 0,
     label: '',
   },
-  theme: (localStorage.getItem('theme') as 'light' | 'dark' | 'pastel' | 'green' | 'yellow' | 'sage') || 'sage',
+    theme: (localStorage.getItem('theme') as 'light' | 'dark' | 'midnight' | 'graphite' | 'forest-dark' | 'plum-dark' | 'pastel' | 'green' | 'yellow' | 'sage') || 'sage',
   session: null,
   selectedProfileId: null,
   isDashboardLoading: false,
@@ -414,6 +414,7 @@ export const useStore = create<AppState>((set, get) => ({
             id: t.id,
             text: t.text,
             completed: t.completed,
+            priority: t.priority || 'low',
             subTasks: t.sub_tasks || []
           }));
           

@@ -132,8 +132,22 @@ export const uploadAvatar = async (file: File, currentUserId?: string) => {
 
 export const uploadAudioNote = async (file: File, currentUserId?: string) => {
   const userId = await getCurrentUserId(currentUserId);
-  const allowedTypes = ['audio/webm', 'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg'];
-  if (!allowedTypes.includes(file.type)) {
+  const rawType = (file.type || '').toLowerCase();
+  const normalizedType = rawType.split(';')[0] || inferAudioTypeFromName(file.name);
+  const allowedTypes = [
+    'audio/webm',
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/mp4',
+    'audio/x-m4a',
+    'audio/m4a',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/wave',
+    'audio/ogg',
+    'application/ogg'
+  ];
+  if (!allowedTypes.includes(normalizedType)) {
     throw new Error('Unsupported audio type. Please upload WebM, MP3, MP4, WAV, or OGG audio.');
   }
   if (file.size > 25 * 1024 * 1024) {
@@ -143,11 +157,17 @@ export const uploadAudioNote = async (file: File, currentUserId?: string) => {
   const extensionByType: Record<string, string> = {
     'audio/webm': 'webm',
     'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
     'audio/mp4': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/m4a': 'm4a',
     'audio/wav': 'wav',
-    'audio/ogg': 'ogg'
+    'audio/x-wav': 'wav',
+    'audio/wave': 'wav',
+    'audio/ogg': 'ogg',
+    'application/ogg': 'ogg'
   };
-  const fileExt = file.name.includes('.') ? file.name.split('.').pop() : extensionByType[file.type] || 'webm';
+  const fileExt = file.name.includes('.') ? file.name.split('.').pop() : extensionByType[normalizedType] || 'webm';
   const filePath = `${userId}/notes/audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
 
   const { error } = await withTimeout(
@@ -155,6 +175,7 @@ export const uploadAudioNote = async (file: File, currentUserId?: string) => {
       .from('note-audio')
       .upload(filePath, file, {
         cacheControl: '3600',
+        contentType: normalizedType,
         upsert: false
       }),
     60000,
@@ -171,4 +192,14 @@ export const uploadAudioNote = async (file: File, currentUserId?: string) => {
     .getPublicUrl(filePath);
 
   return { publicUrl, filePath };
+};
+
+const inferAudioTypeFromName = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (ext === 'mp3') return 'audio/mpeg';
+  if (ext === 'm4a') return 'audio/mp4';
+  if (ext === 'wav') return 'audio/wav';
+  if (ext === 'ogg' || ext === 'oga') return 'audio/ogg';
+  if (ext === 'webm') return 'audio/webm';
+  return '';
 };

@@ -3,6 +3,10 @@
 ALTER TABLE public.notes
   ADD COLUMN IF NOT EXISTS audio_url TEXT;
 
+ALTER TABLE public.tasks
+  ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'low',
+  ADD COLUMN IF NOT EXISTS sub_tasks JSONB DEFAULT '[]'::JSONB;
+
 ALTER TABLE public.communities
   ALTER COLUMN owner_id DROP NOT NULL;
 
@@ -38,7 +42,19 @@ SET
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
   ('avatars', 'avatars', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/webp']),
-  ('note-audio', 'note-audio', true, 26214400, ARRAY['audio/webm', 'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg'])
+  ('note-audio', 'note-audio', true, 26214400, ARRAY[
+    'audio/webm',
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/mp4',
+    'audio/x-m4a',
+    'audio/m4a',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/wave',
+    'audio/ogg',
+    'application/ogg'
+  ])
 ON CONFLICT (id) DO UPDATE
 SET
   public = EXCLUDED.public,

@@ -36,6 +36,34 @@ export default function Settings() {
       color: 'bg-[#18191C] text-accent-contrast'
     },
     {
+      id: 'midnight',
+      icon: Moon,
+      label: 'Midnight',
+      desc: 'Deep navy focus',
+      color: 'bg-[#0f172a] text-[#38bdf8]'
+    },
+    {
+      id: 'graphite',
+      icon: Palette,
+      label: 'Graphite',
+      desc: 'Neutral dark workspace',
+      color: 'bg-[#262626] text-[#fafaf9]'
+    },
+    {
+      id: 'forest-dark',
+      icon: Sparkles,
+      label: 'Forest',
+      desc: 'Dark green calm',
+      color: 'bg-[#102719] text-[#86efac]'
+    },
+    {
+      id: 'plum-dark',
+      icon: Palette,
+      label: 'Plum',
+      desc: 'Soft dark creative mode',
+      color: 'bg-[#2f173d] text-[#f0abfc]'
+    },
+    {
       id: 'green',
       icon: Sparkles,
       label: 'Green',

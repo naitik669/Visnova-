@@ -11,6 +11,7 @@ import {
   Plus,
   Minus,
   Type, 
+  Image as ImageIcon,
   Link as LinkIcon, 
   FileText, 
   ExternalLink,
@@ -55,11 +56,35 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [linkingFromId, setLinkingFromId] = useState<string | null>(null);
   const [tempConnectorEnd, setTempConnectorEnd] = useState<{ x: number, y: number } | null>(null);
   const transformWrapperRef = useRef<any>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const elements = vision.elements || [];
 
   const addElement = (element: VisionElement) => {
     updateVision(vision.id, { elements: [...elements, element] });
+  };
+
+  const addQuickElement = (type: VisionElement['type'], content: string, metadata: VisionElement['metadata'] = {}) => {
+    addElement({
+      id: Math.random().toString(36).substring(7),
+      type,
+      content,
+      x: 2500 + Math.random() * 180,
+      y: 2500 + Math.random() * 120,
+      width: type === 'sticky' ? 256 : undefined,
+      height: type === 'sticky' ? 256 : undefined,
+      metadata
+    });
+  };
+
+  const importImageFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      if (!result) return;
+      addQuickElement('image', result, { title: file.name });
+    };
+    reader.readAsDataURL(file);
   };
 
   const addSticker = (sticker: typeof STICKER_GALLERY[number], x = 2500, y = 2500) => {
@@ -195,6 +220,26 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleCanvasDrop}
     >
+      <div className="absolute left-6 top-1/2 -translate-y-1/2 z-40 bg-card/90 backdrop-blur-xl border border-card-border rounded-2xl p-2 shadow-2xl flex flex-col gap-1">
+        <CanvasToolButton icon={<Type size={18} />} label="Text" onClick={() => addQuickElement('text', 'Write anything', { fontSize: '22px' })} />
+        <CanvasToolButton icon={<Target size={18} />} label="Goal" onClick={() => addQuickElement('heading', 'New goal', { color: 'var(--accent)' })} />
+        <CanvasToolButton icon={<FileText size={18} />} label="Sticky" onClick={() => addQuickElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
+        <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} />
+        <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => addQuickElement('shape', 'Label', { shapeType: 'rectangle', color: '#3b82f6' })} />
+        <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => addQuickElement('link', 'https://example.com', { url: 'https://example.com', title: 'Resource' })} />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) importImageFile(file);
+            event.target.value = '';
+          }}
+        />
+      </div>
+
       <TransformWrapper
         ref={transformWrapperRef}
         initialScale={1}
@@ -298,6 +343,21 @@ function ControlButton({ onClick, icon, label }: { onClick: () => void, icon: Re
   );
 }
 
+function CanvasToolButton({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-11 h-11 rounded-xl flex items-center justify-center text-text-secondary hover:text-accent hover:bg-accent/10 transition-all group relative"
+      title={label}
+    >
+      {icon}
+      <span className="absolute left-full ml-3 px-2 py-1 rounded-lg bg-text-main text-bg-base text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">
+        {label}
+      </span>
+    </button>
+  );
+}
+
 const CanvasElement: React.FC<{
   element: VisionElement;
   isSelected: boolean;
@@ -385,7 +445,26 @@ const CanvasElement: React.FC<{
               <LinkIcon size={14} />
             </button>
             <div className="w-px h-4 bg-card-border mx-1" />
-            <button className="p-2 text-text-secondary hover:bg-surface-muted rounded-lg transition-all"><MoreVertical size={14} /></button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const current = element.type === 'text' || element.type === 'heading'
+                  ? String(element.metadata?.fontSize || (element.type === 'heading' ? '48px' : '22px'))
+                  : String(element.width || 240);
+                const next = window.prompt(element.type === 'text' || element.type === 'heading' ? 'Font size, for example 28px' : 'Width in pixels', current);
+                if (!next) return;
+                if (element.type === 'text' || element.type === 'heading') {
+                  onUpdate({ metadata: { ...(element.metadata || {}), fontSize: next } });
+                } else {
+                  const width = Number(next);
+                  if (!Number.isNaN(width) && width > 40) onUpdate({ width });
+                }
+              }}
+              className="p-2 text-text-secondary hover:bg-surface-muted rounded-lg transition-all"
+              title="Size"
+            >
+              <Maximize2 size={14} />
+            </button>
           </div>
         )}
 
@@ -502,7 +581,10 @@ const ElementContent: React.FC<{ element: VisionElement }> = ({ element }) => {
       );
     case 'image':
       return (
-        <div className="max-w-md bg-card rounded-2xl overflow-hidden shadow-2xl border border-card-border">
+        <div
+          className="max-w-md bg-card rounded-2xl overflow-hidden shadow-2xl border border-card-border"
+          style={{ width: element.width || 360 }}
+        >
           <img src={element.content} className="w-full h-auto object-cover max-h-[500px]" alt="Board asset" />
           {element.metadata?.title && (
             <div className="p-4 border-t border-card-border bg-card/80">
@@ -599,13 +681,3 @@ const ElementContent: React.FC<{ element: VisionElement }> = ({ element }) => {
       return <div className="p-4 bg-accent text-accent-contrast rounded-xl">{element.content}</div>;
   }
 };
-
-const Plus = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-);
-const Minus = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>
-);
-const Target = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-);
