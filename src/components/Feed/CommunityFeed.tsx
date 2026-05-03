@@ -6,7 +6,7 @@ import {
   MessageSquare,
   Heart,
   Bookmark,
-  Share2,
+  Copy,
   TrendingUp,
   Users,
   Compass,
@@ -33,6 +33,7 @@ import { useStore } from '../../store/useStore';
 import { Post, Comment } from '../../types';
 import { uploadMedia, supabase } from '../../lib/supabase';
 import VerifiedBadge from '../VerifiedBadge';
+import { notificationService } from '../../services/notificationService';
 // Removed Firebase auth import
 
 import { TrendingTopicsSection } from './TrendingTopicsSection';
@@ -433,18 +434,6 @@ export default function CommunityFeed() {
               </button>
             </div>
             
-            {activeTab === 'explore' && (
-              <div className="flex items-center bg-surface-muted rounded-xl border border-card-border px-3 gap-2 flex-1 max-w-2xl focus-within:border-accent/40 transition-colors">
-                 <Search size={14} className="text-text-secondary/40 shrink-0" />
-                 <input 
-                   value={searchQuery}
-                   onChange={(e) => setSearchQuery(e.target.value)}
-                   placeholder="Search posts, creators, or topics" 
-                   className="bg-transparent border-none outline-none text-sm font-semibold text-text-main placeholder:text-text-secondary/30 h-10 w-full"
-                 />
-              </div>
-            )}
-
             <button 
               onClick={() => setIsComposerOpen(true)}
               className="h-10 w-10 sm:w-auto sm:px-4 rounded-xl bg-accent text-accent-contrast flex items-center justify-center gap-2 shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all"
@@ -475,6 +464,20 @@ export default function CommunityFeed() {
                   {tab}
                 </button>
               ))}
+            </div>
+          )}
+
+          {activeTab === 'explore' && (
+            <div className="border-t border-card-border/30 pt-3">
+              <div className="flex items-center bg-surface-muted rounded-xl border border-card-border px-4 gap-3 w-full focus-within:border-accent/40 transition-colors">
+                 <Search size={16} className="text-text-secondary/40 shrink-0" />
+                 <input
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                   placeholder="Search posts, creators, hashtags, or topics"
+                   className="bg-transparent border-none outline-none text-sm font-semibold text-text-main placeholder:text-text-secondary/30 h-12 w-full"
+                 />
+              </div>
             </div>
           )}
         </div>
@@ -692,6 +695,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const statusLimit = 160;
   
   const [mentions, setMentions] = useState<{ userId: string, username: string }[]>([]);
   const [mentionSearch, setMentionSearch] = useState<{ type: 'caption' | 'content', query: string, cursorPosition: number } | null>(null);
@@ -777,12 +781,17 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   };
 
   const handleSubmit = async () => {
-    if (!caption.trim() && !content.trim() && images.length === 0) return;
+    if (type === 'status' ? !content.trim() : (!caption.trim() && !content.trim() && images.length === 0)) return;
+    if (type === 'status' && content.trim().length > statusLimit) {
+      addToast({ type: 'error', title: 'Status too long', description: `Status updates are limited to ${statusLimit} characters.` });
+      return;
+    }
     setIsSubmitting(true);
 
     try {
       const uploadedMedia = [];
-      for (const img of images) {
+      const imagesToUpload = type === 'status' ? [] : images;
+      for (const img of imagesToUpload) {
         const result = await uploadMedia(img.file, 'post-images', session?.user?.id);
         const dominantColors = await extractDominantColors(img.file);
         uploadedMedia.push({
@@ -800,9 +809,9 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
 
       const success = await onPost({
         content,
-        caption,
+        caption: type === 'status' ? '' : caption,
         type,
-        media: uploadedMedia,
+        media: type === 'status' ? [] : uploadedMedia,
         tags,
         mentions: finalMentions,
         metadata: {
@@ -847,7 +856,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
-               {type === 'achievement' ? <Trophy size={20} /> : type === 'milestone' ? <Flag size={20} /> : <Zap size={20} />}
+               {type === 'achievement' ? <Trophy size={20} /> : type === 'milestone' ? <Flag size={20} /> : type === 'status' ? <MessageSquare size={20} /> : <Zap size={20} />}
             </div>
             <h3 className="text-xl font-bold text-text-main tracking-tight uppercase font-display">New Post</h3>
           </div>
@@ -858,7 +867,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
 
         <div className="space-y-8">
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {(['update', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
+            {(['status', 'update', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
               <button
                 key={t}
                 onClick={() => setType(t)}
@@ -871,6 +880,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
               >
                 {t === 'achievement' && <Trophy size={12} />}
                 {t === 'milestone' && <Flag size={12} />}
+                {t === 'status' && <MessageSquare size={12} />}
                 {t}
               </button>
             ))}
@@ -906,6 +916,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
           )}
 
           <div className="space-y-4 relative">
+            {type !== 'status' && (
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 ml-2">Caption</label>
               <textarea
@@ -915,14 +926,28 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
                 className="w-full h-20 bg-card border border-card-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
               />
             </div>
+            )}
             
             <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 ml-2">Detailed Content</label>
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 ml-2">
+                  {type === 'status' ? 'Status Bubble' : 'Detailed Content'}
+                </label>
+                {type === 'status' && (
+                  <span className={cn("text-[9px] font-black uppercase tracking-widest", content.length > statusLimit ? "text-danger" : "text-text-secondary/40")}>
+                    {content.length}/{statusLimit}
+                  </span>
+                )}
+              </div>
               <textarea
                 value={content}
                 onChange={(e) => handleTextChange(e, 'content')}
-                placeholder="Expand on your progress, insights, or plans..."
-                className="w-full h-40 bg-card border border-card-border rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
+                maxLength={type === 'status' ? statusLimit : undefined}
+                placeholder={type === 'status' ? "What's your current status?" : "Expand on your progress, insights, or plans..."}
+                className={cn(
+                  "w-full bg-card border border-card-border p-4 text-sm font-medium focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20",
+                  type === 'status' ? "h-28 rounded-[2rem] rounded-tl-md text-base font-bold bg-accent/5 border-accent/15" : "h-40 rounded-2xl"
+                )}
               />
             </div>
 
@@ -959,6 +984,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
             </AnimatePresence>
           </div>
 
+          {type !== 'status' && (
           <div className="space-y-4">
              <div className="flex items-center gap-4">
                 <button 
@@ -994,6 +1020,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
                </div>
              )}
           </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-6 border-t border-card-border/50">
             <button
@@ -1004,7 +1031,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || (!caption.trim() && !content.trim() && images.length === 0)}
+              disabled={isSubmitting || (type === 'status' ? !content.trim() : (!caption.trim() && !content.trim() && images.length === 0)) || (type === 'status' && content.trim().length > statusLimit)}
               className="px-10 py-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
@@ -1079,7 +1106,7 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
 
         <div className="space-y-6">
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {(['update', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
+            {(['status', 'update', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
               <button
                 key={t}
                 onClick={() => setType(t)}
@@ -1159,11 +1186,15 @@ export function ImageLightbox({ src, alt, onClose }: { src: string, alt: string,
 }
 
 function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpdated, onPostArchived, onAuthorMuted }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void, onPostDeleted?: (postId: string) => void, onPostUpdated?: (postId: string, updates: Partial<Post>) => void, onPostArchived?: (postId: string) => void, onAuthorMuted?: (authorId: string) => void }) {
-  const { toggleLikePost, toggleSavePost, trackInteraction, session, followingIds, toggleFollow, deletePost, updatePost, archivePost, muteUserPosts } = useStore();
+  const { trackInteraction, session, followingIds, toggleFollow, deletePost, updatePost, archivePost, muteUserPosts, addToast } = useStore();
   const hasTrackedView = useRef(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [isLiked, setIsLiked] = useState(!!post.isLiked);
+  const [isSaved, setIsSaved] = useState(!!post.isSaved);
+  const [likeCount, setLikeCount] = useState(post.likes);
   const currentUserId = session?.user?.id;
   const isOwnPost = post.userId === currentUserId;
   const isFollowingAuthor = followingIds.includes(post.userId);
@@ -1174,6 +1205,78 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
       hasTrackedView.current = true;
     }
   }, [post.id]);
+
+  useEffect(() => {
+    setIsLiked(!!post.isLiked);
+    setIsSaved(!!post.isSaved);
+    setLikeCount(post.likes);
+  }, [post.id, post.isLiked, post.isSaved, post.likes]);
+
+  const handleLike = async () => {
+    if (!currentUserId) {
+      addToast({ type: 'error', title: 'Login required', description: 'Sign in to like posts.' });
+      return;
+    }
+    const wasLiked = isLiked;
+    setIsLiked(!wasLiked);
+    setLikeCount(count => wasLiked ? Math.max(0, count - 1) : count + 1);
+
+    const { error } = wasLiked
+      ? await supabase.from('post_likes').delete().match({ post_id: post.id, user_id: currentUserId })
+      : await supabase.from('post_likes').insert({ post_id: post.id, user_id: currentUserId });
+
+    if (error) {
+      setIsLiked(wasLiked);
+      setLikeCount(count => wasLiked ? count + 1 : Math.max(0, count - 1));
+      addToast({ type: 'error', title: 'Like failed', description: 'Could not update this like.' });
+      return;
+    }
+
+    if (!wasLiked) {
+      trackInteraction(post.id, 'like');
+      if (post.userId !== currentUserId) {
+        await notificationService.send({
+          userId: post.userId,
+          actorId: currentUserId,
+          type: 'like',
+          postId: post.id,
+          message: 'liked your post'
+        });
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    if (!currentUserId) {
+      addToast({ type: 'error', title: 'Login required', description: 'Sign in to save posts.' });
+      return;
+    }
+    const wasSaved = isSaved;
+    setIsSaved(!wasSaved);
+
+    const { error } = wasSaved
+      ? await supabase.from('saved_posts').delete().match({ post_id: post.id, user_id: currentUserId })
+      : await supabase.from('saved_posts').insert({ post_id: post.id, user_id: currentUserId });
+
+    if (error) {
+      setIsSaved(wasSaved);
+      addToast({ type: 'error', title: 'Save failed', description: 'Could not update saved posts.' });
+      return;
+    }
+
+    if (!wasSaved) {
+      trackInteraction(post.id, 'save');
+      if (post.userId !== currentUserId) {
+        await notificationService.send({
+          userId: post.userId,
+          actorId: currentUserId,
+          type: 'save',
+          postId: post.id,
+          message: 'saved your post'
+        });
+      }
+    }
+  };
   
   const renderInteractiveText = (text: string, mentions?: Post['mentions']) => {
     const parts = text.split(/(@\w+|#[a-zA-Z0-9_-]+)/g);
@@ -1213,7 +1316,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
   
   return (
     <motion.div
-      className="system-card p-6 sm:p-12 bg-card border-card-border hover:border-accent/20 transition-all group w-full relative overflow-hidden"
+      className="system-card p-6 sm:p-12 bg-card border-card-border hover:border-accent/20 transition-all group w-full relative overflow-visible"
       layout
     >
       <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
@@ -1376,6 +1479,11 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
               <Zap size={14} /> High-Octane Sprint
             </div>
           )}
+          {post.type === 'status' && (
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/10 text-accent text-[9px] font-black uppercase tracking-widest border border-accent/20">
+              <MessageSquare size={14} /> Status
+            </div>
+          )}
           
           {post.tags?.map(tag => (
             <button
@@ -1388,14 +1496,19 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
           ))}
         </div>
         
-        <div className="space-y-4">
+        <div className={cn("space-y-4", post.type === 'status' && "max-w-2xl")}>
           {post.caption && (
             <h5 className="text-xl font-bold text-text-main tracking-tight leading-relaxed font-display">
               {renderInteractiveText(post.caption, post.mentions)}
             </h5>
           )}
           
-          <p className="text-sm text-text-secondary leading-relaxed font-medium whitespace-pre-wrap opacity-80">
+          <p className={cn(
+            "whitespace-pre-wrap",
+            post.type === 'status'
+              ? "inline-block rounded-[2rem] rounded-tl-md bg-accent/10 border border-accent/15 px-6 py-5 text-base font-bold text-text-main leading-relaxed shadow-sm"
+              : "text-sm text-text-secondary leading-relaxed font-medium opacity-80"
+          )}>
             {renderInteractiveText(post.content, post.mentions)}
           </p>
         </div>
@@ -1440,17 +1553,14 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
       <div className="mt-10 pt-8 border-t border-card-border/50 flex items-center justify-between relative z-10">
          <div className="flex items-center gap-6 sm:gap-10">
             <button 
-              onClick={() => {
-                toggleLikePost(post.id);
-                if (!post.isLiked) trackInteraction(post.id, 'like');
-              }}
+              onClick={handleLike}
               className={cn(
                 "flex items-center gap-2 text-text-secondary transition-all group/btn",
-                post.isLiked ? "text-danger" : "hover:text-danger hover:scale-110 active:scale-95"
+                isLiked ? "text-danger" : "hover:text-danger hover:scale-110 active:scale-95"
               )}
             >
-               <Heart size={20} className={cn("transition-all", post.isLiked && "fill-danger")} />
-               <span className="text-[11px] font-black tabular-nums">{post.likes}</span>
+               <Heart size={20} className={cn("transition-all", isLiked && "fill-danger")} />
+               <span className="text-[11px] font-black tabular-nums">{likeCount}</span>
             </button>
             
             <button 
@@ -1465,31 +1575,31 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
             </button>
             
             <button 
-              onClick={() => {
-                const url = `${window.location.origin}/post/${post.id}`;
-                navigator.clipboard.writeText(url);
-                useStore.getState().addToast({ type: 'info', title: 'Link copied', description: 'Post reference saved to clipboard.' });
-              }}
+              onClick={() => setIsShareOpen(true)}
               className="flex items-center gap-2 text-text-secondary hover:text-text-main hover:scale-110 active:scale-95 transition-all"
             >
-               <Share2 size={20} />
-               <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest">Share</span>
+               <Send size={20} />
+               <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest">Send</span>
             </button>
          </div>
          
          <button 
            onClick={() => {
-             toggleSavePost(post.id);
-             if (!post.isSaved) trackInteraction(post.id, 'save');
+             handleSave();
            }}
            className={cn(
             "transition-all hover:scale-110 active:scale-90",
-            post.isSaved ? "text-accent" : "text-text-secondary hover:text-accent"
+            isSaved ? "text-accent" : "text-text-secondary hover:text-accent"
           )}
          >
-            <Bookmark size={20} className={post.isSaved ? "fill-accent" : ""} />
+            <Bookmark size={20} className={isSaved ? "fill-accent" : ""} />
          </button>
       </div>
+      <AnimatePresence>
+        {isShareOpen && (
+          <SharePostModal post={post} onClose={() => setIsShareOpen(false)} />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {isEditOpen && (
           <PostEditModal
@@ -1513,6 +1623,153 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+function SharePostModal({ post, onClose }: { post: Post, onClose: () => void }) {
+  const { session, followingIds, addToast } = useStore();
+  const currentUserId = session?.user?.id;
+  const [connections, setConnections] = useState<any[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const postUrl = `${window.location.origin}/post/${post.id}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadConnections = async () => {
+      if (!currentUserId) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: followerRows } = await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('following_id', currentUserId);
+
+      const ids = Array.from(new Set([
+        ...followingIds,
+        ...((followerRows || []).map((row: any) => row.follower_id))
+      ])).filter(id => id && id !== currentUserId);
+
+      if (ids.length === 0) {
+        if (!cancelled) {
+          setConnections([]);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, full_name, avatar_url, verified')
+        .in('id', ids)
+        .limit(30);
+
+      if (cancelled) return;
+      if (error) {
+        console.error('Failed to load send connections:', error);
+        setConnections([]);
+      } else {
+        setConnections(data || []);
+      }
+      setIsLoading(false);
+    };
+
+    loadConnections();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId, followingIds]);
+
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(postUrl);
+    addToast({ type: 'success', title: 'Link copied', description: 'Post link copied to clipboard.' });
+  };
+
+  const sendPost = async () => {
+    if (!currentUserId || selectedUserIds.length === 0) return;
+    setIsSending(true);
+    try {
+      await Promise.all(selectedUserIds.map(async (targetUserId) => {
+        const { data: conversationId, error: conversationError } = await supabase.rpc('start_direct_conversation', { other_user_id: targetUserId });
+        if (conversationError) throw conversationError;
+        const { error: messageError } = await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          user_id: currentUserId,
+          content: `Sent you a post: ${post.caption || post.content.slice(0, 80) || 'VisNova post'}\n${postUrl}`
+        });
+        if (messageError) throw messageError;
+      }));
+      addToast({ type: 'success', title: 'Post sent', description: 'Shared with your selected connections.' });
+      onClose();
+    } catch (error: any) {
+      console.error('Failed to send post:', error);
+      addToast({ type: 'error', title: 'Send failed', description: error.message || 'Could not send this post.' });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/70 backdrop-blur-md" />
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-lg bg-app-container rounded-[2rem] border border-card-border shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-card-border flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-black uppercase tracking-tight text-text-main">Send Post</h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50 mt-1">Copy link or send in messages</p>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary/50 hover:text-text-main flex items-center justify-center">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          <button onClick={copyLink} className="w-full h-12 rounded-2xl bg-card border border-card-border flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/30 transition-all">
+            <Copy size={16} /> Copy Link
+          </button>
+
+          <div className="space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Connections</p>
+            <div className="max-h-72 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+              {isLoading ? (
+                <div className="py-10 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
+              ) : connections.length === 0 ? (
+                <div className="py-10 text-center text-[10px] font-black uppercase tracking-widest text-text-secondary/40 border border-dashed border-card-border rounded-2xl">
+                  Follow people or gain followers to send posts in app.
+                </div>
+              ) : connections.map(connection => {
+                const selected = selectedUserIds.includes(connection.id);
+                return (
+                  <button
+                    key={connection.id}
+                    onClick={() => setSelectedUserIds(current => selected ? current.filter(id => id !== connection.id) : [...current, connection.id])}
+                    className={cn("w-full p-3 rounded-2xl border flex items-center gap-3 text-left transition-all", selected ? "border-accent bg-accent/5" : "border-card-border bg-card hover:border-accent/30")}
+                  >
+                    <img src={connection.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${connection.id}`} className="w-10 h-10 rounded-xl border border-card-border object-cover" alt={connection.username || 'connection'} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-black uppercase text-text-main truncate flex items-center gap-2">
+                        {connection.display_name || connection.full_name || connection.username || 'Explorer'}
+                        <VerifiedBadge verified={!!connection.verified} className="scale-75" />
+                      </p>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-accent">@{connection.username || 'user'}</p>
+                    </div>
+                    <div className={cn("w-5 h-5 rounded-lg border flex items-center justify-center", selected ? "bg-accent border-accent text-accent-contrast" : "border-card-border")} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <button onClick={sendPost} disabled={isSending || selectedUserIds.length === 0} className="w-full h-12 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 disabled:opacity-50">
+            {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            Send to {selectedUserIds.length || 0}
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 

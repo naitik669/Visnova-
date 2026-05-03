@@ -324,7 +324,7 @@ export interface Post {
   saves: number;
   isSaved?: boolean;
   isLiked?: boolean;
-  type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement';
+  type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement' | 'status';
   visibility: 'public' | 'private' | 'friends' | 'archived';
   createdAt?: number;
   media?: {

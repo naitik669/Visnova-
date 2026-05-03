@@ -35,6 +35,7 @@ import {
   Trophy,
   Flag,
   Users,
+  UserMinus,
   Trash2,
   Archive
 } from 'lucide-react';
@@ -46,11 +47,21 @@ import { CommentThreadModal, ImageLightbox, PostEditModal } from '../Feed/Commun
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 
+type SocialProfile = {
+  id: string;
+  username?: string;
+  display_name?: string;
+  full_name?: string;
+  avatar_url?: string;
+  bio?: string;
+  verified?: boolean;
+};
+
 export default function ProfilePage() {
   const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow, fetchProfileStats } = useStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'archived' | 'achievements' | 'settings';
+  const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'followers' | 'following' | 'archived' | 'achievements' | 'settings';
   
   const [profile, setProfile] = useState<any>(null);
   const [profilePosts, setProfilePosts] = useState<Post[]>([]);
@@ -61,6 +72,9 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [followers, setFollowers] = useState<SocialProfile[]>([]);
+  const [following, setFollowing] = useState<SocialProfile[]>([]);
+  const [isLoadingSocialList, setIsLoadingSocialList] = useState(false);
   
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -294,6 +308,76 @@ export default function ProfilePage() {
     }
   };
 
+  const loadSocialList = async (kind: 'followers' | 'following') => {
+    if (!targetId) return;
+    setIsLoadingSocialList(true);
+    try {
+      const { data: followRows, error } = kind === 'followers'
+        ? await supabase.from('follows').select('follower_id').eq('following_id', targetId)
+        : await supabase.from('follows').select('following_id').eq('follower_id', targetId);
+
+      if (error) throw error;
+      const ids = (followRows || [])
+        .map((row: any) => kind === 'followers' ? row.follower_id : row.following_id)
+        .filter(Boolean);
+
+      if (ids.length === 0) {
+        if (kind === 'followers') setFollowers([]);
+        else setFollowing([]);
+        return;
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, full_name, avatar_url, bio, verified')
+        .in('id', ids);
+
+      if (profilesError) throw profilesError;
+      const orderedProfiles = ids
+        .map(id => (profiles || []).find((profile: SocialProfile) => profile.id === id))
+        .filter(Boolean) as SocialProfile[];
+
+      if (kind === 'followers') setFollowers(orderedProfiles);
+      else setFollowing(orderedProfiles);
+    } catch (error) {
+      console.error(`Failed to load ${kind}:`, error);
+    } finally {
+      setIsLoadingSocialList(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'followers' || activeTab === 'following') {
+      loadSocialList(activeTab);
+    }
+  }, [activeTab, targetId]);
+
+  const removeFollower = async (followerId: string) => {
+    if (!session?.user?.id || targetId !== session.user.id) return;
+    const { error } = await supabase
+      .from('follows')
+      .delete()
+      .match({ follower_id: followerId, following_id: session.user.id });
+
+    if (error) {
+      useStore.getState().addToast({ type: 'error', title: 'Remove failed', description: 'Could not remove this follower.' });
+      return;
+    }
+
+    setFollowers(current => current.filter(profile => profile.id !== followerId));
+    setFollowersCount(count => Math.max(0, count - 1));
+    useStore.getState().addToast({ type: 'success', title: 'Follower removed', description: 'They no longer follow you.' });
+  };
+
+  const unfollowUser = async (followingId: string) => {
+    if (!session?.user?.id || targetId !== session.user.id) return;
+    const next = await toggleFollow(followingId);
+    if (next === false) {
+      setFollowing(current => current.filter(profile => profile.id !== followingId));
+      setFollowingCount(count => Math.max(0, count - 1));
+    }
+  };
+
   const visibleProfilePosts = profilePosts.filter(post => post.visibility !== 'archived');
   const archivedProfilePosts = profilePosts.filter(post => post.visibility === 'archived');
   const savedPosts = allPosts.filter(p => p.isSaved);
@@ -363,6 +447,8 @@ export default function ProfilePage() {
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'posts', label: 'Posts' },
+    { id: 'followers', label: 'Followers' },
+    { id: 'following', label: 'Following' },
     ...(isOwnProfile ? [{ id: 'archived', label: 'Archived' }] : []),
     { id: 'achievements', label: 'Trophies' }
   ];
@@ -576,6 +662,71 @@ export default function ProfilePage() {
                  <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black">
                     No posts yet.
                  </div>
+              )}
+            </div>
+          )}
+
+          {(activeTab === 'followers' || activeTab === 'following') && (
+            <div className="max-w-3xl mx-auto space-y-4">
+              <div className="px-2 pb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 text-text-secondary/60">
+                  <Users size={16} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+                    {activeTab === 'followers' ? 'Followers' : 'Following'}
+                  </p>
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-accent">
+                  {(activeTab === 'followers' ? followers.length : following.length).toLocaleString()} people
+                </p>
+              </div>
+
+              {isLoadingSocialList ? (
+                <div className="py-20 flex justify-center">
+                  <div className="w-8 h-8 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
+                </div>
+              ) : (activeTab === 'followers' ? followers : following).length === 0 ? (
+                <div className="text-center py-24 opacity-40 text-xs uppercase tracking-[0.4em] font-black border border-dashed border-card-border rounded-[2rem]">
+                  {activeTab === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
+                </div>
+              ) : (
+                (activeTab === 'followers' ? followers : following).map(profileItem => (
+                  <div key={profileItem.id} className="system-card p-5 bg-card border-card-border flex items-center gap-4">
+                    <button
+                      onClick={() => setSelectedProfileId(profileItem.id)}
+                      className="flex items-center gap-4 min-w-0 flex-1 text-left"
+                    >
+                      <img
+                        src={profileItem.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${profileItem.id}`}
+                        className="w-12 h-12 rounded-2xl object-cover border border-card-border"
+                        alt={profileItem.username || 'profile'}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-black uppercase tracking-tight text-text-main flex items-center gap-2 truncate">
+                          {profileItem.display_name || profileItem.full_name || profileItem.username || 'Explorer'}
+                          <VerifiedBadge verified={!!profileItem.verified} className="scale-90" />
+                        </p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-accent">@{profileItem.username || 'user'}</p>
+                      </div>
+                    </button>
+
+                    {isOwnProfile && activeTab === 'followers' && (
+                      <button
+                        onClick={() => removeFollower(profileItem.id)}
+                        className="h-10 px-4 rounded-xl bg-surface-muted border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-danger hover:border-danger/30 transition-all flex items-center gap-2"
+                      >
+                        <UserMinus size={14} /> Remove
+                      </button>
+                    )}
+                    {isOwnProfile && activeTab === 'following' && (
+                      <button
+                        onClick={() => unfollowUser(profileItem.id)}
+                        className="h-10 px-4 rounded-xl bg-surface-muted border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-danger hover:border-danger/30 transition-all flex items-center gap-2"
+                      >
+                        <UserMinus size={14} /> Unfollow
+                      </button>
+                    )}
+                  </div>
+                ))
               )}
             </div>
           )}
