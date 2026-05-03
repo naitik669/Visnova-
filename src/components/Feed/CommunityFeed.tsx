@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Zap,
@@ -175,7 +175,7 @@ export default function CommunityFeed() {
   const [hashtagPosts, setHashtagPosts] = useState<Post[]>([]);
   const [isHashtagLoading, setIsHashtagLoading] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
-  const [selectedPostForThread, setSelectedPostForThread] = useState<Post | null>(null);
+  const navigate = useNavigate();
   const { posts, addPost, fetchPosts, user, trackInteraction, followingIds, circle, toggleFollow } = useStore();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -380,7 +380,7 @@ export default function CommunityFeed() {
         <PostCard 
           key={`${post.id || 'post'}-${idx}`} 
           post={post} 
-          onOpenThread={() => setSelectedPostForThread(post)} 
+          onOpenThread={() => navigate(`/post/${post.id}`)}
           onHashtagClick={handleHashtagClick}
         />
       );
@@ -579,7 +579,7 @@ export default function CommunityFeed() {
                      <PostCard
                        key={`explore-${post.id}-${idx}`} 
                         post={post}
-                        onOpenThread={() => setSelectedPostForThread(post)}
+                        onOpenThread={() => navigate(`/post/${post.id}`)}
                         onHashtagClick={handleHashtagClick}
                         onPostDeleted={(postId) => setHashtagPosts(prev => prev.filter(p => p.id !== postId))}
                         onPostArchived={(postId) => setHashtagPosts(prev => prev.filter(p => p.id !== postId))}
@@ -604,14 +604,6 @@ export default function CommunityFeed() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {selectedPostForThread && (
-          <CommentThreadModal 
-            post={selectedPostForThread} 
-            onClose={() => setSelectedPostForThread(null)} 
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -1688,6 +1680,20 @@ function SharePostModal({ post, onClose }: { post: Post, onClose: () => void }) 
     addToast({ type: 'success', title: 'Link copied', description: 'Post link copied to clipboard.' });
   };
 
+  const buildPostEmbedMessage = () => {
+    const preview = {
+      postId: post.id,
+      authorName: post.author.name,
+      authorHandle: post.author.handle,
+      authorAvatar: post.author.avatar,
+      caption: post.caption || '',
+      content: post.content || '',
+      mediaUrl: post.media?.[0]?.url || '',
+      createdAt: post.createdAt || Date.now()
+    };
+    return `VISNOVA_POST_EMBED\n${JSON.stringify(preview)}`;
+  };
+
   const sendPost = async () => {
     if (!currentUserId || selectedUserIds.length === 0) return;
     setIsSending(true);
@@ -1698,7 +1704,7 @@ function SharePostModal({ post, onClose }: { post: Post, onClose: () => void }) 
         const { error: messageError } = await supabase.from('messages').insert({
           conversation_id: conversationId,
           user_id: currentUserId,
-          content: `Sent you a post: ${post.caption || post.content.slice(0, 80) || 'VisNova post'}\n${postUrl}`
+          content: buildPostEmbedMessage()
         });
         if (messageError) throw messageError;
       }));

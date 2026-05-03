@@ -43,7 +43,7 @@ import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { uploadAvatar } from '../../lib/supabase';
-import { CommentThreadModal, ImageLightbox, PostEditModal } from '../Feed/CommunityFeed';
+import { ImageLightbox, PostEditModal } from '../Feed/CommunityFeed';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 
@@ -65,7 +65,6 @@ export default function ProfilePage() {
   
   const [profile, setProfile] = useState<any>(null);
   const [profilePosts, setProfilePosts] = useState<Post[]>([]);
-  const [selectedPostForThread, setSelectedPostForThread] = useState<Post | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -636,7 +635,7 @@ export default function ProfilePage() {
                   <ProfilePostCard
                     key={post.id}
                     post={post}
-                    onOpenThread={() => setSelectedPostForThread(post)}
+                    onOpenThread={() => navigate(`/post/${post.id}`)}
                     onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                     onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
                     onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
@@ -657,7 +656,7 @@ export default function ProfilePage() {
                 <ProfilePostCard
                   key={post.id}
                   post={post}
-                  onOpenThread={() => setSelectedPostForThread(post)}
+                  onOpenThread={() => navigate(`/post/${post.id}`)}
                   onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                   onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
                   onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
@@ -746,7 +745,7 @@ export default function ProfilePage() {
                 <ProfilePostCard
                   key={post.id}
                   post={post}
-                  onOpenThread={() => setSelectedPostForThread(post)}
+                  onOpenThread={() => navigate(`/post/${post.id}`)}
                   onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                   onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
                   onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
@@ -1042,14 +1041,6 @@ export default function ProfilePage() {
             </div>
           )}
         </motion.div>
-      </AnimatePresence>
-      <AnimatePresence>
-        {selectedPostForThread && (
-          <CommentThreadModal
-            post={selectedPostForThread}
-            onClose={() => setSelectedPostForThread(null)}
-          />
-        )}
       </AnimatePresence>
     </div>
   );

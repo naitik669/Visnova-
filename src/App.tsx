@@ -14,6 +14,7 @@ import NovaClock from './components/Nova/NovaClock';
 import MindVisualizer from './components/Mind/MindVisualizer';
 import Circle from './components/Circle/Circle';
 import CommunityFeed from './components/Feed/CommunityFeed';
+import PostThreadPage from './components/Feed/PostThreadPage';
 import NotesSystem from './components/Notes/NotesSystem';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import AuthCallback from './components/Auth/AuthCallback';
@@ -178,9 +179,12 @@ function Sidebar() {
           <button
             id="nav-focus"
             onClick={toggleFocusMode}
-            className="w-full h-11 rounded-xl bg-accent text-accent-contrast transition-all shadow-lg shadow-accent/10 flex items-center gap-4 overflow-hidden px-3.5 group active:scale-95"
+            className={cn(
+              "w-full h-11 rounded-xl bg-accent text-accent-contrast transition-all shadow-lg shadow-accent/10 flex items-center overflow-hidden group active:scale-95",
+              isExpanded ? "justify-start gap-4 px-3.5" : "justify-center gap-0 px-0"
+            )}
           >
-             <div className="w-4 h-4 shrink-0 flex items-center justify-center">
+             <div className="w-5 h-5 shrink-0 flex items-center justify-center">
                 <Zap size={16} className="fill-accent-contrast" />
              </div>
              <span className={cn(
@@ -395,6 +399,7 @@ export default function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/feed" element={<CommunityFeed />} />
+                    <Route path="/post/:postId" element={<PostThreadPage />} />
                     <Route path="/vision" element={<VisionBoard />} />
                     <Route path="/circle" element={<Circle />} />
                     <Route path="/communities" element={<CommunitySpaces />} />

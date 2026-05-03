@@ -69,6 +69,13 @@ const toLocalCapsule = (row: any): NovaCapsule => ({
   }))
 });
 
+const isMissingNovaClockSchema = (error: any) => (
+  error?.code === 'PGRST205' ||
+  /nova_capsules|nova_capsule_items|schema cache|Could not find the table/i.test(error?.message || '')
+);
+
+const novaClockSchemaMessage = 'Nova Clock database is not ready yet. Apply the nova_clock_capsules migration in Supabase.';
+
 export default function NovaClock() {
   const { session, addToast } = useStore();
   const userId = session?.user?.id;
@@ -79,6 +86,7 @@ export default function NovaClock() {
   const [builderMode, setBuilderMode] = useState<BuilderMode>('create');
   const [editingCapsule, setEditingCapsule] = useState<NovaCapsule | null>(null);
   const [detailCapsule, setDetailCapsule] = useState<NovaCapsule | null>(null);
+  const [schemaMissing, setSchemaMissing] = useState(false);
 
   const loadCapsules = async () => {
     if (!userId) {
@@ -94,9 +102,15 @@ export default function NovaClock() {
 
     if (error) {
       console.error('Failed to load NovaCapsules:', error);
-      addToast({ type: 'error', title: 'Nova Clock failed', description: 'Could not load NovaCapsules.' });
+      if (isMissingNovaClockSchema(error)) {
+        setSchemaMissing(true);
+        addToast({ type: 'error', title: 'Nova Clock setup needed', description: novaClockSchemaMessage });
+      } else {
+        addToast({ type: 'error', title: 'Nova Clock failed', description: 'Could not load NovaCapsules.' });
+      }
       setCapsules([]);
     } else {
+      setSchemaMissing(false);
       const localCapsules = (data || []).map(toLocalCapsule);
       const refreshedCapsules = await Promise.all(localCapsules.map(async capsule => ({
         ...capsule,
@@ -174,7 +188,7 @@ export default function NovaClock() {
     const { error } = await supabase.from('nova_capsules').delete().eq('id', capsule.id).eq('user_id', userId);
     if (error) {
       console.error('Failed to delete NovaCapsule:', error);
-      addToast({ type: 'error', title: 'Delete failed', description: 'Could not delete this NovaCapsule.' });
+      addToast({ type: 'error', title: 'Delete failed', description: isMissingNovaClockSchema(error) ? novaClockSchemaMessage : 'Could not delete this NovaCapsule.' });
       return;
     }
     setCapsules(current => current.filter(item => item.id !== capsule.id));
@@ -192,7 +206,7 @@ export default function NovaClock() {
         .eq('user_id', userId);
       if (error) {
         console.error('Failed to open NovaCapsule:', error);
-        addToast({ type: 'error', title: 'Open failed', description: 'Could not open this NovaCapsule.' });
+        addToast({ type: 'error', title: 'Open failed', description: isMissingNovaClockSchema(error) ? novaClockSchemaMessage : 'Could not open this NovaCapsule.' });
         return;
       }
       const nextCapsule = { ...capsule, status: 'opened' as const, openedAt };
@@ -244,6 +258,13 @@ export default function NovaClock() {
           </button>
         ))}
       </div>
+
+      {schemaMissing && (
+        <div className="rounded-[1.5rem] border border-danger/25 bg-danger/5 p-5 text-sm text-text-secondary">
+          <p className="font-black uppercase tracking-widest text-danger text-[10px] mb-2">Database setup needed</p>
+          <p>{novaClockSchemaMessage}</p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="h-96 flex items-center justify-center">
@@ -427,7 +448,7 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
       return true;
     } catch (error: any) {
       console.error('Failed to save NovaCapsule draft:', error);
-      addToast({ type: 'error', title: 'Draft failed', description: error.message || 'Could not save this draft.' });
+      addToast({ type: 'error', title: 'Draft failed', description: isMissingNovaClockSchema(error) ? novaClockSchemaMessage : (error.message || 'Could not save this draft.') });
       return false;
     } finally {
       setIsSaving(false);
@@ -462,7 +483,7 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
     const { error } = await supabase.from('nova_capsule_items').delete().eq('id', item.id).eq('user_id', userId);
     if (error) {
       console.error('Failed to remove NovaCapsule item:', error);
-      addToast({ type: 'error', title: 'Remove failed', description: 'Could not remove this item.' });
+      addToast({ type: 'error', title: 'Remove failed', description: isMissingNovaClockSchema(error) ? novaClockSchemaMessage : 'Could not remove this item.' });
     }
     if (item.storagePath) {
       await supabase.storage.from('nova-capsules').remove([item.storagePath]);
@@ -512,7 +533,7 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
       }
     } catch (error) {
       console.error('Failed to load NovaCapsule picker:', error);
-      addToast({ type: 'error', title: 'Items failed', description: 'Could not load these items.' });
+      addToast({ type: 'error', title: 'Items failed', description: isMissingNovaClockSchema(error) ? novaClockSchemaMessage : 'Could not load these items.' });
     } finally {
       setIsPickerLoading(false);
     }
@@ -569,7 +590,7 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
       addToast({ type: 'success', title: 'Image added', description: 'Image was added to the NovaCapsule.' });
     } catch (error: any) {
       console.error('Failed to import NovaCapsule image:', error);
-      addToast({ type: 'error', title: 'Import failed', description: error.message || 'Could not import this image.' });
+      addToast({ type: 'error', title: 'Import failed', description: isMissingNovaClockSchema(error) ? novaClockSchemaMessage : (error.message || 'Could not import this image.') });
     } finally {
       setIsUploading(false);
     }
@@ -614,7 +635,7 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
       onChanged();
     } catch (error: any) {
       console.error('Failed to lock NovaCapsule:', error);
-      addToast({ type: 'error', title: 'Lock failed', description: error.message || 'Could not lock this NovaCapsule.' });
+      addToast({ type: 'error', title: 'Lock failed', description: isMissingNovaClockSchema(error) ? novaClockSchemaMessage : (error.message || 'Could not lock this NovaCapsule.') });
     } finally {
       setIsSaving(false);
     }
@@ -641,14 +662,23 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Unlock Date</span>
-                <input type="date" value={unlockDate} onChange={event => setUnlockDate(event.target.value)} className="w-full h-12 rounded-xl bg-card border border-card-border px-4 text-sm font-bold" />
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
+                  <input type="date" value={unlockDate} onChange={event => setUnlockDate(event.target.value)} className="w-full h-[52px] rounded-2xl bg-card border border-card-border pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:border-accent/60 focus:ring-4 focus:ring-accent/10 [color-scheme:light]" />
+                </div>
               </label>
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Unlock Time</span>
-                <input type="time" value={unlockTime} onChange={event => setUnlockTime(event.target.value)} className="w-full h-12 rounded-xl bg-card border border-card-border px-4 text-sm font-bold" />
+                <div className="relative">
+                  <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
+                  <input type="time" value={unlockTime} onChange={event => setUnlockTime(event.target.value)} className="w-full h-[52px] rounded-2xl bg-card border border-card-border pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:border-accent/60 focus:ring-4 focus:ring-accent/10 [color-scheme:light]" />
+                </div>
               </label>
               <label className="h-full pt-6 flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={notify} onChange={event => setNotify(event.target.checked)} className="w-5 h-5 accent-accent" />
+                <span className={cn('relative flex h-7 w-12 items-center rounded-full border transition-colors', notify ? 'bg-accent border-accent' : 'bg-card border-card-border')}>
+                  <input type="checkbox" checked={notify} onChange={event => setNotify(event.target.checked)} className="sr-only" />
+                  <span className={cn('absolute h-5 w-5 rounded-full bg-white shadow-sm transition-transform', notify ? 'translate-x-6' : 'translate-x-1')} />
+                </span>
                 <span className="text-xs font-black uppercase tracking-widest text-text-secondary">Notify me</span>
               </label>
             </div>

@@ -44,12 +44,13 @@ import { Note, Folder as FolderType } from '../../types';
 import { uploadAudioNote } from '../../lib/supabase';
 
 export default function NotesSystem() {
-  const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user } = useStore();
+  const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user, addToast } = useStore();
   const location = useLocation();
   const initialTab = location.pathname.includes('journal') ? 'journal' : 'library';
   const [activeTab, setActiveTab] = useState<'library' | 'journal'>(initialTab);
   const [isJournalFullView, setIsJournalFullView] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [folderViewer, setFolderViewer] = useState<FolderType | null>(null);
 
   useEffect(() => {
     fetchFolders();
@@ -69,6 +70,14 @@ export default function NotesSystem() {
   const [isLibrarySidebarHovered, setIsLibrarySidebarHovered] = useState(false);
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('all');
   const activeNoteType = activeTab === 'library' ? 'vault' : 'journal';
+
+  useEffect(() => {
+    const folderId = new URLSearchParams(location.search).get('folder');
+    if (folderId) {
+      setActiveTab('library');
+      setSelectedFolder(folderId);
+    }
+  }, [location.search]);
 
   const journalEntry = useMemo(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -395,9 +404,10 @@ export default function NotesSystem() {
                        {filteredFolders.map((folder, idx) => (
                          <FolderCard 
                            key={folder.id || `folder-${idx}`} 
-                           folder={folder}
-                           active={selectedFolder === folder.id}
-                           onClick={() => setSelectedFolder(selectedFolder === folder.id ? null : folder.id)}
+                          folder={folder}
+                          active={selectedFolder === folder.id}
+                          onClick={() => setSelectedFolder(selectedFolder === folder.id ? null : folder.id)}
+                          onDoubleClick={() => setFolderViewer(folder)}
                          />
                        ))}
                        <button 
@@ -530,6 +540,22 @@ export default function NotesSystem() {
         folders={folders}
         onClose={() => setIsFolderModalOpen(false)}
         onCreate={handleNewFolder}
+      />
+      <FolderViewerModal
+        folder={folderViewer}
+        notes={notes.filter(note => note.folderId === folderViewer?.id && !note.isDeleted)}
+        onClose={() => setFolderViewer(null)}
+        onOpenNote={(noteId) => {
+          setFolderViewer(null);
+          setSelectedNoteId(noteId);
+        }}
+        onMakePublic={async (noteIds) => {
+          const ids = noteIds.length > 0 ? noteIds : notes.filter(note => note.folderId === folderViewer?.id && !note.isDeleted).map(note => note.id);
+          await Promise.all(ids.map(id => updateNote(id, { visibility: 'public' })));
+          const link = `${window.location.origin}/notes?folder=${folderViewer?.id || ''}`;
+          await navigator.clipboard.writeText(link);
+          addToast({ type: 'success', title: 'Folder link ready', description: 'Selected folder notes are public and the link was copied.' });
+        }}
       />
     </div>
   );
@@ -1099,10 +1125,93 @@ function SidebarIconBtn({ icon, active, onClick, label, expanded }: any) {
   );
 }
 
-function FolderCard({ folder, active, onClick }: { folder: any, active: boolean, onClick: () => void }) {
+function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }: {
+  folder: FolderType | null;
+  notes: Note[];
+  onClose: () => void;
+  onOpenNote: (noteId: string) => void;
+  onMakePublic: (noteIds: string[]) => Promise<void>;
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSharing, setIsSharing] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [folder?.id]);
+
+  if (!folder) return null;
+
+  const toggleSelected = (noteId: string) => {
+    setSelectedIds(current => current.includes(noteId) ? current.filter(id => id !== noteId) : [...current, noteId]);
+  };
+
+  const shareFolder = async () => {
+    setIsSharing(true);
+    try {
+      await onMakePublic(selectedIds);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/70 backdrop-blur-md" />
+        <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-3xl max-h-[86vh] overflow-hidden rounded-[2rem] border border-card-border bg-app-container shadow-2xl flex flex-col">
+          <div className="p-5 border-b border-card-border flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <Folder size={34} fill={folder.color || 'var(--accent)'} className="text-accent shrink-0" />
+              <div className="min-w-0">
+                <h3 className="text-lg font-black text-text-main truncate">{folder.name}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{notes.length} notes inside</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-text-main flex items-center justify-center">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar">
+            {notes.length === 0 ? (
+              <div className="h-52 rounded-2xl border border-dashed border-card-border flex items-center justify-center text-center">
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">No notes in this folder yet.</p>
+              </div>
+            ) : notes.map(note => (
+              <div key={note.id} className="rounded-2xl border border-card-border bg-card p-4 flex items-center gap-4">
+                <button
+                  onClick={() => toggleSelected(note.id)}
+                  className={cn('w-6 h-6 rounded-lg border flex items-center justify-center shrink-0', selectedIds.includes(note.id) ? 'bg-accent border-accent text-accent-contrast' : 'border-card-border text-transparent')}
+                  aria-label={`Select ${note.title}`}
+                >
+                  <CheckCircle2 size={15} />
+                </button>
+                <button onClick={() => onOpenNote(note.id)} className="min-w-0 flex-1 text-left">
+                  <p className="text-sm font-black text-text-main truncate">{note.title || 'Untitled note'}</p>
+                  <p className="text-[10px] text-text-secondary/50 truncate">{note.content || 'No content yet.'}</p>
+                </button>
+                <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary/40">{note.visibility === 'public' ? 'Public' : 'Private'}</span>
+              </div>
+            ))}
+          </div>
+          <div className="p-5 border-t border-card-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
+              {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select notes or share the whole folder'}
+            </p>
+            <button onClick={shareFolder} disabled={isSharing || notes.length === 0} className="h-11 px-5 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+              {isSharing ? 'Sharing...' : 'Make Public Link'}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}
+
+function FolderCard({ folder, active, onClick, onDoubleClick }: { folder: any, active: boolean, onClick: () => void, onDoubleClick: () => void }) {
   return (
     <button 
       onClick={onClick} 
+      onDoubleClick={onDoubleClick}
       className={cn(
         "h-36 flex flex-col items-center justify-center gap-3 transition-all group text-center",
         active ? "scale-[1.03]" : "hover:-translate-y-1"

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AtSign, Loader2, MessageCircle, Search, Send, UserPlus } from 'lucide-react';
+import { AtSign, ExternalLink, Image as ImageIcon, Loader2, MessageCircle, Search, Send, UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
@@ -30,6 +30,17 @@ type ChatMessage = {
   created_at: string;
 };
 
+type SharedPostEmbed = {
+  postId: string;
+  authorName?: string;
+  authorHandle?: string;
+  authorAvatar?: string;
+  caption?: string;
+  content?: string;
+  mediaUrl?: string;
+  createdAt?: number;
+};
+
 const displayName = (profile?: ProfileLite) => profile?.display_name || profile?.full_name || profile?.username || 'Explorer';
 const avatarFor = (profile?: ProfileLite) => profile?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${profile?.id || 'visnova'}`;
 const cleanProfileSearch = (query: string) => query.trim().replace(/^@/, '');
@@ -45,6 +56,21 @@ const formatMessageDate = (value: string) => {
   if (date.toDateString() === today.toDateString()) return `Today, ${shortDate}`;
   if (date.toDateString() === yesterday.toDateString()) return `Yesterday, ${shortDate}`;
   return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+};
+const parsePostEmbed = (content?: string): SharedPostEmbed | null => {
+  if (!content?.startsWith('VISNOVA_POST_EMBED\n')) return null;
+  try {
+    const parsed = JSON.parse(content.replace('VISNOVA_POST_EMBED\n', ''));
+    return parsed?.postId ? parsed : null;
+  } catch (error) {
+    console.error('Failed to parse shared post embed:', error);
+    return null;
+  }
+};
+const previewMessage = (content?: string) => {
+  const embed = parsePostEmbed(content);
+  if (!embed) return content || '';
+  return `Post: ${embed.caption || embed.content || 'Shared post'}`;
 };
 
 export default function MessagesPage() {
@@ -330,7 +356,7 @@ export default function MessagesPage() {
                 <img src={avatarFor(conversation.profile)} className="w-11 h-11 rounded-xl border border-card-border" alt={displayName(conversation.profile)} />
                 <div className="min-w-0">
                   <p className="text-xs font-black uppercase text-text-main truncate">{displayName(conversation.profile)}</p>
-                  <p className="text-[10px] font-medium text-text-secondary/50 truncate">{conversation.lastMessage || `@${conversation.profile.username || 'user'}`}</p>
+                  <p className="text-[10px] font-medium text-text-secondary/50 truncate">{previewMessage(conversation.lastMessage) || `@${conversation.profile.username || 'user'}`}</p>
                 </div>
               </button>
             ))}
@@ -359,6 +385,7 @@ export default function MessagesPage() {
                   const isMine = message.user_id === currentUserId;
                   const previous = messages[index - 1];
                   const showDateDivider = !previous || dateKeyFor(previous.created_at) !== dateKeyFor(message.created_at);
+                  const postEmbed = parsePostEmbed(message.content);
                   return (
                     <div key={message.id} className="space-y-4">
                       {showDateDivider && (
@@ -372,7 +399,42 @@ export default function MessagesPage() {
                       )}
                       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn('flex', isMine ? 'justify-end' : 'justify-start')}>
                         <div className={cn('max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed border', isMine ? 'bg-accent text-accent-contrast border-accent' : 'bg-card text-text-main border-card-border')}>
-                          <p className="whitespace-pre-wrap">{message.content}</p>
+                          {postEmbed ? (
+                            <Link
+                              to={`/post/${postEmbed.postId}`}
+                              className={cn(
+                                'block overflow-hidden rounded-2xl border text-left transition-transform hover:scale-[1.01] active:scale-[0.99]',
+                                isMine ? 'border-accent-contrast/25 bg-accent-contrast/10' : 'border-card-border bg-surface-muted/60'
+                              )}
+                            >
+                              {postEmbed.mediaUrl ? (
+                                <img src={postEmbed.mediaUrl} alt="Shared post" className="h-40 w-full object-cover" />
+                              ) : (
+                                <div className={cn('h-24 w-full flex items-center justify-center', isMine ? 'bg-accent-contrast/10' : 'bg-card')}>
+                                  <ImageIcon size={24} className={isMine ? 'text-accent-contrast/50' : 'text-text-secondary/30'} />
+                                </div>
+                              )}
+                              <div className="p-4 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  {postEmbed.authorAvatar && <img src={postEmbed.authorAvatar} alt="" className="w-7 h-7 rounded-lg object-cover" />}
+                                  <div className="min-w-0">
+                                    <p className={cn('text-[10px] font-black uppercase tracking-widest truncate', isMine ? 'text-accent-contrast' : 'text-text-main')}>
+                                      {postEmbed.authorName || 'VisNova post'}
+                                    </p>
+                                    <p className={cn('text-[9px] font-bold truncate', isMine ? 'text-accent-contrast/60' : 'text-text-secondary/50')}>
+                                      {postEmbed.authorHandle || 'Open post'}
+                                    </p>
+                                  </div>
+                                  <ExternalLink size={14} className={cn('ml-auto shrink-0', isMine ? 'text-accent-contrast/60' : 'text-text-secondary/40')} />
+                                </div>
+                                <p className={cn('line-clamp-3 text-xs font-semibold leading-relaxed', isMine ? 'text-accent-contrast/85' : 'text-text-secondary')}>
+                                  {postEmbed.caption || postEmbed.content || 'Open this shared post.'}
+                                </p>
+                              </div>
+                            </Link>
+                          ) : (
+                            <p className="whitespace-pre-wrap">{message.content}</p>
+                          )}
                           <p className={cn('mt-2 text-[9px] font-black uppercase tracking-widest', isMine ? 'text-accent-contrast/60 text-right' : 'text-text-secondary/40')}>
                             {formatMessageTime(message.created_at)}
                             {isMine && <span className="ml-2">Sent</span>}

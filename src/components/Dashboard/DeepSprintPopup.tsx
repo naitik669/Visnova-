@@ -21,14 +21,14 @@ export default function DeepSprintPopup({ isOpen, onClose }: { isOpen: boolean; 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[110] bg-overlay backdrop-blur-sm flex items-center justify-center p-6"
+        className="fixed inset-0 z-[110] bg-overlay backdrop-blur-sm flex items-center justify-center p-2 sm:p-4"
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="bg-card border border-card-border w-full max-w-lg rounded-[2rem] shadow-2xl relative overflow-hidden p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto scrollbar-hide"
+          className="bg-card border border-card-border w-full max-w-md rounded-[1.5rem] shadow-2xl relative overflow-y-auto p-4 sm:p-5 space-y-4 max-h-[calc(100dvh-1rem)] scrollbar-hide"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Header */}
@@ -44,14 +44,14 @@ export default function DeepSprintPopup({ isOpen, onClose }: { isOpen: boolean; 
             </button>
           </div>
 
-          <div className="space-y-2 text-center pb-2">
-            <h2 className="text-2xl font-semibold tracking-tight text-text-main ">Start <span className="text-accent underline decoration-accent/20 underline-offset-4">Focus Session</span></h2>
+          <div className="space-y-1 text-center">
+            <h2 className="text-xl font-semibold tracking-tight text-text-main ">Start <span className="text-accent underline decoration-accent/20 underline-offset-4">Focus Session</span></h2>
             <p className="text-[10px] text-text-secondary font-medium opacity-60 max-w-xs mx-auto">
               Choose a session duration to begin.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {sprintOptions.map((opt) => (
               <button
                 key={opt.label}
@@ -59,10 +59,10 @@ export default function DeepSprintPopup({ isOpen, onClose }: { isOpen: boolean; 
                   startFocusSession(opt.duration, opt.label);
                   onClose();
                 }}
-                className="group flex flex-col p-5 rounded-2xl bg-bg-base border border-card-border hover:border-accent hover:bg-accent/[0.02] transition-all text-left space-y-4"
+                className="group flex flex-col p-3 sm:p-4 rounded-2xl bg-bg-base border border-card-border hover:border-accent hover:bg-accent/[0.02] transition-all text-left space-y-3"
               >
                 <div className="flex items-center justify-between w-full">
-                  <div className="w-10 h-10 rounded-xl bg-card border border-card-border flex items-center justify-center text-text-secondary group-hover:text-accent group-hover:border-accent/20 transition-all">
+                  <div className="w-9 h-9 rounded-xl bg-card border border-card-border flex items-center justify-center text-text-secondary group-hover:text-accent group-hover:border-accent/20 transition-all">
                     <opt.icon size={18} />
                   </div>
                   <div className="text-right">
@@ -77,7 +77,7 @@ export default function DeepSprintPopup({ isOpen, onClose }: { isOpen: boolean; 
             ))}
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
             <button
               onClick={onClose}
               className="w-full py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary/60 hover:text-text-main transition-colors"
