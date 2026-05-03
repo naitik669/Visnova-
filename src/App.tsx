@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Bell, Compass, Clock, Globe, X, BookOpen, User, MessageCircle } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Bell, Compass, Clock, Globe, X, BookOpen, User, MessageCircle, LibraryBig } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -106,13 +106,13 @@ function Sidebar() {
     { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Target, label: 'Visions', path: '/vision', id: 'nav-vision' },
-    { icon: BookOpen, label: 'Library', path: '/notes' },
+    { icon: LibraryBig, label: 'Library', path: '/notes' },
     { icon: BookOpen, label: 'Journal', path: '/journal' },
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
     { icon: User, label: 'Profile', path: '/profile' },
-    { icon: Clock, label: 'Timeline', path: '/nova' },
+    { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
     { icon: Activity, label: 'Growth', path: '/mind-map' },
   ];
 
@@ -403,7 +403,9 @@ export default function App() {
                     <Route path="/journal" element={<NotesSystem />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />
-                    <Route path="/nova" element={<NovaClock />} />
+                    <Route path="/nova-clock" element={<NovaClock />} />
+                    <Route path="/nova" element={<Navigate to="/nova-clock" replace />} />
+                    <Route path="/timeline" element={<Navigate to="/nova-clock" replace />} />
                     <Route path="/mind-map" element={<MindVisualizer />} />
                     <Route path="*" element={<div className="p-20 text-center text-[10px] font-black text-text-secondary opacity-30 uppercase tracking-[0.4em]">Page Not Found</div>} />
                   </Routes>

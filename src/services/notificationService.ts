@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-export type NotificationType = 'like' | 'save' | 'comment' | 'follow' | 'mention' | 'reply' | 'achievement';
+export type NotificationType = 'like' | 'save' | 'comment' | 'follow' | 'mention' | 'reply' | 'achievement' | 'nova_capsule_unlocked';
 
 export interface NotificationPayload {
   userId: string;

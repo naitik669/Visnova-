@@ -194,6 +194,43 @@ export const uploadAudioNote = async (file: File, currentUserId?: string) => {
   return { publicUrl, filePath };
 };
 
+export const uploadCapsuleImage = async (file: File, capsuleId: string, currentUserId?: string) => {
+  const userId = await getCurrentUserId(currentUserId);
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Unsupported image type. Please upload PNG, JPEG, or WebP images.');
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('NovaCapsule image exceeds 10MB limit.');
+  }
+
+  const fileExt = file.name.split('.').pop() || 'jpg';
+  const filePath = `${userId}/${capsuleId}/image-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
+
+  const { error } = await withTimeout(
+    supabase.storage
+      .from('nova-capsules')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        contentType: file.type,
+        upsert: false
+      }),
+    60000,
+    'NovaCapsule image upload'
+  );
+
+  if (error) {
+    console.error('NovaCapsule Upload Error:', error);
+    throw new Error(`NovaCapsule upload failed: ${error.message}`);
+  }
+
+  const { data } = await supabase.storage
+    .from('nova-capsules')
+    .createSignedUrl(filePath, 60 * 60 * 24 * 7);
+
+  return { signedUrl: data?.signedUrl || '', filePath };
+};
+
 const inferAudioTypeFromName = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
   if (ext === 'mp3') return 'audio/mpeg';

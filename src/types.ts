@@ -118,6 +118,37 @@ export interface Note {
   updatedAt: number;
 }
 
+export type NovaCapsuleStatus = 'draft' | 'locked' | 'unlocked' | 'opened';
+export type NovaCapsuleItemType = 'note' | 'journal' | 'task' | 'vision' | 'milestone' | 'achievement' | 'image' | 'file' | 'text';
+
+export interface NovaCapsuleItem {
+  id: string;
+  capsuleId: string;
+  userId: string;
+  itemType: NovaCapsuleItemType;
+  sourceId?: string | null;
+  title?: string | null;
+  content?: string | null;
+  mediaUrl?: string | null;
+  storagePath?: string | null;
+  metadata?: Record<string, any>;
+  createdAt: number;
+}
+
+export interface NovaCapsule {
+  id: string;
+  userId: string;
+  title: string;
+  message?: string | null;
+  status: NovaCapsuleStatus;
+  unlockAt: string;
+  notify: boolean;
+  openedAt?: string | null;
+  createdAt: number;
+  updatedAt: number;
+  items: NovaCapsuleItem[];
+}
+
 export interface Vitals {
   focus: number;
   energy: number;

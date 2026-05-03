@@ -612,6 +612,22 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
     setCurrentPage(pages.length);
   };
 
+  const deleteNotebookPage = async () => {
+    if (isLocked) return;
+    if (!confirm(`Delete page ${currentPage + 1}?`)) return;
+    const nextPages = pages.length <= 1 ? [''] : pages.filter((_, index) => index !== currentPage);
+    const nextPageIndex = Math.min(Math.max(0, currentPage - 1), nextPages.length - 1);
+    setPages(nextPages);
+    setCurrentPage(nextPageIndex);
+    setIsSaving(true);
+    try {
+      await onSave(nextPages.join(JOURNAL_PAGE_BREAK), { title: title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`, mood, location });
+      setLastSaved(Date.now());
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const addSticker = (sticker: string) => {
     if (isLocked) return;
     updateCurrentPage(prev => `${prev}${prev ? ' ' : ''}${sticker}`);
@@ -662,6 +678,14 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                 title="Add page"
               >
                 <Plus size={16} />
+              </button>
+              <button
+                onClick={deleteNotebookPage}
+                disabled={isLocked || (pages.length <= 1 && !content.trim())}
+                className="w-10 h-10 rounded-xl bg-surface-muted border border-card-border flex items-center justify-center text-danger hover:bg-danger hover:text-white transition-all disabled:opacity-40"
+                title="Delete current page"
+              >
+                <Trash2 size={16} />
               </button>
                <div className="flex items-center gap-2">
                 <Star size={14} className={streak > 0 ? "text-accent fill-accent" : "text-text-secondary/20"} />
@@ -798,6 +822,14 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                 title="Add notebook page"
               >
                 <Plus size={16} />
+              </button>
+              <button
+                onClick={deleteNotebookPage}
+                disabled={isLocked || (pages.length <= 1 && !content.trim())}
+                className="h-10 rounded-xl border border-dashed border-danger/30 text-danger flex items-center justify-center hover:bg-danger/5 transition-all disabled:opacity-40"
+                title="Delete current page"
+              >
+                <Trash2 size={16} />
               </button>
             </div>
           </motion.div>
