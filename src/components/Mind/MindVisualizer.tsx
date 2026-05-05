@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { cn } from '../../lib/utils';
 
 const mindNodes = [
-  { id: '1', title: 'Quantum Neural Networks', type: 'YouTube', url: 'https://youtube.com/watch?v=...', author: 'Domain Expert', views: '2.4M', color: 'bg-danger' },
+  { id: '1', title: 'Focus Systems for Deep Work', type: 'YouTube', url: 'https://youtube.com/watch?v=...', author: 'Domain Expert', views: '2.4M', color: 'bg-danger' },
   { id: '2', title: 'Flow Philosophy', type: 'Article', author: 'Daily Zen', color: 'bg-success' },
   { id: '3', title: 'Visual Design Patterns', type: 'Dribbble', author: 'Pixel Master', color: 'bg-pink-500' },
 ];
@@ -17,7 +17,7 @@ export default function MindVisualizer() {
        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-8 border-b border-card-border">
           <div className="flex items-center gap-3 text-danger">
              <Youtube size={20} />
-             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60">Cognitive Expansion</span>
+             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60">Growth Library</span>
           </div>
 
           <div className="flex bg-card rounded-full p-1 border border-card-border shadow-sm">
@@ -50,11 +50,11 @@ export default function MindVisualizer() {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="system-card p-6 flex flex-col gap-4">
                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-text-secondary/60">Contextual Resonance</h4>
+                      <h4 className="text-xs font-black uppercase tracking-widest text-text-secondary/60">Related Focus</h4>
                       <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
                    </div>
                    <p className="text-sm font-medium text-text-main leading-relaxed">
-                      This content aligns with your <span className="text-accent underline font-bold">Quantum Computing</span> vision. Focus on 04:22 for the breakthrough logic.
+                      This content aligns with your <span className="text-accent underline font-bold">Deep Work</span> vision. Focus on 04:22 for the key idea.
                    </p>
                 </div>
                 <div className="system-card p-6 flex flex-col gap-4">
@@ -66,7 +66,7 @@ export default function MindVisualizer() {
                         ))}
                       </div>
                    </div>
-                   <p className="text-sm font-medium text-text-secondary/60 ">"The derivation at step 3 is the key to decoupling the state." — Dr. Vance</p>
+                   <p className="text-sm font-medium text-text-secondary/60 ">"The third step is the key to making this practical." - Dr. Vance</p>
                 </div>
              </div>
           </div>

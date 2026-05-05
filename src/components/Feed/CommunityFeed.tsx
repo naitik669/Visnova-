@@ -34,7 +34,6 @@ import { Post, Comment } from '../../types';
 import { uploadMedia, supabase } from '../../lib/supabase';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
-// Removed Firebase auth import
 
 import { TrendingTopicsSection } from './TrendingTopicsSection';
 import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';

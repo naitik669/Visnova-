@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Bell, Compass, Clock, Globe, X, BookOpen, User, MessageCircle, LibraryBig } from 'lucide-react';
+import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -107,8 +107,7 @@ function Sidebar() {
     { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Target, label: 'Visions', path: '/vision', id: 'nav-vision' },
-    { icon: LibraryBig, label: 'Library', path: '/notes' },
-    { icon: BookOpen, label: 'Journal', path: '/journal' },
+    { icon: LibraryBig, label: 'Notes', path: '/notes' },
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
@@ -282,11 +281,8 @@ function MobileNav() {
       <Link to="/vision" className={cn(location.pathname === '/vision' ? "text-accent" : "text-text-secondary/50")}>
         <Target size={22} />
       </Link>
-      <Link to="/circle" className={cn(location.pathname === '/circle' ? "text-accent" : "text-text-secondary/50")}>
-        <Users size={22} />
-      </Link>
-      <Link to="/communities" className={cn(location.pathname === '/communities' ? "text-accent" : "text-text-secondary/50")}>
-        <Globe size={22} />
+      <Link to="/notes" className={cn(location.pathname === '/notes' ? "text-accent" : "text-text-secondary/50")}>
+        <LibraryBig size={22} />
       </Link>
       <Link to="/profile" className={cn(location.pathname === '/profile' ? "text-accent" : "text-text-secondary/50")}>
         <User size={22} />
@@ -405,7 +401,7 @@ export default function App() {
                     <Route path="/communities" element={<CommunitySpaces />} />
                     <Route path="/messages" element={<MessagesPage />} />
                     <Route path="/notes" element={<NotesSystem />} />
-                    <Route path="/journal" element={<NotesSystem />} />
+                    <Route path="/journal" element={<Navigate to="/notes?tab=journal" replace />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/nova-clock" element={<NovaClock />} />

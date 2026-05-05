@@ -145,7 +145,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
                        </div>
                        <div className="text-left">
                           <p className="text-xs font-black uppercase tracking-widest text-text-main">Copy Invite Link</p>
-                          <p className="text-[9px] font-bold text-text-secondary opacity-40">Direct synchronization</p>
+                          <p className="text-[9px] font-bold text-text-secondary opacity-40">Share a secure invite</p>
                        </div>
                     </div>
                     <ChevronRight size={16} className="text-text-secondary opacity-40 group-hover:translate-x-1 transition-transform" />
@@ -158,7 +158,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
                        </div>
                        <div className="text-left">
                           <p className="text-xs font-black uppercase tracking-widest text-text-main">Invite via Direct Message</p>
-                          <p className="text-[9px] font-bold text-text-secondary opacity-40">Standard transmission protocol</p>
+                          <p className="text-[9px] font-bold text-text-secondary opacity-40">Send an invite in Messages</p>
                        </div>
                     </div>
                     <ChevronRight size={16} className="text-text-secondary opacity-40 group-hover:translate-x-1 transition-transform" />
@@ -172,7 +172,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
               <Shield size={20} />
            </div>
            <p className="text-[9px] font-bold text-text-secondary leading-relaxed flex-1  opacity-60">
-              Only managers can modify strategic core elements. Editors can contribute to layers and blueprints.
+              Managers can modify core vision items. Editors can contribute to layers and goals.
            </p>
         </div>
       </motion.div>

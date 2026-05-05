@@ -46,7 +46,7 @@ import { uploadAudioNote } from '../../lib/supabase';
 export default function NotesSystem() {
   const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user, addToast } = useStore();
   const location = useLocation();
-  const initialTab = location.pathname.includes('journal') ? 'journal' : 'library';
+  const initialTab = new URLSearchParams(location.search).get('tab') === 'journal' || location.pathname.includes('journal') ? 'journal' : 'library';
   const [activeTab, setActiveTab] = useState<'library' | 'journal'>(initialTab);
   const [isJournalFullView, setIsJournalFullView] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
@@ -58,8 +58,9 @@ export default function NotesSystem() {
   }, []);
 
   useEffect(() => {
-    setActiveTab(location.pathname.includes('journal') ? 'journal' : 'library');
-  }, [location.pathname]);
+    const tab = new URLSearchParams(location.search).get('tab');
+    setActiveTab(tab === 'journal' || location.pathname.includes('journal') ? 'journal' : 'library');
+  }, [location.pathname, location.search]);
 
   const [sidebarFilter, setSidebarFilter] = useState<'all' | 'recent' | 'favorites' | 'trash'>('all');
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -318,7 +319,7 @@ export default function NotesSystem() {
                   "font-black text-text-main tracking-tight uppercase transition-all",
                   activeTab === 'journal' ? "text-xl" : "text-3xl"
                 )}>
-                  {activeTab === 'journal' ? 'Journal' : 'Library'}
+                  {activeTab === 'journal' ? 'Journal' : 'Notes'}
                 </h1>
               </div>
             </div>
@@ -328,7 +329,7 @@ export default function NotesSystem() {
                 <div className="relative group hidden sm:block animate-in fade-in slide-in-from-right duration-500">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 group-focus-within:text-accent transition-colors" />
                   <input
-                    placeholder="Search Library..."
+                    placeholder="Search Notes..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="h-11 pl-10 pr-4 w-64 bg-surface-muted border border-card-border/50 rounded-2xl text-[11px] font-bold text-text-main focus:outline-none focus:border-accent/40 focus:bg-white transition-all placeholder:text-text-secondary/30 shadow-sm"
@@ -428,10 +429,10 @@ export default function NotesSystem() {
                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div className="space-y-1">
                           <h3 className="text-xl font-black text-text-main tracking-tight uppercase">
-                            {activeTab === 'library' ? 'Work Records' : 'JOURNAL'}
+                            {activeTab === 'library' ? 'VAULT' : 'JOURNAL'}
                           </h3>
                           <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">
-                            {activeTab === 'library' ? 'Project documentation' : 'Daily writing space'}
+                            {activeTab === 'library' ? 'Notes, folders, and saved resources' : 'Daily writing space'}
                           </p>
                         </div>
                         <div className="flex items-center gap-4 self-start sm:self-auto">
@@ -621,7 +622,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   };
 
   const handleDropNote = (noteContent: string) => {
-    setContent(prev => prev + (prev ? '\n\n' : '') + `📌 From Library:\n${noteContent}`);
+    setContent(prev => prev + (prev ? '\n\n' : '') + `From Vault:\n${noteContent}`);
   };
 
   const updateCurrentPage = (updater: string | ((value: string) => string)) => {
@@ -734,7 +735,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
         {fullView && (
           <div className="w-64 shrink-0 flex flex-col gap-6 animate-in slide-in-from-left duration-700">
              <div className="space-y-1">
-               <h3 className="text-xs font-black text-text-main uppercase tracking-widest">Library Stickies</h3>
+               <h3 className="text-xs font-black text-text-main uppercase tracking-widest">Vault Stickies</h3>
                <p className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-40">Drag to Journal</p>
              </div>
              <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
@@ -1055,7 +1056,7 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
         <div className="p-8 border-b border-card-border/40 flex items-center justify-between">
           <div>
             <h3 className="text-xl font-black uppercase tracking-tight text-text-main">New Folder</h3>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent/60 mt-1">Library collection</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent/60 mt-1">Vault collection</p>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-text-main transition-all flex items-center justify-center">
             <X size={18} />
@@ -1408,7 +1409,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               <ChevronRight className="rotate-180" size={18} />
            </button>
            <div className="space-y-0.5">
-             <span className="text-[10px] font-black uppercase tracking-widest text-[#ccc]">{note.note_type === 'vault' ? 'library' : note.note_type}</span>
+             <span className="text-[10px] font-black uppercase tracking-widest text-[#ccc]">{note.note_type === 'vault' ? 'vault' : note.note_type}</span>
              <p className="text-[9px] font-bold text-accent uppercase tracking-widest leading-none">Writing Space</p>
            </div>
         </div>
@@ -1544,7 +1545,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-[#ccc]">
               <div className="flex items-center gap-6">
                 <span>Ref: {format(note.createdAt, 'MMM dd, yyyy')}</span>
-                <span>Class: {note.note_type === 'vault' ? 'library' : note.note_type}</span>
+                <span>Class: {note.note_type === 'vault' ? 'vault' : note.note_type}</span>
               </div>
               <button 
                 onClick={() => {

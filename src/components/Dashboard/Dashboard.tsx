@@ -132,7 +132,7 @@ export default function Dashboard() {
   const allTasks = visions.flatMap((v) =>
     (v.tasks || []).map((t, idx) => ({
       ...t,
-      id: `${v.id}-${t.id || idx}`, // Ensure uniqueness when combining tasks from multiple visions
+      reactKey: `${v.id}-${t.id || idx}`,
       vision: v.title,
       visionId: v.id,
     })),
@@ -432,7 +432,7 @@ export default function Dashboard() {
                 {displayedTasks.length > 0 ? (
                   displayedTasks.map((task, idx) => (
                     <div
-                      key={`${task.visionId}-${task.id || idx}`}
+                      key={task.reactKey || `${task.visionId}-${task.id || idx}`}
                       className="bg-app-container rounded-[1.5rem] p-3 flex items-center gap-4 cursor-pointer hover:bg-surface-muted transition-all group"
                       onClick={() =>
                         toggleVisionTask(task.visionId, task.id || "")

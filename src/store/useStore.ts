@@ -10,53 +10,6 @@ import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { format } from 'date-fns';
 
-export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const session = useStore.getState().session;
-  const user = session?.user;
-  
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: user?.id,
-      email: user?.email,
-      emailVerified: !!user?.email_confirmed_at,
-      isAnonymous: false,
-      tenantId: null,
-      providerInfo: []
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
 }
@@ -180,6 +133,8 @@ function privateStateReset() {
   };
 }
 
+let authSubscription: { unsubscribe: () => void } | null = null;
+
 function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
   const createdAt = row.created_at ? new Date(row.created_at).getTime() : Date.now();
   return {
@@ -291,7 +246,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   initializeAuth: async () => {
-    set({ authLoading: true });
+    authSubscription?.unsubscribe();
+    authSubscription = null;
+    set({ authLoading: true, profileLoading: false });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
@@ -302,21 +259,22 @@ export const useStore = create<AppState>((set, get) => ({
         await get().loadUserProfile(session.user.id);
       }
       
-      supabase.auth.onAuthStateChange(async (event, newSession) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
         if (event === 'SIGNED_OUT' || !newSession?.user) {
           set({ ...privateStateReset(), authLoading: false, profileLoading: false, isAuthInitialized: true });
           return;
         }
 
-        set({ session: newSession, authUser: newSession.user, isAuthInitialized: true });
+        set({ session: newSession, authUser: newSession.user, isAuthInitialized: true, profileLoading: true });
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           await get().ensureCurrentUserProfile();
           await get().loadUserProfile(newSession.user.id);
         }
       });
+      authSubscription = subscription;
     } catch (error) {
       console.error('Auth initialization error:', error);
-      set({ ...privateStateReset(), isAuthInitialized: true });
+      set({ ...privateStateReset(), authLoading: false, profileLoading: false, isAuthInitialized: true });
     } finally {
       set({ authLoading: false });
     }
@@ -467,12 +425,23 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   toggleVisionTask: async (visionId, taskId) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to update tasks.' });
+      return;
+    }
     const { visions } = get();
     const vision = visions.find(v => v.id === visionId);
-    if (!vision) return;
+    if (!vision) {
+      get().addToast({ type: 'error', title: 'Vision unavailable', description: 'Refresh the dashboard and try again.' });
+      return;
+    }
 
     const task = vision.tasks.find(t => t.id === taskId);
-    if (!task) return;
+    if (!task) {
+      get().addToast({ type: 'error', title: 'Task unavailable', description: 'Refresh the dashboard and try again.' });
+      return;
+    }
 
     const newCompleted = !task.completed;
     const newTasks = vision.tasks.map(t => t.id === taskId ? { ...t, completed: newCompleted } : t);
@@ -489,7 +458,8 @@ export const useStore = create<AppState>((set, get) => ({
       const { error: taskError } = await supabase
         .from('tasks')
         .update({ completed: newCompleted })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .eq('user_id', userId);
 
       if (taskError) throw taskError;
 
@@ -497,7 +467,8 @@ export const useStore = create<AppState>((set, get) => ({
       const { error: visionError } = await supabase
         .from('visions')
         .update({ progress })
-        .eq('id', visionId);
+        .eq('id', visionId)
+        .eq('user_id', userId);
       
       if (visionError) throw visionError;
       
@@ -1703,14 +1674,18 @@ export const useStore = create<AppState>((set, get) => ({
         const userMetadata = session.user.user_metadata || {};
         const displayName = userMetadata.display_name || userMetadata.full_name || userMetadata.name || 'Explorer';
         const avatarUrl = userMetadata.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`;
+        const emailPrefix = (session.user.email || '').split('@')[0] || 'user';
+        const usernameSeed = normalizeUsernameInput(userMetadata.preferred_username || userMetadata.user_name || emailPrefix);
+        const fallbackUsername = usernameSeed.length >= 3 ? `${usernameSeed.slice(0, 18)}_${userId.slice(0, 4)}` : null;
         
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
           .upsert({
             id: userId,
-            email: session.user.email,
+            email: session.user.email || '',
             full_name: displayName,
             display_name: displayName,
+            username: fallbackUsername,
             avatar_url: avatarUrl,
             onboarded: false,
             onboarding_step: 0,

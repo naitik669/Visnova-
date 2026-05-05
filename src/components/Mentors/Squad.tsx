@@ -6,7 +6,7 @@ import { useState } from 'react';
 const mentors = [
   {
     name: 'Dr. Alistair Vance',
-    role: 'Quantum Physics & Systems',
+    role: 'Systems Thinking',
     status: 'Online',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150&h=150',
     tags: ['Advisory', 'Deep Tech'],
