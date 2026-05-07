@@ -36,6 +36,16 @@ function extractStoragePathFromUrl(url: string | undefined, bucket: string) {
   return decodeURIComponent(url.slice(markerIndex + marker.length).split('?')[0]);
 }
 
+function toDateKey(date: Date) {
+  return format(date, 'yyyy-MM-dd');
+}
+
+function yesterdayDateKey() {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return toDateKey(date);
+}
+
 async function notifyMentionedUsers({
   actorId,
   postId,
@@ -140,6 +150,7 @@ function privateStateReset() {
     followingIds: [],
     followerCounts: {},
     followingCounts: {},
+    userStreak: null,
     notifications: [],
     unreadNotificationCount: 0,
   };
@@ -235,6 +246,7 @@ export const useStore = create<AppState>((set, get) => ({
   followingIds: [],
   followerCounts: {},
   followingCounts: {},
+  userStreak: null,
   notifications: [],
   unreadNotificationCount: 0,
   achievements: [],
@@ -327,6 +339,7 @@ export const useStore = create<AppState>((set, get) => ({
         get().fetchFeedContext(),
         get().fetchCircleData(),
         get().fetchNotifications(),
+        get().fetchUserStreak(),
       ]);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -364,6 +377,7 @@ export const useStore = create<AppState>((set, get) => ({
           hasCompletedOnboarding: !!data.onboarded
         }));
         get().fetchProfileStats(userId).catch(error => console.error('Failed to load profile stats:', error));
+        get().fetchUserStreak().catch(error => console.error('Failed to load streak:', error));
       } else {
         const newProfile = await get().ensureCurrentUserProfile();
         if (newProfile) {
@@ -513,6 +527,7 @@ export const useStore = create<AppState>((set, get) => ({
       
       if (newCompleted) {
         get().addXp(15);
+        get().recordDailyActivity('task');
         get().addActivity({
           type: 'completed',
           description: `Completed task: ${task.text} in ${vision.title}`,
@@ -604,6 +619,7 @@ export const useStore = create<AppState>((set, get) => ({
       }));
       
       get().addToast({ type: 'success', title: 'Vision created', description: `"${newVision.title}" is ready.` });
+      get().recordDailyActivity('vision');
       return { ...newVision, id: data.id };
     } catch (error: any) {
       console.error('Failed to create vision:', error);
@@ -919,6 +935,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     if (xpReward > 0) {
       get().addXp(xpReward);
+      get().recordDailyActivity('focus');
     }
 
     if (focusGain > 0) {
@@ -1195,6 +1212,7 @@ export const useStore = create<AppState>((set, get) => ({
       set((state) => ({
         notes: state.notes.map(n => n.id === tempId ? { ...n, id: data.id } : n)
       }));
+      get().recordDailyActivity(noteData.note_type === 'journal' ? 'journal' : 'note');
     } catch (error: any) {
       console.error('Failed to add note:', error);
       set((state) => ({ notes: state.notes.filter(n => n.id !== tempId) }));
@@ -1328,6 +1346,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     if (!wasCompleted) {
       get().addXp(20);
+      get().recordDailyActivity('todo');
     }
 
     try {
@@ -1506,6 +1525,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       // 5. XP and Reward
       get().addXp(50);
+      get().recordDailyActivity('post');
       get().addActivity({
         type: 'social',
         description: `Shared a new ${post.type} with the community.`
@@ -2311,6 +2331,140 @@ export const useStore = create<AppState>((set, get) => ({
       notifications: state.notifications.map(n => ({ ...n, is_read: true })),
       unreadNotificationCount: 0
     }));
+  },
+
+  fetchUserStreak: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_streaks')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      const streak = data ? {
+        currentStreak: data.current_streak || 0,
+        longestStreak: data.longest_streak || 0,
+        lastActiveDate: data.last_active_date || null,
+        streakStartDate: data.streak_start_date || null,
+        activityDates: data.activity_dates || []
+      } : {
+        currentStreak: get().user.streak || 0,
+        longestStreak: get().user.streak || 0,
+        lastActiveDate: null,
+        streakStartDate: null,
+        activityDates: []
+      };
+
+      set((state) => ({
+        userStreak: streak,
+        user: { ...state.user, streak: streak.currentStreak }
+      }));
+    } catch (error) {
+      console.error('Failed to fetch streak:', error);
+    }
+  },
+
+  recordDailyActivity: async (source) => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+
+    const today = toDateKey(new Date());
+    const yesterday = yesterdayDateKey();
+    const existing = get().userStreak;
+    if (existing?.lastActiveDate === today) {
+      if (source === 'post' || source === 'vision') {
+        await supabase.from('user_achievements').upsert({
+          user_id: userId,
+          achievement_id: source === 'post' ? 'first_post' : 'first_vision',
+          metadata: { source }
+        }, { onConflict: 'user_id,achievement_id' });
+      }
+      return;
+    }
+
+    try {
+      const { data: dbStreak, error: fetchError } = await supabase
+        .from('user_streaks')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      const lastActiveDate = dbStreak?.last_active_date || existing?.lastActiveDate || null;
+      const previousCurrent = dbStreak?.current_streak ?? existing?.currentStreak ?? get().user.streak ?? 0;
+      const previousLongest = dbStreak?.longest_streak ?? existing?.longestStreak ?? previousCurrent;
+      const activityDates = Array.from(new Set([...(dbStreak?.activity_dates || existing?.activityDates || []), today])).slice(-180);
+      const continues = lastActiveDate === yesterday;
+      const currentStreak = lastActiveDate === today ? previousCurrent : continues ? previousCurrent + 1 : 1;
+      const longestStreak = Math.max(previousLongest, currentStreak);
+      const streakStartDate = continues ? (dbStreak?.streak_start_date || existing?.streakStartDate || today) : today;
+      const updatedAt = new Date().toISOString();
+
+      const payload = {
+        user_id: userId,
+        current_streak: currentStreak,
+        longest_streak: longestStreak,
+        last_active_date: today,
+        streak_start_date: streakStartDate,
+        activity_dates: activityDates,
+        updated_at: updatedAt
+      };
+
+      const { error: upsertError } = await supabase
+        .from('user_streaks')
+        .upsert(payload, { onConflict: 'user_id' });
+
+      if (upsertError) throw upsertError;
+
+      await supabase.from('profiles').update({ streak: currentStreak }).eq('id', userId);
+
+      set((state) => ({
+        userStreak: {
+          currentStreak,
+          longestStreak,
+          lastActiveDate: today,
+          streakStartDate,
+          activityDates
+        },
+        user: { ...state.user, streak: currentStreak }
+      }));
+
+      if ([7, 30, 100].includes(currentStreak)) {
+        const achievementId = currentStreak === 7 ? 'week_streak' : currentStreak === 30 ? 'month_streak' : 'centurion';
+        await supabase.from('user_achievements').upsert({
+          user_id: userId,
+          achievement_id: achievementId,
+          metadata: { current_streak: currentStreak }
+        }, { onConflict: 'user_id,achievement_id' });
+        get().addToast({
+          type: 'success',
+          title: `${currentStreak}-day streak`,
+          description: `You kept your VisNova streak alive with ${source}.`
+        });
+        await notificationService.send({
+          userId,
+          actorId: userId,
+          type: 'achievement',
+          message: `reached a ${currentStreak}-day streak`
+        });
+      }
+
+      if (source === 'post' || source === 'vision') {
+        await supabase.from('user_achievements').upsert({
+          user_id: userId,
+          achievement_id: source === 'post' ? 'first_post' : 'first_vision',
+          metadata: { source }
+        }, { onConflict: 'user_id,achievement_id' });
+      }
+    } catch (error) {
+      console.error('Failed to record daily activity:', error);
+    }
   },
 
   toggleLikePost: async (id: string) => {

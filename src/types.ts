@@ -197,6 +197,14 @@ export interface FocusSession {
   label?: string;
 }
 
+export interface UserStreak {
+  currentStreak: number;
+  longestStreak: number;
+  lastActiveDate: string | null;
+  streakStartDate: string | null;
+  activityDates: string[];
+}
+
 export interface ToastMessage {
   id: string;
   type: 'success' | 'error' | 'info';
@@ -245,6 +253,7 @@ export interface AppState {
   followingIds: string[];
   followerCounts: Record<string, number>;
   followingCounts: Record<string, number>;
+  userStreak: UserStreak | null;
   notifications: any[];
   unreadNotificationCount: number;
   authLoading: boolean;
@@ -259,6 +268,8 @@ export interface AppState {
   fetchNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  fetchUserStreak: () => Promise<void>;
+  recordDailyActivity: (source: 'task' | 'todo' | 'post' | 'note' | 'journal' | 'vision' | 'focus') => Promise<void>;
   hasCompletedOnboarding: boolean;
   tutorialCompleted: boolean;
   isDashboardLoading: boolean;

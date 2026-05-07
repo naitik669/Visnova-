@@ -24,6 +24,7 @@ import {
   Search,
   BookOpen,
   Plus,
+  Flame,
 } from "lucide-react";
 import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
@@ -109,6 +110,7 @@ export default function Dashboard() {
     fetchDashboardData,
     toggleVisionTask,
     notes,
+    userStreak,
   } = useStore();
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = React.useState(new Date());
@@ -142,6 +144,23 @@ export default function Dashboard() {
   const displayedTasks = showAllTasks ? pendingTasks : pendingTasks.slice(0, 3);
 
   const displayedCircle = showAllCircle ? circle : circle.slice(0, 3);
+  const currentStreak = userStreak?.currentStreak ?? user.streak ?? 0;
+  const longestStreak = userStreak?.longestStreak ?? currentStreak;
+  const activityDateSet = React.useMemo(() => new Set(userStreak?.activityDates || []), [userStreak?.activityDates]);
+  const streakHeatmap = React.useMemo(() => {
+    const days = [];
+    for (let i = 13; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      days.push({
+        key,
+        label: date.toLocaleDateString([], { weekday: "short" }).slice(0, 1),
+        active: activityDateSet.has(key),
+      });
+    }
+    return days;
+  }, [activityDateSet]);
 
   // Dynamic Vitals Calculation
   const now = Date.now();
@@ -239,11 +258,19 @@ export default function Dashboard() {
             HELLO, {(user.name || "Visionary").split(" ")[0]}!
           </h1>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 bg-warning/10 border border-warning/20 px-4 py-2 rounded-2xl text-warning">
+             <Flame size={15} className="fill-warning/20" />
+             <span className="text-[10px] font-black uppercase tracking-widest">
+               {currentStreak} Day Streak
+             </span>
+          </div>
         <div className="flex items-center gap-2 bg-card/40 border border-card-border/50 px-4 py-2 rounded-2xl">
            <TrendingUp size={14} className="text-success" />
            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
              {user.xp} XP • LEVEL {user.level}
            </span>
+        </div>
         </div>
       </div>
 
@@ -308,6 +335,52 @@ export default function Dashboard() {
                     <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-40">System Efficiency</span>
                     <span className="text-sm font-bold text-text-main">High Performance</span>
                   </div>
+                </div>
+              </div>
+
+              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[2rem] p-5 flex flex-col gap-4 min-w-[240px] border border-card-border/50">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-1">Streak Fire</p>
+                    <p className="text-3xl font-display font-black text-warning">{currentStreak}</p>
+                  </div>
+                  <div className="w-14 h-14 rounded-2xl bg-warning/10 border border-warning/20 flex items-center justify-center text-warning">
+                    <Flame size={28} className="fill-warning/20" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {streakHeatmap.map(day => (
+                    <div
+                      key={day.key}
+                      title={day.key}
+                      className={cn(
+                        "h-7 rounded-lg border flex items-center justify-center text-[8px] font-black",
+                        day.active
+                          ? "bg-warning text-white border-warning"
+                          : "bg-app-container text-text-secondary/35 border-card-border"
+                      )}
+                    >
+                      {day.label}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+                  Longest streak: {longestStreak} days
+                </p>
+                <div className="flex gap-1.5">
+                  {[7, 30, 100].map(milestone => (
+                    <div
+                      key={milestone}
+                      className={cn(
+                        "flex-1 h-7 rounded-lg border flex items-center justify-center text-[8px] font-black uppercase tracking-wider",
+                        longestStreak >= milestone
+                          ? "border-warning bg-warning/10 text-warning"
+                          : "border-card-border bg-app-container text-text-secondary/40"
+                      )}
+                    >
+                      {milestone}d
+                    </div>
+                  ))}
                 </div>
               </div>
 
