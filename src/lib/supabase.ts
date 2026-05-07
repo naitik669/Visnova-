@@ -84,6 +84,9 @@ export const uploadMedia = async (file: File, bucket: string = 'post-images', cu
 
   if (error) {
     console.error('Storage Upload Error:', error);
+    if (/bucket not found/i.test(error.message || '')) {
+      throw new Error(`Image storage is not set up yet. Apply the latest Supabase migrations to create the ${bucket} bucket.`);
+    }
     throw new Error(`Upload failed: ${error.message}`);
   }
 
@@ -120,6 +123,9 @@ export const uploadAvatar = async (file: File, currentUserId?: string) => {
 
   if (error) {
     console.error('Avatar Upload Error:', error);
+    if (/bucket not found/i.test(error.message || '')) {
+      throw new Error('Avatar storage is not set up yet. Apply the latest Supabase migrations to create the avatars bucket.');
+    }
     throw new Error(`Avatar upload failed: ${error.message}`);
   }
 
