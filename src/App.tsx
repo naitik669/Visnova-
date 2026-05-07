@@ -324,7 +324,6 @@ function AppContent() {
     isFocusMode, 
     hasCompletedOnboarding, 
     authLoading, 
-    profileLoading, 
     isProfileReady,
     initializeAuth, 
     tutorialCompleted, 
@@ -360,8 +359,9 @@ function AppContent() {
     );
   }
 
-  // If session exists but profile is still loading
-  if (session && (profileLoading || !isProfileReady)) {
+  // Only block the whole app during the first profile bootstrap. Later profile
+  // refreshes happen in the background so the app never blanks mid-session.
+  if (session && !isProfileReady) {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
          <motion.div 

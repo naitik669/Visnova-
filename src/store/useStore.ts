@@ -93,6 +93,9 @@ const defaultUser: AppState['user'] = {
   isGrinding: false,
 };
 
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 12000;
+const PROFILE_QUERY_TIMEOUT_MS = 12000;
+
 function toProfileUser(profile: any, fallbackEmail = ''): AppState['user'] {
   return {
     ...defaultUser,
@@ -269,7 +272,11 @@ export const useStore = create<AppState>((set, get) => ({
     authSubscription = null;
     set({ authLoading: true, profileLoading: false, isProfileReady: false });
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await withTimeout(
+        supabase.auth.getSession(),
+        AUTH_BOOTSTRAP_TIMEOUT_MS,
+        'Starting VisNova'
+      );
       if (!session?.user) {
         set({ ...privateStateReset(), authLoading: false, profileLoading: false, isProfileReady: true, isAuthInitialized: true });
       } else {
@@ -284,7 +291,13 @@ export const useStore = create<AppState>((set, get) => ({
           return;
         }
 
-        set({ session: newSession, authUser: newSession.user, isAuthInitialized: true, profileLoading: true, isProfileReady: false });
+        set((state) => ({
+          session: newSession,
+          authUser: newSession.user,
+          isAuthInitialized: true,
+          profileLoading: true,
+          isProfileReady: event === 'SIGNED_IN' ? false : state.isProfileReady
+        }));
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           await get().ensureCurrentUserProfile();
           await get().loadUserProfile(newSession.user.id);
@@ -323,13 +336,18 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   loadUserProfile: async (userId: string) => {
-    set({ profileLoading: true, isProfileReady: false });
+    const wasProfileReady = get().isProfileReady;
+    set({ profileLoading: true, isProfileReady: wasProfileReady });
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+      const { data, error } = await withTimeout(
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle(),
+        PROFILE_QUERY_TIMEOUT_MS,
+        'Loading your profile'
+      );
       
       if (error) throw error;
       
@@ -345,7 +363,7 @@ export const useStore = create<AppState>((set, get) => ({
           },
           hasCompletedOnboarding: !!data.onboarded
         }));
-        await get().fetchProfileStats(userId);
+        get().fetchProfileStats(userId).catch(error => console.error('Failed to load profile stats:', error));
       } else {
         const newProfile = await get().ensureCurrentUserProfile();
         if (newProfile) {
@@ -1681,18 +1699,26 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   ensureCurrentUserProfile: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await withTimeout(
+      supabase.auth.getSession(),
+      AUTH_BOOTSTRAP_TIMEOUT_MS,
+      'Checking your session'
+    );
     if (!session?.user) return null;
 
     const userId = session.user.id;
 
     try {
       // 1. Initial check
-      let { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+      let { data: profile, error } = await withTimeout(
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle(),
+        PROFILE_QUERY_TIMEOUT_MS,
+        'Checking your profile'
+      );
 
       if (error) {
         console.error('Error checking profile:', error);
@@ -1709,23 +1735,27 @@ export const useStore = create<AppState>((set, get) => ({
         const usernameSeed = normalizeUsernameInput(userMetadata.preferred_username || userMetadata.user_name || emailPrefix);
         const fallbackUsername = usernameSeed.length >= 3 ? `${usernameSeed.slice(0, 18)}_${userId.slice(0, 4)}` : null;
         
-        const { data: newProfile, error: insertError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: userId,
-            email: session.user.email || '',
-            full_name: displayName,
-            display_name: displayName,
-            username: fallbackUsername,
-            avatar_url: avatarUrl,
-            onboarded: false,
-            onboarding_step: 0,
-            xp: 0,
-            level: 1,
-            streak: 0
-          }, { onConflict: 'id' })
-          .select()
-          .single();
+        const { data: newProfile, error: insertError } = await withTimeout(
+          supabase
+            .from('profiles')
+            .upsert({
+              id: userId,
+              email: session.user.email || '',
+              full_name: displayName,
+              display_name: displayName,
+              username: fallbackUsername,
+              avatar_url: avatarUrl,
+              onboarded: false,
+              onboarding_step: 0,
+              xp: 0,
+              level: 1,
+              streak: 0
+            }, { onConflict: 'id' })
+            .select()
+            .single(),
+          PROFILE_QUERY_TIMEOUT_MS,
+          'Creating your profile'
+        );
         
         if (insertError) {
           console.error('Upsert profile failed:', insertError);
@@ -1766,10 +1796,22 @@ export const useStore = create<AppState>((set, get) => ({
     const currentUserId = get().session?.user?.id;
     try {
       const [followersRes, followingRes, followingStatusRes] = await Promise.all([
-        supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', profileId),
-        supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', profileId),
+        withTimeout(
+          supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', profileId),
+          PROFILE_QUERY_TIMEOUT_MS,
+          'Loading follower count'
+        ),
+        withTimeout(
+          supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', profileId),
+          PROFILE_QUERY_TIMEOUT_MS,
+          'Loading following count'
+        ),
         currentUserId && currentUserId !== profileId
-          ? supabase.from('follows').select('following_id').match({ follower_id: currentUserId, following_id: profileId }).maybeSingle()
+          ? withTimeout(
+              supabase.from('follows').select('following_id').match({ follower_id: currentUserId, following_id: profileId }).maybeSingle(),
+              PROFILE_QUERY_TIMEOUT_MS,
+              'Checking follow state'
+            )
           : Promise.resolve({ data: null, error: null })
       ]);
 
