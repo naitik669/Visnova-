@@ -284,7 +284,7 @@ export default function CommunitySpaces() {
   }), [communities, currentUserId]);
 
   return (
-    <div className="max-w-7xl mx-auto pb-20 animate-in fade-in duration-700 space-y-8">
+    <div className="w-full max-w-[1800px] mx-auto pb-20 animate-in fade-in duration-700 space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent mb-3">Community Spaces</p>
@@ -313,8 +313,8 @@ export default function CommunitySpaces() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-6">
-        <aside className="space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)] gap-5 items-start">
+        <aside className="space-y-3 xl:sticky xl:top-0 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto custom-scrollbar pr-1">
           {isLoadingCommunities ? (
             <div className="system-card p-8 flex items-center justify-center">
               <Loader2 size={22} className="animate-spin text-accent" />
@@ -331,13 +331,13 @@ export default function CommunitySpaces() {
                 key={community.id}
                 onClick={() => setSelectedCommunityId(community.id)}
                 className={cn(
-                  'w-full text-left system-card p-5 transition-all group',
+                  'w-full text-left bg-card border border-card-border rounded-2xl p-4 transition-all group',
                   selectedCommunityId === community.id ? 'border-accent/40 bg-accent/[0.04]' : 'hover:border-accent/25'
                 )}
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: community.color || '#7c3aed' }}>
-                    <Target size={22} />
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0" style={{ backgroundColor: community.color || '#7c3aed' }}>
+                    {community.icon ? <span className="text-lg">{community.icon}</span> : <Target size={20} />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
@@ -353,7 +353,7 @@ export default function CommunitySpaces() {
           })}
         </aside>
 
-        <section className="system-card overflow-hidden min-h-[620px] flex flex-col">
+        <section className="bg-card border border-card-border rounded-[2rem] overflow-hidden min-h-[calc(100vh-11rem)] flex flex-col shadow-soft">
           {!selectedCommunity ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
               <Users size={36} className="text-text-secondary/30 mb-4" />
@@ -375,7 +375,7 @@ export default function CommunitySpaces() {
             </div>
           ) : (
             <>
-              <div className="p-6 border-b border-card-border flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="p-5 lg:p-6 border-b border-card-border flex flex-col lg:flex-row lg:items-center justify-between gap-5 bg-app-container/35">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent mb-2">{selectedCommunity.category}</p>
                   <h2 className="text-2xl font-black uppercase tracking-tight text-text-main">{selectedCommunity.name}</h2>
@@ -386,17 +386,17 @@ export default function CommunitySpaces() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] flex-1 min-h-0">
-                <div className="border-r border-card-border p-4 space-y-4 overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] 2xl:grid-cols-[380px_minmax(0,1fr)] flex-1 min-h-0">
+                <div className="border-b lg:border-b-0 lg:border-r border-card-border p-4 space-y-4 overflow-y-auto custom-scrollbar lg:max-h-[calc(100vh-18rem)]">
                   <div className="bg-surface-muted rounded-2xl border border-card-border p-4 space-y-3">
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       {(['discussion', 'achievement', 'question'] as CommunityThread['kind'][]).map(kind => {
                         const Icon = kindStyles[kind].icon;
                         return (
                           <button
                             key={kind}
                             onClick={() => setNewThread(prev => ({ ...prev, kind }))}
-                            className={cn('flex-1 h-9 rounded-xl border text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1 transition-all', newThread.kind === kind ? kindStyles[kind].className : 'border-card-border text-text-secondary/50 bg-card')}
+                            className={cn('h-9 rounded-xl border text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1 transition-all', newThread.kind === kind ? kindStyles[kind].className : 'border-card-border text-text-secondary/50 bg-card')}
                             title={kindStyles[kind].label}
                           >
                             <Icon size={12} />
@@ -429,40 +429,44 @@ export default function CommunitySpaces() {
                     <div className="py-10 flex justify-center"><Loader2 size={20} className="animate-spin text-accent" /></div>
                   ) : threads.length === 0 ? (
                     <div className="py-10 text-center text-[10px] font-black uppercase tracking-widest text-text-secondary/40">No threads yet</div>
-                  ) : threads.map(thread => {
-                    const Icon = kindStyles[thread.kind].icon;
-                    return (
-                      <button
-                        key={thread.id}
-                        onClick={() => setSelectedThreadId(thread.id)}
-                        className={cn('w-full text-left rounded-2xl border p-4 transition-all', selectedThreadId === thread.id ? 'border-accent/40 bg-accent/[0.04]' : 'border-card-border hover:border-accent/20')}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cn('w-9 h-9 rounded-xl border flex items-center justify-center shrink-0', kindStyles[thread.kind].className)}>
-                            <Icon size={15} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-black text-text-main leading-tight">{thread.title}</p>
-                            <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 mt-2">@{thread.author?.username || 'user'}</p>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  ) : (
+                    <div className="space-y-2">
+                      {threads.map(thread => {
+                        const Icon = kindStyles[thread.kind].icon;
+                        return (
+                          <button
+                            key={thread.id}
+                            onClick={() => setSelectedThreadId(thread.id)}
+                            className={cn('w-full text-left rounded-2xl border p-4 transition-all', selectedThreadId === thread.id ? 'border-accent/40 bg-accent/[0.04]' : 'border-card-border hover:border-accent/20 bg-card')}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={cn('w-9 h-9 rounded-xl border flex items-center justify-center shrink-0', kindStyles[thread.kind].className)}>
+                                <Icon size={15} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-black text-text-main leading-tight line-clamp-2">{thread.title}</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 mt-2">@{thread.author?.username || 'user'} · {new Date(thread.created_at).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex flex-col min-h-[520px]">
+                <div className="flex flex-col min-h-[560px] lg:min-h-0">
                   {!selectedThread ? (
                     <div className="flex-1 flex items-center justify-center text-center p-10 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">
                       Pick or create a thread
                     </div>
                   ) : (
                     <>
-                      <div className="p-5 border-b border-card-border">
+                      <div className="p-5 border-b border-card-border bg-card">
                         <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-2">{kindStyles[selectedThread.kind].label}</p>
                         <h3 className="text-xl font-black text-text-main tracking-tight">{selectedThread.title}</h3>
                       </div>
-                      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
+                      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 lg:p-6 space-y-4 bg-app-container/20">
                         {messages.map(message => {
                           const isOwn = message.user_id === currentUserId;
                           return (
@@ -472,7 +476,7 @@ export default function CommunitySpaces() {
                                 alt={message.author?.username || 'user'}
                                 className="w-9 h-9 rounded-xl border border-card-border"
                               />
-                              <div className={cn('max-w-[78%] rounded-2xl border border-card-border p-4', isOwn ? 'bg-accent text-accent-contrast' : 'bg-card')}>
+                              <div className={cn('max-w-[min(78%,720px)] rounded-2xl border border-card-border p-4 shadow-sm', isOwn ? 'bg-accent text-accent-contrast' : 'bg-card')}>
                                 <p className={cn('text-[9px] font-black uppercase tracking-widest mb-2', isOwn ? 'text-accent-contrast/60' : 'text-text-secondary/40')}>
                                   @{message.author?.username || 'user'}
                                 </p>
@@ -482,7 +486,7 @@ export default function CommunitySpaces() {
                           );
                         })}
                       </div>
-                      <div className="p-5 border-t border-card-border flex gap-3">
+                      <div className="p-5 border-t border-card-border flex gap-3 bg-card">
                         <input
                           value={reply}
                           onChange={event => setReply(event.target.value)}

@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig } from 'lucide-react';
+import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -107,7 +107,8 @@ function Sidebar() {
     { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Target, label: 'Visions', path: '/vision', id: 'nav-vision' },
-    { icon: LibraryBig, label: 'Notes', path: '/notes' },
+    { icon: LibraryBig, label: 'Library', path: '/notes' },
+    { icon: BookOpen, label: 'Journal', path: '/journal' },
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
@@ -284,6 +285,9 @@ function MobileNav() {
       <Link to="/notes" className={cn(location.pathname === '/notes' ? "text-accent" : "text-text-secondary/50")}>
         <LibraryBig size={22} />
       </Link>
+      <Link to="/journal" className={cn(location.pathname === '/journal' ? "text-accent" : "text-text-secondary/50")}>
+        <BookOpen size={22} />
+      </Link>
       <Link to="/profile" className={cn(location.pathname === '/profile' ? "text-accent" : "text-text-secondary/50")}>
         <User size={22} />
       </Link>
@@ -295,7 +299,8 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Dashboard', subtitle: 'Your daily progress space' },
   '/feed': { title: 'Feed', subtitle: 'Share progress and support others' },
   '/vision': { title: 'Visions', subtitle: 'Plan goals and move tasks forward' },
-  '/notes': { title: 'Notes', subtitle: 'Vault and journal entries' },
+  '/notes': { title: 'Library', subtitle: 'Notes, folders, and saved resources' },
+  '/journal': { title: 'Journal', subtitle: 'Notebook writing space' },
   '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
   '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
@@ -445,7 +450,7 @@ function AppContent() {
                     <Route path="/communities" element={<CommunitySpaces />} />
                     <Route path="/messages" element={<MessagesPage />} />
                     <Route path="/notes" element={<NotesSystem />} />
-                    <Route path="/journal" element={<Navigate to="/notes?tab=journal" replace />} />
+                    <Route path="/journal" element={<NotesSystem />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/nova-clock" element={<NovaClock />} />
