@@ -15,7 +15,7 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { supabase, uploadCapsuleImage } from '../../lib/supabase';
+import { getCapsuleImageUrl, supabase, uploadCapsuleImage } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { NovaCapsule, NovaCapsuleItem, NovaCapsuleItemType } from '../../types';
 
@@ -664,14 +664,14 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Unlock Date</span>
                 <div className="relative">
                   <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
-                  <input type="date" value={unlockDate} onChange={event => setUnlockDate(event.target.value)} className="w-full h-[52px] rounded-2xl bg-card border border-card-border pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:border-accent/60 focus:ring-4 focus:ring-accent/10 [color-scheme:light]" />
+                  <input type="date" value={unlockDate} onChange={event => setUnlockDate(event.target.value)} className="w-full h-[52px] rounded-2xl bg-card border border-card-border pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:border-accent/60 focus:ring-4 focus:ring-accent/10 [color-scheme:inherit]" />
                 </div>
               </label>
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Unlock Time</span>
                 <div className="relative">
                   <Clock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
-                  <input type="time" value={unlockTime} onChange={event => setUnlockTime(event.target.value)} className="w-full h-[52px] rounded-2xl bg-card border border-card-border pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:border-accent/60 focus:ring-4 focus:ring-accent/10 [color-scheme:light]" />
+                  <input type="time" value={unlockTime} onChange={event => setUnlockTime(event.target.value)} className="w-full h-[52px] rounded-2xl bg-card border border-card-border pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:border-accent/60 focus:ring-4 focus:ring-accent/10 [color-scheme:inherit]" />
                 </div>
               </label>
               <label className="h-full pt-6 flex items-center gap-3 cursor-pointer">
@@ -784,6 +784,32 @@ function ItemIcon({ type }: { type: NovaCapsuleItemType }) {
 
 function NovaCapsuleDetail({ capsule, onClose }: { capsule: NovaCapsule; onClose: () => void }) {
   const locked = capsule.status === 'locked';
+  const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    if (locked) return;
+
+    const imageItems = capsule.items.filter(item => item.storagePath && (item.itemType === 'image' || item.mediaUrl));
+    if (imageItems.length === 0) return;
+
+    Promise.all(
+      imageItems.map(async item => {
+        try {
+          return [item.id, await getCapsuleImageUrl(item.storagePath!)] as const;
+        } catch (error) {
+          console.error('Failed to refresh NovaCapsule image URL:', error);
+          return [item.id, item.mediaUrl || ''] as const;
+        }
+      })
+    ).then(entries => {
+      if (!cancelled) setMediaUrls(Object.fromEntries(entries));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [capsule.items, locked]);
 
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
@@ -815,7 +841,7 @@ function NovaCapsuleDetail({ capsule, onClose }: { capsule: NovaCapsule; onClose
                       <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">{itemLabels[item.itemType]}</p>
                     </div>
                   </div>
-                  {item.mediaUrl && <img src={item.mediaUrl} alt={item.title || 'NovaCapsule item'} className="w-full rounded-xl border border-card-border" />}
+                  {(mediaUrls[item.id] || item.mediaUrl) && <img src={mediaUrls[item.id] || item.mediaUrl || ''} alt={item.title || 'NovaCapsule item'} className="w-full rounded-xl border border-card-border" />}
                   {item.content && <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap line-clamp-6">{item.content}</p>}
                 </div>
               ))}

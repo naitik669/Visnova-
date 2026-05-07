@@ -750,7 +750,8 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
         text,
         completed: false,
         priority: 'low',
-        sub_tasks: []
+        sub_tasks: [],
+        sort_order: vision.tasks.length
       })
       .select('*')
       .single();
@@ -778,8 +779,23 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
     if (over && active.id !== over.id) {
       const oldIndex = vision.tasks.findIndex(t => t.id === active.id);
       const newIndex = vision.tasks.findIndex(t => t.id === over.id);
+      if (oldIndex < 0 || newIndex < 0) return;
       const newTasks = arrayMove(vision.tasks, oldIndex, newIndex);
       updateVision(vision.id, { tasks: newTasks });
+      Promise.all(
+        newTasks
+          .filter(task => !task.id.startsWith('temp-'))
+          .map((task, index) => supabase
+            .from('tasks')
+            .update({ sort_order: index, updated_at: new Date().toISOString() })
+            .eq('id', task.id))
+      ).then(results => {
+        const failed = results.find(result => result.error);
+        if (failed?.error) {
+          console.error('Failed to save blueprint task order:', failed.error);
+          addToast({ type: 'error', title: 'Order failed', description: 'Could not save this task order.' });
+        }
+      });
     }
   };
 

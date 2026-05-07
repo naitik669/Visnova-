@@ -160,7 +160,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setTempConnectorEnd(null);
   };
 
-  const getCanvasPointFromEvent = (e: React.DragEvent) => {
+  const getCanvasPointFromEvent = (e: React.DragEvent | React.MouseEvent) => {
     const bounds = e.currentTarget.getBoundingClientRect();
     const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
     const scale = transformState?.scale || 1;
@@ -259,11 +259,24 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
               contentStyle={{ width: '5000px', height: '5000px' }}
             >
               <div 
-                className="relative w-full h-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] opacity-20"
+                className="relative w-full h-full bg-[radial-gradient(var(--card-border)_1px,transparent_1px)] [background-size:40px_40px]"
                 onClick={() => {
                   setSelectedId(null);
                   setLinkingFromId(null);
                   setTempConnectorEnd(null);
+                }}
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  const point = getCanvasPointFromEvent(event);
+                  addElement({
+                    id: Math.random().toString(36).substring(7),
+                    type: 'text',
+                    content: 'New idea',
+                    x: point.x,
+                    y: point.y,
+                    width: 220,
+                    metadata: { fontSize: '22px' }
+                  });
                 }}
               />
               

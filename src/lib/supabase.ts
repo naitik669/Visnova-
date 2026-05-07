@@ -249,14 +249,36 @@ export const uploadCapsuleImage = async (file: File, capsuleId: string, currentU
 
   if (error) {
     console.error('NovaCapsule Upload Error:', error);
+    if (/bucket not found/i.test(error.message || '')) {
+      throw new Error('NovaCapsule storage is not set up yet. Apply the latest Supabase migrations to create the private nova-capsules bucket.');
+    }
     throw new Error(`NovaCapsule upload failed: ${error.message}`);
   }
 
-  const { data } = await supabase.storage
+  const { data, error: signedError } = await supabase.storage
     .from('nova-capsules')
     .createSignedUrl(filePath, 60 * 60 * 24 * 7);
 
+  if (signedError) {
+    console.error('NovaCapsule Signed URL Error:', signedError);
+    throw new Error(`NovaCapsule upload succeeded, but preview setup failed: ${signedError.message}`);
+  }
+
   return { signedUrl: data?.signedUrl || '', filePath };
+};
+
+export const getCapsuleImageUrl = async (path: string) => {
+  if (!path) return '';
+  const { data, error } = await supabase.storage
+    .from('nova-capsules')
+    .createSignedUrl(path, 60 * 60 * 24 * 7);
+
+  if (error) {
+    console.error('NovaCapsule Signed URL Error:', error);
+    throw new Error(`Could not load NovaCapsule image: ${error.message}`);
+  }
+
+  return data?.signedUrl || '';
 };
 
 const inferAudioTypeFromName = (fileName: string) => {

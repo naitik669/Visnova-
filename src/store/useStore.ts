@@ -413,7 +413,9 @@ export const useStore = create<AppState>((set, get) => ({
         const { data: fetchedTasks, error: tasksError } = await supabase
           .from('tasks')
           .select('*')
-          .in('vision_id', visionIds);
+          .in('vision_id', visionIds)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true });
         if (tasksError) throw tasksError;
         tasksData = fetchedTasks || [];
       }

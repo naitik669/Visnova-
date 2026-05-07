@@ -41,7 +41,7 @@ import { cn } from '../../lib/utils';
 import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { Note, Folder as FolderType } from '../../types';
-import { uploadAudioNote } from '../../lib/supabase';
+import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
 
 export default function NotesSystem() {
   const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user, addToast } = useStore();
@@ -192,7 +192,7 @@ export default function NotesSystem() {
 
   return (
     <div className={cn(
-      "flex bg-[#fcfcfc] transition-all duration-700 font-sans relative overflow-hidden",
+      "flex bg-app-container text-text-main transition-all duration-700 font-sans relative overflow-hidden",
       isJournalFullView ? "h-screen fixed inset-0 z-[100]" : "h-full min-h-[calc(100vh-3rem)]"
     )}>
       {/* 1. Left Support Sidebar - Hidden with animation on Journal or Full View */}
@@ -205,7 +205,7 @@ export default function NotesSystem() {
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             onMouseEnter={() => setIsLibrarySidebarHovered(true)}
             onMouseLeave={() => setIsLibrarySidebarHovered(false)}
-            className="flex flex-col border-r border-card-border/50 bg-white shrink-0 overflow-hidden"
+            className="flex flex-col border-r border-card-border/50 bg-card shrink-0 overflow-hidden"
           >
             <div className={cn(
               "flex flex-col h-full transition-all duration-300",
@@ -306,11 +306,11 @@ export default function NotesSystem() {
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#fcfcfc] overflow-hidden relative">
+      <div className="flex-1 flex flex-col min-w-0 bg-app-container overflow-hidden relative">
         {/* Top Header - Reduced size and condensed content */}
         {!isJournalFullView && activeTab === 'library' && (
           <header className={cn(
-            "flex items-center justify-between px-8 md:px-12 border-b border-card-border/30 bg-white/50 backdrop-blur-sm shrink-0 transition-all duration-500",
+            "flex items-center justify-between px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500",
             activeTab === 'journal' ? "h-20" : "h-28"
           )}>
             <div className="flex items-center gap-12">
@@ -332,7 +332,7 @@ export default function NotesSystem() {
                     placeholder="Search Notes..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-11 pl-10 pr-4 w-64 bg-surface-muted border border-card-border/50 rounded-2xl text-[11px] font-bold text-text-main focus:outline-none focus:border-accent/40 focus:bg-white transition-all placeholder:text-text-secondary/30 shadow-sm"
+                    className="h-11 pl-10 pr-4 w-64 bg-surface-muted border border-card-border/50 rounded-2xl text-[11px] font-bold text-text-main focus:outline-none focus:border-accent/40 focus:bg-card transition-all placeholder:text-text-secondary/30 shadow-sm"
                   />
                 </div>
               )}
@@ -392,7 +392,7 @@ export default function NotesSystem() {
                             onClick={() => setTimeFilter(t.value)}
                             className={cn(
                               "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                              timeFilter === t.value ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
+                              timeFilter === t.value ? "bg-card shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
                             )}
                           >
                             {t.label}
@@ -447,7 +447,7 @@ export default function NotesSystem() {
                                 onClick={() => setTimeFilter(t.value)}
                                 className={cn(
                                   "px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-                                  timeFilter === t.value ? "bg-white shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
+                                  timeFilter === t.value ? "bg-card shadow-sm text-accent" : "text-text-secondary opacity-40 hover:opacity-100"
                                 )}
                               >
                                 {t.label}
@@ -457,13 +457,13 @@ export default function NotesSystem() {
                           <div className="hidden sm:flex items-center gap-1 bg-surface-muted p-1 rounded-xl border border-card-border/50">
                             <button 
                               onClick={() => setViewMode('grid')}
-                              className={cn("p-2 rounded-lg transition-all", viewMode === 'grid' ? "bg-white shadow-sm text-accent" : "text-text-secondary/40 hover:text-text-main")}
+                              className={cn("p-2 rounded-lg transition-all", viewMode === 'grid' ? "bg-card shadow-sm text-accent" : "text-text-secondary/40 hover:text-text-main")}
                             >
                               <Grid size={16} />
                             </button>
                             <button 
                               onClick={() => setViewMode('list')}
-                              className={cn("p-2 rounded-lg transition-all", viewMode === 'list' ? "bg-white shadow-sm text-accent" : "text-text-secondary/40 hover:text-text-main")}
+                              className={cn("p-2 rounded-lg transition-all", viewMode === 'list' ? "bg-card shadow-sm text-accent" : "text-text-secondary/40 hover:text-text-main")}
                             >
                               <Layout size={16} />
                             </button>
@@ -497,7 +497,7 @@ export default function NotesSystem() {
                         }}
                       />
                     ) : filteredNotes.length === 0 ? (
-                      <div className="h-96 flex flex-col items-center justify-center bg-white rounded-[2.5rem] border border-card-border/50 shadow-sm">
+                      <div className="h-96 flex flex-col items-center justify-center bg-card rounded-[2rem] border border-card-border/50 shadow-sm">
                         <div className="w-20 h-20 rounded-3xl bg-surface-muted flex items-center justify-center mb-6 text-text-secondary/20">
                           <BookOpen size={40} />
                         </div>
@@ -511,8 +511,8 @@ export default function NotesSystem() {
                       </div>
                     ) : (
                       <div className={cn(
-                        "grid gap-6",
-                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" : "grid-cols-1"
+                        "grid",
+                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-10 gap-y-2" : "grid-cols-1"
                       )}>
                         {filteredNotes.map((note, idx) => (
                           <NoteCard key={note.id || `note-${idx}`} note={note} onClick={() => setSelectedNoteId(note.id)} viewMode={viewMode} />
@@ -520,7 +520,7 @@ export default function NotesSystem() {
                         {viewMode === 'grid' && (
                           <button 
                             onClick={() => handleCreateNote('library')}
-                            className="aspect-square sm:aspect-[4/5] rounded-lg border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
+                            className="min-h-32 border-b border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
                           >
                              <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
                                 <Plus size={24} />
@@ -684,10 +684,10 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   return (
     <div className={cn(
       "mx-auto transition-all duration-700 font-sans",
-      fullView ? "w-full h-screen bg-[#fcfcfc] overflow-hidden" : "w-full max-w-none py-4"
+      fullView ? "w-full h-screen bg-app-container overflow-hidden" : "w-full max-w-none py-4"
     )}>
       {fullView && (
-        <div className="h-16 flex items-center justify-between px-10 border-b border-card-border/30 bg-white/50 backdrop-blur-md">
+        <div className="h-16 flex items-center justify-between px-10 border-b border-card-border/30 bg-app-container/80 backdrop-blur-md">
            <div className="flex items-center gap-4">
               <button 
                 onClick={toggleFullView}
@@ -769,7 +769,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             initial={{ rotateY: -10, opacity: 0 }}
             animate={{ rotateY: 0, opacity: 1 }}
             transition={{ duration: 0.8, type: 'spring' }}
-            className="flex-1 bg-white rounded-[2.5rem] border border-card-border/50 shadow-2xl p-10 flex flex-col items-center text-center space-y-10 origin-right relative overflow-hidden"
+            className="flex-1 bg-card rounded-[2rem] border border-card-border/50 shadow-2xl p-10 flex flex-col items-center text-center space-y-10 origin-right relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-2 h-full bg-surface-muted/30 border-l border-card-border/10" />
             
@@ -790,7 +790,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                 <>
                   <motion.div 
                     whileHover={{ rotate: 12, scale: 1.1 }}
-                    className="w-16 h-16 rounded-2xl bg-white border border-card-border/50 flex items-center justify-center text-text-secondary/20 mb-4 shadow-sm"
+                    className="w-16 h-16 rounded-2xl bg-app-container border border-card-border/50 flex items-center justify-center text-text-secondary/20 mb-4 shadow-sm"
                   >
                     <BookOpen size={32} />
                   </motion.div>
@@ -805,7 +805,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             <div className="w-full space-y-4">
               <div className="flex items-center gap-4">
                  <div className="h-[1px] flex-1 bg-card-border/30" />
-                 <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/30">Temporal Pulse</span>
+                 <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/30">Week</span>
                  <div className="h-[1px] flex-1 bg-card-border/30" />
               </div>
               <div className="flex justify-between items-center bg-surface-muted/50 p-2 rounded-2xl border border-card-border/30">
@@ -818,7 +818,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                       onClick={() => setSelectedDate(date)}
                       className={cn(
                         "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all min-w-[50px]",
-                        isActive ? "bg-white shadow-md text-accent scale-105" : "text-text-secondary/40 hover:text-text-main hover:bg-white/50"
+                        isActive ? "bg-card-elevated shadow-md text-accent scale-105" : "text-text-secondary/40 hover:text-text-main hover:bg-card/70"
                       )}
                     >
                       <span className="text-[8px] font-black uppercase tracking-widest">{format(date, 'EEE')}</span>
@@ -836,7 +836,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                   onClick={() => setCurrentPage(index)}
                   className={cn(
                     "h-10 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all",
-                    currentPage === index ? "bg-accent text-white border-accent shadow-lg shadow-accent/10" : "bg-white text-text-secondary/50 border-card-border hover:border-accent/40"
+                    currentPage === index ? "bg-accent text-accent-contrast border-accent shadow-lg shadow-accent/10" : "bg-card text-text-secondary/50 border-card-border hover:border-accent/40"
                   )}
                 >
                   Page {index + 1}
@@ -873,7 +873,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               const noteContent = e.dataTransfer.getData('text/plain');
               if (noteContent) handleDropNote(noteContent);
             }}
-            className="flex-1 bg-white rounded-[2.5rem] border border-card-border/50 shadow-2xl p-10 flex flex-col space-y-8 relative origin-left overflow-hidden"
+            className="flex-1 bg-card rounded-[2rem] border border-card-border/50 shadow-2xl p-10 flex flex-col space-y-8 relative origin-left overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-2 h-full bg-surface-muted/30 border-r border-card-border/10" />
             <div className="absolute top-0 left-0 w-1.5 h-full bg-accent/5 rounded-l-full" />
@@ -894,7 +894,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                     key={sticker}
                     onClick={() => addSticker(sticker)}
                     disabled={isLocked}
-                    className="px-3 h-8 rounded-lg bg-white border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/40 transition-all"
+                    className="px-3 h-8 rounded-lg bg-app-container border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/40 transition-all"
                   >
                     {sticker}
                   </button>
@@ -902,7 +902,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                 <button
                   onClick={() => stickerInputRef.current?.click()}
                   disabled={isLocked}
-                  className="px-3 h-8 rounded-lg bg-white border border-card-border text-[9px] font-black uppercase tracking-widest text-accent flex items-center gap-2 hover:border-accent/40 transition-all"
+                  className="px-3 h-8 rounded-lg bg-app-container border border-card-border text-[9px] font-black uppercase tracking-widest text-accent flex items-center gap-2 hover:border-accent/40 transition-all"
                 >
                   <ImageIcon size={12} /> Import
                 </button>
@@ -939,7 +939,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                  readOnly={isLocked}
                  placeholder="Write your thoughts for today..."
                  className={cn("flex-1 w-full text-base font-medium text-text-secondary leading-relaxed bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20", isLocked && "cursor-default opacity-70")}
-                 style={{ backgroundImage: 'linear-gradient(transparent, transparent 31px, #f1f1f1 31px)', backgroundSize: '100% 32px' }}
+                 style={{ backgroundImage: 'linear-gradient(transparent, transparent 31px, var(--card-border) 31px)', backgroundSize: '100% 32px' }}
                />
             </div>
 
@@ -973,7 +973,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                   ) : (
                     <>
                       <AlertCircle size={12} />
-                      <span>Local Cache Only</span>
+                      <span>Not saved yet</span>
                     </>
                   )}
                 </div>
@@ -991,7 +991,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                       disabled={isSaving}
                       className="h-12 px-10 rounded-2xl bg-accent text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
                     >
-                      Preserve Entry
+                      Save Entry
                     </button>
                   )
                 )}
@@ -1051,7 +1051,7 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.96 }}
-        className="relative w-full max-w-md rounded-[2rem] bg-white border border-card-border shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md rounded-[2rem] bg-card border border-card-border shadow-2xl overflow-hidden"
       >
         <div className="p-8 border-b border-card-border/40 flex items-center justify-between">
           <div>
@@ -1073,7 +1073,7 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
               }}
               autoFocus
               placeholder="Project notes"
-              className="w-full h-14 rounded-2xl border border-card-border bg-surface-muted/40 px-5 text-sm font-bold text-text-main outline-none focus:border-accent focus:bg-white transition-all"
+              className="w-full h-14 rounded-2xl border border-card-border bg-surface-muted/40 px-5 text-sm font-bold text-text-main outline-none focus:border-accent focus:bg-card transition-all"
             />
           </div>
           <div className="space-y-3">
@@ -1244,9 +1244,9 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
     return (
       <div 
         onClick={onClick}
-        className="group cursor-pointer p-5 rounded-2xl bg-white border border-card-border hover:border-accent/40 hover:shadow-lg transition-all flex items-center gap-6"
+        className="group cursor-pointer py-4 border-b border-card-border/60 hover:border-accent/50 transition-all flex items-center gap-5"
       >
-        <div className="w-12 h-12 rounded-xl bg-accent/5 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all">
+        <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all">
           <NoteIcon size={20} />
         </div>
         <div className="flex-1 min-w-0">
@@ -1266,13 +1266,12 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
   return (
     <div 
       onClick={onClick}
-      className="aspect-square sm:aspect-[4/5] p-8 rounded-lg bg-white border border-card-border hover:border-accent/40 hover:shadow-2xl transition-all group cursor-pointer flex flex-col relative overflow-hidden"
+      className="min-h-64 p-5 border-b border-card-border/60 hover:border-accent/50 transition-all group cursor-pointer flex flex-col relative overflow-hidden"
     >
-       {/* Card background accent like in image */}
-       <div className="absolute top-0 left-0 w-full h-1.5 bg-accent/5 group-hover:bg-accent transition-colors" />
+       <div className="absolute left-0 top-5 bottom-5 w-px bg-card-border group-hover:bg-accent transition-colors" />
        
        <div className="flex items-center justify-between mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-accent/5 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all shadow-sm">
+          <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all shadow-sm">
              <NoteIcon size={22} />
           </div>
           <div className="flex flex-col items-end">
@@ -1282,9 +1281,9 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
        </div>
 
        <div className="flex-1 space-y-3 min-w-0">
-          <h4 className="text-lg font-black text-text-main group-hover:text-accent transition-colors leading-tight uppercase tracking-tight">{note.title}</h4>
-          <p className="text-[11px] text-text-secondary/60 font-medium line-clamp-4 leading-relaxed italic">
-            {note.content ? note.content.substring(0, 120) + '...' : "Secure data point waiting for input documentation..."}
+          <h4 className="text-lg font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight">{note.title}</h4>
+          <p className="text-[11px] text-text-secondary/70 font-medium line-clamp-4 leading-relaxed">
+            {note.content ? note.content.substring(0, 120) + '...' : "No content yet."}
           </p>
           {note.audio_url && (
             <p className="inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-accent">
@@ -1293,10 +1292,10 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
           )}
        </div>
 
-       <div className="mt-8 pt-6 border-t border-card-border/30 flex items-center justify-between">
+       <div className="mt-8 pt-5 border-t border-card-border/30 flex items-center justify-between">
           <div className="flex -space-x-2">
             {note.tags.slice(0, 3).map((t, i) => (
-              <div key={i} className="w-6 h-6 rounded-full bg-white border border-card-border flex items-center justify-center shadow-sm" title={`#${t}`}>
+              <div key={i} className="w-6 h-6 rounded-full bg-card border border-card-border flex items-center justify-center shadow-sm" title={`#${t}`}>
                 <Hash size={10} className="text-accent" />
               </div>
             ))}
@@ -1333,14 +1332,37 @@ function TabButton({ active, onClick, label, icon }: any) {
 function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClose: () => void, updateNote: (id: string, updates: Partial<Note>) => void, folders: FolderType[] }) {
   const [isAudioUploading, setIsAudioUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [resolvedAudioUrl, setResolvedAudioUrl] = useState(note.audio_url || '');
   const { deleteNote, session, addToast } = useStore();
   const audioInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setResolvedAudioUrl(note.audio_url || '');
+    if (!note.audio_path) return;
+
+    getAudioNoteUrl(note.audio_path)
+      .then(url => {
+        if (!cancelled && url) setResolvedAudioUrl(url);
+      })
+      .catch(error => {
+        console.error('Failed to refresh audio note URL:', error);
+        if (!cancelled) {
+          addToast({ type: 'error', title: 'Audio failed', description: 'Could not refresh this audio note link.' });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [note.audio_path, note.audio_url, addToast]);
 
   const attachAudioFile = async (file: File) => {
     setIsAudioUploading(true);
     try {
       const { signedUrl, filePath } = await uploadAudioNote(file, session?.user?.id);
+      setResolvedAudioUrl(signedUrl);
       updateNote(note.id, { audio_url: signedUrl, audio_path: filePath });
       addToast({ type: 'success', title: 'Audio attached', description: 'Your audio note was saved.' });
     } catch (error: any) {
@@ -1401,22 +1423,22 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="fixed inset-0 z-[120] flex flex-col bg-white overflow-hidden"
+      className="fixed inset-0 z-[120] flex flex-col bg-app-container text-text-main overflow-hidden"
     >
-      <div className="h-20 flex items-center justify-between px-8 border-b border-[#f9f9f9] shrink-0">
+      <div className="h-20 flex items-center justify-between px-8 border-b border-card-border/60 shrink-0 bg-app-container/95 backdrop-blur-md">
          <div className="flex items-center gap-6">
            <button onClick={onClose} className="w-10 h-10 rounded-xl bg-accent/5 text-accent flex items-center justify-center hover:bg-accent hover:text-white transition-all active:scale-90">
               <ChevronRight className="rotate-180" size={18} />
            </button>
            <div className="space-y-0.5">
-             <span className="text-[10px] font-black uppercase tracking-widest text-[#ccc]">{note.note_type === 'vault' ? 'vault' : note.note_type}</span>
+             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">{note.note_type === 'vault' ? 'Library' : note.note_type}</span>
              <p className="text-[9px] font-bold text-accent uppercase tracking-widest leading-none">Writing Space</p>
            </div>
         </div>
         <div className="flex items-center gap-3">
            <button 
              onClick={() => updateNote(note.id, { isFavorite: !note.isFavorite })}
-             className={cn("w-10 h-10 rounded-xl border flex items-center justify-center transition-all", note.isFavorite ? "bg-accent/10 border-accent/30 text-accent" : "bg-transparent border-[#eee] text-[#ccc] hover:text-[#333]")}
+             className={cn("w-10 h-10 rounded-xl border flex items-center justify-center transition-all", note.isFavorite ? "bg-accent/10 border-accent/30 text-accent" : "bg-transparent border-card-border text-text-secondary/45 hover:text-text-main")}
             >
               <Star size={16} className={note.isFavorite ? "fill-accent" : ""} />
            </button>
@@ -1462,7 +1484,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
           <input
             value={note.title}
             onChange={e => updateNote(note.id, { title: e.target.value })}
-            className="w-full text-4xl font-extrabold text-[#333] bg-transparent border-none focus:outline-none placeholder:text-[#eee] tracking-tight"
+            className="w-full text-4xl font-extrabold text-text-main bg-transparent border-none focus:outline-none placeholder:text-text-secondary/20 tracking-tight"
             placeholder="Document Title"
           />
           
@@ -1473,37 +1495,40 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               e.target.style.height = 'auto';
               e.target.style.height = e.target.scrollHeight + 'px';
             }}
-            className="w-full text-lg text-[#666] bg-transparent border-none focus:outline-none resize-none placeholder:text-[#eee] leading-loose font-medium min-h-[60vh]"
+            className="w-full text-lg text-text-secondary bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20 leading-loose font-medium min-h-[60vh]"
             placeholder="Log details..."
             style={{ height: 'auto' }}
           />
 
-          {note.audio_url && (
+          {(resolvedAudioUrl || note.audio_url) && (
             <div className="rounded-2xl border border-accent/10 bg-accent/5 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="w-11 h-11 rounded-xl bg-white border border-card-border flex items-center justify-center text-accent shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-card border border-card-border flex items-center justify-center text-accent shrink-0">
                 <Volume2 size={18} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-2">Audio Note</p>
-                <audio src={note.audio_url} controls className="w-full" />
+                <audio src={resolvedAudioUrl || note.audio_url} controls className="w-full" />
               </div>
               <button
-                onClick={() => updateNote(note.id, { audio_url: '', audio_path: '' })}
-                className="h-10 px-4 rounded-xl bg-white border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-danger transition-colors"
+                onClick={() => {
+                  setResolvedAudioUrl('');
+                  updateNote(note.id, { audio_url: '', audio_path: '' });
+                }}
+                className="h-10 px-4 rounded-xl bg-card border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-danger transition-colors"
               >
                 Remove
               </button>
             </div>
           )}
 
-          <div className="space-y-10 pt-16 border-t border-[#f5f5f5]">
+          <div className="space-y-10 pt-16 border-t border-card-border/50">
             {(note.note_type === 'library' || note.note_type === 'vault') && (
               <div className="flex items-center gap-3">
                 <Folder size={16} className="text-accent" />
                 <select
                   value={note.folderId || ''}
                   onChange={(e) => updateNote(note.id, { folderId: e.target.value || null })}
-                  className="h-11 px-4 rounded-lg bg-[#fafafa] border border-[#eee] text-xs font-bold text-text-main focus:outline-none focus:border-accent"
+                  className="h-11 px-4 rounded-lg bg-card border border-card-border text-xs font-bold text-text-main focus:outline-none focus:border-accent"
                 >
                   <option value="">No folder</option>
                   {folders.map(folder => (
@@ -1513,7 +1538,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               </div>
             )}
             <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-2 px-4 h-10 rounded-xl bg-[#fafafa] border border-[#eee] text-[#ccc]">
+              <div className="flex items-center gap-2 px-4 h-10 rounded-xl bg-card border border-card-border text-text-secondary/45">
                 <Tag size={14} />
                 <input 
                   placeholder="Tag" 
@@ -1542,10 +1567,10 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               ))}
             </div>
 
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-[#ccc]">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
               <div className="flex items-center gap-6">
-                <span>Ref: {format(note.createdAt, 'MMM dd, yyyy')}</span>
-                <span>Class: {note.note_type === 'vault' ? 'vault' : note.note_type}</span>
+                <span>Created {format(note.createdAt, 'MMM dd, yyyy')}</span>
+                <span>Type: {note.note_type === 'vault' ? 'library' : note.note_type}</span>
               </div>
               <button 
                 onClick={() => {
@@ -1556,7 +1581,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 }}
                 className="text-red-400 hover:text-red-600 transition-colors flex items-center gap-2"
               >
-                <Trash2 size={12} /> Erase Data
+                    <Trash2 size={12} /> Delete Note
               </button>
             </div>
           </div>
@@ -1597,7 +1622,7 @@ function JournalTimeline({ entries, onSelect }: { entries: Note[], onSelect: (id
                 <div
                   key={entry.id || `journal-${idx}-${entryIdx}`}
                   onClick={() => onSelect(entry.id)}
-                  className="group cursor-pointer p-6 rounded-[2rem] bg-white border border-card-border hover:border-accent/40 hover:shadow-xl transition-all flex items-center gap-6 relative overflow-hidden"
+                  className="group cursor-pointer py-5 border-b border-card-border/60 hover:border-accent/50 transition-all flex items-center gap-6 relative overflow-hidden"
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-accent/5 group-hover:bg-accent transition-colors" />
                   <div className="w-14 h-14 rounded-2xl bg-accent/5 flex items-center justify-center text-3xl shrink-0 group-hover:scale-110 transition-transform">
@@ -1608,8 +1633,8 @@ function JournalTimeline({ entries, onSelect }: { entries: Note[], onSelect: (id
                        <h3 className="text-sm font-black text-text-main group-hover:text-accent transition-colors uppercase tracking-tight truncate">{entry.title}</h3>
                        <span className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest">{format(entry.createdAt, 'h:mm a')}</span>
                     </div>
-                    <p className="text-[11px] text-text-secondary/60 font-medium line-clamp-1 italic">
-                      {entry.content || "Documentation sequence awaiting input..."}
+                    <p className="text-[11px] text-text-secondary/70 font-medium line-clamp-1">
+                      {entry.content || "No entry content yet."}
                     </p>
                   </div>
                   <div className="hidden sm:flex flex-col items-end shrink-0 pl-10 border-l border-card-border/50">
