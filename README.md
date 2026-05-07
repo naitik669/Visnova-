@@ -1,47 +1,63 @@
+# VisNova
 
+<div align="center">
 
-# Run and deploy your AI Studio app
+# 🌌 VisNova  
+### Turn visions into visible progress.
 
-This contains everything you need to run your app locally.
+**VisNova is a vision-to-reality social productivity platform for ambitious builders.**
 
-## Production URL
+Set long-term goals, break them into tasks, track progress, write notes, reflect through journals, share updates, build your Circle, and stay accountable through public momentum.
 
-VisNova production: https://vis-nova-mx2l.vercel.app
+**Production:** https://visnova.vercel.app
 
-Set this value in Vercel environment variables:
+</div>
 
-```env
-VITE_APP_URL=https://vis-nova-mx2l.vercel.app
-VITE_SUPABASE_URL=https://mmzlgntkhkeextqjaagi.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
-```
+---
 
-## Auth Redirect Setup
+## Overview
 
-Google OAuth must use Supabase's callback URL, not the Vercel app callback URL.
+VisNova is built around one simple idea:
 
-Add this in Google Cloud Console -> OAuth Client -> Authorized redirect URIs:
+> People are more consistent when their progress is visible.
+
+Most productivity tools are private. They help users plan, but they do not create accountability. Most social platforms are public, but they are noisy and distracting. VisNova connects both worlds.
+
+It gives users a private workspace to plan their future and a public layer to share progress with people who are building alongside them.
+
+The result is a platform where users do not just create goals. They turn those goals into visible execution.
+
+---
+
+## What VisNova Is
+
+VisNova is a **goal-tracking and social learning platform** for people working on long-term ambitions.
+
+It is designed for:
+
+- students preparing for exams or careers
+- creators building an audience
+- developers building projects
+- founders building startups
+- freelancers building skills
+- ambitious people building a better life
+
+VisNova helps users move from vague ambition to daily action.
+
+The app connects:
+
+- **Visions** for long-term goals
+- **Tasks** for execution
+- **Notes and Journal** for thinking and reflection
+- **Feed** for public progress
+- **Circle** for accountability
+- **Communities** for shared interests
+- **Nova Clock** for future-focused time capsules
+- **Profiles** for identity and proof of progress
+
+---
+
+## Core Idea
 
 ```text
-https://mmzlgntkhkeextqjaagi.supabase.co/auth/v1/callback
-```
-
-Add these in Supabase -> Authentication -> URL Configuration -> Redirect URLs:
-
-```text
-https://vis-nova-mx2l.vercel.app/auth/callback
-https://vis-nova-mx2l.vercel.app/onboarding
-http://localhost:3000/auth/callback
-http://localhost:3000/onboarding
-```
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Copy [.env.example](.env.example) to `.env.local`, then set `VITE_SUPABASE_ANON_KEY` and `GEMINI_API_KEY`
-3. Run the app:
-   `npm run dev`
+Set Vision → Break into Tasks → Log Progress → Share with Circle → Get Inspired → Repeat
