@@ -47,6 +47,10 @@ ADD COLUMN IF NOT EXISTS icon text,
 ADD COLUMN IF NOT EXISTS color text,
 ADD COLUMN IF NOT EXISTS is_official boolean DEFAULT false;
 
+-- Official/system communities such as VisNova do not belong to a user account.
+ALTER TABLE public.communities
+ALTER COLUMN owner_id DROP NOT NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS communities_slug_unique
 ON public.communities (slug)
 WHERE slug IS NOT NULL;

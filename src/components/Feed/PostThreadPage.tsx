@@ -9,6 +9,8 @@ import { Comment, Post } from '../../types';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 
+const COMMENTS_PAGE_SIZE = 50;
+
 const mapPostRow = (p: any): Post => ({
   id: p.id,
   userId: p.user_id,
@@ -55,6 +57,8 @@ export default function PostThreadPage() {
   const [commentText, setCommentText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCommenting, setIsCommenting] = useState(false);
+  const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
+  const [hasMoreComments, setHasMoreComments] = useState(false);
 
   const firstImage = useMemo(() => post?.media?.find(item => item.type === 'image'), [post]);
 
@@ -81,6 +85,7 @@ export default function PostThreadPage() {
           .select('*, author:profiles!comments_user_id_fkey(*)')
           .eq('post_id', postId)
           .order('created_at', { ascending: true })
+          .range(0, COMMENTS_PAGE_SIZE)
       ]);
 
       if (postError) throw postError;
@@ -99,12 +104,40 @@ export default function PostThreadPage() {
       } else {
         setPost(null);
       }
-      setComments((commentRows || []).map(mapCommentRow));
+      const mappedComments = (commentRows || []).map(mapCommentRow);
+      setComments(mappedComments.slice(0, COMMENTS_PAGE_SIZE));
+      setHasMoreComments(mappedComments.length > COMMENTS_PAGE_SIZE);
     } catch (error: any) {
       console.error('Failed to load post thread:', error);
       addToast({ type: 'error', title: 'Thread failed', description: error.message || 'Could not load this post.' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadMoreComments = async () => {
+    if (!postId || isLoadingMoreComments || !hasMoreComments) return;
+    setIsLoadingMoreComments(true);
+    try {
+      const from = comments.length;
+      const to = from + COMMENTS_PAGE_SIZE;
+      const { data, error } = await supabase
+        .from('comments')
+        .select('*, author:profiles!comments_user_id_fkey(*)')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true })
+        .range(from, to);
+
+      if (error) throw error;
+
+      const mappedComments = (data || []).map(mapCommentRow);
+      setComments(current => [...current, ...mappedComments.slice(0, COMMENTS_PAGE_SIZE)]);
+      setHasMoreComments(mappedComments.length > COMMENTS_PAGE_SIZE);
+    } catch (error: any) {
+      console.error('Failed to load more comments:', error);
+      addToast({ type: 'error', title: 'Comments failed', description: error.message || 'Could not load more comments.' });
+    } finally {
+      setIsLoadingMoreComments(false);
     }
   };
 
@@ -260,19 +293,33 @@ export default function PostThreadPage() {
               <div className="h-full min-h-64 flex items-center justify-center text-center">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">No comments yet.</p>
               </div>
-            ) : comments.map(comment => (
-              <motion.div key={comment.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
-                <img src={comment.author.avatar} alt={comment.author.name} className="w-9 h-9 rounded-xl object-cover border border-card-border" />
-                <div className="min-w-0 flex-1 rounded-2xl bg-card border border-card-border p-4">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-text-main truncate">{comment.author.name}</p>
-                    <VerifiedBadge verified={comment.author.verified} size={13} />
-                    <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-text-secondary/40">{comment.timestamp}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-                </div>
-              </motion.div>
-            ))}
+            ) : (
+              <>
+                {comments.map(comment => (
+                  <motion.div key={comment.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
+                    <img src={comment.author.avatar} alt={comment.author.name} className="w-9 h-9 rounded-xl object-cover border border-card-border" />
+                    <div className="min-w-0 flex-1 rounded-2xl bg-card border border-card-border p-4">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-main truncate">{comment.author.name}</p>
+                        <VerifiedBadge verified={comment.author.verified} size={13} />
+                        <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-text-secondary/40">{comment.timestamp}</span>
+                      </div>
+                      <p className="mt-2 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                    </div>
+                  </motion.div>
+                ))}
+                {hasMoreComments && (
+                  <button
+                    onClick={loadMoreComments}
+                    disabled={isLoadingMoreComments}
+                    className="w-full h-11 rounded-2xl border border-card-border bg-card text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isLoadingMoreComments && <Loader2 size={14} className="animate-spin" />}
+                    {isLoadingMoreComments ? 'Loading...' : 'Load more comments'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
           <div className="p-4 border-t border-card-border bg-card">
             <div className="flex items-end gap-3">

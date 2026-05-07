@@ -1102,12 +1102,18 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
                 key={t}
                 onClick={() => setType(t)}
                 className={cn(
-                  "px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all shrink-0",
+                  "px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all shrink-0 flex items-center gap-2",
                   type === t
                     ? "bg-accent border-accent text-accent-contrast shadow-lg shadow-accent/20"
                     : "bg-surface-muted border-card-border text-text-secondary opacity-60 hover:opacity-100 hover:border-accent/30"
                 )}
               >
+                {t === 'status' && <MessageSquare size={12} />}
+                {t === 'update' && <Zap size={12} />}
+                {t === 'sprint' && <TrendingUp size={12} />}
+                {t === 'insight' && <Hash size={12} />}
+                {t === 'achievement' && <Trophy size={12} />}
+                {t === 'milestone' && <Flag size={12} />}
                 {t}
               </button>
             ))}
