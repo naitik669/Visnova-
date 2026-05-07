@@ -114,6 +114,7 @@ export interface Note {
   location?: string;
   image_url?: string;
   audio_url?: string;
+  audio_path?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -248,6 +249,7 @@ export interface AppState {
   unreadNotificationCount: number;
   authLoading: boolean;
   profileLoading: boolean;
+  isProfileReady: boolean;
   initializeAuth: () => Promise<void>;
   trackInteraction: (postId: string, type: 'view' | 'like' | 'comment' | 'save' | 'follow') => Promise<void>;
   updateUserInterests: (interests: string[]) => Promise<void>;

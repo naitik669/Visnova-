@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured, getAudioNoteUrl } from '../lib/supabase';
 import { format } from 'date-fns';
 
 function isDbId(id: string | undefined): id is string {
@@ -26,6 +26,14 @@ function extractMentionUsernames(text: string) {
   return Array.from(new Set((text.match(/@([a-z0-9_]{3,24})/gi) || [])
     .map(match => normalizeUsernameInput(match.replace('@', '')))
     .filter(Boolean)));
+}
+
+function extractStoragePathFromUrl(url: string | undefined, bucket: string) {
+  if (!url) return '';
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const markerIndex = url.indexOf(marker);
+  if (markerIndex === -1) return '';
+  return decodeURIComponent(url.slice(markerIndex + marker.length).split('?')[0]);
 }
 
 async function notifyMentionedUsers({
@@ -111,6 +119,7 @@ function privateStateReset() {
   return {
     authUser: null,
     profile: null,
+    isProfileReady: false,
     user: defaultUser,
     hasCompletedOnboarding: false,
     session: null,
@@ -134,6 +143,15 @@ function privateStateReset() {
 }
 
 let authSubscription: { unsubscribe: () => void } | null = null;
+let circleDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+const scheduleCircleRefresh = (get: () => AppState) => {
+  if (circleDebounceTimer) clearTimeout(circleDebounceTimer);
+  circleDebounceTimer = setTimeout(() => {
+    get().fetchCircleData().catch(error => console.error('Failed to refresh circle:', error));
+    circleDebounceTimer = null;
+  }, 500);
+};
 
 function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
   const createdAt = row.created_at ? new Date(row.created_at).getTime() : Date.now();
@@ -220,6 +238,7 @@ export const useStore = create<AppState>((set, get) => ({
   milestones: [],
   authLoading: true,
   profileLoading: false,
+  isProfileReady: false,
   hasCompletedOnboarding: false,
   tutorialCompleted: localStorage.getItem('visnova_tour_completed') === 'true',
   isFocusMode: false,
@@ -248,24 +267,24 @@ export const useStore = create<AppState>((set, get) => ({
   initializeAuth: async () => {
     authSubscription?.unsubscribe();
     authSubscription = null;
-    set({ authLoading: true, profileLoading: false });
+    set({ authLoading: true, profileLoading: false, isProfileReady: false });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        set({ ...privateStateReset(), authLoading: false, profileLoading: false, isAuthInitialized: true });
+        set({ ...privateStateReset(), authLoading: false, profileLoading: false, isProfileReady: true, isAuthInitialized: true });
       } else {
-        set({ session, authUser: session.user, isAuthInitialized: true });
+        set({ session, authUser: session.user, isAuthInitialized: true, isProfileReady: false });
         await get().ensureCurrentUserProfile();
         await get().loadUserProfile(session.user.id);
       }
       
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
         if (event === 'SIGNED_OUT' || !newSession?.user) {
-          set({ ...privateStateReset(), authLoading: false, profileLoading: false, isAuthInitialized: true });
+          set({ ...privateStateReset(), authLoading: false, profileLoading: false, isProfileReady: true, isAuthInitialized: true });
           return;
         }
 
-        set({ session: newSession, authUser: newSession.user, isAuthInitialized: true, profileLoading: true });
+        set({ session: newSession, authUser: newSession.user, isAuthInitialized: true, profileLoading: true, isProfileReady: false });
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           await get().ensureCurrentUserProfile();
           await get().loadUserProfile(newSession.user.id);
@@ -274,7 +293,7 @@ export const useStore = create<AppState>((set, get) => ({
       authSubscription = subscription;
     } catch (error) {
       console.error('Auth initialization error:', error);
-      set({ ...privateStateReset(), authLoading: false, profileLoading: false, isAuthInitialized: true });
+      set({ ...privateStateReset(), authLoading: false, profileLoading: false, isProfileReady: true, isAuthInitialized: true });
     } finally {
       set({ authLoading: false });
     }
@@ -304,7 +323,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   loadUserProfile: async (userId: string) => {
-    set({ profileLoading: true });
+    set({ profileLoading: true, isProfileReady: false });
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -326,17 +345,19 @@ export const useStore = create<AppState>((set, get) => ({
           },
           hasCompletedOnboarding: !!data.onboarded
         }));
+        await get().fetchProfileStats(userId);
       } else {
         const newProfile = await get().ensureCurrentUserProfile();
         if (newProfile) {
           // Recursive call or just update state here. Recursive is safer to ensure consistency.
           await get().loadUserProfile(userId);
+          return;
         }
       }
     } catch (error) {
       console.error('Failed to load user profile:', error);
     } finally {
-      set({ profileLoading: false });
+      set({ profileLoading: false, isProfileReady: true });
     }
   },
 
@@ -678,7 +699,7 @@ export const useStore = create<AppState>((set, get) => ({
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      set(privateStateReset());
+      set({ ...privateStateReset(), isProfileReady: true, authLoading: false, profileLoading: false });
       window.location.href = '/';
     } catch (err: any) {
       console.error('Sign-Out Error:', err);
@@ -1122,6 +1143,7 @@ export const useStore = create<AppState>((set, get) => ({
       location: note.location,
       image_url: note.image_url,
       audio_url: note.audio_url,
+      audio_path: note.audio_path,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       ...note,
@@ -1147,6 +1169,7 @@ export const useStore = create<AppState>((set, get) => ({
         location: noteData.location,
         image_url: noteData.image_url,
         audio_url: noteData.audio_url,
+        audio_path: noteData.audio_path,
         user_id: userId,
         created_at: new Date(noteData.createdAt).toISOString()
       }).select().single();
@@ -1180,6 +1203,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.location !== undefined) dbUpdates.location = updates.location;
       if (updates.image_url !== undefined) dbUpdates.image_url = updates.image_url;
       if (updates.audio_url !== undefined) dbUpdates.audio_url = updates.audio_url;
+      if (updates.audio_path !== undefined) dbUpdates.audio_path = updates.audio_path;
       dbUpdates.updated_at = new Date().toISOString();
 
       await supabase.from('notes').update(dbUpdates).eq('id', id);
@@ -1201,25 +1225,32 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (error) throw error;
 
-      const formattedNotes: Note[] = data.map((n: any) => ({
-        id: n.id,
-        title: n.title,
-        content: n.content,
-        note_type: n.note_type === 'library' ? 'vault' : n.note_type,
-        folderId: n.folder_id,
-        tags: n.tags || [],
-        linkedVisionId: n.linked_vision_id || null,
-        visibility: n.visibility || 'private',
-        isPinned: n.is_pinned,
-        isFavorite: n.is_favorite,
-        isDeleted: n.is_deleted || false,
-        mood: n.mood,
-        journal_date: n.journal_date,
-        location: n.location,
-        image_url: n.image_url,
-        audio_url: n.audio_url,
-        createdAt: new Date(n.created_at).getTime(),
-        updatedAt: new Date(n.updated_at).getTime()
+      const formattedNotes: Note[] = await Promise.all(data.map(async (n: any) => {
+        const audioPath = n.audio_path || extractStoragePathFromUrl(n.audio_url, 'note-audio');
+        return {
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          note_type: n.note_type === 'library' ? 'vault' : n.note_type,
+          folderId: n.folder_id,
+          tags: n.tags || [],
+          linkedVisionId: n.linked_vision_id || null,
+          visibility: n.visibility || 'private',
+          isPinned: n.is_pinned,
+          isFavorite: n.is_favorite,
+          isDeleted: n.is_deleted || false,
+          mood: n.mood,
+          journal_date: n.journal_date,
+          location: n.location,
+          image_url: n.image_url,
+          audio_url: audioPath ? await getAudioNoteUrl(audioPath).catch(error => {
+            console.error('Failed to sign audio note:', error);
+            return '';
+          }) : n.audio_url,
+          audio_path: audioPath,
+          createdAt: new Date(n.created_at).getTime(),
+          updatedAt: new Date(n.updated_at).getTime()
+        };
       }));
 
       set({ notes: formattedNotes });
@@ -2118,6 +2149,8 @@ export const useStore = create<AppState>((set, get) => ({
       set({ circle: [], userCircles: {} });
       return;
     }
+    if ((get() as any)._isFetchingCircle) return;
+    set({ _isFetchingCircle: true } as any);
 
     try {
       const [followingRes, followersRes, circleRes] = await Promise.all([
@@ -2185,6 +2218,8 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (err) {
       console.error('Failed to fetch circle data:', err);
       get().addToast({ type: 'error', title: 'Circle failed', description: 'Could not load your circle.' });
+    } finally {
+      set({ _isFetchingCircle: false } as any);
     }
   },
 
@@ -2437,7 +2472,8 @@ export const useStore = create<AppState>((set, get) => ({
           }
         }));
         get().fetchProfileStats(followingId).catch(error => console.error('Failed to refresh follow stats:', error));
-        get().fetchCircleData().catch(error => console.error('Failed to refresh circle:', error));
+        get().fetchProfileStats(userId).catch(error => console.error('Failed to refresh own follow stats:', error));
+        scheduleCircleRefresh(get);
         return false;
       } else {
         const { error } = await supabase.from('follows').insert({ follower_id: userId, following_id: followingId });
@@ -2457,7 +2493,8 @@ export const useStore = create<AppState>((set, get) => ({
           message: 'started following you'
         });
         get().fetchProfileStats(followingId).catch(error => console.error('Failed to refresh follow stats:', error));
-        get().fetchCircleData().catch(error => console.error('Failed to refresh circle:', error));
+        get().fetchProfileStats(userId).catch(error => console.error('Failed to refresh own follow stats:', error));
+        scheduleCircleRefresh(get);
         return true;
       }
     } catch (err) {

@@ -291,21 +291,49 @@ function MobileNav() {
   );
 }
 
+const pageContext: Record<string, { title: string; subtitle?: string }> = {
+  '/': { title: 'Dashboard', subtitle: 'Your daily progress space' },
+  '/feed': { title: 'Feed', subtitle: 'Share progress and support others' },
+  '/vision': { title: 'Visions', subtitle: 'Plan goals and move tasks forward' },
+  '/notes': { title: 'Notes', subtitle: 'Vault and journal entries' },
+  '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
+  '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
+  '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
+  '/profile': { title: 'Profile', subtitle: 'Your public progress page' },
+};
 
-export default function App() {
+function PageContextHeader() {
+  const location = useLocation();
+  const meta = pageContext[location.pathname] || (location.pathname.startsWith('/post/') ? { title: 'Thread', subtitle: 'Post comments' } : null);
+  if (!meta) return null;
+
+  return (
+    <div className="hidden md:flex xl:hidden px-4 pt-4 pb-2 items-center justify-between border-b border-card-border/60 bg-app-container/95">
+      <div>
+        <h1 className="text-sm font-black uppercase tracking-[0.22em] text-text-main">{meta.title}</h1>
+        {meta.subtitle && <p className="text-[10px] font-semibold text-text-secondary mt-1">{meta.subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+
+function AppContent() {
   const { 
     theme, 
     isFocusMode, 
     hasCompletedOnboarding, 
     authLoading, 
     profileLoading, 
+    isProfileReady,
     initializeAuth, 
     tutorialCompleted, 
     session 
   } = useStore();
+  const location = useLocation();
   
   const isPasswordRecovery = sessionStorage.getItem('visnova-auth-link-mode') === 'recovery' || new URLSearchParams(window.location.search).get('mode') === 'reset-password';
-  const isAuthCallbackPath = window.location.pathname === '/auth/callback';
+  const isAuthCallbackPath = location.pathname === '/auth/callback';
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -316,7 +344,7 @@ export default function App() {
     initializeAuth();
   }, [initializeAuth]);
 
-  if (authLoading) {
+  if (authLoading && !isAuthCallbackPath) {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
          <motion.div 
@@ -333,7 +361,7 @@ export default function App() {
   }
 
   // If session exists but profile is still loading
-  if (session && profileLoading && !hasCompletedOnboarding) {
+  if (session && (profileLoading || !isProfileReady)) {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
          <motion.div 
@@ -351,13 +379,26 @@ export default function App() {
     );
   }
 
-  const showOnboarding = isAuthCallbackPath || (!session || (!profileLoading && !hasCompletedOnboarding)) || isPasswordRecovery;
+  const showOnboarding = !session || (isProfileReady && !hasCompletedOnboarding) || isPasswordRecovery;
 
   return (
-    <Router>
+    <>
       <ToastViewport />
       <AnimatePresence mode="wait">
-        {showOnboarding ? (
+        {isAuthCallbackPath ? (
+          <motion.div
+            key="auth-callback"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.98, filter: 'blur(5px)' }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="absolute inset-0 z-50 bg-bg-base"
+          >
+            <Routes>
+              <Route path="/auth/callback" element={<AuthCallback />} />
+            </Routes>
+          </motion.div>
+        ) : showOnboarding ? (
           <motion.div
             key="onboarding"
             initial={{ opacity: 0 }}
@@ -391,6 +432,7 @@ export default function App() {
               <FloatingTimer />
               <VisionAssistant />
               <main className="flex-1 min-w-0 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
+                <PageContextHeader />
                 <div className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
@@ -417,6 +459,14 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

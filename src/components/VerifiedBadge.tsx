@@ -1,12 +1,22 @@
 import { BadgeCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export default function VerifiedBadge({ verified, className }: { verified?: boolean | null; className?: string }) {
+type VerifiedBadgeProps = {
+  verified?: boolean | null;
+  className?: string;
+  size?: number;
+};
+
+export default function VerifiedBadge({ verified, className, size = 16 }: VerifiedBadgeProps) {
   if (!verified) return null;
 
   return (
-    <span className={cn('inline-flex items-center text-accent align-middle', className)} title="Verified" aria-label="Verified">
-      <BadgeCheck size={16} className="text-accent drop-shadow-sm" />
+    <span
+      className={cn('inline-flex items-center text-accent align-middle', className)}
+      title="Verified account"
+      aria-label="Verified account"
+    >
+      <BadgeCheck size={size} className="text-accent drop-shadow-sm" />
     </span>
   );
 }

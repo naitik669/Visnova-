@@ -1340,8 +1340,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   const attachAudioFile = async (file: File) => {
     setIsAudioUploading(true);
     try {
-      const { publicUrl } = await uploadAudioNote(file, session?.user?.id);
-      updateNote(note.id, { audio_url: publicUrl });
+      const { signedUrl, filePath } = await uploadAudioNote(file, session?.user?.id);
+      updateNote(note.id, { audio_url: signedUrl, audio_path: filePath });
       addToast({ type: 'success', title: 'Audio attached', description: 'Your audio note was saved.' });
     } catch (error: any) {
       console.error('Failed to attach audio note:', error);
@@ -1488,7 +1488,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 <audio src={note.audio_url} controls className="w-full" />
               </div>
               <button
-                onClick={() => updateNote(note.id, { audio_url: '' })}
+                onClick={() => updateNote(note.id, { audio_url: '', audio_path: '' })}
                 className="h-10 px-4 rounded-xl bg-white border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-danger transition-colors"
               >
                 Remove

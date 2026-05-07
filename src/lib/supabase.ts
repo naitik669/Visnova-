@@ -187,11 +187,30 @@ export const uploadAudioNote = async (file: File, currentUserId?: string) => {
     throw new Error(`Audio upload failed: ${error.message}`);
   }
 
-  const { data: { publicUrl } } = supabase.storage
+  const { data, error: signedError } = await supabase.storage
     .from('note-audio')
-    .getPublicUrl(filePath);
+    .createSignedUrl(filePath, 3600);
 
-  return { publicUrl, filePath };
+  if (signedError) {
+    console.error('Audio Signed URL Error:', signedError);
+    throw new Error(`Audio upload succeeded, but playback setup failed: ${signedError.message}`);
+  }
+
+  return { signedUrl: data?.signedUrl || '', filePath };
+};
+
+export const getAudioNoteUrl = async (path: string) => {
+  if (!path) return '';
+  const { data, error } = await supabase.storage
+    .from('note-audio')
+    .createSignedUrl(path, 3600);
+
+  if (error) {
+    console.error('Audio Signed URL Error:', error);
+    throw new Error(`Could not load audio note: ${error.message}`);
+  }
+
+  return data?.signedUrl || '';
 };
 
 export const uploadCapsuleImage = async (file: File, capsuleId: string, currentUserId?: string) => {
