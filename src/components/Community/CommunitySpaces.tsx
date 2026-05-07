@@ -412,6 +412,17 @@ export default function CommunitySpaces() {
               </button>
             );
           })}
+
+          {selectedCommunity && (
+            <div className="bg-card border border-card-border rounded-2xl p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.25em] text-accent mb-2">{selectedCommunity.category}</p>
+              <h2 className="text-lg font-black uppercase tracking-tight text-text-main">{selectedCommunity.name}</h2>
+              <p className="text-xs text-text-secondary/65 mt-2 leading-relaxed">{selectedCommunity.description || 'A focused place to connect and build.'}</p>
+              <div className="mt-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-secondary/50">
+                <Users size={14} /> {selectedCommunity.members?.length || 0} members
+              </div>
+            </div>
+          )}
         </aside>
 
         <section className="bg-card border border-card-border rounded-[2rem] overflow-hidden min-h-[calc(100vh-11rem)] flex flex-col shadow-soft">
@@ -436,19 +447,8 @@ export default function CommunitySpaces() {
             </div>
           ) : (
             <>
-              <div className="p-5 lg:p-6 border-b border-card-border flex flex-col lg:flex-row lg:items-center justify-between gap-5 bg-app-container/35">
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent mb-2">{selectedCommunity.category}</p>
-                  <h2 className="text-2xl font-black uppercase tracking-tight text-text-main">{selectedCommunity.name}</h2>
-                  <p className="text-xs text-text-secondary/60 mt-2">{selectedCommunity.description}</p>
-                </div>
-                <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-text-secondary/50">
-                  <Users size={14} /> {selectedCommunity.members?.length || 0} members
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)] flex-1 min-h-0">
-                <div className="border-b lg:border-b-0 lg:border-r border-card-border p-4 space-y-4 overflow-y-auto custom-scrollbar lg:max-h-[calc(100vh-17rem)]">
+                <div className="border-b lg:border-b-0 lg:border-r border-card-border p-4 space-y-4 overflow-y-auto custom-scrollbar lg:max-h-[calc(100vh-12rem)]">
                   <div className="bg-surface-muted rounded-2xl border border-card-border p-4 space-y-3">
                     <div className="grid grid-cols-3 gap-2">
                       {(['discussion', 'achievement', 'question'] as CommunityThread['kind'][]).map(kind => {
@@ -516,7 +516,7 @@ export default function CommunitySpaces() {
                   )}
                 </div>
 
-                <div className="flex flex-col min-h-[70vh] lg:min-h-[calc(100vh-17rem)]">
+                <div className="flex flex-col min-h-[74vh] lg:min-h-[calc(100vh-12rem)]">
                   {!selectedThread ? (
                     <div className="flex-1 flex items-center justify-center text-center p-10 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">
                       Pick or create a thread
