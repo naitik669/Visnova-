@@ -323,8 +323,10 @@ function AppContent() {
     theme, 
     isFocusMode, 
     hasCompletedOnboarding, 
+    profile,
     authLoading, 
     isProfileReady,
+    isAuthInitialized,
     initializeAuth, 
     tutorialCompleted, 
     session 
@@ -343,7 +345,7 @@ function AppContent() {
     initializeAuth();
   }, [initializeAuth]);
 
-  if (authLoading && !isAuthCallbackPath) {
+  if (authLoading && !isAuthInitialized && !isAuthCallbackPath) {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
          <motion.div 
@@ -361,7 +363,7 @@ function AppContent() {
 
   // Only block the whole app during the first profile bootstrap. Later profile
   // refreshes happen in the background so the app never blanks mid-session.
-  if (session && !isProfileReady) {
+  if (session && !isProfileReady && !profile) {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
          <motion.div 

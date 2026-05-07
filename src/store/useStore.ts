@@ -285,9 +285,19 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   initializeAuth: async () => {
+    const existingState = get();
+    if (existingState.isAuthInitialized && existingState.session?.user && existingState.isProfileReady) {
+      get().loadUserProfile(existingState.session.user.id).catch(error => console.error('Background profile refresh failed:', error));
+      return;
+    }
+
     authSubscription?.unsubscribe();
     authSubscription = null;
-    set({ authLoading: true, profileLoading: false, isProfileReady: false });
+    set((state) => ({
+      authLoading: !state.isAuthInitialized,
+      profileLoading: false,
+      isProfileReady: state.session?.user && state.isProfileReady ? true : false
+    }));
     try {
       const { data: { session } } = await withTimeout(
         supabase.auth.getSession(),
@@ -308,17 +318,38 @@ export const useStore = create<AppState>((set, get) => ({
           return;
         }
 
+        const currentState = get();
+        const hasUsableProfile = !!currentState.profile || currentState.hasCompletedOnboarding || currentState.isProfileReady;
+        const shouldBlockForProfile = event === 'SIGNED_IN' && !hasUsableProfile;
+
         set((state) => ({
           session: newSession,
           authUser: newSession.user,
           isAuthInitialized: true,
           profileLoading: true,
-          isProfileReady: event === 'SIGNED_IN' ? false : state.isProfileReady
+          isProfileReady: shouldBlockForProfile ? false : state.isProfileReady || hasUsableProfile
         }));
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-          await get().ensureCurrentUserProfile();
-          await get().loadUserProfile(newSession.user.id);
+
+        if (event === 'SIGNED_IN') {
+          try {
+            await withTimeout(get().ensureCurrentUserProfile(), PROFILE_QUERY_TIMEOUT_MS, 'Preparing your profile');
+            await get().loadUserProfile(newSession.user.id);
+          } catch (error) {
+            console.error('Signed-in profile refresh failed:', error);
+            set({ profileLoading: false, isProfileReady: true });
+          }
+          return;
         }
+
+        if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
+          get().loadUserProfile(newSession.user.id).catch(error => {
+            console.error('Background auth profile refresh failed:', error);
+            set({ profileLoading: false, isProfileReady: true });
+          });
+          return;
+        }
+
+        set({ profileLoading: false, isProfileReady: true });
       });
       authSubscription = subscription;
     } catch (error) {
