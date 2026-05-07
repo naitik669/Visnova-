@@ -184,6 +184,9 @@ export const uploadAudioNote = async (file: File, currentUserId?: string) => {
 
   if (error) {
     console.error('Audio Upload Error:', error);
+    if (/bucket not found/i.test(error.message || '')) {
+      throw new Error('Audio storage is not set up yet. Apply the latest Supabase migrations to create the private note-audio bucket.');
+    }
     throw new Error(`Audio upload failed: ${error.message}`);
   }
 
