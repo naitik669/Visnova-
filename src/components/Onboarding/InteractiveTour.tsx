@@ -67,7 +67,7 @@ const TOUR_STEPS: TourStep[] = [
 ];
 
 export function InteractiveTour() {
-  const { tutorialCompleted, completeTutorial } = useStore();
+  const { tutorialCompleted, completeTutorial, hasCompletedOnboarding } = useStore();
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -77,14 +77,13 @@ export function InteractiveTour() {
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const hasCompletedOnboarding = localStorage.getItem('visnova_onboarded_v2') === 'true';
     if (!tutorialCompleted && hasCompletedOnboarding) {
       const timer = setTimeout(() => setIsVisible(true), 1000);
       return () => clearTimeout(timer);
     } else if (tutorialCompleted) {
       setIsVisible(false);
     }
-  }, [tutorialCompleted]);
+  }, [tutorialCompleted, hasCompletedOnboarding]);
 
   // Handle step changes, navigation and scrolling
   useEffect(() => {

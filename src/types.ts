@@ -36,6 +36,10 @@ export interface VisionElement {
     checklist?: { id: string, text: string, completed: boolean }[];
     url?: string;
     favicon?: string;
+    fontSize?: string;
+    fontFamily?: string;
+    fontWeight?: string;
+    textAlign?: 'left' | 'center' | 'right';
   };
 }
 

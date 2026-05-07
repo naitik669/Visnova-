@@ -311,40 +311,29 @@ export default function NotesSystem() {
         {!isJournalFullView && activeTab === 'library' && (
           <header className={cn(
             "flex items-center justify-between px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500",
-            activeTab === 'journal' ? "h-20" : "h-28"
+            "h-28"
           )}>
             <div className="flex items-center gap-12">
               <div>
                 <h1 className={cn(
                   "font-black text-text-main tracking-tight uppercase transition-all",
-                  activeTab === 'journal' ? "text-xl" : "text-3xl"
+                  "text-3xl"
                 )}>
-                  {activeTab === 'journal' ? 'Journal' : 'Notes'}
+                  Notes
                 </h1>
               </div>
             </div>
 
             <div className="flex items-center gap-6">
-              {activeTab === 'library' && (
-                <div className="relative group hidden sm:block animate-in fade-in slide-in-from-right duration-500">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 group-focus-within:text-accent transition-colors" />
-                  <input
-                    placeholder="Search Notes..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-11 pl-10 pr-4 w-64 bg-surface-muted border border-card-border/50 rounded-2xl text-[11px] font-bold text-text-main focus:outline-none focus:border-accent/40 focus:bg-card transition-all placeholder:text-text-secondary/30 shadow-sm"
-                  />
-                </div>
-              )}
-              {activeTab === 'journal' && (
-                <button 
-                  onClick={() => setIsJournalFullView(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/5 text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-white transition-all animate-in fade-in slide-in-from-right duration-500"
-                >
-                  <Maximize2 size={14} />
-                  Immersive Mode
-                </button>
-              )}
+              <div className="relative group hidden sm:block animate-in fade-in slide-in-from-right duration-500">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 group-focus-within:text-accent transition-colors" />
+                <input
+                  placeholder="Search Notes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-11 pl-10 pr-4 w-64 bg-surface-muted border border-card-border/50 rounded-2xl text-[11px] font-bold text-text-main focus:outline-none focus:border-accent/40 focus:bg-card transition-all placeholder:text-text-secondary/30 shadow-sm"
+                />
+              </div>
               <button 
                 onClick={() => handleCreateNote(activeTab)}
                 className="w-12 h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/10 hover:scale-105 transition-all md:hidden"
