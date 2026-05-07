@@ -114,12 +114,14 @@ export default function Dashboard() {
   } = useStore();
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = React.useState(new Date());
+  const hasRequestedDashboardData = React.useRef(false);
 
   React.useEffect(() => {
-    if (visions.length === 0 && !isDashboardLoading) {
+    if (!hasRequestedDashboardData.current) {
+      hasRequestedDashboardData.current = true;
       fetchDashboardData();
     }
-  }, [fetchDashboardData, visions.length]);
+  }, [fetchDashboardData]);
 
   const [focusNote, setFocusNote] = React.useState(user.statusNote || "");
   const [isEditingFocus, setIsEditingFocus] = React.useState(false);
@@ -224,7 +226,9 @@ export default function Dashboard() {
     return data;
   }, [activities]);
 
-  if (isDashboardLoading) {
+  const hasAnyDashboardData = visions.length > 0 || todos.length > 0 || notes.length > 0 || journalEntries.length > 0 || circle.length > 0;
+
+  if (isDashboardLoading && !hasAnyDashboardData) {
     return (
       <div className="max-w-[1400px] mx-auto space-y-8 p-6 lg:p-10">
         <div className="h-10 w-64 bg-card-dark rounded-xl animate-pulse" />

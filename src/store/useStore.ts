@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
-import { supabase, isSupabaseConfigured, getAudioNoteUrl } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { format } from 'date-fns';
 
 function isDbId(id: string | undefined): id is string {
@@ -105,6 +105,11 @@ const defaultUser: AppState['user'] = {
 
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 12000;
 const PROFILE_QUERY_TIMEOUT_MS = 12000;
+const DASHBOARD_CORE_TIMEOUT_MS = 5000;
+
+function runBackground(label: string, action: () => Promise<any>) {
+  action().catch(error => console.error(`${label} failed:`, error));
+}
 
 function toProfileUser(profile: any, fallbackEmail = ''): AppState['user'] {
   return {
@@ -330,22 +335,27 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ isDashboardLoading: true });
     try {
-      await Promise.all([
-        get().loadUserProfile(userId),
-        get().fetchVisions(),
-        get().fetchTodos(),
-        get().fetchNotes(),
-        get().fetchJournalEntries(),
-        get().fetchFeedContext(),
-        get().fetchCircleData(),
-        get().fetchNotifications(),
-        get().fetchUserStreak(),
-      ]);
+      await withTimeout(
+        Promise.allSettled([
+          get().fetchVisions(),
+          get().fetchTodos(),
+          get().fetchJournalEntries(),
+          get().fetchUserStreak(),
+        ]),
+        DASHBOARD_CORE_TIMEOUT_MS,
+        'Loading dashboard'
+      );
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('Dashboard core data was slow:', error);
     } finally {
       set({ isDashboardLoading: false });
     }
+
+    runBackground('Dashboard profile refresh', () => get().loadUserProfile(userId));
+    runBackground('Dashboard notes refresh', () => get().fetchNotes());
+    runBackground('Dashboard feed context refresh', () => get().fetchFeedContext());
+    runBackground('Dashboard circle refresh', () => get().fetchCircleData());
+    runBackground('Dashboard notifications refresh', () => get().fetchNotifications());
   },
 
   loadUserProfile: async (userId: string) => {
@@ -1263,7 +1273,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (error) throw error;
 
-      const formattedNotes: Note[] = await Promise.all(data.map(async (n: any) => {
+      const formattedNotes: Note[] = data.map((n: any) => {
         const audioPath = n.audio_path || extractStoragePathFromUrl(n.audio_url, 'note-audio');
         return {
           id: n.id,
@@ -1281,15 +1291,12 @@ export const useStore = create<AppState>((set, get) => ({
           journal_date: n.journal_date,
           location: n.location,
           image_url: n.image_url,
-          audio_url: audioPath ? await getAudioNoteUrl(audioPath).catch(error => {
-            console.error('Failed to sign audio note:', error);
-            return '';
-          }) : n.audio_url,
+          audio_url: n.audio_url || '',
           audio_path: audioPath,
           createdAt: new Date(n.created_at).getTime(),
           updatedAt: new Date(n.updated_at).getTime()
         };
-      }));
+      });
 
       set({ notes: formattedNotes });
     } catch (error) {
