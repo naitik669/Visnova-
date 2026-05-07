@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Award, Hash, Loader2, MessageCircle, Plus, Send, Sparkles, Target, Users, X } from 'lucide-react';
+import { Award, Compass, Hash, Loader2, MessageCircle, Plus, Search, Send, Sparkles, Target, Users, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
@@ -66,6 +66,8 @@ export default function CommunitySpaces() {
   const [newCommunity, setNewCommunity] = useState({ name: '', description: '', category: 'builders' });
   const [newThread, setNewThread] = useState({ title: '', content: '', kind: 'discussion' as CommunityThread['kind'] });
   const [reply, setReply] = useState('');
+  const [communityMode, setCommunityMode] = useState<'mine' | 'explore'>('mine');
+  const [communitySearch, setCommunitySearch] = useState('');
 
   const currentUserId = session?.user?.id;
   const canCreateCommunity = (user?.level || 1) >= 5;
@@ -92,7 +94,9 @@ export default function CommunitySpaces() {
     }
 
     const rows = (data || []) as Community[];
+    const hasJoinedCommunity = rows.some(community => community.members?.some(member => member.user_id === currentUserId));
     setCommunities(rows);
+    if (rows.length > 0 && !hasJoinedCommunity) setCommunityMode('explore');
     setSelectedCommunityId(current => current || rows[0]?.id || null);
     setIsLoadingCommunities(false);
   };
@@ -277,11 +281,26 @@ export default function CommunitySpaces() {
     await loadMessages(selectedThread.id);
   };
 
-  const sortedCommunities = useMemo(() => communities.slice().sort((a, b) => {
-    const aJoined = a.members?.some(member => member.user_id === currentUserId) ? 1 : 0;
-    const bJoined = b.members?.some(member => member.user_id === currentUserId) ? 1 : 0;
-    return bJoined - aJoined || (b.members?.length || 0) - (a.members?.length || 0);
-  }), [communities, currentUserId]);
+  const sortedCommunities = useMemo(() => {
+    const query = communitySearch.trim().toLowerCase();
+
+    return communities
+      .filter(community => {
+        const joined = community.members?.some(member => member.user_id === currentUserId);
+        if (communityMode === 'mine' && !joined) return false;
+        if (!query) return true;
+
+        return [community.name, community.description, community.category, community.slug]
+          .filter(Boolean)
+          .some(value => value.toLowerCase().includes(query));
+      })
+      .slice()
+      .sort((a, b) => {
+        const aJoined = a.members?.some(member => member.user_id === currentUserId) ? 1 : 0;
+        const bJoined = b.members?.some(member => member.user_id === currentUserId) ? 1 : 0;
+        return bJoined - aJoined || (b.members?.length || 0) - (a.members?.length || 0);
+      });
+  }, [communities, currentUserId, communityMode, communitySearch]);
 
   return (
     <div className="w-full max-w-[1800px] mx-auto pb-20 animate-in fade-in duration-700 space-y-6">
@@ -313,16 +332,58 @@ export default function CommunitySpaces() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)] gap-5 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)] gap-5 items-start">
         <aside className="space-y-3 xl:sticky xl:top-0 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto custom-scrollbar pr-1">
+          <div className="bg-card border border-card-border rounded-2xl p-3 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setCommunityMode('mine')}
+                className={cn(
+                  'h-10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2',
+                  communityMode === 'mine' ? 'bg-accent text-accent-contrast' : 'bg-surface-muted text-text-secondary/60 hover:text-text-main'
+                )}
+              >
+                <Users size={13} /> My Spaces
+              </button>
+              <button
+                onClick={() => setCommunityMode('explore')}
+                className={cn(
+                  'h-10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2',
+                  communityMode === 'explore' ? 'bg-accent text-accent-contrast' : 'bg-surface-muted text-text-secondary/60 hover:text-text-main'
+                )}
+              >
+                <Compass size={13} /> Explore
+              </button>
+            </div>
+            <label className="h-11 rounded-xl bg-surface-muted border border-card-border px-3 flex items-center gap-2 focus-within:border-accent">
+              <Search size={15} className="text-text-secondary/50 shrink-0" />
+              <input
+                value={communitySearch}
+                onChange={event => setCommunitySearch(event.target.value)}
+                placeholder={communityMode === 'mine' ? 'Search your spaces' : 'Explore communities'}
+                className="min-w-0 flex-1 bg-transparent outline-none text-xs font-semibold text-text-main placeholder:text-text-secondary/40"
+              />
+            </label>
+          </div>
+
           {isLoadingCommunities ? (
             <div className="system-card p-8 flex items-center justify-center">
               <Loader2 size={22} className="animate-spin text-accent" />
             </div>
           ) : sortedCommunities.length === 0 ? (
             <div className="system-card p-8 text-center">
-              <Users size={28} className="mx-auto text-text-secondary/40 mb-3" />
-              <p className="text-xs font-black uppercase tracking-widest text-text-secondary/50">No communities yet</p>
+              {communityMode === 'mine' ? <Users size={28} className="mx-auto text-text-secondary/40 mb-3" /> : <Compass size={28} className="mx-auto text-text-secondary/40 mb-3" />}
+              <p className="text-xs font-black uppercase tracking-widest text-text-secondary/50">
+                {communityMode === 'mine' ? 'No joined communities yet' : 'No communities found'}
+              </p>
+              {communityMode === 'mine' && (
+                <button
+                  onClick={() => setCommunityMode('explore')}
+                  className="mt-4 h-10 px-4 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest"
+                >
+                  Explore Communities
+                </button>
+              )}
             </div>
           ) : sortedCommunities.map(community => {
             const joined = community.members?.some(member => member.user_id === currentUserId);
@@ -386,8 +447,8 @@ export default function CommunitySpaces() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] 2xl:grid-cols-[380px_minmax(0,1fr)] flex-1 min-h-0">
-                <div className="border-b lg:border-b-0 lg:border-r border-card-border p-4 space-y-4 overflow-y-auto custom-scrollbar lg:max-h-[calc(100vh-18rem)]">
+              <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)] flex-1 min-h-0">
+                <div className="border-b lg:border-b-0 lg:border-r border-card-border p-4 space-y-4 overflow-y-auto custom-scrollbar lg:max-h-[calc(100vh-17rem)]">
                   <div className="bg-surface-muted rounded-2xl border border-card-border p-4 space-y-3">
                     <div className="grid grid-cols-3 gap-2">
                       {(['discussion', 'achievement', 'question'] as CommunityThread['kind'][]).map(kind => {
@@ -445,7 +506,7 @@ export default function CommunitySpaces() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-black text-text-main leading-tight line-clamp-2">{thread.title}</p>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 mt-2">@{thread.author?.username || 'user'} · {new Date(thread.created_at).toLocaleDateString()}</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 mt-2">@{thread.author?.username || 'user'} - {new Date(thread.created_at).toLocaleDateString()}</p>
                               </div>
                             </div>
                           </button>
@@ -455,18 +516,18 @@ export default function CommunitySpaces() {
                   )}
                 </div>
 
-                <div className="flex flex-col min-h-[560px] lg:min-h-0">
+                <div className="flex flex-col min-h-[70vh] lg:min-h-[calc(100vh-17rem)]">
                   {!selectedThread ? (
                     <div className="flex-1 flex items-center justify-center text-center p-10 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">
                       Pick or create a thread
                     </div>
                   ) : (
                     <>
-                      <div className="p-5 border-b border-card-border bg-card">
+                      <div className="p-5 lg:p-6 border-b border-card-border bg-card">
                         <p className="text-[9px] font-black uppercase tracking-widest text-accent mb-2">{kindStyles[selectedThread.kind].label}</p>
-                        <h3 className="text-xl font-black text-text-main tracking-tight">{selectedThread.title}</h3>
+                        <h3 className="text-xl lg:text-2xl font-black text-text-main tracking-tight">{selectedThread.title}</h3>
                       </div>
-                      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 lg:p-6 space-y-4 bg-app-container/20">
+                      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 lg:p-7 space-y-5 bg-app-container/20">
                         {messages.map(message => {
                           const isOwn = message.user_id === currentUserId;
                           return (
@@ -476,17 +537,17 @@ export default function CommunitySpaces() {
                                 alt={message.author?.username || 'user'}
                                 className="w-9 h-9 rounded-xl border border-card-border"
                               />
-                              <div className={cn('max-w-[min(78%,720px)] rounded-2xl border border-card-border p-4 shadow-sm', isOwn ? 'bg-accent text-accent-contrast' : 'bg-card')}>
+                              <div className={cn('max-w-[min(88%,860px)] rounded-2xl border border-card-border p-4 lg:p-5 shadow-sm', isOwn ? 'bg-accent text-accent-contrast' : 'bg-card')}>
                                 <p className={cn('text-[9px] font-black uppercase tracking-widest mb-2', isOwn ? 'text-accent-contrast/60' : 'text-text-secondary/40')}>
                                   @{message.author?.username || 'user'}
                                 </p>
-                                <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                                <p className="text-sm lg:text-[15px] font-medium leading-relaxed whitespace-pre-wrap">{message.content}</p>
                               </div>
                             </div>
                           );
                         })}
                       </div>
-                      <div className="p-5 border-t border-card-border flex gap-3 bg-card">
+                      <div className="p-5 lg:p-6 border-t border-card-border flex gap-3 bg-card">
                         <input
                           value={reply}
                           onChange={event => setReply(event.target.value)}
@@ -497,12 +558,12 @@ export default function CommunitySpaces() {
                             }
                           }}
                           placeholder="Write a reply..."
-                          className="flex-1 h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent"
+                          className="flex-1 h-14 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent"
                         />
                         <button
                           onClick={sendReply}
                           disabled={!reply.trim()}
-                          className="w-12 h-12 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center disabled:opacity-50"
+                          className="w-14 h-14 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center disabled:opacity-50"
                         >
                           <Send size={18} />
                         </button>
