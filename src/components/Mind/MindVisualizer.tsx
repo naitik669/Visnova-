@@ -1238,7 +1238,6 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
                         ))}
                       </div>
                     )}
-                  </div>
                   </WorkspacePanel>
                 </div>
               )}
