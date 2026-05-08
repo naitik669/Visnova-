@@ -338,6 +338,8 @@ export interface AppState {
   addPost: (post: any) => Promise<boolean>;
   updatePost: (id: string, updates: Partial<Post>) => Promise<boolean>;
   archivePost: (id: string) => Promise<boolean>;
+  restorePost: (id: string) => Promise<boolean>;
+  fetchArchivedPosts: () => Promise<Post[]>;
   deletePost: (id: string) => Promise<boolean>;
   muteUserPosts: (userId: string) => Promise<boolean>;
   toggleLikePost: (id: string) => Promise<void>;
@@ -384,7 +386,10 @@ export interface Post {
   isSaved?: boolean;
   isLiked?: boolean;
   type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement' | 'status';
-  visibility: 'public' | 'private' | 'friends' | 'archived';
+  visibility: 'public' | 'private' | 'friends';
+  archived?: boolean;
+  archivedAt?: string | null;
+  deletedAt?: string | null;
   createdAt?: number;
   media?: {
     id: string;

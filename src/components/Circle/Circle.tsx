@@ -47,6 +47,8 @@ export default function Circle() {
         .from('posts')
         .select('*, author:profiles!posts_user_id_fkey(*)')
         .eq('visibility', 'public')
+        .eq('archived', false)
+        .is('deleted_at', null)
         .in('user_id', ids)
         .order('created_at', { ascending: false })
         .limit(5);

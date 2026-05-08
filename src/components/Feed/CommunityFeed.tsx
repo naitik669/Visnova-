@@ -248,6 +248,9 @@ export default function CommunityFeed() {
     isSaved: false,
     type: p.type || 'update',
     visibility: p.visibility || 'public',
+    archived: !!p.archived,
+    archivedAt: p.archived_at || null,
+    deletedAt: p.deleted_at || null,
     media: p.media?.map((m: any) => ({
       id: m.id,
       url: m.media_url,
@@ -288,6 +291,8 @@ export default function CommunityFeed() {
           mentions:post_mentions(*, user:profiles(username))
         `)
         .eq('visibility', 'public')
+        .eq('archived', false)
+        .is('deleted_at', null)
         .ilike('post_tags.tag', tag)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -1395,7 +1400,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                   >
                     <Edit3 size={14} /> Edit Post
                   </button>
-                  {post.visibility !== 'archived' && (
+                  {!post.archived && (
                     <button
                       onClick={async () => {
                         setIsMenuOpen(false);

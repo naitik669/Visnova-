@@ -115,6 +115,9 @@ export default function ProfilePage() {
     isSaved: false,
     type: p.type || 'update',
     visibility: p.visibility || 'public',
+    archived: !!p.archived,
+    archivedAt: p.archived_at || null,
+    deletedAt: p.deleted_at || null,
     media: p.media?.map((m: any) => ({
       id: m.id,
       url: m.media_url,
@@ -206,7 +209,9 @@ export default function ProfilePage() {
         .limit(50);
 
       if (targetId !== session?.user?.id) {
-        postsQuery = postsQuery.eq('visibility', 'public');
+        postsQuery = postsQuery.eq('visibility', 'public').eq('archived', false).is('deleted_at', null);
+      } else {
+        postsQuery = postsQuery.is('deleted_at', null);
       }
 
       const { data: postData, error: postError } = await postsQuery;
@@ -377,8 +382,8 @@ export default function ProfilePage() {
     }
   };
 
-  const visibleProfilePosts = profilePosts.filter(post => post.visibility !== 'archived');
-  const archivedProfilePosts = profilePosts.filter(post => post.visibility === 'archived');
+  const visibleProfilePosts = profilePosts.filter(post => !post.archived);
+  const archivedProfilePosts = profilePosts.filter(post => post.archived);
   const savedPosts = allPosts.filter(p => p.isSaved);
 
   const stats = [
@@ -638,7 +643,7 @@ export default function ProfilePage() {
                     onOpenThread={() => navigate(`/post/${post.id}`)}
                     onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                     onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
-                    onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
+                    onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, archived: true, archivedAt: new Date().toISOString() } : p))}
                   />
                 ))}
                 {visibleProfilePosts.length === 0 && (
@@ -659,7 +664,7 @@ export default function ProfilePage() {
                   onOpenThread={() => navigate(`/post/${post.id}`)}
                   onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                   onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
-                  onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
+                  onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, archived: true, archivedAt: new Date().toISOString() } : p))}
                 />
               ))}
               {visibleProfilePosts.length === 0 && (
@@ -748,7 +753,7 @@ export default function ProfilePage() {
                   onOpenThread={() => navigate(`/post/${post.id}`)}
                   onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                   onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
-                  onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, visibility: 'archived' } : p))}
+                  onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, archived: true, archivedAt: new Date().toISOString() } : p))}
                 />
               ))}
               {archivedProfilePosts.length === 0 && (
@@ -1047,7 +1052,7 @@ export default function ProfilePage() {
 }
 
 function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived }: { post: Post, onOpenThread: () => void, onDeleted?: (postId: string) => void, onUpdated?: (postId: string, updates: Partial<Post>) => void, onArchived?: (postId: string) => void }) {
-  const { deletePost, updatePost, archivePost, session } = useStore();
+  const { deletePost, updatePost, archivePost, restorePost, session } = useStore();
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(!!post.isLiked);
   const [isSaved, setIsSaved] = useState(!!post.isSaved);
@@ -1120,7 +1125,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
               <Trophy size={14} /> Achievement Post
             </div>
           )}
-          {post.visibility === 'archived' && (
+          {post.archived && (
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-text-main/5 text-text-secondary text-[8px] font-black uppercase tracking-widest border border-card-border">
               <Archive size={14} /> Archived
             </div>
@@ -1155,7 +1160,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                   >
                     <Edit3 size={14} /> Edit Post
                   </button>
-                  {post.visibility !== 'archived' && (
+                  {!post.archived && (
                     <button
                       onClick={async () => {
                         setIsMenuOpen(false);
@@ -1165,6 +1170,18 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                       className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
                     >
                       <Archive size={14} /> Archive Post
+                    </button>
+                  )}
+                  {post.archived && (
+                    <button
+                      onClick={async () => {
+                        setIsMenuOpen(false);
+                        const restored = await restorePost(post.id);
+                        if (restored) onUpdated?.(post.id, { archived: false, archivedAt: null });
+                      }}
+                      className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                    >
+                      <Archive size={14} /> Restore Post
                     </button>
                   )}
                   <button

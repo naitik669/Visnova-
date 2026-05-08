@@ -30,6 +30,9 @@ const mapPostRow = (p: any): Post => ({
   saves: p.saves?.[0]?.count || 0,
   type: (p.type || 'update') as Post['type'],
   visibility: (p.visibility || 'public') as Post['visibility'],
+  archived: !!p.archived,
+  archivedAt: p.archived_at || null,
+  deletedAt: p.deleted_at || null,
   media: p.media?.map((m: any) => ({ id: m.id, url: m.media_url, type: (m.media_type || 'image') as 'image' | 'video' })) || [],
   tags: p.post_tags?.map((t: any) => t.tag) || []
 });

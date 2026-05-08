@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Home, Target, Zap, Activity, Users, Settings as SettingsIcon, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, BookOpen } from 'lucide-react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, BookOpen, MoreHorizontal } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -92,6 +92,7 @@ function AccountabilityNudge() {
 
 function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { toggleFocusMode, user, unreadNotificationCount } = useStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -112,9 +113,7 @@ function Sidebar() {
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
-    { icon: User, label: 'Profile', path: '/profile' },
     { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
-    { icon: Activity, label: 'Growth', path: '/mind-map' },
   ];
 
   return (
@@ -123,11 +122,11 @@ function Sidebar() {
       onMouseLeave={() => setIsExpanded(false)}
       className={cn(
         "absolute left-0 top-0 h-full bg-sidebar border-r border-card-border flex-col z-50 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-visible hidden lg:flex",
-        isExpanded ? "w-60 shadow-[20px_0_60px_rgba(0,0,0,0.03)]" : "w-16 px-1"
+        isExpanded ? "w-60 shadow-[20px_0_60px_rgba(0,0,0,0.03)]" : "w-16"
       )}
     >
-      <div className="p-4 mb-2">
-        <div className="flex items-center gap-3">
+      <div className={cn("p-4 mb-2", !isExpanded && "px-3")}>
+        <div className={cn("flex items-center", isExpanded ? "gap-3" : "justify-center")}>
           <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0 shadow-lg shadow-accent/10">
              <div className="w-1.5 h-1.5 bg-accent-contrast rounded-full animate-pulse" />
           </div>
@@ -141,7 +140,7 @@ function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-1 mt-6 overflow-y-auto scrollbar-hide">
+      <nav className="flex-1 px-3 space-y-1 mt-6 overflow-y-auto scrollbar-hide min-h-0">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
@@ -150,8 +149,10 @@ function Sidebar() {
               key={item.label}
               id={item.id}
               to={item.path}
+              title={!isExpanded ? item.label : undefined}
               className={cn(
-                'flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300 group relative',
+                'flex items-center h-11 rounded-xl transition-all duration-300 group relative',
+                isExpanded ? 'justify-start gap-4 px-3' : 'justify-center px-0',
                 isActive
                   ? 'bg-accent/5 text-accent font-semibold'
                   : 'text-text-secondary hover:text-text-main hover:bg-surface-muted'
@@ -174,43 +175,45 @@ function Sidebar() {
             </Link>
           );
         })}
-
-        <div className="pt-8 px-1">
-          <button
-            id="nav-focus"
-            onClick={toggleFocusMode}
-            className={cn(
-              "w-full h-11 rounded-xl bg-accent text-accent-contrast transition-all shadow-lg shadow-accent/10 flex items-center overflow-hidden group active:scale-95",
-              isExpanded ? "justify-start gap-4 px-3.5" : "justify-center gap-0 px-0"
-            )}
-          >
-             <div className="w-5 h-5 shrink-0 flex items-center justify-center">
-                <Zap size={16} className="fill-accent-contrast" />
-             </div>
-             <span className={cn(
-                "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
-                isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
-              )}>
-                Start Focus
-              </span>
-          </button>
-        </div>
       </nav>
 
       {/* User Section */}
-      <div className="p-4 mb-2 space-y-2">
+      <div className={cn("shrink-0 border-t border-card-border/50 p-3 mb-2 space-y-2", isExpanded ? "px-4" : "px-3")}>
+        <button
+          id="nav-focus"
+          onClick={toggleFocusMode}
+          title={!isExpanded ? "Start Focus" : undefined}
+          aria-label="Start Focus"
+          className={cn(
+            "w-full h-11 rounded-xl bg-accent text-accent-contrast transition-all shadow-lg shadow-accent/10 flex items-center overflow-hidden group active:scale-95",
+            isExpanded ? "justify-start gap-4 px-3.5" : "justify-center px-0"
+          )}
+        >
+           <div className="w-5 h-5 shrink-0 flex items-center justify-center">
+              <Zap size={16} className="fill-accent-contrast" />
+           </div>
+           <span className={cn(
+              "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
+              isExpanded ? "opacity-100 translate-x-0" : "sr-only"
+            )}>
+              Start Focus
+            </span>
+        </button>
+
         <div className="relative">
           <button
             onClick={() => setIsNotificationsOpen(open => !open)}
             className={cn(
-              "w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-500 group relative",
+              "w-full h-11 flex items-center rounded-xl transition-all duration-500 group relative",
+              isExpanded ? "justify-start gap-4 px-3" : "justify-center px-0",
               isNotificationsOpen ? "text-accent bg-accent/5" : "text-text-secondary hover:text-text-main hover:bg-surface-muted"
             )}
             aria-label="Open notifications"
+            title={!isExpanded ? "Notifications" : undefined}
           >
             <Bell size={18} className="shrink-0" />
             {unreadNotificationCount > 0 && (
-              <span className="absolute left-7 top-2 min-w-4 h-4 px-1 bg-accent text-accent-contrast text-[8px] font-black rounded-full flex items-center justify-center border-2 border-sidebar">
+              <span className={cn("absolute top-1.5 min-w-4 h-4 px-1 bg-accent text-accent-contrast text-[8px] font-black rounded-full flex items-center justify-center border-2 border-sidebar", isExpanded ? "left-7" : "right-1.5")}>
                 {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
               </span>
             )}
@@ -224,45 +227,45 @@ function Sidebar() {
           <NotificationCenter isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
         </div>
 
-        <div className="relative">
+        <div className={cn("relative flex items-center rounded-xl transition-all duration-500 group", location.pathname === '/profile' ? "bg-accent/5 text-accent" : "text-text-secondary hover:text-text-main hover:bg-surface-muted")}>
           <button
-            onClick={() => setIsProfileOpen(open => !open)}
+            onClick={() => {
+              setIsProfileOpen(false);
+              navigate('/profile');
+            }}
             className={cn(
-              "w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-500 group",
-              isProfileOpen ? "text-accent bg-accent/5" : "text-text-secondary hover:text-text-main hover:bg-surface-muted"
+              "min-w-0 h-12 flex items-center rounded-xl transition-all duration-500",
+              isExpanded ? "flex-1 justify-start gap-3 px-3" : "w-full justify-center px-0"
             )}
-            aria-label="Open profile menu"
+            aria-label="View profile"
+            title={!isExpanded ? "Profile" : undefined}
           >
             <img
               src={user?.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${user?.id || 'visnova'}`}
-              className="w-[18px] h-[18px] rounded-md object-cover border border-card-border shrink-0"
+              className="w-8 h-8 rounded-xl object-cover border border-card-border shrink-0"
               alt="Profile"
             />
-            <span className={cn(
-              "text-[10px] font-semibold uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
-              isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
-            )}>
-              Profile
-            </span>
+            {isExpanded && (
+              <span className="flex flex-col min-w-0 text-left">
+                <span className="text-[10px] font-semibold uppercase tracking-wider truncate">{user?.name || 'Profile'}</span>
+                <span className="text-[9px] font-medium text-text-secondary/60 truncate">@{user?.username || 'user'}</span>
+              </span>
+            )}
           </button>
+          {isExpanded && (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsProfileOpen(open => !open);
+              }}
+              className="mr-2 w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary/50 hover:text-accent hover:bg-accent/5 transition-colors"
+              aria-label="Open profile menu"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+          )}
           <ProfileDropdown isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
         </div>
-
-        <Link
-          to="/settings"
-          className={cn(
-            "flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-500 group",
-            location.pathname === '/settings' ? "text-accent bg-accent/5" : "text-text-secondary hover:text-text-main hover:bg-surface-muted"
-          )}
-        >
-          <SettingsIcon size={18} className="shrink-0 group-hover:rotate-90 transition-transform duration-700" />
-          <span className={cn(
-            "text-[10px] font-semibold uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
-            isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
-          )}>
-            Settings
-          </span>
-        </Link>
       </div>
     </aside>
 

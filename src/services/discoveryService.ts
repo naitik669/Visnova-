@@ -169,6 +169,8 @@ export async function getSuggestedUsers(currentUserId: string | null): Promise<S
         .from('posts')
         .select('created_at')
         .eq('user_id', cand.id)
+        .eq('archived', false)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();

@@ -195,6 +195,9 @@ function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
     isSaved: false,
     type: row.type || draft.type || 'update',
     visibility: row.visibility || draft.visibility || 'public',
+    archived: !!row.archived,
+    archivedAt: row.archived_at || null,
+    deletedAt: row.deleted_at || null,
     media: draft.media?.map((m: any) => ({
       id: m.id || m.storagePath || m.url,
       url: m.url,
@@ -1698,12 +1701,18 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     const previousPosts = get().posts;
+    const post = previousPosts.find(item => item.id === id);
+    if (post && post.userId !== userId) {
+      get().addToast({ type: 'error', title: 'Not allowed', description: 'You can only archive your own posts.' });
+      return false;
+    }
     set((state) => ({ posts: state.posts.filter(post => post.id !== id) }));
 
     try {
+      const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('posts')
-        .update({ visibility: 'archived', updated_at: new Date().toISOString() })
+        .update({ archived: true, archived_at: now, updated_at: now })
         .eq('id', id)
         .eq('user_id', userId)
         .select('id')
@@ -1719,6 +1728,101 @@ export const useStore = create<AppState>((set, get) => ({
       set({ posts: previousPosts });
       get().addToast({ type: 'error', title: 'Archive failed', description: 'Could not archive this post. Please try again.' });
       return false;
+    }
+  },
+
+  restorePost: async (id: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'You need to be signed in to restore posts.' });
+      return false;
+    }
+
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('posts')
+        .update({ archived: false, archived_at: null, updated_at: now })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data?.id) throw new Error('Post was not restored. Please refresh and try again.');
+
+      set((state) => ({
+        posts: state.posts.map(post => post.id === id ? { ...post, archived: false, archivedAt: null } : post)
+      }));
+      get().addToast({ type: 'success', title: 'Post restored', description: 'Your post can appear publicly again.' });
+      return true;
+    } catch (err) {
+      console.error('Failed to restore post:', err);
+      get().addToast({ type: 'error', title: 'Restore failed', description: 'Could not restore post. Try again.' });
+      return false;
+    }
+  },
+
+  fetchArchivedPosts: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to view archived posts.' });
+      return [];
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          author:profiles!posts_user_id_fkey(*),
+          likes:post_likes(count),
+          saves:saved_posts(count),
+          comment_count:comments(count),
+          media:post_media(*),
+          post_tags(*),
+          mentions:post_mentions(*, user:profiles(username))
+        `)
+        .eq('user_id', userId)
+        .eq('archived', true)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []).map((p: any) => ({
+        id: p.id,
+        userId: p.user_id,
+        author: {
+          id: p.author?.id || p.user_id,
+          name: p.author?.display_name || p.author?.full_name || 'Explorer',
+          avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
+          handle: `@${p.author?.username || 'user'}`,
+          verified: !!p.author?.verified
+        },
+        caption: p.caption,
+        content: p.content || '',
+        timestamp: format(new Date(p.created_at), 'MMM d, yyyy'),
+        createdAt: new Date(p.created_at).getTime(),
+        likes: p.likes?.[0]?.count || 0,
+        comments: p.comment_count?.[0]?.count || 0,
+        saves: p.saves?.[0]?.count || 0,
+        isLiked: false,
+        isSaved: false,
+        type: p.type || 'update',
+        visibility: p.visibility || 'public',
+        archived: !!p.archived,
+        archivedAt: p.archived_at || null,
+        deletedAt: p.deleted_at || null,
+        media: p.media?.map((m: any) => ({ id: m.id, url: m.media_url, type: m.media_type })) || [],
+        tags: p.post_tags?.map((t: any) => t.tag) || [],
+        mentions: p.mentions?.map((m: any) => ({ userId: m.mentioned_user_id, username: m.user?.username || 'user' })) || [],
+        stats: p.stats,
+        metadata: p.metadata
+      }));
+    } catch (err) {
+      console.error('Failed to fetch archived posts:', err);
+      get().addToast({ type: 'error', title: 'Archive failed', description: 'Could not load archived posts.' });
+      return [];
     }
   },
 
@@ -1946,7 +2050,7 @@ export const useStore = create<AppState>((set, get) => ({
 
         const savedPosts = (savedRows || [])
           .map((row: any) => row.post)
-          .filter(Boolean);
+          .filter((p: any) => p && (!p.archived || p.user_id === userId) && !p.deleted_at);
 
         const formattedSavedPosts: Post[] = savedPosts.map((p: any) => ({
           id: p.id,
@@ -1969,6 +2073,9 @@ export const useStore = create<AppState>((set, get) => ({
           isSaved: true,
           type: p.type || 'update',
           visibility: p.visibility || 'public',
+          archived: !!p.archived,
+          archivedAt: p.archived_at || null,
+          deletedAt: p.deleted_at || null,
           media: p.media?.map((m: any) => ({
             id: m.id,
             url: m.media_url,
@@ -2012,7 +2119,9 @@ export const useStore = create<AppState>((set, get) => ({
           post_tags(*),
           mentions:post_mentions(*, user:profiles(username))
         `)
-        .eq('visibility', 'public');
+        .eq('visibility', 'public')
+        .eq('archived', false)
+        .is('deleted_at', null);
 
       if (userId) {
         const { data: mutedUsers } = await supabase
@@ -2096,6 +2205,9 @@ export const useStore = create<AppState>((set, get) => ({
         isSaved: mySaves.includes(p.id),
         type: p.type,
         visibility: p.visibility,
+        archived: !!p.archived,
+        archivedAt: p.archived_at || null,
+        deletedAt: p.deleted_at || null,
         media: p.media?.map((m: any) => ({
           id: m.id,
           url: m.media_url,
