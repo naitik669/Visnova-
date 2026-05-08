@@ -46,8 +46,9 @@ import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
 export default function NotesSystem() {
   const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user, addToast } = useStore();
   const location = useLocation();
-  const initialTab = new URLSearchParams(location.search).get('tab') === 'journal' || location.pathname.includes('journal') ? 'journal' : 'vault';
-  const [activeTab, setActiveTab] = useState<'vault' | 'journal'>(initialTab);
+  const initialTabParam = new URLSearchParams(location.search).get('tab');
+  const initialTab = initialTabParam === 'journal' || location.pathname.includes('journal') ? 'journal' : initialTabParam === 'audio' ? 'audio' : 'vault';
+  const [activeTab, setActiveTab] = useState<'vault' | 'audio' | 'journal'>(initialTab);
   const [isJournalFullView, setIsJournalFullView] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
@@ -60,7 +61,7 @@ export default function NotesSystem() {
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');
-    setActiveTab(tab === 'journal' || location.pathname.includes('journal') ? 'journal' : 'vault');
+    setActiveTab(tab === 'journal' || location.pathname.includes('journal') ? 'journal' : tab === 'audio' ? 'audio' : 'vault');
   }, [location.pathname, location.search]);
 
   const [sidebarFilter, setSidebarFilter] = useState<'all' | 'recent' | 'favorites' | 'trash'>('all');
@@ -127,7 +128,12 @@ export default function NotesSystem() {
       result = result.filter(n => n.isDeleted);
     } else {
       // Exclude deleted notes from normal views
-      result = result.filter(n => !n.isDeleted && (activeTab === 'journal' ? n.note_type === 'journal' : libraryNoteTypes.includes(n.note_type)));
+      result = result.filter(n => {
+        if (n.isDeleted) return false;
+        if (activeTab === 'journal') return n.note_type === 'journal';
+        if (activeTab === 'audio') return n.note_type === 'audio';
+        return n.note_type === 'normal';
+      });
 
       // Apply sidebar filters
       if (sidebarFilter === 'recent') {
@@ -138,7 +144,7 @@ export default function NotesSystem() {
       }
 
       // Vault-specific folder filter
-      if (activeTab === 'vault' && selectedFolder) {
+      if ((activeTab === 'vault' || activeTab === 'audio') && selectedFolder) {
         result = result.filter(n => n.folderId === selectedFolder);
       }
 
@@ -318,7 +324,7 @@ export default function NotesSystem() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-app-container overflow-hidden relative">
         {/* Top Header - Reduced size and condensed content */}
-        {!isJournalFullView && activeTab === 'vault' && (
+        {!isJournalFullView && (
           <header className={cn(
             "flex items-center justify-between px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500",
             "h-28"
@@ -331,6 +337,28 @@ export default function NotesSystem() {
                 )}>
                   Notes
                 </h1>
+                <p className="text-[10px] font-bold text-text-secondary/50 uppercase tracking-[0.2em] mt-1">Vault, audio notes, and journal</p>
+              </div>
+              <div className="flex max-w-[52vw] overflow-x-auto bg-surface-muted p-1 rounded-2xl border border-card-border/50 custom-scrollbar">
+                {[
+                  { label: 'Vault', value: 'vault' as const },
+                  { label: 'Audio Notes', value: 'audio' as const },
+                  { label: 'Journal', value: 'journal' as const }
+                ].map((tab) => (
+                  <button
+                    key={tab.value}
+                    onClick={() => {
+                      setActiveTab(tab.value);
+                      setSelectedNoteId(null);
+                    }}
+                    className={cn(
+                      "h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                      activeTab === tab.value ? "bg-card text-accent shadow-sm" : "text-text-secondary/45 hover:text-text-main"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -345,10 +373,10 @@ export default function NotesSystem() {
                 />
               </div>
               <button 
-                onClick={() => handleCreateNote('normal')}
+                onClick={() => activeTab === 'audio' ? setIsAudioModalOpen(true) : handleCreateNote(activeTab === 'journal' ? 'journal' : 'normal')}
                 className="w-12 h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/10 hover:scale-105 transition-all md:hidden"
               >
-                <Plus size={24} />
+                {activeTab === 'audio' ? <Mic size={22} /> : <Plus size={24} />}
               </button>
             </div>
           </header>
@@ -428,10 +456,10 @@ export default function NotesSystem() {
                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div className="space-y-1">
                           <h3 className="text-xl font-black text-text-main tracking-tight uppercase">
-                            {activeTab === 'vault' ? 'VAULT' : 'JOURNAL'}
+                            {activeTab === 'vault' ? 'VAULT' : activeTab === 'audio' ? 'AUDIO NOTES' : 'JOURNAL'}
                           </h3>
                           <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">
-                            {activeTab === 'vault' ? 'Notes, folders, and saved resources' : 'Daily writing space'}
+                            {activeTab === 'vault' ? 'Normal notes and folders' : activeTab === 'audio' ? 'Recorded notes with private playback' : 'Daily writing space'}
                           </p>
                         </div>
                         <div className="flex items-center gap-4 self-start sm:self-auto">
@@ -498,14 +526,16 @@ export default function NotesSystem() {
                     ) : filteredNotes.length === 0 ? (
                       <div className="h-96 flex flex-col items-center justify-center bg-card rounded-[2rem] border border-card-border/50 shadow-sm">
                         <div className="w-20 h-20 rounded-3xl bg-surface-muted flex items-center justify-center mb-6 text-text-secondary/20">
-                          <BookOpen size={40} />
+                          {activeTab === 'audio' ? <Mic size={40} /> : <BookOpen size={40} />}
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary/40 mb-6">No workspace records detected</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary/40 mb-6">
+                          {activeTab === 'audio' ? 'No audio notes yet' : 'No notes yet'}
+                        </p>
                         <button 
-                          onClick={() => handleCreateNote('normal')}
+                          onClick={() => activeTab === 'audio' ? setIsAudioModalOpen(true) : handleCreateNote('normal')}
                           className="h-11 px-8 rounded-xl border border-accent/20 text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-white transition-all"
                         >
-                          Initialize First Entry
+                          {activeTab === 'audio' ? 'Record Audio Note' : 'Create First Note'}
                         </button>
                       </div>
                     ) : (
@@ -518,13 +548,15 @@ export default function NotesSystem() {
                         ))}
                         {viewMode === 'grid' && (
                           <button 
-                            onClick={() => handleCreateNote('normal')}
+                            onClick={() => activeTab === 'audio' ? setIsAudioModalOpen(true) : handleCreateNote('normal')}
                             className="min-h-32 border-b border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
                           >
                              <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
-                                <Plus size={24} />
+                                {activeTab === 'audio' ? <Mic size={24} /> : <Plus size={24} />}
                              </div>
-                             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary/40 group-hover:text-accent transition-colors">Add New Note</span>
+                             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary/40 group-hover:text-accent transition-colors">
+                              {activeTab === 'audio' ? 'Record Audio Note' : 'Add New Note'}
+                             </span>
                           </button>
                         )}
                       </div>

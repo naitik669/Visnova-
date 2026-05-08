@@ -34,7 +34,7 @@ import { Plus, MoreHorizontal } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const COLUMNS: { id: Vision['status']; label: string }[] = [
-  { id: 'idea', label: 'Library' },
+  { id: 'idea', label: 'Backlog' },
   { id: 'planning', label: 'Planning' },
   { id: 'in-progress', label: 'Execution' },
   { id: 'completed', label: 'Success' },

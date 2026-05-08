@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, BookOpen, MoreHorizontal, GraduationCap } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, MoreHorizontal, GraduationCap } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -37,9 +37,14 @@ import { supabase } from './lib/supabase';
 function AccountabilityNudge() {
   const [visible, setVisible] = useState(false);
   const { visions } = useStore();
+  const todayDismissKey = `visnova_nudge_dismissed_${new Date().toISOString().slice(0, 10)}`;
 
   useEffect(() => {
-    // Only show if there's an uncompleted primary task
+    setVisible(false);
+    if (typeof window !== 'undefined' && localStorage.getItem(todayDismissKey) === 'true') {
+      return;
+    }
+
     const hasUncompleted = (visions || []).some(v =>
       v &&
       v.status === 'in-progress' &&
@@ -49,11 +54,18 @@ function AccountabilityNudge() {
     );
     if (hasUncompleted) {
       const timer = setTimeout(() => {
-        setVisible(true);
-      }, 5000); // Simulate notification appearing after 5 seconds of session
+        if (localStorage.getItem(todayDismissKey) !== 'true') {
+          setVisible(true);
+        }
+      }, 10 * 60 * 1000);
       return () => clearTimeout(timer);
     }
-  }, [visions]);
+  }, [visions, todayDismissKey]);
+
+  const dismissForToday = () => {
+    localStorage.setItem(todayDismissKey, 'true');
+    setVisible(false);
+  };
 
   if (!visible) return null;
 
@@ -64,7 +76,7 @@ function AccountabilityNudge() {
       exit={{ opacity: 0, scale: 0.9 }}
       className="fixed bottom-24 right-8 lg:bottom-12 z-[200] max-w-sm w-full bg-card border-2 border-accent text-text-main p-6 shadow-2xl shadow-accent/20"
     >
-      <button onClick={() => setVisible(false)} className="absolute top-4 right-4 text-text-secondary/50 hover:text-text-main transition-colors">
+      <button onClick={dismissForToday} className="absolute top-4 right-4 text-text-secondary/50 hover:text-text-main transition-colors">
          <X size={16} />
       </button>
       <div className="flex gap-4">
@@ -78,10 +90,10 @@ function AccountabilityNudge() {
           </p>
           <div className="pt-2">
             <button
-              onClick={() => setVisible(false)}
+              onClick={dismissForToday}
               className="text-[10px] font-black uppercase tracking-widest text-accent hover:text-accent/80 transition-colors"
             >
-              Acknowledge
+              Dismiss today
             </button>
           </div>
         </div>
@@ -108,8 +120,7 @@ function Sidebar() {
     { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Target, label: 'Visions', path: '/vision', id: 'nav-vision' },
-    { icon: LibraryBig, label: 'Library', path: '/notes' },
-    { icon: BookOpen, label: 'Journal', path: '/journal' },
+    { icon: LibraryBig, label: 'Notes', path: '/notes' },
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
@@ -289,8 +300,8 @@ function MobileNav() {
       <Link to="/notes" className={cn(location.pathname === '/notes' ? "text-accent" : "text-text-secondary/50")}>
         <LibraryBig size={22} />
       </Link>
-      <Link to="/journal" className={cn(location.pathname === '/journal' ? "text-accent" : "text-text-secondary/50")}>
-        <BookOpen size={22} />
+      <Link to="/growth" className={cn(location.pathname === '/growth' ? "text-accent" : "text-text-secondary/50")}>
+        <GraduationCap size={22} />
       </Link>
       <Link to="/profile" className={cn(location.pathname === '/profile' ? "text-accent" : "text-text-secondary/50")}>
         <User size={22} />
@@ -303,8 +314,8 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Dashboard', subtitle: 'Your daily progress space' },
   '/feed': { title: 'Feed', subtitle: 'Share progress and support others' },
   '/vision': { title: 'Visions', subtitle: 'Plan goals and move tasks forward' },
-  '/notes': { title: 'Library', subtitle: 'Notes, folders, and saved resources' },
-  '/journal': { title: 'Journal', subtitle: 'Notebook writing space' },
+  '/notes': { title: 'Notes', subtitle: 'Normal notes, audio notes, vault, and journal' },
+  '/journal': { title: 'Notes', subtitle: 'Normal notes, audio notes, vault, and journal' },
   '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
   '/growth': { title: 'Growth', subtitle: 'Learn with purpose and turn resources into action' },
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },

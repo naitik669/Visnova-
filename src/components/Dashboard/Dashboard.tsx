@@ -656,7 +656,7 @@ export default function Dashboard() {
                   </h3>
                 </div>
                 <button
-                  onClick={() => navigate("/journal")}
+                  onClick={() => navigate("/notes?tab=journal")}
                   className="text-[10px] font-bold tracking-widest uppercase text-accent bg-accent/10 px-3 py-1 rounded-full hover:bg-accent/20 transition-colors"
                 >
                   Open Journal
@@ -665,7 +665,7 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-full flex-1 items-start">
                 <div
-                  onClick={() => navigate("/journal")}
+                  onClick={() => navigate("/notes?tab=journal")}
                   className="bg-app-container rounded-[2rem] p-6 w-full flex flex-col gap-4 relative overflow-hidden group border border-transparent hover:border-accent/20 transition-all min-h-[180px] cursor-pointer"
                 >
                   {currentJournalEntry ? (
@@ -867,7 +867,7 @@ export default function Dashboard() {
                 onClick={() => navigate('/notes')}
                 className="text-[10px] font-black text-accent uppercase tracking-widest hover:underline"
               >
-                View Library
+                View Notes
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

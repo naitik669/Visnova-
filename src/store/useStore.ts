@@ -1071,7 +1071,7 @@ export const useStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to set date note:', error);
-      get().addToast({ type: 'error', title: 'Library Sync Error', description: 'Could not preserve date note.' });
+      get().addToast({ type: 'error', title: 'Notes Sync Error', description: 'Could not preserve date note.' });
     }
   },
 
