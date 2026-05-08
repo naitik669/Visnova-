@@ -450,7 +450,7 @@ function AppContent() {
                     <Route path="/communities" element={<CommunitySpaces />} />
                     <Route path="/messages" element={<MessagesPage />} />
                     <Route path="/notes" element={<NotesSystem />} />
-                    <Route path="/journal" element={<NotesSystem />} />
+                    <Route path="/journal" element={<Navigate to="/notes?tab=journal" replace />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/nova-clock" element={<NovaClock />} />

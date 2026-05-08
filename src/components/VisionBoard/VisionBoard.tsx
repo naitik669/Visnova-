@@ -23,9 +23,10 @@ import VisionHints from './VisionHints';
 import DailyJournal from './DailyJournal';
 import { Vision } from '../../types';
 import { cn } from '../../lib/utils';
+import { supabase } from '../../lib/supabase';
 
 export default function VisionBoard() {
-  const { visions, addVision, updateVision, addActivity, addToast } = useStore();
+  const { visions, addVision, updateVision, addActivity, addToast, session } = useStore();
   const [selectedVision, setSelectedVision] = useState<Vision | null>(null);
   const [setupVision, setSetupVision] = useState<Vision | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,10 +55,46 @@ export default function VisionBoard() {
     });
   };
 
-  const handleSetupComplete = (updates: Partial<Vision>) => {
+  const handleSetupComplete = async (updates: Partial<Vision>) => {
     if (setupVision) {
-      updateVision(setupVision.id, updates);
-      const updatedVision = { ...setupVision, ...updates };
+      let savedTasks = updates.tasks;
+      const userId = session?.user?.id;
+
+      if (userId && updates.tasks?.length) {
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert(updates.tasks.map((task, index) => ({
+            user_id: userId,
+            vision_id: setupVision.id,
+            text: task.text,
+            completed: task.completed ?? false,
+            priority: task.priority || 'low',
+            sub_tasks: task.subTasks || [],
+            sort_order: index
+          })))
+          .select('*');
+
+        if (error) {
+          console.error('Failed to save setup tasks:', error);
+          addToast({
+            type: 'error',
+            title: 'Tasks not saved',
+            description: error.message || 'Your vision was saved, but template tasks could not be created.'
+          });
+        } else {
+          savedTasks = (data || []).map((task: any) => ({
+            id: task.id,
+            text: task.text,
+            completed: task.completed,
+            priority: task.priority || 'low',
+            subTasks: task.sub_tasks || []
+          }));
+        }
+      }
+
+      const normalizedUpdates = { ...updates, tasks: savedTasks || [] };
+      updateVision(setupVision.id, normalizedUpdates);
+      const updatedVision = { ...setupVision, ...normalizedUpdates };
       setSetupVision(null);
       setSelectedVision(updatedVision);
       setIsModalOpen(true);

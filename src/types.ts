@@ -56,6 +56,7 @@ export interface Vision {
   color?: string;
   category?: string;
   visibility?: 'private' | 'friends' | 'public';
+  deadline?: string | null;
   createdAt: number;
   elements?: VisionElement[];
   collaborators?: {
@@ -105,7 +106,7 @@ export interface Note {
   id: string;
   title: string;
   content: string;
-  note_type: 'vault' | 'journal' | 'library';
+  note_type: 'vault' | 'journal';
   folderId: string | null;
   tags: string[];
   linkedVisionId: string | null;

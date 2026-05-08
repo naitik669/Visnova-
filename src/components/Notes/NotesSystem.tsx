@@ -46,8 +46,8 @@ import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
 export default function NotesSystem() {
   const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user, addToast } = useStore();
   const location = useLocation();
-  const initialTab = new URLSearchParams(location.search).get('tab') === 'journal' || location.pathname.includes('journal') ? 'journal' : 'library';
-  const [activeTab, setActiveTab] = useState<'library' | 'journal'>(initialTab);
+  const initialTab = new URLSearchParams(location.search).get('tab') === 'journal' || location.pathname.includes('journal') ? 'journal' : 'vault';
+  const [activeTab, setActiveTab] = useState<'vault' | 'journal'>(initialTab);
   const [isJournalFullView, setIsJournalFullView] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [folderViewer, setFolderViewer] = useState<FolderType | null>(null);
@@ -59,7 +59,7 @@ export default function NotesSystem() {
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');
-    setActiveTab(tab === 'journal' || location.pathname.includes('journal') ? 'journal' : 'library');
+    setActiveTab(tab === 'journal' || location.pathname.includes('journal') ? 'journal' : 'vault');
   }, [location.pathname, location.search]);
 
   const [sidebarFilter, setSidebarFilter] = useState<'all' | 'recent' | 'favorites' | 'trash'>('all');
@@ -70,12 +70,12 @@ export default function NotesSystem() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLibrarySidebarHovered, setIsLibrarySidebarHovered] = useState(false);
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('all');
-  const activeNoteType = activeTab === 'library' ? 'vault' : 'journal';
+  const activeNoteType = activeTab;
 
   useEffect(() => {
     const folderId = new URLSearchParams(location.search).get('folder');
     if (folderId) {
-      setActiveTab('library');
+      setActiveTab('vault');
       setSelectedFolder(folderId);
     }
   }, [location.search]);
@@ -126,7 +126,7 @@ export default function NotesSystem() {
       result = result.filter(n => n.isDeleted);
     } else {
       // Exclude deleted notes from normal views
-      result = result.filter(n => !n.isDeleted && (n.note_type === activeNoteType || (activeTab === 'library' && n.note_type === 'library')));
+      result = result.filter(n => !n.isDeleted && n.note_type === activeNoteType);
 
       // Apply sidebar filters
       if (sidebarFilter === 'recent') {
@@ -136,8 +136,8 @@ export default function NotesSystem() {
         result = result.filter(n => n.isFavorite);
       }
 
-      // Library specific folder filter
-      if (activeTab === 'library' && selectedFolder) {
+      // Vault-specific folder filter
+      if (activeTab === 'vault' && selectedFolder) {
         result = result.filter(n => n.folderId === selectedFolder);
       }
 
@@ -164,7 +164,7 @@ export default function NotesSystem() {
   const filteredFolders = useMemo(() => {
     if (timeFilter === 'all') return folders;
     return folders.filter(folder => {
-      const folderNotes = notes.filter(n => n.folderId === folder.id && !n.isDeleted && (n.note_type === 'vault' || n.note_type === 'library'));
+      const folderNotes = notes.filter(n => n.folderId === folder.id && !n.isDeleted && n.note_type === 'vault');
       return folderNotes.some(note => timeFilter === 'today' ? isToday(note.updatedAt) : isThisWeek(note.updatedAt));
     });
   }, [folders, notes, timeFilter]);
@@ -174,7 +174,7 @@ export default function NotesSystem() {
     [notes, selectedNoteId]
   );
 
-  const handleCreateNote = (type: 'library' | 'journal') => {
+  const handleCreateNote = (type: 'vault' | 'journal') => {
     const defaultTitle = type === 'journal' 
       ? `Entry ${format(new Date(), 'MMM dd, yyyy')}`
       : 'Untitled Note';
@@ -182,8 +182,8 @@ export default function NotesSystem() {
     addNote({
       title: defaultTitle,
       content: '',
-      note_type: type === 'library' ? 'vault' : 'journal',
-      folderId: type === 'library' ? selectedFolder : null,
+      note_type: type,
+      folderId: type === 'vault' ? selectedFolder : null,
       tags: [],
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -273,7 +273,7 @@ export default function NotesSystem() {
                       <button 
                         key={f.id} 
                         onClick={() => {
-                          setActiveTab('library');
+                          setActiveTab('vault');
                           setSelectedFolder(f.id);
                         }}
                         className={cn(
@@ -308,7 +308,7 @@ export default function NotesSystem() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-app-container overflow-hidden relative">
         {/* Top Header - Reduced size and condensed content */}
-        {!isJournalFullView && activeTab === 'library' && (
+        {!isJournalFullView && activeTab === 'vault' && (
           <header className={cn(
             "flex items-center justify-between px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500",
             "h-28"
@@ -363,7 +363,7 @@ export default function NotesSystem() {
                 "mx-auto transition-all duration-700",
                 isJournalFullView ? "max-w-none h-full" : activeTab === 'journal' ? "max-w-[1800px] space-y-6" : "max-w-[1600px] space-y-16"
               )}>
-                {activeTab === 'library' && (
+                {activeTab === 'vault' && (
                   <section className="space-y-8">
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                       <div className="space-y-1">
@@ -418,10 +418,10 @@ export default function NotesSystem() {
                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div className="space-y-1">
                           <h3 className="text-xl font-black text-text-main tracking-tight uppercase">
-                            {activeTab === 'library' ? 'VAULT' : 'JOURNAL'}
+                            {activeTab === 'vault' ? 'VAULT' : 'JOURNAL'}
                           </h3>
                           <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">
-                            {activeTab === 'library' ? 'Notes, folders, and saved resources' : 'Daily writing space'}
+                            {activeTab === 'vault' ? 'Notes, folders, and saved resources' : 'Daily writing space'}
                           </p>
                         </div>
                         <div className="flex items-center gap-4 self-start sm:self-auto">
@@ -469,7 +469,7 @@ export default function NotesSystem() {
                         streak={streak}
                         fullView={isJournalFullView}
                         toggleFullView={() => setIsJournalFullView(!isJournalFullView)}
-                        recentLibraryNotes={notes.filter(n => (n.note_type === 'vault' || n.note_type === 'library') && !n.isDeleted).slice(0, 5)}
+                        recentLibraryNotes={notes.filter(n => n.note_type === 'vault' && !n.isDeleted).slice(0, 5)}
                         onSave={(content: string, updates: any) => {
                           if (journalEntry) {
                             updateNote(journalEntry.id, { content, ...updates });
@@ -508,7 +508,7 @@ export default function NotesSystem() {
                         ))}
                         {viewMode === 'grid' && (
                           <button 
-                            onClick={() => handleCreateNote('library')}
+                            onClick={() => handleCreateNote('vault')}
                             className="min-h-32 border-b border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
                           >
                              <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
@@ -1420,7 +1420,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               <ChevronRight className="rotate-180" size={18} />
            </button>
            <div className="space-y-0.5">
-             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">{note.note_type === 'vault' ? 'Library' : note.note_type}</span>
+             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">{note.note_type === 'vault' ? 'Vault' : note.note_type}</span>
              <p className="text-[9px] font-bold text-accent uppercase tracking-widest leading-none">Writing Space</p>
            </div>
         </div>
@@ -1511,7 +1511,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
           )}
 
           <div className="space-y-10 pt-16 border-t border-card-border/50">
-            {(note.note_type === 'library' || note.note_type === 'vault') && (
+            {note.note_type === 'vault' && (
               <div className="flex items-center gap-3">
                 <Folder size={16} className="text-accent" />
                 <select
@@ -1559,7 +1559,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
               <div className="flex items-center gap-6">
                 <span>Created {format(note.createdAt, 'MMM dd, yyyy')}</span>
-                <span>Type: {note.note_type === 'vault' ? 'library' : note.note_type}</span>
+                <span>Type: {note.note_type === 'vault' ? 'vault' : note.note_type}</span>
               </div>
               <button 
                 onClick={() => {

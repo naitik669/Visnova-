@@ -486,6 +486,7 @@ export const useStore = create<AppState>((set, get) => ({
           elements: v.elements || [],
           createdAt: new Date(v.created_at).getTime(),
           visibility: v.visibility,
+          deadline: v.deadline,
         };
       });
 
@@ -650,7 +651,8 @@ export const useStore = create<AppState>((set, get) => ({
           notes: newVision.notes,
           proof: newVision.proof,
           elements: newVision.elements || [],
-          visibility: newVision.visibility || 'private'
+          visibility: newVision.visibility || 'private',
+          deadline: newVision.deadline || null
         })
         .select()
         .single();
@@ -690,8 +692,11 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.proof !== undefined) dbUpdates.proof = updates.proof;
       if (updates.elements !== undefined) dbUpdates.elements = updates.elements;
       if (updates.visibility !== undefined) dbUpdates.visibility = updates.visibility;
+      if (updates.deadline !== undefined) dbUpdates.deadline = updates.deadline;
       dbUpdates.updated_at = new Date().toISOString();
-      const { error } = await supabase.from('visions').update(dbUpdates).eq('id', id);
+      const userId = get().session?.user?.id;
+      const query = supabase.from('visions').update(dbUpdates).eq('id', id);
+      const { error } = userId ? await query.eq('user_id', userId) : await query;
       if (error) throw error;
     } catch (error: any) {
       console.error('Failed to update vision:', error);
@@ -706,7 +711,10 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      await supabase.from('visions').delete().eq('id', id);
+      const userId = get().session?.user?.id;
+      const query = supabase.from('visions').delete().eq('id', id);
+      const { error } = userId ? await query.eq('user_id', userId) : await query;
+      if (error) throw error;
     } catch (error) {
       console.error('Failed to delete vision:', error);
     }
@@ -1208,7 +1216,7 @@ export const useStore = create<AppState>((set, get) => ({
       id: tempId,
       title: note.title || 'Untitled Note',
       content: note.content || '',
-      note_type: note.note_type === 'library' ? 'vault' : (note.note_type || 'vault'),
+      note_type: note.note_type || 'vault',
       folderId: note.folderId || null,
       tags: note.tags || [],
       linkedVisionId: note.linkedVisionId || null,
@@ -1234,7 +1242,7 @@ export const useStore = create<AppState>((set, get) => ({
       const { data, error } = await supabase.from('notes').insert({
         title: noteData.title,
         content: noteData.content,
-        note_type: noteData.note_type === 'library' ? 'vault' : noteData.note_type,
+        note_type: noteData.note_type,
         folder_id: noteData.folderId,
         tags: noteData.tags,
         visibility: noteData.visibility,
