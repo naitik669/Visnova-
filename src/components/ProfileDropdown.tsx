@@ -40,10 +40,10 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
   };
 
   const menuItems = [
-    { icon: User, label: 'Profile', onClick: () => { setSelectedProfileId('me'); navigate('/profile'); onClose(); } },
-    { icon: MessageSquare, label: 'Your Posts', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=posts'); onClose(); } },
-    { icon: Bookmark, label: 'Saved', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=saved'); onClose(); } },
-    { icon: Settings, label: 'Settings', onClick: () => { setSelectedProfileId('me'); navigate('/profile?tab=settings'); onClose(); } },
+    { icon: User, label: 'Profile', onClick: () => { setSelectedProfileId(null); navigate('/profile'); onClose(); } },
+    { icon: MessageSquare, label: 'Your Posts', onClick: () => { setSelectedProfileId(null); navigate('/profile?tab=posts'); onClose(); } },
+    { icon: Bookmark, label: 'Saved', onClick: () => { setSelectedProfileId(null); navigate('/feed?tab=saved'); onClose(); } },
+    { icon: Settings, label: 'Settings', onClick: () => { setSelectedProfileId(null); navigate('/settings'); onClose(); } },
     { icon: Bell, label: 'Notifications', onClick: () => { window.dispatchEvent(new Event('open-visnova-notifications')); onClose(); } },
     { icon: HelpCircle, label: 'Help / Support', onClick: () => { window.dispatchEvent(new Event('open-visnova-help')); onClose(); } },
   ];

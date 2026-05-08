@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Zap,
@@ -167,7 +167,9 @@ function DiscoverCommunitiesPreview() {
 }
 
 export default function CommunityFeed() {
-  const [activeTab, setActiveTab] = useState<'feed' | 'explore' | 'saved'>('feed');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'saved' ? 'saved' : searchParams.get('tab') === 'explore' ? 'explore' : 'feed';
+  const [activeTab, setActiveTab] = useState<'feed' | 'explore' | 'saved'>(initialTab);
   const [feedSubTab, setFeedSubTab] = useState<'recommended' | 'following' | 'latest'>('recommended');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchedUsers, setSearchedUsers] = useState<any[]>([]);
@@ -179,17 +181,30 @@ export default function CommunityFeed() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if ((requestedTab === 'saved' || requestedTab === 'explore') && requestedTab !== activeTab) {
+      setActiveTab(requestedTab);
+      setSearchQuery('');
+    }
+  }, [searchParams, activeTab]);
+
+  useEffect(() => {
     const pendingHashtag = sessionStorage.getItem('visnova-feed-hashtag');
     if (pendingHashtag) {
       sessionStorage.removeItem('visnova-feed-hashtag');
       setActiveTab('explore');
+      setSearchParams({ tab: 'explore' });
       setSearchQuery(`#${normalizeHashtag(pendingHashtag)}`);
     }
 
-    const handleNavExplore = () => setActiveTab('explore');
+    const handleNavExplore = () => {
+      setActiveTab('explore');
+      setSearchParams({ tab: 'explore' });
+    };
     const handleNavHashtag = (event: Event) => {
       const tag = (event as CustomEvent<string>).detail;
       setActiveTab('explore');
+      setSearchParams({ tab: 'explore' });
       if (tag) setSearchQuery(`#${normalizeHashtag(tag)}`);
     };
     window.addEventListener('nav-explore', handleNavExplore);
@@ -198,7 +213,7 @@ export default function CommunityFeed() {
       window.removeEventListener('nav-explore', handleNavExplore);
       window.removeEventListener('nav-hashtag', handleNavHashtag);
     };
-  }, []);
+  }, [setSearchParams]);
 
   useEffect(() => {
     const load = async () => {
@@ -338,11 +353,14 @@ export default function CommunityFeed() {
 
   const handleHashtagClick = (tag: string) => {
     setActiveTab('explore');
+    setSearchParams({ tab: 'explore' });
     setSearchQuery(`#${normalizeHashtag(tag)}`);
   };
 
   const switchTab = (tab: 'feed' | 'explore' | 'saved') => {
     setActiveTab(tab);
+    if (tab === 'feed') setSearchParams({});
+    else setSearchParams({ tab });
     setSearchQuery(''); // Clear search on tab switch as requested
   };
 
