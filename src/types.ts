@@ -13,7 +13,7 @@ export interface Task {
 
 export interface VisionElement {
   id: string;
-  type: 'image' | 'text' | 'link' | 'emoji' | 'note' | 'quote' | 'shape' | 'connector' | 'sticky' | 'section' | 'heading';
+  type: 'image' | 'text' | 'link' | 'emoji' | 'note' | 'quote' | 'shape' | 'connector' | 'sticky' | 'section' | 'heading' | 'checklist' | 'task' | 'flowchartNode';
   content: string;
   x: number;
   y: number;
@@ -27,6 +27,8 @@ export interface VisionElement {
     description?: string;
     source?: string;
     noteId?: string;
+    taskId?: string;
+    visionId?: string;
     color?: string;
     author?: string;
     shapeType?: 'rectangle' | 'circle' | 'diamond' | 'arrow' | 'line';
@@ -40,6 +42,12 @@ export interface VisionElement {
     fontFamily?: string;
     fontWeight?: string;
     textAlign?: 'left' | 'center' | 'right';
+    strokeColor?: string;
+    fillColor?: string;
+    borderStyle?: string;
+    arrowType?: string;
+    imageUrl?: string;
+    storagePath?: string;
   };
 }
 
@@ -106,7 +114,7 @@ export interface Note {
   id: string;
   title: string;
   content: string;
-  note_type: 'vault' | 'journal';
+  note_type: 'normal' | 'audio' | 'journal';
   folderId: string | null;
   tags: string[];
   linkedVisionId: string | null;
@@ -120,6 +128,8 @@ export interface Note {
   image_url?: string;
   audio_url?: string;
   audio_path?: string;
+  audio_duration?: number;
+  audio_mime_type?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -319,7 +329,7 @@ export interface AppState {
   addFolder: (folder: Partial<Folder>) => void;
   updateFolder: (id: string, updates: Partial<Folder>) => void;
   deleteFolder: (id: string) => void;
-  addNote: (note: Partial<Note>) => void;
+  addNote: (note: Partial<Note>) => Promise<Note | false>;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
   addTodo: (text: string) => void;

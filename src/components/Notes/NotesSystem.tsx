@@ -50,6 +50,7 @@ export default function NotesSystem() {
   const [activeTab, setActiveTab] = useState<'vault' | 'journal'>(initialTab);
   const [isJournalFullView, setIsJournalFullView] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [folderViewer, setFolderViewer] = useState<FolderType | null>(null);
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function NotesSystem() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLibrarySidebarHovered, setIsLibrarySidebarHovered] = useState(false);
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('all');
-  const activeNoteType = activeTab;
+  const libraryNoteTypes: Note['note_type'][] = ['normal', 'audio'];
 
   useEffect(() => {
     const folderId = new URLSearchParams(location.search).get('folder');
@@ -126,7 +127,7 @@ export default function NotesSystem() {
       result = result.filter(n => n.isDeleted);
     } else {
       // Exclude deleted notes from normal views
-      result = result.filter(n => !n.isDeleted && n.note_type === activeNoteType);
+      result = result.filter(n => !n.isDeleted && (activeTab === 'journal' ? n.note_type === 'journal' : libraryNoteTypes.includes(n.note_type)));
 
       // Apply sidebar filters
       if (sidebarFilter === 'recent') {
@@ -164,7 +165,7 @@ export default function NotesSystem() {
   const filteredFolders = useMemo(() => {
     if (timeFilter === 'all') return folders;
     return folders.filter(folder => {
-      const folderNotes = notes.filter(n => n.folderId === folder.id && !n.isDeleted && n.note_type === 'vault');
+      const folderNotes = notes.filter(n => n.folderId === folder.id && !n.isDeleted && libraryNoteTypes.includes(n.note_type));
       return folderNotes.some(note => timeFilter === 'today' ? isToday(note.updatedAt) : isThisWeek(note.updatedAt));
     });
   }, [folders, notes, timeFilter]);
@@ -174,7 +175,7 @@ export default function NotesSystem() {
     [notes, selectedNoteId]
   );
 
-  const handleCreateNote = (type: 'vault' | 'journal') => {
+  const handleCreateNote = (type: 'normal' | 'journal') => {
     const defaultTitle = type === 'journal' 
       ? `Entry ${format(new Date(), 'MMM dd, yyyy')}`
       : 'Untitled Note';
@@ -183,7 +184,7 @@ export default function NotesSystem() {
       title: defaultTitle,
       content: '',
       note_type: type,
-      folderId: type === 'vault' ? selectedFolder : null,
+      folderId: type === 'normal' ? selectedFolder : null,
       tags: [],
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -214,12 +215,21 @@ export default function NotesSystem() {
               {/* Add New Section like in image */}
               <div className={cn(isLibrarySidebarHovered ? "block" : "hidden")}>
                 <button 
-                  onClick={() => handleCreateNote(activeTab)}
+                  onClick={() => handleCreateNote('normal')}
                   className="w-full h-12 flex items-center justify-center gap-3 bg-accent text-white rounded-2xl font-bold text-xs shadow-xl shadow-accent/10 hover:scale-[1.02] transition-all"
                 >
                   <Plus size={16} />
                   Add new
                 </button>
+                {activeTab === 'vault' && (
+                  <button
+                    onClick={() => setIsAudioModalOpen(true)}
+                    className="w-full h-12 mt-3 flex items-center justify-center gap-3 bg-surface-muted text-accent rounded-2xl font-bold text-xs border border-card-border hover:bg-accent/5 transition-all"
+                  >
+                    <Mic size={16} />
+                    New Audio Note
+                  </button>
+                )}
               </div>
 
               <nav className="flex-1 w-full space-y-6">
@@ -335,7 +345,7 @@ export default function NotesSystem() {
                 />
               </div>
               <button 
-                onClick={() => handleCreateNote(activeTab)}
+                onClick={() => handleCreateNote('normal')}
                 className="w-12 h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/10 hover:scale-105 transition-all md:hidden"
               >
                 <Plus size={24} />
@@ -469,7 +479,7 @@ export default function NotesSystem() {
                         streak={streak}
                         fullView={isJournalFullView}
                         toggleFullView={() => setIsJournalFullView(!isJournalFullView)}
-                        recentLibraryNotes={notes.filter(n => n.note_type === 'vault' && !n.isDeleted).slice(0, 5)}
+                        recentLibraryNotes={notes.filter(n => libraryNoteTypes.includes(n.note_type) && !n.isDeleted).slice(0, 5)}
                         onSave={(content: string, updates: any) => {
                           if (journalEntry) {
                             updateNote(journalEntry.id, { content, ...updates });
@@ -492,7 +502,7 @@ export default function NotesSystem() {
                         </div>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary/40 mb-6">No workspace records detected</p>
                         <button 
-                          onClick={() => handleCreateNote(activeTab)}
+                          onClick={() => handleCreateNote('normal')}
                           className="h-11 px-8 rounded-xl border border-accent/20 text-accent text-[10px] font-black uppercase tracking-widest hover:bg-accent hover:text-white transition-all"
                         >
                           Initialize First Entry
@@ -508,7 +518,7 @@ export default function NotesSystem() {
                         ))}
                         {viewMode === 'grid' && (
                           <button 
-                            onClick={() => handleCreateNote('vault')}
+                            onClick={() => handleCreateNote('normal')}
                             className="min-h-32 border-b border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
                           >
                              <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
@@ -530,6 +540,15 @@ export default function NotesSystem() {
         folders={folders}
         onClose={() => setIsFolderModalOpen(false)}
         onCreate={handleNewFolder}
+      />
+      <NewAudioNoteModal
+        isOpen={isAudioModalOpen}
+        selectedFolder={selectedFolder}
+        onClose={() => setIsAudioModalOpen(false)}
+        onSaved={(noteId) => {
+          setIsAudioModalOpen(false);
+          setSelectedNoteId(noteId);
+        }}
       />
       <FolderViewerModal
         folder={folderViewer}
@@ -1226,8 +1245,204 @@ function FolderCard({ folder, active, onClick, onDoubleClick }: { folder: any, a
   );
 }
 
+function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
+  isOpen: boolean;
+  selectedFolder: string | null;
+  onClose: () => void;
+  onSaved: (noteId: string) => void;
+}) {
+  const { addNote, session, addToast } = useStore();
+  const [title, setTitle] = useState('Audio Note');
+  const [content, setContent] = useState('');
+  const [status, setStatus] = useState<'idle' | 'requesting_permission' | 'recording' | 'stopped' | 'uploading' | 'saved' | 'failed'>('idle');
+  const [audioUrl, setAudioUrl] = useState('');
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [duration, setDuration] = useState(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const startedAtRef = useRef(0);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    return () => {
+      recorderRef.current?.stop();
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+    };
+  }, [isOpen, audioUrl]);
+
+  const resetDraft = () => {
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    setAudioUrl('');
+    setAudioBlob(null);
+    setDuration(0);
+    setStatus('idle');
+  };
+
+  const startRecording = async () => {
+    if (!session?.user?.id) {
+      addToast({ type: 'error', title: 'Login required', description: 'Sign in to record an audio note.' });
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      addToast({ type: 'error', title: 'Recording unavailable', description: 'Audio recording is not supported in this browser.' });
+      setStatus('failed');
+      return;
+    }
+
+    setStatus('requesting_permission');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const chunks: BlobPart[] = [];
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorderRef.current = recorder;
+      startedAtRef.current = Date.now();
+      recorder.ondataavailable = event => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+        const recordedType = (recorder.mimeType || 'audio/webm').split(';')[0];
+        const blob = new Blob(chunks, { type: recordedType });
+        setAudioBlob(blob);
+        setAudioUrl(URL.createObjectURL(blob));
+        setDuration(Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000)));
+        setStatus('stopped');
+      };
+      recorder.start();
+      setStatus('recording');
+    } catch (error: any) {
+      console.error('Recording failed:', error);
+      setStatus('failed');
+      addToast({
+        type: 'error',
+        title: 'Recording failed',
+        description: error?.name === 'NotAllowedError'
+          ? 'Microphone permission is required to record an audio note.'
+          : 'Recording failed. Try again.'
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+  };
+
+  const saveAudioNote = async () => {
+    if (!audioBlob) {
+      addToast({ type: 'error', title: 'No recording', description: 'Record audio before saving.' });
+      return;
+    }
+    setStatus('uploading');
+    try {
+      const file = new File([audioBlob], `audio-note-${Date.now()}.webm`, { type: audioBlob.type || 'audio/webm' });
+      const { signedUrl, filePath } = await uploadAudioNote(file, session?.user?.id);
+      const created = await addNote({
+        title: title.trim() || 'Audio Note',
+        content,
+        note_type: 'audio',
+        folderId: selectedFolder,
+        audio_path: filePath,
+        audio_url: signedUrl,
+        audio_duration: duration,
+        audio_mime_type: file.type,
+        tags: []
+      });
+      if (!created) throw new Error('Could not create audio note.');
+      setStatus('saved');
+      addToast({ type: 'success', title: 'Audio note saved', description: 'Your recording is in Notes.' });
+      onSaved(created.id);
+      resetDraft();
+    } catch (error: any) {
+      console.error('Audio note save failed:', error);
+      setStatus('failed');
+      addToast({ type: 'error', title: 'Audio note failed', description: error.message || 'Could not save this audio note.' });
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 10 }}
+          className="w-full max-w-xl rounded-3xl bg-card border border-card-border shadow-2xl overflow-hidden"
+        >
+          <div className="p-6 border-b border-card-border flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-black text-text-main">New Audio Note</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">Recording and playback</p>
+            </div>
+            <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-accent transition-colors">
+              <X size={16} className="mx-auto" />
+            </button>
+          </div>
+          <div className="p-6 space-y-5">
+            <input
+              value={title}
+              onChange={event => setTitle(event.target.value)}
+              className="w-full h-12 px-4 rounded-xl bg-bg-base border border-card-border text-sm font-bold text-text-main focus:outline-none focus:border-accent"
+              placeholder="Audio note title"
+            />
+            <textarea
+              value={content}
+              onChange={event => setContent(event.target.value)}
+              className="w-full min-h-24 p-4 rounded-xl bg-bg-base border border-card-border text-sm text-text-secondary focus:outline-none focus:border-accent resize-none"
+              placeholder="Optional description"
+            />
+            <div className="rounded-2xl border border-card-border bg-bg-base/40 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">
+                  {status === 'requesting_permission' ? 'Requesting microphone' : status === 'recording' ? 'Recording' : status === 'uploading' ? 'Uploading' : status === 'failed' ? 'Failed' : audioBlob ? 'Preview' : 'Ready'}
+                </span>
+                {duration > 0 && <span className="text-[10px] font-black text-accent">{duration}s</span>}
+              </div>
+              {audioUrl ? (
+                <audio src={audioUrl} controls className="w-full" />
+              ) : (
+                <div className="h-20 rounded-xl border border-dashed border-card-border flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-text-secondary/40">
+                  Start recording to preview audio
+                </div>
+              )}
+              <div className="flex flex-wrap gap-3">
+                {status !== 'recording' ? (
+                  <button onClick={startRecording} disabled={status === 'uploading'} className="h-11 px-5 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+                    {audioBlob ? 'Record Again' : 'Start Recording'}
+                  </button>
+                ) : (
+                  <button onClick={stopRecording} className="h-11 px-5 rounded-xl bg-danger text-white text-[10px] font-black uppercase tracking-widest">
+                    Stop Recording
+                  </button>
+                )}
+                {audioBlob && (
+                  <button onClick={resetDraft} disabled={status === 'uploading'} className="h-11 px-5 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+                    Delete Draft
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="p-6 border-t border-card-border flex justify-end gap-3">
+            <button onClick={onClose} className="h-11 px-5 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest">Cancel</button>
+            <button onClick={saveAudioNote} disabled={!audioBlob || status === 'uploading'} className="h-11 px-6 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+              {status === 'uploading' ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}
+
 function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void, viewMode?: 'grid' | 'list' }) {
-  const NoteIcon = note.audio_url ? Volume2 : FileText;
+  const isAudioNote = note.note_type === 'audio' || !!note.audio_path;
+  const NoteIcon = isAudioNote ? Volume2 : FileText;
 
   if (viewMode === 'list') {
     return (
@@ -1274,9 +1489,9 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
           <p className="text-[11px] text-text-secondary/70 font-medium line-clamp-4 leading-relaxed">
             {note.content ? note.content.substring(0, 120) + '...' : "No content yet."}
           </p>
-          {note.audio_url && (
+          {isAudioNote && (
             <p className="inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-accent">
-              <Volume2 size={11} /> Audio note attached
+              <Volume2 size={11} /> Audio Note
             </p>
           )}
        </div>
@@ -1352,7 +1567,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
     try {
       const { signedUrl, filePath } = await uploadAudioNote(file, session?.user?.id);
       setResolvedAudioUrl(signedUrl);
-      updateNote(note.id, { audio_url: signedUrl, audio_path: filePath });
+      updateNote(note.id, { audio_url: signedUrl, audio_path: filePath, audio_mime_type: file.type, note_type: 'audio' });
       addToast({ type: 'success', title: 'Audio attached', description: 'Your audio note was saved.' });
     } catch (error: any) {
       console.error('Failed to attach audio note:', error);
@@ -1420,7 +1635,9 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               <ChevronRight className="rotate-180" size={18} />
            </button>
            <div className="space-y-0.5">
-             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">{note.note_type === 'vault' ? 'Vault' : note.note_type}</span>
+             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">
+               {note.note_type === 'normal' ? 'Normal Note' : note.note_type === 'audio' ? 'Audio Note' : 'Journal'}
+             </span>
              <p className="text-[9px] font-bold text-accent uppercase tracking-widest leading-none">Writing Space</p>
            </div>
         </div>
@@ -1501,7 +1718,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               <button
                 onClick={() => {
                   setResolvedAudioUrl('');
-                  updateNote(note.id, { audio_url: '', audio_path: '' });
+                  updateNote(note.id, { audio_url: '', audio_path: '', audio_duration: undefined, audio_mime_type: undefined, note_type: 'normal' });
                 }}
                 className="h-10 px-4 rounded-xl bg-card border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-danger transition-colors"
               >
@@ -1511,7 +1728,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
           )}
 
           <div className="space-y-10 pt-16 border-t border-card-border/50">
-            {note.note_type === 'vault' && (
+            {(note.note_type === 'normal' || note.note_type === 'audio') && (
               <div className="flex items-center gap-3">
                 <Folder size={16} className="text-accent" />
                 <select
@@ -1559,7 +1776,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
               <div className="flex items-center gap-6">
                 <span>Created {format(note.createdAt, 'MMM dd, yyyy')}</span>
-                <span>Type: {note.note_type === 'vault' ? 'vault' : note.note_type}</span>
+                <span>Type: {note.note_type === 'normal' ? 'normal note' : note.note_type === 'audio' ? 'audio note' : note.note_type}</span>
               </div>
               <button 
                 onClick={() => {

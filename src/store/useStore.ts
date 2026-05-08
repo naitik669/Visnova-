@@ -1208,7 +1208,7 @@ export const useStore = create<AppState>((set, get) => ({
     const userId = get().session?.user?.id;
     if (!userId) {
       get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to create notes.' });
-      return;
+      return false;
     }
     const tempId = Math.random().toString(36).substring(7);
 
@@ -1216,7 +1216,7 @@ export const useStore = create<AppState>((set, get) => ({
       id: tempId,
       title: note.title || 'Untitled Note',
       content: note.content || '',
-      note_type: note.note_type || 'vault',
+      note_type: note.note_type || 'normal',
       folderId: note.folderId || null,
       tags: note.tags || [],
       linkedVisionId: note.linkedVisionId || null,
@@ -1230,6 +1230,8 @@ export const useStore = create<AppState>((set, get) => ({
       image_url: note.image_url,
       audio_url: note.audio_url,
       audio_path: note.audio_path,
+      audio_duration: note.audio_duration,
+      audio_mime_type: note.audio_mime_type,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       ...note,
@@ -1256,6 +1258,8 @@ export const useStore = create<AppState>((set, get) => ({
         image_url: noteData.image_url,
         audio_url: noteData.audio_url,
         audio_path: noteData.audio_path,
+        audio_duration: noteData.audio_duration,
+        audio_mime_type: noteData.audio_mime_type,
         user_id: userId,
         created_at: new Date(noteData.createdAt).toISOString()
       }).select().single();
@@ -1264,10 +1268,12 @@ export const useStore = create<AppState>((set, get) => ({
         notes: state.notes.map(n => n.id === tempId ? { ...n, id: data.id } : n)
       }));
       get().recordDailyActivity(noteData.note_type === 'journal' ? 'journal' : 'note');
+      return { ...newNote, id: data.id };
     } catch (error: any) {
       console.error('Failed to add note:', error);
       set((state) => ({ notes: state.notes.filter(n => n.id !== tempId) }));
       get().addToast({ type: 'error', title: 'Note failed', description: error.message || 'Could not save note.' });
+      return false;
     }
   },
 
@@ -1291,6 +1297,8 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.image_url !== undefined) dbUpdates.image_url = updates.image_url;
       if (updates.audio_url !== undefined) dbUpdates.audio_url = updates.audio_url;
       if (updates.audio_path !== undefined) dbUpdates.audio_path = updates.audio_path;
+      if (updates.audio_duration !== undefined) dbUpdates.audio_duration = updates.audio_duration;
+      if (updates.audio_mime_type !== undefined) dbUpdates.audio_mime_type = updates.audio_mime_type;
       dbUpdates.updated_at = new Date().toISOString();
 
       await supabase.from('notes').update(dbUpdates).eq('id', id);
@@ -1318,7 +1326,7 @@ export const useStore = create<AppState>((set, get) => ({
           id: n.id,
           title: n.title,
           content: n.content,
-          note_type: n.note_type === 'library' ? 'vault' : n.note_type,
+          note_type: n.note_type === 'library' || n.note_type === 'vault' ? 'normal' : n.note_type,
           folderId: n.folder_id,
           tags: n.tags || [],
           linkedVisionId: n.linked_vision_id || null,
@@ -1332,6 +1340,8 @@ export const useStore = create<AppState>((set, get) => ({
           image_url: n.image_url,
           audio_url: n.audio_url || '',
           audio_path: audioPath,
+          audio_duration: n.audio_duration,
+          audio_mime_type: n.audio_mime_type,
           createdAt: new Date(n.created_at).getTime(),
           updatedAt: new Date(n.updated_at).getTime()
         };

@@ -136,7 +136,7 @@ export const uploadAvatar = async (file: File, currentUserId?: string) => {
   return { publicUrl, filePath };
 };
 
-export const uploadAudioNote = async (file: File, currentUserId?: string) => {
+export const uploadAudioNote = async (file: File, currentUserId?: string, noteId?: string) => {
   const userId = await getCurrentUserId(currentUserId);
   const rawType = (file.type || '').toLowerCase();
   const normalizedType = rawType.split(';')[0] || inferAudioTypeFromName(file.name);
@@ -174,7 +174,9 @@ export const uploadAudioNote = async (file: File, currentUserId?: string) => {
     'application/ogg': 'ogg'
   };
   const fileExt = file.name.includes('.') ? file.name.split('.').pop() : extensionByType[normalizedType] || 'webm';
-  const filePath = `${userId}/notes/audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
+  const filePath = noteId
+    ? `${userId}/notes/${noteId}/audio.${fileExt}`
+    : `${userId}/audio/audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
 
   const { error } = await withTimeout(
     supabase.storage
@@ -279,6 +281,50 @@ export const getCapsuleImageUrl = async (path: string) => {
   }
 
   return data?.signedUrl || '';
+};
+
+export const uploadVisionBoardImage = async (file: File, visionId: string, currentUserId?: string) => {
+  const userId = await getCurrentUserId(currentUserId);
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error('Unsupported board image type. Please upload PNG, JPEG, or WebP images.');
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('Vision Board image exceeds 10MB limit.');
+  }
+
+  const fileExt = file.name.split('.').pop() || 'jpg';
+  const safeName = file.name
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-z0-9-_]+/gi, '-')
+    .slice(0, 48) || 'image';
+  const filePath = `${userId}/visions/${visionId}/${safeName}-${Date.now()}.${fileExt}`;
+
+  const { error } = await withTimeout(
+    supabase.storage
+      .from('vision-board-images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        contentType: file.type,
+        upsert: false
+      }),
+    60000,
+    'Vision Board image upload'
+  );
+
+  if (error) {
+    console.error('Vision Board Upload Error:', error);
+    if (/bucket not found/i.test(error.message || '')) {
+      throw new Error('Vision Board image storage is not set up yet. Apply the latest Supabase migrations.');
+    }
+    throw new Error(`Vision Board image upload failed: ${error.message}`);
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('vision-board-images')
+    .getPublicUrl(filePath);
+
+  return { publicUrl, filePath };
 };
 
 const inferAudioTypeFromName = (fileName: string) => {

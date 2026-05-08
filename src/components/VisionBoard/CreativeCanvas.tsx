@@ -6,6 +6,8 @@ import {
   VisionElement 
 } from '../../types';
 import { cn } from '../../lib/utils';
+import { uploadVisionBoardImage } from '../../lib/supabase';
+import { useStore } from '../../store/useStore';
 import { 
   X, 
   Plus,
@@ -57,6 +59,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [tempConnectorEnd, setTempConnectorEnd] = useState<{ x: number, y: number } | null>(null);
   const transformWrapperRef = useRef<any>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const { session, addToast } = useStore();
 
   const elements = vision.elements || [];
 
@@ -77,14 +80,27 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     });
   };
 
-  const importImageFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      if (!result) return;
-      addQuickElement('image', result, { title: file.name });
-    };
-    reader.readAsDataURL(file);
+  const importImageFile = async (file: File, x?: number, y?: number) => {
+    try {
+      const { publicUrl, filePath } = await uploadVisionBoardImage(file, vision.id, session?.user?.id);
+      addElement({
+        id: Math.random().toString(36).substring(7),
+        type: 'image',
+        content: publicUrl,
+        x: x ?? (2500 + Math.random() * 180),
+        y: y ?? (2500 + Math.random() * 120),
+        width: 360,
+        metadata: {
+          title: file.name,
+          imageUrl: publicUrl,
+          storagePath: filePath
+        }
+      });
+      addToast({ type: 'success', title: 'Image added', description: 'Vision Board image uploaded.' });
+    } catch (error: any) {
+      console.error('Vision Board image import failed:', error);
+      addToast({ type: 'error', title: 'Image failed', description: error.message || 'Could not add this image.' });
+    }
   };
 
   const addSticker = (sticker: typeof STICKER_GALLERY[number], x = 2500, y = 2500) => {
@@ -197,20 +213,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     const file = Array.from(e.dataTransfer.files || []).find(item => item.type.startsWith('image/'));
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      if (!result) return;
-      addElement({
-        id: Math.random().toString(36).substring(7),
-        type: 'image',
-        content: result,
-        x: dropPoint.x - 160,
-        y: dropPoint.y - 120,
-        metadata: { title: file.name }
-      });
-    };
-    reader.readAsDataURL(file);
+    importImageFile(file, dropPoint.x - 160, dropPoint.y - 120);
   };
 
   return (
@@ -226,11 +229,12 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         <CanvasToolButton icon={<FileText size={18} />} label="Sticky" onClick={() => addQuickElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
         <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} />
         <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => addQuickElement('shape', 'Label', { shapeType: 'rectangle', color: '#3b82f6' })} />
+        <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => addQuickElement('checklist', 'Checklist', { checklist: [{ id: Math.random().toString(36).slice(2), text: 'First item', completed: false }] })} />
         <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => addQuickElement('link', 'https://example.com', { url: 'https://example.com', title: 'Resource' })} />
         <input
           ref={imageInputRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
+          accept="image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={(event) => {
             const file = event.target.files?.[0];
@@ -487,7 +491,7 @@ const CanvasElement: React.FC<{
            </div>
         )}
 
-        <ElementContent element={element} />
+        <ElementContent element={element} onUpdate={onUpdate} />
       </div>
     </motion.div>
   );
@@ -567,7 +571,7 @@ function TempConnectorLine({ fromId, toPos, elements }: { fromId: string, toPos:
   );
 }
 
-const ElementContent: React.FC<{ element: VisionElement }> = ({ element }) => {
+const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Partial<VisionElement>) => void }> = ({ element, onUpdate }) => {
   switch (element.type) {
     case 'sticky':
       return (
@@ -674,20 +678,54 @@ const ElementContent: React.FC<{ element: VisionElement }> = ({ element }) => {
         </div>
       );
     case 'note':
+    case 'checklist':
       return (
         <div className="w-72 bg-card p-6 rounded-3xl border border-card-border shadow-2xl relative">
           <div className="flex items-center justify-between mb-4">
              <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
                 <FileText size={16} />
              </div>
-             <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">Tactical Note</span>
+             <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">{element.type === 'checklist' ? 'Checklist' : 'Linked Note'}</span>
           </div>
-          <h4 className="font-bold text-text-main mb-3">{element.metadata?.title}</h4>
-          <div className="space-y-2 opacity-60">
-             <div className="h-2 w-full bg-card-border rounded-full" />
-             <div className="h-2 w-3/4 bg-card-border rounded-full" />
-             <div className="h-2 w-1/2 bg-card-border rounded-full" />
-          </div>
+          <h4 className="font-bold text-text-main mb-3">{element.metadata?.title || element.content}</h4>
+          {element.type === 'checklist' ? (
+            <div className="space-y-2">
+              {(element.metadata?.checklist || []).map(item => (
+                <button
+                  key={item.id}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const checklist = (element.metadata?.checklist || []).map(entry => entry.id === item.id ? { ...entry, completed: !entry.completed } : entry);
+                    onUpdate({ metadata: { ...(element.metadata || {}), checklist } });
+                  }}
+                  className="w-full flex items-center gap-2 text-xs font-bold text-text-secondary text-left hover:text-accent transition-colors"
+                >
+                  <span className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", item.completed ? "bg-success border-success text-white" : "border-card-border")}>
+                    {item.completed ? "✓" : ""}
+                  </span>
+                  <span className={cn(item.completed && "line-through opacity-50")}>{item.text}</span>
+                </button>
+              ))}
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  const text = window.prompt('Checklist item');
+                  if (!text) return;
+                  const checklist = [...(element.metadata?.checklist || []), { id: Math.random().toString(36).slice(2), text, completed: false }];
+                  onUpdate({ metadata: { ...(element.metadata || {}), checklist } });
+                }}
+                className="pt-2 text-[10px] font-black uppercase tracking-widest text-accent"
+              >
+                Add item
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2 opacity-60">
+               <div className="h-2 w-full bg-card-border rounded-full" />
+               <div className="h-2 w-3/4 bg-card-border rounded-full" />
+               <div className="h-2 w-1/2 bg-card-border rounded-full" />
+            </div>
+          )}
         </div>
       );
     default:

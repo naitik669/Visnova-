@@ -62,7 +62,7 @@ import { useNavigate } from 'react-router-dom';
 import { CreativeCanvas } from './CreativeCanvas';
 import PublishModal from './PublishModal';
 import CollaborateModal from './CollaborateModal';
-import { supabase } from '../../lib/supabase';
+import { supabase, uploadVisionBoardImage } from '../../lib/supabase';
 
 interface VisionDetailModalProps {
   vision: Vision | null;
@@ -231,7 +231,7 @@ function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriori
 }
 
 export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDetailModalProps) {
-  const { updateVision, deleteVision, notes, addNote, shareVision } = useStore();
+  const { updateVision, deleteVision, notes, addNote, shareVision, session, addToast } = useStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('board');
   const [isFullscreen, setIsFullscreen] = useState(true);
@@ -338,15 +338,16 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
     handleUpdateElements([...(vision.elements || []), newElement]);
   };
 
-  const importImageFile = (file: File) => {
+  const importImageFile = async (file: File) => {
     if (!vision) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      if (!result) return;
-      addElement('image', result, { title: file.name });
-    };
-    reader.readAsDataURL(file);
+    try {
+      const { publicUrl, filePath } = await uploadVisionBoardImage(file, vision.id, session?.user?.id);
+      addElement('image', publicUrl, { title: file.name, imageUrl: publicUrl, storagePath: filePath });
+      addToast({ type: 'success', title: 'Image added', description: 'Vision Board image uploaded.' });
+    } catch (error: any) {
+      console.error('Vision Board image import failed:', error);
+      addToast({ type: 'error', title: 'Image failed', description: error.message || 'Could not add this image.' });
+    }
   };
 
   const addGraphic = (shapeType: 'rectangle' | 'circle' | 'diamond') => {
@@ -560,7 +561,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                            <GridItem key="grid-title" icon={<Type size={20} />} label="Title" onClick={() => addElement('heading', 'New Vision')} />
                            <GridItem key="grid-sticky" icon={<FileText size={20} />} label="Sticky" onClick={() => addElement('sticky', 'Brainstorm...')} />
                            <GridItem key="grid-resource" icon={<LinkIcon size={20} />} label="Resource" onClick={() => addElement('link')} />
-                           <GridItem key="grid-checklist" icon={<CheckSquare size={20} />} label="Checklist" onClick={() => addElement('note')} />
+                           <GridItem key="grid-checklist" icon={<CheckSquare size={20} />} label="Checklist" onClick={() => addElement('checklist', 'Checklist', { checklist: [{ id: Math.random().toString(36).slice(2), text: 'First item', completed: false }] })} />
                            <GridItem key="grid-quote" icon={<Quote size={20} />} label="Quote" onClick={() => addElement('quote')} />
                            <GridItem key="grid-import" icon={<Users size={20} />} label="Import" onClick={() => imageImportRef.current?.click()} />
                         </motion.div>
@@ -579,7 +580,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                     <input
                       ref={imageImportRef}
                       type="file"
-                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      accept="image/png,image/jpeg,image/webp"
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -601,7 +602,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                  <div className="flex flex-wrap justify-center gap-3 pointer-events-auto">
                     <QuickStartAction label="Add Image" onClick={() => imageImportRef.current?.click()} />
                     <QuickStartAction label="Write Goal" onClick={() => addElement('heading', 'Main Goal')} />
-                    <QuickStartAction label="Strategic Note" onClick={() => addElement('note')} />
+                    <QuickStartAction label="Checklist" onClick={() => addElement('checklist', 'Checklist', { checklist: [{ id: Math.random().toString(36).slice(2), text: 'First item', completed: false }] })} />
                     <QuickStartAction label="Inspire" onClick={() => addElement('quote')} />
                  </div>
               </div>
