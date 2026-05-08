@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry } from '../types';
+import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -44,6 +44,52 @@ function yesterdayDateKey() {
   const date = new Date();
   date.setDate(date.getDate() - 1);
   return toDateKey(date);
+}
+
+const dailyActivityColumns: Record<DailyActivitySource, keyof Omit<DailyActivitySummary, 'date' | 'totalCount'>> = {
+  task: 'taskCount',
+  todo: 'todoCount',
+  post: 'postCount',
+  note: 'noteCount',
+  journal: 'journalCount',
+  vision: 'visionCount',
+  focus: 'focusCount'
+};
+
+function emptyDailyActivity(date: string): DailyActivitySummary {
+  return {
+    date,
+    taskCount: 0,
+    todoCount: 0,
+    postCount: 0,
+    noteCount: 0,
+    journalCount: 0,
+    visionCount: 0,
+    focusCount: 0,
+    totalCount: 0
+  };
+}
+
+function toDailyActivitySummary(row: any): DailyActivitySummary {
+  return {
+    date: row.activity_date,
+    taskCount: row.task_count || 0,
+    todoCount: row.todo_count || 0,
+    postCount: row.post_count || 0,
+    noteCount: row.note_count || 0,
+    journalCount: row.journal_count || 0,
+    visionCount: row.vision_count || 0,
+    focusCount: row.focus_count || 0,
+    totalCount: row.total_count || 0
+  };
+}
+
+function lastSevenDateKeys() {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    return toDateKey(date);
+  });
 }
 
 async function notifyMentionedUsers({
@@ -156,6 +202,7 @@ function privateStateReset() {
     followerCounts: {},
     followingCounts: {},
     userStreak: null,
+    weeklyActivity: [],
     notifications: [],
     unreadNotificationCount: 0,
   };
@@ -255,6 +302,7 @@ export const useStore = create<AppState>((set, get) => ({
   followerCounts: {},
   followingCounts: {},
   userStreak: null,
+  weeklyActivity: [],
   notifications: [],
   unreadNotificationCount: 0,
   achievements: [],
@@ -375,6 +423,7 @@ export const useStore = create<AppState>((set, get) => ({
           get().fetchTodos(),
           get().fetchJournalEntries(),
           get().fetchUserStreak(),
+          get().fetchWeeklyActivity(),
         ]),
         DASHBOARD_CORE_TIMEOUT_MS,
         'Loading dashboard'
@@ -2539,6 +2588,34 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  fetchWeeklyActivity: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      set({ weeklyActivity: [] });
+      return;
+    }
+
+    const dates = lastSevenDateKeys();
+
+    try {
+      const { data, error } = await supabase
+        .from('user_daily_activity')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('activity_date', dates[0])
+        .lte('activity_date', dates[dates.length - 1])
+        .order('activity_date', { ascending: true });
+
+      if (error) throw error;
+
+      const byDate = new Map((data || []).map((row: any) => [row.activity_date, toDailyActivitySummary(row)]));
+      set({ weeklyActivity: dates.map((date) => byDate.get(date) || emptyDailyActivity(date)) });
+    } catch (error) {
+      console.error('Failed to fetch weekly activity:', error);
+      set({ weeklyActivity: dates.map(emptyDailyActivity) });
+    }
+  },
+
   recordDailyActivity: async (source) => {
     const userId = get().session?.user?.id;
     if (!userId) return;
@@ -2546,6 +2623,55 @@ export const useStore = create<AppState>((set, get) => ({
     const today = toDateKey(new Date());
     const yesterday = yesterdayDateKey();
     const existing = get().userStreak;
+
+    try {
+      const { data: dailyRow, error: dailyFetchError } = await supabase
+        .from('user_daily_activity')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('activity_date', today)
+        .maybeSingle();
+
+      if (dailyFetchError) throw dailyFetchError;
+
+      const currentDaily = dailyRow ? toDailyActivitySummary(dailyRow) : emptyDailyActivity(today);
+      const column = dailyActivityColumns[source];
+      const nextDaily = {
+        ...currentDaily,
+        [column]: currentDaily[column] + 1,
+        totalCount: currentDaily.totalCount + 1
+      };
+
+      const { error: dailyUpsertError } = await supabase
+        .from('user_daily_activity')
+        .upsert({
+          user_id: userId,
+          activity_date: today,
+          task_count: nextDaily.taskCount,
+          todo_count: nextDaily.todoCount,
+          post_count: nextDaily.postCount,
+          note_count: nextDaily.noteCount,
+          journal_count: nextDaily.journalCount,
+          vision_count: nextDaily.visionCount,
+          focus_count: nextDaily.focusCount,
+          total_count: nextDaily.totalCount,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id,activity_date' });
+
+      if (dailyUpsertError) throw dailyUpsertError;
+
+      set((state) => {
+        const existingWeek = state.weeklyActivity.length ? state.weeklyActivity : lastSevenDateKeys().map(emptyDailyActivity);
+        const hasToday = existingWeek.some((day) => day.date === today);
+        return {
+          weeklyActivity: (hasToday ? existingWeek : [...existingWeek.slice(1), emptyDailyActivity(today)])
+            .map((day) => day.date === today ? nextDaily : day)
+        };
+      });
+    } catch (error) {
+      console.error('Failed to record weekly activity:', error);
+    }
+
     if (existing?.lastActiveDate === today) {
       if (source === 'post' || source === 'vision') {
         await supabase.from('user_achievements').upsert({

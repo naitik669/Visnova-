@@ -111,6 +111,7 @@ export default function Dashboard() {
     toggleVisionTask,
     notes,
     userStreak,
+    weeklyActivity,
   } = useStore();
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = React.useState(new Date());
@@ -197,34 +198,28 @@ export default function Dashboard() {
 
   // 5. Activity Chart Data (Last 7 Days)
   const chartData = React.useMemo(() => {
-    const data = [];
-    for (let i = 6; i >= 0; i--) {
+    return Array.from({ length: 7 }, (_, index) => {
       const d = new Date();
-      d.setDate(d.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(d);
-      dayEnd.setHours(23, 59, 59, 999);
+      d.setDate(d.getDate() - (6 - index));
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const day = weeklyActivity.find((item) => item.date === key);
+      const output = day
+        ? day.taskCount * 10
+          + day.todoCount * 5
+          + day.postCount * 12
+          + day.noteCount * 8
+          + day.journalCount * 8
+          + day.visionCount * 15
+          + day.focusCount * 10
+        : 0;
 
-      const dayActivities = (activities || []).filter(
-        (a) => a.timestamp >= d.getTime() && a.timestamp <= dayEnd.getTime(),
-      );
-
-      // Calculate output based on activity types
-      const output = dayActivities.reduce((acc, a) => {
-        if (a.type === "completed") return acc + 10;
-        if (a.type === "created") return acc + 5;
-        if (a.type === "shared_note") return acc + 8;
-        return acc + 2;
-      }, 0);
-
-      data.push({
+      return {
         name: d.toLocaleDateString([], { weekday: "short" }),
         output,
         focus: Math.min(100, 30 + output * 0.8),
-      });
-    }
-    return data;
-  }, [activities]);
+      };
+    });
+  }, [weeklyActivity]);
 
   const hasAnyDashboardData = visions.length > 0 || todos.length > 0 || notes.length > 0 || journalEntries.length > 0 || circle.length > 0;
 

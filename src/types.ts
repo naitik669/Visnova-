@@ -220,6 +220,20 @@ export interface UserStreak {
   activityDates: string[];
 }
 
+export type DailyActivitySource = 'task' | 'todo' | 'post' | 'note' | 'journal' | 'vision' | 'focus';
+
+export interface DailyActivitySummary {
+  date: string;
+  taskCount: number;
+  todoCount: number;
+  postCount: number;
+  noteCount: number;
+  journalCount: number;
+  visionCount: number;
+  focusCount: number;
+  totalCount: number;
+}
+
 export interface ToastMessage {
   id: string;
   type: 'success' | 'error' | 'info';
@@ -269,6 +283,7 @@ export interface AppState {
   followerCounts: Record<string, number>;
   followingCounts: Record<string, number>;
   userStreak: UserStreak | null;
+  weeklyActivity: DailyActivitySummary[];
   notifications: any[];
   unreadNotificationCount: number;
   authLoading: boolean;
@@ -284,7 +299,8 @@ export interface AppState {
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
   fetchUserStreak: () => Promise<void>;
-  recordDailyActivity: (source: 'task' | 'todo' | 'post' | 'note' | 'journal' | 'vision' | 'focus') => Promise<void>;
+  fetchWeeklyActivity: () => Promise<void>;
+  recordDailyActivity: (source: DailyActivitySource) => Promise<void>;
   hasCompletedOnboarding: boolean;
   tutorialCompleted: boolean;
   isDashboardLoading: boolean;
