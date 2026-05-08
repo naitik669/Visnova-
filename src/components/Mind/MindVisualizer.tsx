@@ -11,6 +11,8 @@ import {
   GraduationCap,
   Layers,
   Loader2,
+  Maximize2,
+  Minimize2,
   NotebookPen,
   PlayCircle,
   Plus,
@@ -804,6 +806,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
   const [actionText, setActionText] = useState('');
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isNotesExpanded, setIsNotesExpanded] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'failed'>('saved');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -1117,7 +1120,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} className="absolute inset-0 bg-overlay/75 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.98, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 12 }} className="relative w-full max-w-[1380px] h-[92vh] overflow-hidden bg-app-container rounded-[1.5rem] border border-card-border shadow-2xl flex flex-col">
+      <motion.div initial={{ opacity: 0, scale: 0.98, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 12 }} className="relative w-full max-w-[1380px] h-[92vh] overflow-hidden bg-app-container rounded-xl border border-card-border shadow-2xl flex flex-col">
         <header className="shrink-0 bg-app-container/95 backdrop-blur border-b border-card-border px-4 lg:px-5 py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[9px] font-black uppercase tracking-[0.28em] text-accent">Learning Session</p>
@@ -1139,7 +1142,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
         <div className="flex-1 min-h-0 overflow-hidden grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(430px,0.75fr)]">
           <section className="min-h-0 overflow-y-auto custom-scrollbar p-4 lg:p-5 space-y-4 border-b xl:border-b-0 xl:border-r border-card-border">
             <div className="xl:sticky xl:top-0 space-y-4">
-              <div className="bg-card border border-card-border rounded-[1.25rem] overflow-hidden shadow-sm">
+              <div className="bg-card border border-card-border rounded-xl overflow-hidden shadow-sm">
                 {videoId ? (
                   <iframe
                     title={title}
@@ -1158,7 +1161,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
                 )}
               </div>
 
-              <div className="bg-card border border-card-border rounded-[1.25rem] p-4 space-y-4">
+              <div className="bg-card border border-card-border rounded-xl p-4 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[9px] font-black uppercase tracking-widest text-accent">What am I learning?</p>
@@ -1217,7 +1220,12 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
               {activeTab === 'notes' && (
                 <div className="space-y-4">
                   <WorkspacePanel number="4" title="Notes while watching" subtitle="Write what you learn while watching. These notes autosave to the resource.">
-                    <textarea value={notes} onChange={event => updateField(setNotes, event.target.value)} placeholder="Write what you learn while watching." className="w-full h-56 rounded-xl bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
+                    <div className="flex justify-end">
+                      <button onClick={() => setIsNotesExpanded(true)} className="h-9 px-3 rounded-lg bg-surface-muted border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                        <Maximize2 size={13} /> Expand
+                      </button>
+                    </div>
+                    <textarea value={notes} onChange={event => updateField(setNotes, event.target.value)} placeholder="Write what you learn while watching." className="w-full h-64 rounded-lg bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
                   </WorkspacePanel>
                   <WorkspacePanel title="Timestamp notes" subtitle="Use manual seconds for now. Current-time capture can come later with the YouTube player API.">
                     <div className="grid grid-cols-[90px_minmax(0,1fr)_auto] gap-2">
@@ -1309,6 +1317,35 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
           <p className={cn('text-[10px] font-black uppercase tracking-widest', saveState === 'failed' ? 'text-danger' : saveState === 'saving' ? 'text-accent' : 'text-text-secondary/55')}>{saveLabel}</p>
           <button onClick={() => saveResourceFields(false)} disabled={isSaving || !title.trim()} className="h-9 px-4 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent">{isSaving ? 'Saving...' : 'Save Session'}</button>
         </footer>
+
+        <AnimatePresence>
+          {isNotesExpanded && (
+            <motion.div className="absolute inset-0 z-20 bg-app-container flex flex-col" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div className="shrink-0 border-b border-card-border px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-accent">Expanded Notes</p>
+                  <h3 className="text-sm font-black text-text-main mt-1">Write while the idea is fresh</h3>
+                </div>
+                <button onClick={() => setIsNotesExpanded(false)} className="h-10 px-3 rounded-lg bg-surface-muted border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                  <Minimize2 size={13} /> Collapse
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 p-4">
+                <textarea
+                  value={notes}
+                  onChange={event => updateField(setNotes, event.target.value)}
+                  placeholder="Write what you learn while watching."
+                  className="w-full h-full rounded-lg bg-surface-muted border border-card-border p-4 text-sm font-medium leading-relaxed outline-none focus:border-accent resize-none"
+                  autoFocus
+                />
+              </div>
+              <div className="shrink-0 border-t border-card-border px-4 py-2.5 flex items-center justify-between">
+                <p className={cn('text-[10px] font-black uppercase tracking-widest', saveState === 'failed' ? 'text-danger' : saveState === 'saving' ? 'text-accent' : 'text-text-secondary/55')}>{saveLabel}</p>
+                <button onClick={() => saveResourceFields(false)} disabled={isSaving || !title.trim()} className="h-9 px-4 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent">{isSaving ? 'Saving...' : 'Save Notes'}</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );
@@ -1325,7 +1362,7 @@ function SessionMetric({ label, value }: { label: string; value: string }) {
 
 function WorkspacePanel({ number, title, subtitle, children }: { number?: string; title: string; subtitle?: string; children: ReactNode }) {
   return (
-    <section className="bg-card border border-card-border rounded-[1.25rem] p-4 space-y-4">
+    <section className="bg-card border border-card-border rounded-xl p-4 space-y-4">
       <div className="flex items-start gap-3">
         {number && <span className="w-7 h-7 rounded-xl bg-accent text-accent-contrast text-[10px] font-black flex items-center justify-center shrink-0">{number}</span>}
         <div className="min-w-0">

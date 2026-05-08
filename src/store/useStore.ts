@@ -1887,13 +1887,30 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ posts: state.posts.filter(p => p.id !== id) }));
 
     try {
-      const { error } = await supabase
+      const { data: updatedRows, error: softDeleteError } = await supabase
+        .from('posts')
+        .update({
+          deleted_at: new Date().toISOString(),
+          archived: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select('id');
+
+      if (softDeleteError) throw softDeleteError;
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error('Post was not found or you do not have permission to delete it.');
+      }
+
+      supabase
         .from('posts')
         .delete()
         .eq('id', id)
-        .eq('user_id', userId);
-
-      if (error) throw error;
+        .eq('user_id', userId)
+        .then(({ error }) => {
+          if (error) console.warn('Post soft-deleted but hard delete cleanup failed:', error);
+        });
 
       get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
       return true;
