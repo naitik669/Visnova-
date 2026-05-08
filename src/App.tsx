@@ -131,8 +131,8 @@ function Sidebar() {
              <div className="w-1.5 h-1.5 bg-accent-contrast rounded-full animate-pulse" />
           </div>
           <span className={cn(
-            "text-base font-display font-semibold tracking-tight text-text-main transition-all duration-500 uppercase",
-            isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+            "text-base font-display font-semibold tracking-tight text-text-main transition-all duration-500 uppercase overflow-hidden whitespace-nowrap",
+            isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2"
           )}>
             Vis<span className="text-accent/30 font-light">nova</span>
           </span>
@@ -160,8 +160,8 @@ function Sidebar() {
             >
               <Icon size={18} className={cn('shrink-0 transition-all duration-500', isActive ? 'text-accent' : '[data-theme=sage]:text-white/70 text-text-secondary/60 group-hover:text-text-main group-hover:[data-theme=sage]:text-white')} />
               <span className={cn(
-                "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
-                isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4",
+                "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap overflow-hidden",
+                isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2",
                 isActive ? "text-accent" : "[data-theme=sage]:text-white/80 text-text-secondary"
               )}>
                 {item.label}
@@ -218,8 +218,8 @@ function Sidebar() {
               </span>
             )}
             <span className={cn(
-              "text-[10px] font-semibold uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
-              isExpanded ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+              "text-[10px] font-semibold uppercase tracking-wider transition-all duration-500 whitespace-nowrap overflow-hidden",
+              isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2"
             )}>
               Notifications
             </span>
