@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, BookOpen, MoreHorizontal } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, BookOpen, MoreHorizontal, GraduationCap } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -113,6 +113,7 @@ function Sidebar() {
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
+    { icon: GraduationCap, label: 'Growth', path: '/growth' },
     { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
   ];
 
@@ -305,6 +306,7 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/notes': { title: 'Library', subtitle: 'Notes, folders, and saved resources' },
   '/journal': { title: 'Journal', subtitle: 'Notebook writing space' },
   '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
+  '/growth': { title: 'Growth', subtitle: 'Learn with purpose and turn resources into action' },
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
   '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
   '/profile': { title: 'Profile', subtitle: 'Your public progress page' },
@@ -459,7 +461,8 @@ function AppContent() {
                     <Route path="/nova-clock" element={<NovaClock />} />
                     <Route path="/nova" element={<Navigate to="/nova-clock" replace />} />
                     <Route path="/timeline" element={<Navigate to="/nova-clock" replace />} />
-                    <Route path="/mind-map" element={<MindVisualizer />} />
+                    <Route path="/growth" element={<MindVisualizer />} />
+                    <Route path="/mind-map" element={<Navigate to="/growth" replace />} />
                     <Route path="*" element={<div className="p-20 text-center text-[10px] font-black text-text-secondary opacity-30 uppercase tracking-[0.4em]">Page Not Found</div>} />
                   </Routes>
                 </div>
