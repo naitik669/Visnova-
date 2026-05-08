@@ -782,10 +782,18 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
   addToast: (toast: { type: 'success' | 'error' | 'info'; title: string; description?: string }) => void;
 }) {
   const videoId = resource.video_id || (resource.url ? getYouTubeVideoId(resource.url) : null);
+  const tabs = [
+    { id: 'purpose', label: 'Purpose' },
+    { id: 'notes', label: 'Notes' },
+    { id: 'takeaways', label: 'Takeaways' },
+    { id: 'actions', label: 'Actions' },
+    { id: 'apply', label: 'Apply' }
+  ] as const;
   const [title, setTitle] = useState(resource.title);
   const [purpose, setPurpose] = useState(resource.purpose || '');
   const [linkedVisionId, setLinkedVisionId] = useState(resource.linked_vision_id || '');
   const [notes, setNotes] = useState(resource.notes || '');
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['id']>('notes');
   const [takeawayInput, setTakeawayInput] = useState('');
   const [takeaways, setTakeaways] = useState<string[]>(resource.key_takeaways || []);
   const [appliedNote, setAppliedNote] = useState(resource.applied_note || '');
@@ -796,6 +804,14 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
   const [actionText, setActionText] = useState('');
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [saveState, setSaveState] = useState<'saved' | 'saving' | 'failed'>('saved');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  const markDirty = () => {
+    setIsDirty(true);
+    setSaveState('saved');
+  };
 
   const requireSessionUser = () => {
     if (!userId) {
@@ -843,9 +859,10 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
     fetchSessionData();
   }, [resource.id, userId]);
 
-  const saveResourceFields = async () => {
+  const saveResourceFields = async (silent = false) => {
     if (!requireSessionUser()) return false;
     setIsSaving(true);
+    setSaveState('saving');
     const saved = await onUpdate(resource.id, {
       title,
       purpose,
@@ -857,8 +874,29 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
       last_watched_at: new Date().toISOString()
     });
     setIsSaving(false);
-    if (saved) addToast({ type: 'success', title: 'Learning saved', description: 'Your session notes were saved.' });
+    if (saved) {
+      setIsDirty(false);
+      setSaveState('saved');
+      setLastSavedAt(new Date());
+      if (!silent) addToast({ type: 'success', title: 'Learning saved', description: 'Your session notes were saved.' });
+    } else {
+      setSaveState('failed');
+      if (!silent) addToast({ type: 'error', title: 'Could not save session', description: 'Try again.' });
+    }
     return !!saved;
+  };
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const timer = window.setTimeout(() => {
+      saveResourceFields(true);
+    }, 850);
+    return () => window.clearTimeout(timer);
+  }, [isDirty, title, purpose, linkedVisionId, notes, takeaways, appliedNote]);
+
+  const handleClose = async () => {
+    if (isDirty) await saveResourceFields(true);
+    onClose();
   };
 
   const addTimestampNote = async () => {
@@ -930,19 +968,19 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
     const nextTakeaways = [...takeaways, takeawayInput.trim()];
     setTakeaways(nextTakeaways);
     setTakeawayInput('');
-    await onUpdate(resource.id, { key_takeaways: nextTakeaways });
+    markDirty();
   };
 
   const updateTakeaway = async (index: number, value: string) => {
     const nextTakeaways = takeaways.map((item, itemIndex) => itemIndex === index ? value : item).filter(Boolean);
     setTakeaways(nextTakeaways);
-    await onUpdate(resource.id, { key_takeaways: nextTakeaways });
+    markDirty();
   };
 
   const deleteTakeaway = async (index: number) => {
     const nextTakeaways = takeaways.filter((_, itemIndex) => itemIndex !== index);
     setTakeaways(nextTakeaways);
-    await onUpdate(resource.id, { key_takeaways: nextTakeaways });
+    markDirty();
   };
 
   const addActionPoint = async () => {
@@ -1009,7 +1047,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
       return;
     }
 
-    const saved = await saveResourceFields();
+    const saved = await saveResourceFields(true);
     if (!saved) return;
 
     const { data: vision, error: visionError } = await supabase
@@ -1048,7 +1086,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
   };
 
   const markCompleted = async () => {
-    await saveResourceFields();
+    await saveResourceFields(true);
     onStatus(resource, 'completed');
   };
 
@@ -1057,149 +1095,254 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
       addToast({ type: 'error', title: 'Applied note required', description: 'Describe how you applied the learning.' });
       return;
     }
-    await saveResourceFields();
+    await saveResourceFields(true);
     onStatus(resource, 'applied', { applied_note: appliedNote });
   };
 
+  const updateField = <T,>(setter: (value: T) => void, value: T) => {
+    setter(value);
+    markDirty();
+  };
+
+  const saveLabel = saveState === 'saving'
+    ? 'Saving...'
+    : saveState === 'failed'
+      ? 'Could not save session'
+      : isDirty
+        ? 'Unsaved changes'
+        : lastSavedAt
+          ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+          : 'Saved';
+
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/80 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.97, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97, y: 16 }} className="relative w-full max-w-[1500px] max-h-[94vh] overflow-hidden bg-app-container rounded-[2rem] border border-card-border shadow-2xl flex flex-col">
-        <div className="shrink-0 bg-app-container/95 backdrop-blur border-b border-card-border p-4 lg:p-5 flex items-center justify-between gap-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} className="absolute inset-0 bg-overlay/75 backdrop-blur-md" />
+      <motion.div initial={{ opacity: 0, scale: 0.98, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 12 }} className="relative w-full max-w-[1380px] h-[92vh] overflow-hidden bg-app-container rounded-[1.5rem] border border-card-border shadow-2xl flex flex-col">
+        <header className="shrink-0 bg-app-container/95 backdrop-blur border-b border-card-border px-4 lg:px-5 py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent">Learning Session</p>
-            <h2 className="text-lg lg:text-xl font-black text-text-main uppercase tracking-tight mt-1 truncate">{title}</h2>
-          </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary hover:text-text-main shrink-0"><X size={18} /></button>
-        </div>
-
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 lg:p-6 grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)] gap-5">
-          <section className="space-y-4">
-            <div className="bg-card border border-card-border rounded-[1.5rem] overflow-hidden shadow-sm">
-              {videoId ? (
-                <iframe
-                  title={title}
-                  src={`https://www.youtube.com/embed/${videoId}`}
-                  className="w-full aspect-video bg-black"
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              ) : (
-                <div className="w-full aspect-video bg-surface-muted flex items-center justify-center text-center p-6">
-                  <p className="text-xs font-black uppercase tracking-widest text-text-secondary/50">Paste a valid YouTube link to play this resource.</p>
-                </div>
-              )}
+            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-accent">Learning Session</p>
+            <h2 className="text-base lg:text-lg font-black text-text-main tracking-tight mt-1 truncate">{title}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-widest">
+              <span className="px-2.5 py-1 rounded-full border border-card-border bg-surface-muted text-text-secondary">YouTube</span>
+              <span className={cn('px-2.5 py-1 rounded-full border', statusStyles[resource.status])}>{resource.status}</span>
+              {linkedVisionId && <span className="px-2.5 py-1 rounded-full border border-accent/20 bg-accent/10 text-accent max-w-[260px] truncate">Linked to {visionTitle || visions.find(vision => vision.id === linkedVisionId)?.title || 'Vision'}</span>}
+              <span className={cn('px-2.5 py-1 rounded-full border', saveState === 'failed' ? 'border-danger/20 bg-danger/10 text-danger' : 'border-card-border bg-surface-muted text-text-secondary/60')}>{saveLabel}</span>
             </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {resource.url && <a href={resource.url} target="_blank" rel="noreferrer" className="hidden sm:inline-flex h-10 px-3 rounded-xl bg-card border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent items-center gap-2"><ExternalLink size={13} /> YouTube</a>}
+            <button onClick={() => saveResourceFields(false)} disabled={isSaving || !title.trim()} className="hidden sm:inline-flex h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest disabled:opacity-50">{isSaving ? 'Saving...' : 'Save'}</button>
+            <button onClick={handleClose} aria-label="Close Learning Session" className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary hover:text-text-main shrink-0 focus:outline-none focus:ring-2 focus:ring-accent"><X size={18} /></button>
+          </div>
+        </header>
 
-            <div className="bg-card border border-card-border rounded-[1.5rem] p-4 space-y-3">
-              <QuestionTitle number="1" title="What am I learning?" />
-              <input value={title} onChange={event => setTitle(event.target.value)} className="w-full h-11 rounded-xl bg-surface-muted border border-card-border px-3 text-sm font-black outline-none focus:border-accent" />
-              <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
-                <span className={cn('px-3 py-1 rounded-full border', statusStyles[resource.status])}>{resource.status}</span>
-                <span className="px-3 py-1 rounded-full border border-card-border bg-surface-muted text-text-secondary">YouTube</span>
-                {resource.url && <a href={resource.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-full border border-card-border bg-surface-muted text-accent inline-flex items-center gap-1"><ExternalLink size={11} /> Open on YouTube</a>}
+        <div className="flex-1 min-h-0 overflow-hidden grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(430px,0.75fr)]">
+          <section className="min-h-0 overflow-y-auto custom-scrollbar p-4 lg:p-5 space-y-4 border-b xl:border-b-0 xl:border-r border-card-border">
+            <div className="xl:sticky xl:top-0 space-y-4">
+              <div className="bg-card border border-card-border rounded-[1.25rem] overflow-hidden shadow-sm">
+                {videoId ? (
+                  <iframe
+                    title={title}
+                    src={`https://www.youtube.com/embed/${videoId}`}
+                    className="w-full aspect-video max-h-[430px] bg-black"
+                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="w-full aspect-video max-h-[430px] bg-surface-muted flex items-center justify-center text-center p-6">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest text-text-main">Video preview unavailable.</p>
+                      {resource.url && <a href={resource.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-[10px] font-black uppercase tracking-widest text-accent">Open it on YouTube</a>}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-card border border-card-border rounded-[1.25rem] p-4 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-accent">What am I learning?</p>
+                    <input value={title} onChange={event => updateField(setTitle, event.target.value)} className="mt-2 w-full bg-transparent text-lg font-black text-text-main outline-none focus:text-accent" aria-label="Learning resource title" />
+                  </div>
+                  {resource.thumbnail_url && <img src={resource.thumbnail_url} alt="" className="w-20 aspect-video rounded-xl object-cover border border-card-border hidden sm:block" />}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <SessionMetric label="Status" value={resource.status} />
+                  <SessionMetric label="Vision" value={linkedVisionId ? 'Linked' : 'None'} />
+                  <SessionMetric label="Notes" value={String(timestampNotes.length)} />
+                  <SessionMetric label="Actions" value={String(actionPoints.length)} />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => onStatus(resource, 'learning')} className="h-9 px-3 rounded-xl bg-surface-muted border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Mark Learning</button>
+                  <button onClick={markCompleted} className="h-9 px-3 rounded-xl bg-surface-muted border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-success">Complete</button>
+                  {resource.url && <a href={resource.url} target="_blank" rel="noreferrer" className="h-9 px-3 rounded-xl bg-surface-muted border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent inline-flex items-center gap-2"><ExternalLink size={12} /> Open on YouTube</a>}
+                </div>
               </div>
             </div>
           </section>
 
-          <aside className="space-y-4">
-            <div className="bg-card border border-card-border rounded-[1.5rem] p-4 space-y-3">
-              <QuestionTitle number="2" title="Why am I learning it?" />
-              <textarea value={purpose} onChange={event => setPurpose(event.target.value)} placeholder="Why is this resource useful for your growth?" className="w-full h-20 rounded-xl bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
-            </div>
-
-            <div className="bg-card border border-card-border rounded-[1.5rem] p-4 space-y-3">
-              <QuestionTitle number="3" title="How does it connect to my Visions?" />
-              <select value={linkedVisionId} onChange={event => setLinkedVisionId(event.target.value)} className="w-full h-11 rounded-xl bg-surface-muted border border-card-border px-3 text-sm font-semibold outline-none focus:border-accent">
-                <option value="">No Vision linked</option>
-                {visions.map(vision => <option key={vision.id} value={vision.id}>{vision.title}</option>)}
-              </select>
-              {!linkedVisionId && <p className="text-xs font-semibold text-text-secondary/50">No Vision linked. Connect this resource to a Vision.</p>}
-              {visionTitle && <p className="text-[10px] font-black uppercase tracking-widest text-accent">Currently linked to {visionTitle}</p>}
-            </div>
-
-            <div className="bg-card border border-card-border rounded-[1.5rem] p-4 space-y-3">
-              <QuestionTitle number="4" title="What did I learn from it?" />
-              <textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder="No notes yet. Write what you learn." className="w-full h-28 rounded-xl bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
-
-              <div className="space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Timestamp Notes</p>
-                <div className="grid grid-cols-[95px_minmax(0,1fr)_auto] gap-2">
-                  <input value={timestampSeconds} onChange={event => setTimestampSeconds(event.target.value)} inputMode="numeric" placeholder="Seconds" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
-                  <input value={timestampContent} onChange={event => setTimestampContent(event.target.value)} placeholder="Add timestamp note" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
-                  <button onClick={addTimestampNote} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest">Add</button>
-                </div>
-                {isLoadingSession ? <Loader2 size={18} className="animate-spin text-accent" /> : timestampNotes.length === 0 ? (
-                  <p className="text-xs font-semibold text-text-secondary/45">No notes yet. Write what you learn.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {timestampNotes.map(note => (
-                      <div key={note.id} className="grid grid-cols-[72px_minmax(0,1fr)_auto] gap-2 items-center">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-accent">{formatTimestamp(note.timestamp_seconds)}</span>
-                        <input value={note.content} onChange={event => updateTimestampNote(note, event.target.value)} className="h-9 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
-                        <button onClick={() => deleteTimestampNote(note.id)} className="w-9 h-9 rounded-xl bg-danger/10 text-danger flex items-center justify-center"><Trash2 size={13} /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Key Takeaways</p>
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                  <input value={takeawayInput} onChange={event => setTakeawayInput(event.target.value)} placeholder="Add takeaway" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
-                  <button onClick={addTakeaway} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest">Add</button>
-                </div>
-                {takeaways.length === 0 ? <p className="text-xs font-semibold text-text-secondary/45">Add key takeaways from the video.</p> : (
-                  <div className="space-y-2">
-                    {takeaways.map((takeaway, index) => (
-                      <div key={`${takeaway}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                        <input value={takeaway} onChange={event => updateTakeaway(index, event.target.value)} className="h-9 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
-                        <button onClick={() => deleteTakeaway(index)} className="w-9 h-9 rounded-xl bg-danger/10 text-danger flex items-center justify-center"><Trash2 size={13} /></button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          <aside className="min-h-0 flex flex-col">
+            <div className="shrink-0 border-b border-card-border p-3 bg-app-container/95">
+              <div role="tablist" aria-label="Learning Session sections" className="grid grid-cols-5 gap-1 rounded-2xl bg-surface-muted p-1">
+                {tabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn('h-10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors focus:outline-none focus:ring-2 focus:ring-accent', activeTab === tab.id ? 'bg-card text-accent shadow-sm' : 'text-text-secondary/55 hover:text-text-main')}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="bg-card border border-card-border rounded-[1.5rem] p-4 space-y-3">
-              <QuestionTitle number="5" title="Did I apply it?" />
-              <div className="space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Action Points</p>
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                  <input value={actionText} onChange={event => setActionText(event.target.value)} placeholder="No action points yet. Turn learning into action." className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
-                  <button onClick={addActionPoint} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest">Add</button>
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 lg:p-5">
+              {activeTab === 'purpose' && (
+                <div className="space-y-4">
+                  <WorkspacePanel number="2" title="Why am I learning it?" subtitle="Keep the reason close so this does not become passive watching.">
+                    <textarea value={purpose} onChange={event => updateField(setPurpose, event.target.value)} placeholder="Why is this resource useful for your growth?" className="w-full h-40 rounded-xl bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
+                  </WorkspacePanel>
+                  <WorkspacePanel number="3" title="How does it connect to my Visions?" subtitle="Link the session to one active Vision before turning learning into tasks.">
+                    <select value={linkedVisionId} onChange={event => updateField(setLinkedVisionId, event.target.value)} className="w-full h-11 rounded-xl bg-surface-muted border border-card-border px-3 text-sm font-semibold outline-none focus:border-accent">
+                      <option value="">No Vision linked</option>
+                      {visions.map(vision => <option key={vision.id} value={vision.id}>{vision.title}</option>)}
+                    </select>
+                    {!linkedVisionId && <p className="text-xs font-semibold text-text-secondary/50">Link this resource to a Vision so learning becomes progress.</p>}
+                  </WorkspacePanel>
                 </div>
-                {actionPoints.length === 0 ? <p className="text-xs font-semibold text-text-secondary/45">No action points yet. Turn learning into action.</p> : (
-                  <div className="space-y-2">
-                    {actionPoints.map(actionPoint => (
-                      <div key={actionPoint.id} className="rounded-xl bg-surface-muted border border-card-border p-3 space-y-2">
-                        <input value={actionPoint.text} onChange={event => updateActionPoint(actionPoint, { text: event.target.value })} className="w-full h-9 rounded-lg bg-card border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
-                        <div className="flex flex-wrap gap-2">
-                          <button onClick={() => updateActionPoint(actionPoint, { completed: !actionPoint.completed })} className={cn('h-8 px-3 rounded-lg text-[8px] font-black uppercase tracking-widest', actionPoint.completed ? 'bg-success text-white' : 'bg-card border border-card-border text-text-secondary')}>{actionPoint.completed ? 'Complete' : 'Mark Complete'}</button>
-                          <button onClick={() => convertActionPointToTask(actionPoint)} disabled={!!actionPoint.converted_task_id} className="h-8 px-3 rounded-lg bg-card border border-card-border text-[8px] font-black uppercase tracking-widest text-text-secondary disabled:opacity-50">{actionPoint.converted_task_id ? 'Task Created' : 'Convert to Task'}</button>
-                          <button onClick={() => deleteActionPoint(actionPoint.id)} className="h-8 px-3 rounded-lg bg-danger/10 text-danger text-[8px] font-black uppercase tracking-widest">Delete</button>
+              )}
+
+              {activeTab === 'notes' && (
+                <div className="space-y-4">
+                  <WorkspacePanel number="4" title="Notes while watching" subtitle="Write what you learn while watching. These notes autosave to the resource.">
+                    <textarea value={notes} onChange={event => updateField(setNotes, event.target.value)} placeholder="Write what you learn while watching." className="w-full h-56 rounded-xl bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
+                  </WorkspacePanel>
+                  <WorkspacePanel title="Timestamp notes" subtitle="Use manual seconds for now. Current-time capture can come later with the YouTube player API.">
+                    <div className="grid grid-cols-[90px_minmax(0,1fr)_auto] gap-2">
+                      <input value={timestampSeconds} onChange={event => setTimestampSeconds(event.target.value)} inputMode="numeric" placeholder="Seconds" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
+                      <input value={timestampContent} onChange={event => setTimestampContent(event.target.value)} placeholder="Add timestamp note" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
+                      <button onClick={addTimestampNote} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-accent">Add</button>
+                    </div>
+                    {isLoadingSession ? <Loader2 size={18} className="animate-spin text-accent" /> : timestampNotes.length === 0 ? (
+                      <EmptyInline text="Write what you learn while watching." />
+                    ) : (
+                      <div className="space-y-2">
+                        {timestampNotes.map(note => (
+                          <div key={note.id} className="grid grid-cols-[68px_minmax(0,1fr)_auto] gap-2 items-center rounded-xl bg-surface-muted/60 border border-card-border p-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-accent">{formatTimestamp(note.timestamp_seconds)}</span>
+                            <input value={note.content} onChange={event => updateTimestampNote(note, event.target.value)} className="h-9 rounded-lg bg-card border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
+                            <button aria-label="Delete timestamp note" onClick={() => deleteTimestampNote(note.id)} className="w-9 h-9 rounded-lg bg-danger/10 text-danger flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-danger/30"><Trash2 size={13} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  </WorkspacePanel>
+                </div>
+              )}
+
+              {activeTab === 'takeaways' && (
+                <WorkspacePanel number="4" title="Key takeaways" subtitle="Capture the ideas worth remembering. Keep each takeaway short and reusable.">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <input value={takeawayInput} onChange={event => setTakeawayInput(event.target.value)} placeholder="Add the idea worth remembering" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
+                    <button onClick={addTakeaway} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-accent">Add</button>
+                  </div>
+                  {takeaways.length === 0 ? <EmptyInline text="Add the ideas worth remembering." /> : (
+                    <div className="space-y-2">
+                      {takeaways.map((takeaway, index) => (
+                        <div key={`${takeaway}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-xl bg-surface-muted/60 border border-card-border p-2">
+                          <input value={takeaway} onChange={event => updateTakeaway(index, event.target.value)} className="h-9 rounded-lg bg-card border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
+                          <button aria-label="Delete takeaway" onClick={() => deleteTakeaway(index)} className="w-9 h-9 rounded-lg bg-danger/10 text-danger flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-danger/30"><Trash2 size={13} /></button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </WorkspacePanel>
+              )}
 
-              <textarea value={appliedNote} onChange={event => setAppliedNote(event.target.value)} placeholder="How did you apply this?" className="w-full h-20 rounded-xl bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
+              {activeTab === 'actions' && (
+                <WorkspacePanel number="5" title="Action points" subtitle="Turn the session into practical steps, then convert the useful ones to Vision tasks.">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <input value={actionText} onChange={event => setActionText(event.target.value)} placeholder="Turn what you learned into action" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
+                    <button onClick={addActionPoint} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-accent">Add</button>
+                  </div>
+                  {!linkedVisionId && <p className="text-xs font-semibold text-text-secondary/50">Select a Vision in Purpose before converting action points to tasks.</p>}
+                  {actionPoints.length === 0 ? <EmptyInline text="Turn what you learned into action." /> : (
+                    <div className="space-y-2">
+                      {actionPoints.map(actionPoint => (
+                        <div key={actionPoint.id} className="rounded-xl bg-surface-muted/60 border border-card-border p-3 space-y-2">
+                          <input value={actionPoint.text} onChange={event => updateActionPoint(actionPoint, { text: event.target.value })} className="w-full h-9 rounded-lg bg-card border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => updateActionPoint(actionPoint, { completed: !actionPoint.completed })} className={cn('h-8 px-3 rounded-lg text-[8px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-accent', actionPoint.completed ? 'bg-success text-white' : 'bg-card border border-card-border text-text-secondary')}>{actionPoint.completed ? 'Done' : 'Mark Done'}</button>
+                            <button onClick={() => convertActionPointToTask(actionPoint)} disabled={!!actionPoint.converted_task_id} className="h-8 px-3 rounded-lg bg-card border border-card-border text-[8px] font-black uppercase tracking-widest text-text-secondary disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent">{actionPoint.converted_task_id ? 'Task Created' : 'Convert to Task'}</button>
+                            <button onClick={() => deleteActionPoint(actionPoint.id)} className="h-8 px-3 rounded-lg bg-danger/10 text-danger text-[8px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-danger/30">Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </WorkspacePanel>
+              )}
+
+              {activeTab === 'apply' && (
+                <div className="space-y-4">
+                  <WorkspacePanel number="5" title="Applied learning" subtitle="Close the loop by writing exactly how you used this learning.">
+                    <textarea value={appliedNote} onChange={event => updateField(setAppliedNote, event.target.value)} placeholder="Describe how you used this learning." className="w-full h-36 rounded-xl bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
+                    {!appliedNote.trim() && <p className="text-xs font-semibold text-text-secondary/45">Describe how you used this learning.</p>}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button onClick={markCompleted} className="h-10 rounded-xl bg-card border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-success focus:outline-none focus:ring-2 focus:ring-accent">Mark Completed</button>
+                      <button onClick={markApplied} className="h-10 rounded-xl bg-success text-white text-[9px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-success/40">Mark Applied</button>
+                      <button onClick={() => onShareInsight({ ...resource, notes, applied_note: appliedNote })} className="h-10 rounded-xl bg-card border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent">Share Insight</button>
+                    </div>
+                  </WorkspacePanel>
+                  <WorkspacePanel title="Danger zone" subtitle="Delete only removes this Growth resource and session notes. It does not delete linked Visions or tasks.">
+                    <button onClick={() => onDelete(resource)} className="h-10 px-4 rounded-xl bg-danger/10 border border-danger/20 text-[9px] font-black uppercase tracking-widest text-danger focus:outline-none focus:ring-2 focus:ring-danger/30">Delete Resource</button>
+                  </WorkspacePanel>
+                </div>
+              )}
             </div>
           </aside>
         </div>
 
-        <div className="shrink-0 border-t border-card-border bg-app-container/95 backdrop-blur p-4 flex flex-wrap gap-2 justify-end">
-          <button onClick={saveResourceFields} disabled={isSaving || !title.trim()} className="h-10 px-4 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest disabled:opacity-50">{isSaving ? 'Saving...' : 'Save Session'}</button>
-          <button onClick={markCompleted} className="h-10 px-4 rounded-xl bg-card border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary">Mark Completed</button>
-          <button onClick={markApplied} className="h-10 px-4 rounded-xl bg-success text-white text-[9px] font-black uppercase tracking-widest">Mark Applied</button>
-          <button onClick={() => onShareInsight({ ...resource, notes, applied_note: appliedNote })} className="h-10 px-4 rounded-xl bg-card border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary">Share Insight</button>
-          <button onClick={() => onDelete(resource)} className="h-10 px-4 rounded-xl bg-danger/10 border border-danger/20 text-[9px] font-black uppercase tracking-widest text-danger">Delete</button>
-        </div>
+        <footer className="shrink-0 border-t border-card-border bg-app-container/95 backdrop-blur px-4 py-2.5 flex items-center justify-between gap-3">
+          <p className={cn('text-[10px] font-black uppercase tracking-widest', saveState === 'failed' ? 'text-danger' : saveState === 'saving' ? 'text-accent' : 'text-text-secondary/55')}>{saveLabel}</p>
+          <button onClick={() => saveResourceFields(false)} disabled={isSaving || !title.trim()} className="h-9 px-4 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent">{isSaving ? 'Saving...' : 'Save Session'}</button>
+        </footer>
       </motion.div>
+    </div>
+  );
+}
+
+function SessionMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-surface-muted border border-card-border p-3 min-w-0">
+      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/45">{label}</p>
+      <p className="mt-1 text-xs font-black text-text-main truncate">{value}</p>
+    </div>
+  );
+}
+
+function WorkspacePanel({ number, title, subtitle, children }: { number?: string; title: string; subtitle?: string; children: ReactNode }) {
+  return (
+    <section className="bg-card border border-card-border rounded-[1.25rem] p-4 space-y-4">
+      <div className="flex items-start gap-3">
+        {number && <span className="w-7 h-7 rounded-xl bg-accent text-accent-contrast text-[10px] font-black flex items-center justify-center shrink-0">{number}</span>}
+        <div className="min-w-0">
+          <h3 className="text-xs font-black uppercase tracking-widest text-text-main">{title}</h3>
+          {subtitle && <p className="mt-1 text-xs font-semibold text-text-secondary/55 leading-relaxed">{subtitle}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyInline({ text }: { text: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-card-border bg-surface-muted/40 p-4">
+      <p className="text-xs font-semibold text-text-secondary/50">{text}</p>
     </div>
   );
 }
