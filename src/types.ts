@@ -9,6 +9,10 @@ export interface Task {
   completed: boolean;
   priority?: 'low' | 'medium' | 'high';
   subTasks?: Task[];
+  completedAt?: string | null;
+  xpAwarded?: boolean;
+  xpAwardedAt?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface VisionElement {

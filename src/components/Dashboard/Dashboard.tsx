@@ -25,9 +25,11 @@ import {
   BookOpen,
   Plus,
   Flame,
+  Minus,
 } from "lucide-react";
 import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
+import { getLevelProgress, normalizeLegacyXp } from "../../lib/progression";
 import React from "react";
 import {
   ResponsiveContainer,
@@ -104,6 +106,7 @@ export default function Dashboard() {
     todos,
     toggleTodo,
     addTodo,
+    deleteTodo,
     journalEntries,
     activities,
     isDashboardLoading,
@@ -145,6 +148,22 @@ export default function Dashboard() {
 
   const pendingTasks = allTasks.filter((t) => !t.completed);
   const displayedTasks = showAllTasks ? pendingTasks : pendingTasks.slice(0, 3);
+  const sevenDaysAgo = React.useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 7);
+    return date.getTime();
+  }, []);
+  const completedTodosThisWeek = todos
+    .filter(todo => todo.completed && todo.completedAt && new Date(todo.completedAt).getTime() >= sevenDaysAgo)
+    .map(todo => ({ ...todo, source: 'Dashboard' }));
+  const completedVisionTasksThisWeek = allTasks
+    .filter(task => task.completed && task.completedAt && new Date(task.completedAt).getTime() >= sevenDaysAgo)
+    .map(task => ({ ...task, source: task.vision }));
+  const completedTasksThisWeek = [...completedTodosThisWeek, ...completedVisionTasksThisWeek]
+    .sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime());
+  const activeTodos = todos.filter(todo => !todo.completed && !todo.deletedAt);
+  const totalXp = normalizeLegacyXp(user.level, user.xp);
+  const levelProgress = getLevelProgress(totalXp);
 
   const displayedCircle = showAllCircle ? circle : circle.slice(0, 3);
   const currentStreak = userStreak?.currentStreak ?? user.streak ?? 0;
@@ -267,9 +286,18 @@ export default function Dashboard() {
         <div className="flex items-center gap-2 bg-card/40 border border-card-border/50 px-4 py-2 rounded-2xl">
            <TrendingUp size={14} className="text-success" />
            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">
-             {user.xp} XP • LEVEL {user.level}
+             {totalXp} XP - LEVEL {levelProgress.level}
            </span>
         </div>
+        </div>
+      </div>
+      <div className="mx-1 sm:mx-2 rounded-2xl border border-card-border/60 bg-card/50 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+          <span>Level {levelProgress.level}</span>
+          <span>{totalXp} / {levelProgress.nextThreshold} XP - {levelProgress.xpToNext} XP to next</span>
+        </div>
+        <div className="mt-2 h-2 rounded-full bg-surface-muted overflow-hidden">
+          <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${levelProgress.progress}%` }} />
         </div>
       </div>
 
@@ -327,7 +355,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-6 pt-4">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-40">Trajectory</span>
-                    <span className="text-sm font-bold text-text-main">Day {user.streak || 1} • {user.rank || 'Explorer'}</span>
+                    <span className="text-sm font-bold text-text-main">Day {user.streak || 1} - {user.rank || 'Explorer'}</span>
                   </div>
                   <div className="w-px h-8 bg-card-border/50" />
                   <div className="flex flex-col">
@@ -672,7 +700,7 @@ export default function Dashboard() {
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">
-                          {currentJournalEntry.mood || "📝"}
+                          {currentJournalEntry.mood || "Note"}
                         </span>
                         <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
                           Mood Locked
@@ -904,12 +932,12 @@ export default function Dashboard() {
                 To-Do List
               </h3>
               <span className="text-[10px] uppercase tracking-wider text-text-secondary/60 font-bold">
-                {todos.filter((t) => !t.completed).length} pending
+                {activeTodos.length} pending
               </span>
             </div>
 
             <div className="flex flex-col gap-1.5 min-h-[200px] max-h-[400px] overflow-y-auto custom-scrollbar">
-              {todos.map((todo) => (
+              {activeTodos.map((todo) => (
                 <div
                   key={todo.id}
                   className="flex items-start gap-3 hover:bg-surface-muted p-2 rounded-xl transition-colors cursor-pointer group"
@@ -927,7 +955,7 @@ export default function Dashboard() {
                   </div>
                   <span
                     className={cn(
-                      "text-[13px] font-medium flex-1",
+                      "text-[13px] font-medium flex-1 min-w-0",
                       todo.completed
                         ? "text-text-secondary line-through opacity-60"
                         : "text-text-main",
@@ -936,9 +964,20 @@ export default function Dashboard() {
                   >
                     {todo.text}
                   </span>
+                  <button
+                    type="button"
+                    aria-label="Delete task"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      deleteTodo(todo.id);
+                    }}
+                    className="w-8 h-8 -mt-1 rounded-lg text-text-secondary/35 hover:text-danger hover:bg-danger/10 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0"
+                  >
+                    <Minus size={15} />
+                  </button>
                 </div>
               ))}
-              {todos.length === 0 && (
+              {activeTodos.length === 0 && (
                 <div className="text-center py-6 text-[11px] text-text-secondary opacity-60">
                   No tasks. Press Enter below to add one.
                 </div>
@@ -961,6 +1000,33 @@ export default function Dashboard() {
                 size={14}
                 className="absolute right-4 top-1/2 mt-1 -translate-y-1/2 text-accent/40"
               />
+            </div>
+
+            <div className="pt-4 border-t border-card-border/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[12px] font-bold text-text-main">Completed This Week</h4>
+                <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">
+                  {completedTasksThisWeek.length}
+                </span>
+              </div>
+              <div className="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">
+                {completedTasksThisWeek.map(todo => (
+                  <div key={todo.id} className="flex items-start gap-2 rounded-xl bg-success/5 border border-success/10 p-2">
+                    <CheckCircle2 size={14} className="text-success mt-0.5 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-semibold text-text-main line-through opacity-75 truncate">{todo.text}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">
+                        {todo.completedAt ? new Date(todo.completedAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Completed'} - {todo.source} - +25 XP
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {completedTasksThisWeek.length === 0 && (
+                  <p className="text-[11px] text-text-secondary/55 text-center py-3">
+                    Completed tasks will stay here for 7 days.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

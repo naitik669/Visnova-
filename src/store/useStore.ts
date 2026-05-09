@@ -9,6 +9,7 @@ import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { format } from 'date-fns';
+import { getLevelFromXp, normalizeLegacyXp } from '../lib/progression';
 import {
   checkClientRateLimit,
   sanitizePlainText,
@@ -90,6 +91,25 @@ const dailyActivityColumns: Record<DailyActivitySource, keyof Omit<DailyActivity
   vision: 'visionCount',
   focus: 'focusCount'
 };
+
+const TASK_XP = 25;
+const TODO_XP = 25;
+
+async function awardXpOnce(userId: string, sourceType: string, sourceId: string, amount: number, reason: string) {
+  const { error } = await supabase
+    .from('xp_events')
+    .insert({
+      user_id: userId,
+      source_type: sourceType,
+      source_id: sourceId,
+      xp_amount: amount,
+      reason
+    });
+
+  if (!error) return true;
+  if (error.code === '23505') return false;
+  throw error;
+}
 
 function emptyDailyActivity(date: string): DailyActivitySummary {
   return {
@@ -542,6 +562,7 @@ export const useStore = create<AppState>((set, get) => ({
           .from('tasks')
           .select('*')
           .in('vision_id', visionIds)
+          .is('deleted_at', null)
           .order('sort_order', { ascending: true })
           .order('created_at', { ascending: true });
         if (tasksError) throw tasksError;
@@ -556,7 +577,11 @@ export const useStore = create<AppState>((set, get) => ({
             text: t.text,
             completed: t.completed,
             priority: t.priority || 'low',
-            subTasks: t.sub_tasks || []
+            subTasks: t.sub_tasks || [],
+            completedAt: t.completed_at || null,
+            xpAwarded: !!t.xp_awarded,
+            xpAwardedAt: t.xp_awarded_at || null,
+            deletedAt: t.deleted_at || null
           }));
           
         return {
@@ -592,6 +617,7 @@ export const useStore = create<AppState>((set, get) => ({
         .from('todos')
         .select('*')
         .eq('user_id', userId)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -600,6 +626,10 @@ export const useStore = create<AppState>((set, get) => ({
         id: t.id,
         text: t.text,
         completed: t.completed,
+        completedAt: t.completed_at || null,
+        xpAwarded: !!t.xp_awarded,
+        xpAwardedAt: t.xp_awarded_at || null,
+        deletedAt: t.deleted_at || null,
       }));
 
       set({ todos: formattedTodos });
@@ -627,8 +657,20 @@ export const useStore = create<AppState>((set, get) => ({
       return;
     }
 
-    const newCompleted = !task.completed;
-    const newTasks = vision.tasks.map(t => t.id === taskId ? { ...t, completed: newCompleted } : t);
+    if (task.completed) {
+      get().addToast({ type: 'info', title: 'Already completed', description: 'This task has already earned XP.' });
+      return;
+    }
+
+    const completedAt = new Date().toISOString();
+    const shouldAwardXp = !task.xpAwarded;
+    const newTasks = vision.tasks.map(t => t.id === taskId ? {
+      ...t,
+      completed: true,
+      completedAt,
+      xpAwarded: true,
+      xpAwardedAt: shouldAwardXp ? completedAt : t.xpAwardedAt
+    } : t);
     
     const completedCount = newTasks.filter(t => t.completed).length;
     const progress = newTasks.length > 0 ? Math.round((completedCount / newTasks.length) * 100) : 0;
@@ -639,13 +681,26 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      const { error: taskError } = await supabase
+      const { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .update({ completed: newCompleted })
+        .update({
+          completed: true,
+          completed_at: completedAt,
+          xp_awarded: true,
+          xp_awarded_at: shouldAwardXp ? completedAt : task.xpAwardedAt || completedAt,
+          updated_at: completedAt
+        })
         .eq('id', taskId)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('completed', false)
+        .is('deleted_at', null)
+        .select('id, xp_awarded');
 
       if (taskError) throw taskError;
+      if (!taskData?.length) {
+        get().addToast({ type: 'info', title: 'Already completed', description: 'This task is no longer active.' });
+        return;
+      }
 
       // Update vision progress in DB
       const { error: visionError } = await supabase
@@ -656,14 +711,17 @@ export const useStore = create<AppState>((set, get) => ({
       
       if (visionError) throw visionError;
       
-      if (newCompleted) {
-        get().addXp(15);
+      if (shouldAwardXp && await awardXpOnce(userId, 'task', taskId, TASK_XP, 'Completed Vision task')) {
+        get().addXp(TASK_XP);
         get().recordDailyActivity('task');
+        get().addToast({ type: 'success', title: `Task completed +${TASK_XP} XP`, description: task.text });
         get().addActivity({
           type: 'completed',
           description: `Completed task: ${task.text} in ${vision.title}`,
           visionId
         });
+      } else {
+        get().addToast({ type: 'info', title: 'Task completed', description: 'XP was already awarded for this task.' });
       }
     } catch (error) {
       console.error('Failed to toggle vision task:', error);
@@ -1021,22 +1079,17 @@ export const useStore = create<AppState>((set, get) => ({
     circle: state.circle.map(m => m.id === id ? { ...m, ...updates } : m)
   })),
   addXp: async (amount) => {
-    const { user } = get();
     let newXpData: any = null;
 
     set((state) => {
-      const newXp = state.user.xp + amount;
-      const nextLevelXp = state.user.level * 1000;
-
-      if (newXp >= nextLevelXp) {
-        newXpData = {
-          xp: newXp - nextLevelXp,
-          level: state.user.level + 1,
-          rank: state.user.level + 1 > 25 ? 'Master' : state.user.rank
-        };
-      } else {
-        newXpData = { xp: newXp };
-      }
+      const currentTotalXp = normalizeLegacyXp(state.user.level, state.user.xp);
+      const newXp = currentTotalXp + amount;
+      const nextLevel = getLevelFromXp(newXp);
+      newXpData = {
+        xp: newXp,
+        level: nextLevel,
+        rank: nextLevel > 25 ? 'Master' : state.user.rank
+      };
 
       return {
         user: { ...state.user, ...newXpData }
@@ -1491,19 +1544,40 @@ export const useStore = create<AppState>((set, get) => ({
 
   addTodo: async (text) => {
     const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to add tasks.' });
+      return;
+    }
+
     const tempId = Math.random().toString(36).substring(7);
-    const newTodo = { id: tempId, text, completed: false };
+    const newTodo = { id: tempId, text, completed: false, completedAt: null, xpAwarded: false, xpAwardedAt: null, deletedAt: null };
 
     set((state) => ({
       todos: [newTodo, ...state.todos]
     }));
 
-    if (userId) {
-      try {
-        await supabase.from('todos').insert({ user_id: userId, text, completed: false, created_at: new Date().toISOString() });
-      } catch (error) {
-        console.error('Failed to add todo:', error);
-      }
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .insert({ user_id: userId, text, completed: false, created_at: new Date().toISOString() })
+        .select('id, text, completed, completed_at, xp_awarded, xp_awarded_at, deleted_at')
+        .single();
+      if (error) throw error;
+      set((state) => ({
+        todos: state.todos.map(todo => todo.id === tempId ? {
+          id: data.id,
+          text: data.text,
+          completed: !!data.completed,
+          completedAt: data.completed_at || null,
+          xpAwarded: !!data.xp_awarded,
+          xpAwardedAt: data.xp_awarded_at || null,
+          deletedAt: data.deleted_at || null
+        } : todo)
+      }));
+    } catch (error) {
+      console.error('Failed to add todo:', error);
+      set((state) => ({ todos: state.todos.filter(todo => todo.id !== tempId) }));
+      get().addToast({ type: 'error', title: 'Task failed', description: 'Could not add this task.' });
     }
   },
 
@@ -1512,33 +1586,79 @@ export const useStore = create<AppState>((set, get) => ({
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
 
-    const wasCompleted = todo.completed;
-
-    set((state) => ({
-      todos: state.todos.map(t => t.id === id ? { ...t, completed: !t.completed } : t)
-    }));
-
-    if (!wasCompleted) {
-      get().addXp(20);
-      get().recordDailyActivity('todo');
+    if (todo.completed) {
+      get().addToast({ type: 'info', title: 'Already completed', description: 'This task has already earned XP.' });
+      return;
     }
 
+    const completedAt = new Date().toISOString();
+    const shouldAwardXp = !todo.xpAwarded;
+    set((state) => ({
+      todos: state.todos.map(t => t.id === id ? {
+        ...t,
+        completed: true,
+        completedAt,
+        xpAwarded: true,
+        xpAwardedAt: shouldAwardXp ? completedAt : t.xpAwardedAt
+      } : t)
+    }));
+
     try {
-      await supabase.from('todos').update({ completed: !wasCompleted }).eq('id', id);
+      const userId = get().session?.user?.id;
+      if (!userId) throw new Error('Login required');
+      const { data, error } = await supabase
+        .from('todos')
+        .update({
+          completed: true,
+          completed_at: completedAt,
+          xp_awarded: true,
+          xp_awarded_at: shouldAwardXp ? completedAt : todo.xpAwardedAt || completedAt,
+          updated_at: completedAt
+        })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .eq('completed', false)
+        .is('deleted_at', null)
+        .select('id');
+      if (error) throw error;
+      if (!data?.length) {
+        get().addToast({ type: 'info', title: 'Already completed', description: 'This task is no longer active.' });
+        return;
+      }
+
+      if (shouldAwardXp && await awardXpOnce(userId, 'todo', id, TODO_XP, 'Completed dashboard task')) {
+        get().addXp(TODO_XP);
+        get().recordDailyActivity('todo');
+        get().addToast({ type: 'success', title: `Task completed +${TODO_XP} XP`, description: todo.text });
+      } else {
+        get().addToast({ type: 'info', title: 'Task completed', description: 'XP was already awarded for this task.' });
+      }
     } catch (error) {
       console.error('Failed to toggle todo:', error);
+      set((state) => ({ todos: state.todos.map(t => t.id === id ? todo : t) }));
+      get().addToast({ type: 'error', title: 'Task failed', description: 'Could not complete this task.' });
     }
   },
 
   deleteTodo: async (id) => {
+    const previousTodos = get().todos;
     set((state) => ({
       todos: state.todos.filter(t => t.id !== id)
     }));
 
     try {
-      await supabase.from('todos').delete().eq('id', id);
+      const userId = get().session?.user?.id;
+      if (!userId) throw new Error('Login required');
+      const { error } = await supabase
+        .from('todos')
+        .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (error) throw error;
     } catch (error) {
       console.error('Failed to delete todo:', error);
+      set({ todos: previousTodos });
+      get().addToast({ type: 'error', title: 'Delete failed', description: 'Could not delete this task.' });
     }
   },
   
