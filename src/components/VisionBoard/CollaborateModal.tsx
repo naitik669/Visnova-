@@ -43,7 +43,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-hidden">
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
@@ -55,7 +55,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
         initial={{ scale: 0.9, opacity: 0, x: 50 }} 
         animate={{ scale: 1, opacity: 1, x: 0 }} 
         exit={{ scale: 0.9, opacity: 0, x: 50 }}
-        className="relative w-full max-w-lg bg-card border border-card-border rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden"
+        className="relative w-full max-w-lg max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] bg-card border border-card-border rounded-t-[2rem] sm:rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden"
       >
         <div className="p-8 border-b border-card-border bg-gradient-to-br from-accent/5 to-transparent">
           <div className="flex items-center justify-between mb-6">
@@ -167,7 +167,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
            </div>
         </div>
 
-        <div className="p-8 bg-surface-muted border-t border-card-border flex items-center gap-3">
+        <div className="p-6 sm:p-8 pb-[calc(1.5rem+env(safe-area-inset-bottom))] bg-surface-muted border-t border-card-border flex items-center gap-3">
            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
               <Shield size={20} />
            </div>

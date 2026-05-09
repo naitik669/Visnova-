@@ -38,7 +38,7 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-hidden">
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
@@ -50,7 +50,7 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
         initial={{ scale: 0.9, opacity: 0, y: 20 }} 
         animate={{ scale: 1, opacity: 1, y: 0 }} 
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative w-full max-w-2xl bg-card border border-card-border rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.5)] overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] bg-card border border-card-border rounded-t-[2rem] sm:rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.5)] overflow-y-auto custom-scrollbar"
       >
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Left Preview */}

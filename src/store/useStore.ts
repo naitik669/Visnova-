@@ -62,6 +62,15 @@ function isMissingPostRow(error: any) {
   return text.includes('not found') || text.includes('permission') || text.includes('0 rows');
 }
 
+function isMissingPostActionRpc(error: any) {
+  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return text.includes('visnova_archive_post') ||
+    text.includes('visnova_restore_post') ||
+    text.includes('visnova_soft_delete_post') ||
+    text.includes('function') ||
+    text.includes('schema cache');
+}
+
 function toDateKey(date: Date) {
   return format(date, 'yyyy-MM-dd');
 }
@@ -1817,14 +1826,27 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ posts: state.posts.filter(post => post.id !== id) }));
 
     try {
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from('posts')
-        .update({ archived: true, archived_at: now, updated_at: now })
-        .eq('id', id)
-        .eq('user_id', userId);
+      let usedFallback = false;
+      const { data, error } = await supabase.rpc('visnova_archive_post', { target_post_id: id });
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingPostActionRpc(error)) {
+          usedFallback = true;
+          const now = new Date().toISOString();
+          const { data: rows, error: fallbackError } = await supabase
+            .from('posts')
+            .update({ archived: true, archived_at: now, updated_at: now })
+            .eq('id', id)
+            .eq('user_id', userId)
+            .is('deleted_at', null)
+            .select('id');
+          if (fallbackError) throw fallbackError;
+          if (!rows?.length) throw new Error('Post was not found or you do not have permission to archive it.');
+        } else {
+          throw error;
+        }
+      }
+      if (!usedFallback && data !== true) throw new Error('Post was not found or you do not have permission to archive it.');
 
       get().addToast({ type: 'success', title: 'Post archived', description: 'You can view it from your profile archive.' });
       return true;
@@ -1864,14 +1886,27 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     try {
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from('posts')
-        .update({ archived: false, archived_at: null, updated_at: now })
-        .eq('id', id)
-        .eq('user_id', userId);
+      let usedFallback = false;
+      const { data, error } = await supabase.rpc('visnova_restore_post', { target_post_id: id });
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingPostActionRpc(error)) {
+          usedFallback = true;
+          const now = new Date().toISOString();
+          const { data: rows, error: fallbackError } = await supabase
+            .from('posts')
+            .update({ archived: false, archived_at: null, updated_at: now })
+            .eq('id', id)
+            .eq('user_id', userId)
+            .is('deleted_at', null)
+            .select('id');
+          if (fallbackError) throw fallbackError;
+          if (!rows?.length) throw new Error('Post was not found or you do not have permission to restore it.');
+        } else {
+          throw error;
+        }
+      }
+      if (!usedFallback && data !== true) throw new Error('Post was not found or you do not have permission to restore it.');
 
       set((state) => ({
         posts: state.posts.map(post => post.id === id ? { ...post, archived: false, archivedAt: null } : post)
@@ -1983,17 +2018,32 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ posts: state.posts.filter(p => p.id !== id) }));
 
     try {
-      const { error: softDeleteError } = await supabase
-        .from('posts')
-        .update({
-          deleted_at: new Date().toISOString(),
-          archived: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('user_id', userId);
+      let usedFallback = false;
+      const { data, error: softDeleteError } = await supabase.rpc('visnova_soft_delete_post', { target_post_id: id });
 
-      if (softDeleteError) throw softDeleteError;
+      if (softDeleteError) {
+        if (isMissingPostActionRpc(softDeleteError)) {
+          usedFallback = true;
+          const now = new Date().toISOString();
+          const { data: rows, error: fallbackError } = await supabase
+            .from('posts')
+            .update({
+              deleted_at: now,
+              archived: true,
+              archived_at: now,
+              updated_at: now
+            })
+            .eq('id', id)
+            .eq('user_id', userId)
+            .is('deleted_at', null)
+            .select('id');
+          if (fallbackError) throw fallbackError;
+          if (!rows?.length) throw new Error('Post was not found or you do not have permission to delete it.');
+        } else {
+          throw softDeleteError;
+        }
+      }
+      if (!usedFallback && data !== true) throw new Error('Post was not found or you do not have permission to delete it.');
 
       get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
       return true;

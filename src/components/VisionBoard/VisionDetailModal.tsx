@@ -405,14 +405,12 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
               opacity: 1,
               scale: 1,
               y: 0,
-              inset: isFullscreen ? '0px' : '32px',
-              borderRadius: isFullscreen ? '0px' : '32px',
             }}
             transition={{ type: 'spring', damping: 30, stiffness: 400 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className={cn(
               "fixed bg-card border border-card-border z-[70] shadow-[0_40px_100px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden",
-              !isFullscreen && "inset-4 md:inset-8"
+              isFullscreen ? "inset-0 rounded-none" : "inset-0 sm:inset-4 md:inset-8 rounded-none sm:rounded-[2rem]"
             )}
           >
             {/* Intelligent Floating Header */}

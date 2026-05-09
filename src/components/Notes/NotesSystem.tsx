@@ -1130,7 +1130,7 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
   };
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -1142,7 +1142,7 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.96 }}
-        className="relative w-full max-w-md rounded-[2rem] bg-card border border-card-border shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] rounded-t-[2rem] sm:rounded-[2rem] bg-card border border-card-border shadow-2xl overflow-y-auto custom-scrollbar"
       >
         <div className="p-8 border-b border-card-border/40 flex items-center justify-between">
           <div>
@@ -1450,12 +1450,12 @@ function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm">
+      <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-overlay backdrop-blur-sm overflow-hidden">
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 10 }}
-          className="w-full max-w-xl rounded-3xl bg-card border border-card-border shadow-2xl overflow-hidden"
+          className="w-full max-w-xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl bg-card border border-card-border shadow-2xl overflow-y-auto custom-scrollbar"
         >
           <div className="p-6 border-b border-card-border flex items-center justify-between">
             <div>
@@ -1511,7 +1511,7 @@ function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
               </div>
             </div>
           </div>
-          <div className="p-6 border-t border-card-border flex justify-end gap-3">
+          <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] border-t border-card-border flex flex-col sm:flex-row sm:justify-end gap-3">
             <button onClick={onClose} className="h-11 px-5 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest">Cancel</button>
             <button onClick={saveAudioNote} disabled={!audioBlob || status === 'uploading'} className="h-11 px-6 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
               {status === 'uploading' ? 'Saving...' : 'Save'}

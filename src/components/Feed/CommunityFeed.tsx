@@ -869,7 +869,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-3xl bg-app-container rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden border border-card-border p-4 sm:p-8 max-h-[96vh] sm:max-h-[90vh] overflow-y-auto custom-scrollbar pb-[calc(1rem+env(safe-area-inset-bottom))]"
+        className="relative w-full max-w-3xl bg-app-container rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden border border-card-border p-4 sm:p-8 max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar pb-[calc(1rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -1108,7 +1108,7 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}
-        className="relative w-full max-w-2xl bg-app-container rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden border border-card-border p-4 sm:p-8 max-h-[96vh] overflow-y-auto custom-scrollbar pb-[calc(1rem+env(safe-area-inset-bottom))]"
+        className="relative w-full max-w-2xl bg-app-container rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden border border-card-border p-4 sm:p-8 max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar pb-[calc(1rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -1753,7 +1753,7 @@ function SharePostModal({ post, onClose }: { post: Post, onClose: () => void }) 
   return (
     <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/70 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-lg max-h-[96vh] bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl overflow-y-auto custom-scrollbar">
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-lg max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl overflow-y-auto custom-scrollbar">
         <div className="p-6 border-b border-card-border flex items-center justify-between">
           <div>
             <h3 className="text-xl font-black uppercase tracking-tight text-text-main">Send Post</h3>
@@ -1878,7 +1878,7 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
         initial={{ opacity: 0, scale: 0.95, x: 20 }}
         animate={{ opacity: 1, scale: 1, x: 0 }}
         exit={{ opacity: 0, scale: 0.95, x: 20 }}
-        className="relative w-full max-w-2xl bg-app-container rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden border border-card-border flex flex-col h-[96dvh] sm:h-[85vh]"
+        className="relative w-full max-w-2xl bg-app-container rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden border border-card-border flex flex-col h-[calc(100dvh-0.75rem)] sm:h-[85vh]"
       >
         <div className="p-6 border-b border-card-border flex justify-between items-center bg-card">
            <h3 className="text-lg font-black uppercase tracking-widest text-text-main">Thread</h3>
