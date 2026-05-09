@@ -92,7 +92,7 @@ export default function UserProfileModal() {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-xl max-h-[96vh] sm:max-h-[92vh] bg-app-container rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-y-auto custom-scrollbar border border-card-border z-[101]"
+          className="relative w-full max-w-xl h-[100dvh] sm:h-auto sm:max-h-[92vh] bg-app-container rounded-none sm:rounded-[2.5rem] shadow-2xl overflow-y-auto custom-scrollbar border border-card-border z-[101]"
         >
           {isLoading ? (
             <div className="h-96 flex flex-col items-center justify-center gap-4">

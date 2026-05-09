@@ -570,7 +570,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
   );
 }
 
-function ScreenVerify({ email, nextStep }: any) {
+function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState('');
   const [isResending, setIsResending] = useState(false);
@@ -685,8 +685,8 @@ function ScreenVerify({ email, nextStep }: any) {
               </button>
             </div>
             <div className="flex flex-col gap-2 border-t border-card-border pt-3">
-               <button
-                onClick={() => window.location.reload()}
+              <button
+                onClick={onChangeEmail}
                 className="text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main opacity-40 hover:opacity-100 transition-all text-left flex items-center gap-1"
               >
                 <ArrowLeft size={10} /> Change email address
@@ -1581,7 +1581,7 @@ export default function OnboardingFlow() {
           backToLogin={() => nextStep(11)}
         />;
       case 13: return <ScreenResetPassword nextStep={nextStep} />;
-      case 2: return <ScreenVerify email={email} nextStep={nextStep} />;
+      case 2: return <ScreenVerify email={email} nextStep={nextStep} onChangeEmail={() => nextStep(1)} />;
       case 3: return <Screen2 interests={interests} toggleInterest={toggleInterest} interestOptions={interestOptions} nextStep={nextStep} />;
       case 4: return <Screen3 intent={intent} setIntent={setIntent} nextStep={nextStep} />;
       case 5: return <Screen4 commitment={commitment} setCommitment={setCommitment} nextStep={nextStep} />;

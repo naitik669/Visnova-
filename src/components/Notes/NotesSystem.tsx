@@ -449,7 +449,7 @@ export default function NotesSystem() {
             ) : (
               <div className={cn(
                 "mx-auto transition-all duration-700",
-                isJournalFullView ? "max-w-none h-full" : activeTab === 'journal' ? "max-w-[1800px] space-y-6" : "max-w-[1600px] space-y-16"
+                isJournalFullView ? "max-w-none h-full" : activeTab === 'journal' ? "max-w-[1100px] space-y-6" : "max-w-[1600px] space-y-16"
               )}>
                 {activeTab === 'vault' && (
                   <section className="space-y-8">
@@ -819,7 +819,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
 
       <div className={cn(
         "flex transition-all duration-1000",
-        fullView ? "h-[calc(100vh-4rem)] p-3 sm:p-6 lg:p-10 gap-4 lg:gap-10" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[700px]"
+        fullView ? "h-[calc(100vh-4rem)] p-3 sm:p-6 lg:p-10 gap-4 lg:gap-10" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[720px] justify-center"
       )}>
         {/* Sticky Notes Sidebar in Full View */}
         {fullView && (
@@ -859,7 +859,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             initial={{ rotateY: -10, opacity: 0 }}
             animate={{ rotateY: 0, opacity: 1 }}
             transition={{ duration: 0.8, type: 'spring' }}
-            className="flex-1 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col items-center text-center space-y-5 sm:space-y-8 lg:space-y-10 origin-right relative overflow-hidden"
+            className={cn("flex-1 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col items-center text-center space-y-5 sm:space-y-8 lg:space-y-10 origin-right relative overflow-hidden", !fullView && "lg:max-w-[360px]")}
           >
             <div className="absolute top-0 right-0 w-2 h-full bg-surface-muted/30 border-l border-card-border/10" />
             
@@ -963,7 +963,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               const noteContent = e.dataTransfer.getData('text/plain');
               if (noteContent) handleDropNote(noteContent);
             }}
-            className="flex-1 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col space-y-5 sm:space-y-8 relative origin-left overflow-hidden"
+            className={cn("flex-1 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col space-y-5 sm:space-y-8 relative origin-left overflow-hidden", !fullView && "lg:flex-[1.45]")}
           >
             <div className="absolute top-0 left-0 w-2 h-full bg-surface-muted/30 border-r border-card-border/10" />
             <div className="absolute top-0 left-0 w-1.5 h-full bg-accent/5 rounded-l-full" />

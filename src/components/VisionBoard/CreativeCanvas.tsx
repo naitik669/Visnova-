@@ -20,17 +20,16 @@ import {
   Quote,
   Square,
   Circle as CircleIcon,
-  Diamond,
   ArrowRight,
   Maximize2,
   Target,
   Trash2,
-  MoreVertical
+  GitBranch
 } from 'lucide-react';
 
 interface CreativeCanvasProps {
   vision: Vision;
-  updateVision: (id: string, updates: Partial<Vision>) => void;
+  updateVision: (id: string, updates: Partial<Vision>) => void | Promise<void>;
   onActiveChange?: (active: boolean) => void;
 }
 
@@ -57,14 +56,32 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [linkingFromId, setLinkingFromId] = useState<string | null>(null);
   const [tempConnectorEnd, setTempConnectorEnd] = useState<{ x: number, y: number } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'failed'>('saved');
   const transformWrapperRef = useRef<any>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const { session, addToast } = useStore();
 
   const elements = vision.elements || [];
 
+  const persistElements = async (nextElements: VisionElement[]) => {
+    setSaveStatus('saving');
+    try {
+      await Promise.resolve(updateVision(vision.id, { elements: nextElements }));
+      setSaveStatus('saved');
+    } catch (error) {
+      console.error('Vision Board save failed:', error);
+      setSaveStatus('failed');
+      addToast({ type: 'error', title: 'Board save failed', description: 'Could not save this board change.' });
+    }
+  };
+
+  const getCurrentScale = () => {
+    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
+    return transformState?.scale || 1;
+  };
+
   const addElement = (element: VisionElement) => {
-    updateVision(vision.id, { elements: [...elements, element] });
+    persistElements([...elements, element]);
   };
 
   const addQuickElement = (type: VisionElement['type'], content: string, metadata: VisionElement['metadata'] = {}) => {
@@ -121,7 +138,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   const updateElement = (id: string, updates: Partial<VisionElement>) => {
     const newElements = elements.map(el => el.id === id ? { ...el, ...updates } : el);
-    updateVision(vision.id, { elements: newElements });
+    persistElements(newElements);
   };
 
   const deleteElement = (id: string) => {
@@ -131,7 +148,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       el.metadata?.fromElementId !== id && 
       el.metadata?.toElementId !== id
     );
-    updateVision(vision.id, { elements: newElements });
+    persistElements(newElements);
     if (selectedId === id) setSelectedId(null);
   };
 
@@ -169,7 +186,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
           toElementId: toId
         }
       };
-      updateVision(vision.id, { elements: [...elements, newConnector] });
+      persistElements([...elements, newConnector]);
     }
 
     setLinkingFromId(null);
@@ -216,6 +233,21 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     importImageFile(file, dropPoint.x - 160, dropPoint.y - 120);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (isTyping) return;
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId) {
+        event.preventDefault();
+        deleteElement(selectedId);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedId, elements]);
+
   return (
     <div 
       className="flex-1 relative overflow-hidden bg-bg-base/20 group/canvas select-none"
@@ -229,6 +261,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         <CanvasToolButton icon={<FileText size={18} />} label="Sticky" onClick={() => addQuickElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
         <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} />
         <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => addQuickElement('shape', 'Label', { shapeType: 'rectangle', color: '#3b82f6' })} />
+        <CanvasToolButton icon={<GitBranch size={18} />} label="Flow" onClick={() => addQuickElement('flowchartNode', 'Process step', { shapeType: 'rectangle', color: 'var(--accent)' })} />
         <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => addQuickElement('checklist', 'Checklist', { checklist: [{ id: Math.random().toString(36).slice(2), text: 'First item', completed: false }] })} />
         <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => addQuickElement('link', 'https://example.com', { url: 'https://example.com', title: 'Resource' })} />
         <input
@@ -242,6 +275,15 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             event.target.value = '';
           }}
         />
+      </div>
+
+      <div className={cn(
+        "absolute right-3 top-3 z-40 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest shadow-lg backdrop-blur-md",
+        saveStatus === 'saving' && "bg-accent/10 border-accent/20 text-accent",
+        saveStatus === 'failed' && "bg-danger/10 border-danger/20 text-danger",
+        saveStatus === 'saved' && "bg-card/90 border-card-border text-text-secondary/50"
+      )}>
+        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'failed' ? 'Save failed' : 'Saved'}
       </div>
 
       <TransformWrapper
@@ -320,6 +362,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                   onUpdate={(updates) => updateElement(element.id, updates)}
                   onDelete={() => deleteElement(element.id)}
                   onStartLink={() => startLinking(element.id)}
+                  getScale={getCurrentScale}
                   onHover={(x, y) => {
                     if (linkingFromId) setTempConnectorEnd({ x, y });
                   }}
@@ -384,8 +427,9 @@ const CanvasElement: React.FC<{
   onUpdate: (updates: Partial<VisionElement>) => void;
   onDelete: () => void;
   onStartLink: () => void;
+  getScale: () => number;
   onHover: (x: number, y: number) => void;
-}> = ({ element, isSelected, isLinking, isLinkingFrom, onSelect, onUpdate, onDelete, onStartLink, onHover }) => {
+}> = ({ element, isSelected, isLinking, isLinkingFrom, onSelect, onUpdate, onDelete, onStartLink, getScale, onHover }) => {
   const [isDragging, setIsDragging] = useState(false);
 
   return (
@@ -398,7 +442,8 @@ const CanvasElement: React.FC<{
       }}
       onDragEnd={(_, info) => {
         setIsDragging(false);
-        onUpdate({ x: element.x + info.offset.x, y: element.y + info.offset.y });
+        const scale = getScale();
+        onUpdate({ x: element.x + info.offset.x / scale, y: element.y + info.offset.y / scale });
       }}
       onMouseMove={() => {
         if (isLinking && !isLinkingFrom) {
@@ -658,14 +703,13 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         </div>
       );
     case 'shape':
-      const ShapeIcon = element.metadata?.shapeType === 'circle' ? CircleIcon : 
-                       element.metadata?.shapeType === 'diamond' ? Diamond : Square;
+    case 'flowchartNode':
       return (
         <div 
-          className="flex items-center justify-center border-4 border-accent bg-accent/5"
+          className={cn("flex items-center justify-center border-4 border-accent bg-accent/5", element.type === 'flowchartNode' && "shadow-xl")}
           style={{ 
-            width: element.width || 120, 
-            height: element.height || 120,
+            width: element.width || (element.type === 'flowchartNode' ? 180 : 120),
+            height: element.height || (element.type === 'flowchartNode' ? 96 : 120),
             backgroundColor: element.metadata?.color ? `${element.metadata.color}22` : undefined,
             borderColor: element.metadata?.color || undefined,
             borderRadius: element.metadata?.shapeType === 'circle' ? '50%' : '12px',

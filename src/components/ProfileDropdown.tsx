@@ -56,7 +56,7 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          className="fixed left-20 bottom-6 w-64 bg-card border border-card-border rounded-[1.5rem] shadow-2xl p-2 z-[100] overflow-hidden"
+          className="fixed left-3 right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:left-20 sm:right-auto sm:bottom-6 w-auto sm:w-64 max-h-[calc(100dvh-6rem)] overflow-y-auto custom-scrollbar bg-card border border-card-border rounded-[1.5rem] shadow-2xl p-2 z-[100]"
         >
           <div className="px-4 py-3 border-b border-card-border mb-1">
             <p className="text-sm font-bold text-text-main truncate">{user.name}</p>

@@ -404,6 +404,10 @@ export default function CommunityFeed() {
           post={post} 
           onOpenThread={() => navigate(`/post/${post.id}`)}
           onHashtagClick={handleHashtagClick}
+          onPostDeleted={(postId) => useStore.setState(state => ({ posts: state.posts.filter(p => p.id !== postId) }))}
+          onPostArchived={(postId) => useStore.setState(state => ({ posts: state.posts.filter(p => p.id !== postId) }))}
+          onPostUpdated={(postId, updates) => useStore.setState(state => ({ posts: state.posts.map(p => p.id === postId ? { ...p, ...updates } : p) }))}
+          onAuthorMuted={(authorId) => useStore.setState(state => ({ posts: state.posts.filter(p => p.userId !== authorId) }))}
         />
       );
 
@@ -1376,7 +1380,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                 initial={{ opacity: 0, scale: 0.96, y: -4 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: -4 }}
-                className="absolute top-full right-0 mt-2 w-48 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2"
+                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-48 max-h-[70dvh] overflow-y-auto custom-scrollbar bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2"
               >
               {!isOwnPost && (
                 <button
