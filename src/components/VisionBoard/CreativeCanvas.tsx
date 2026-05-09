@@ -263,7 +263,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
               contentStyle={{ width: '5000px', height: '5000px' }}
             >
               <div 
-                className="relative w-full h-full bg-[radial-gradient(var(--card-border)_1px,transparent_1px)] [background-size:40px_40px]"
+                className="relative w-full h-full bg-[radial-gradient(circle,rgba(120,120,120,0.25)_1px,transparent_1px)] [background-size:24px_24px]"
                 onClick={() => {
                   setSelectedId(null);
                   setLinkingFromId(null);

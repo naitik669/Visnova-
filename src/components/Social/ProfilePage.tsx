@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import {
   Zap,
@@ -60,6 +60,7 @@ type SocialProfile = {
 export default function ProfilePage() {
   const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow, fetchProfileStats } = useStore();
   const navigate = useNavigate();
+  const { profileId } = useParams<{ profileId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'followers' | 'following' | 'archived' | 'achievements' | 'settings';
 
@@ -89,8 +90,8 @@ export default function ProfilePage() {
   });
 
   const targetId = useMemo(
-    () => (selectedProfileId === 'me' || !selectedProfileId) ? (session?.user?.id || currentUser.id) : selectedProfileId,
-    [selectedProfileId, session?.user?.id, currentUser.id]
+    () => profileId || ((selectedProfileId === 'me' || !selectedProfileId) ? (session?.user?.id || currentUser.id) : selectedProfileId),
+    [profileId, selectedProfileId, session?.user?.id, currentUser.id]
   );
   const isOwnProfile = !!targetId && targetId === session?.user?.id;
 
@@ -254,6 +255,12 @@ export default function ProfilePage() {
     }
     fetchProfileData();
   }, [targetId, session?.user?.id]);
+
+  useEffect(() => {
+    if (!isOwnProfile && activeTab === 'archived') {
+      setSearchParams({ tab: 'overview' });
+    }
+  }, [activeTab, isOwnProfile, setSearchParams]);
 
   const setActiveTab = (tab: string) => {
     setSearchParams({ tab });
@@ -521,7 +528,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                 { (selectedProfileId === 'me' || targetId === session?.user?.id) ? (
+                 {isOwnProfile ? (
                    <>
                     <button
                       onClick={startEditingProfile}

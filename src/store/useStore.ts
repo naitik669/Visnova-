@@ -837,7 +837,6 @@ export const useStore = create<AppState>((set, get) => ({
       if (error) throw error;
       
       set({ ...privateStateReset(), isProfileReady: true, authLoading: false, profileLoading: false });
-      window.location.href = '/';
     } catch (err: any) {
       console.error('Sign-Out Error:', err);
       get().addToast({ type: 'error', title: 'Sign-out failed', description: err.message });
@@ -1284,6 +1283,9 @@ export const useStore = create<AppState>((set, get) => ({
       audio_path: note.audio_path,
       audio_duration: note.audio_duration,
       audio_mime_type: note.audio_mime_type,
+      transcript: note.transcript,
+      transcript_status: note.transcript_status || 'none',
+      transcribed_at: note.transcribed_at,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       ...note,
@@ -1394,6 +1396,9 @@ export const useStore = create<AppState>((set, get) => ({
           audio_path: audioPath,
           audio_duration: n.audio_duration,
           audio_mime_type: n.audio_mime_type,
+          transcript: n.transcript || '',
+          transcript_status: n.transcript_status || 'none',
+          transcribed_at: n.transcribed_at || null,
           createdAt: new Date(n.created_at).getTime(),
           updatedAt: new Date(n.updated_at).getTime()
         };
@@ -1903,15 +1908,6 @@ export const useStore = create<AppState>((set, get) => ({
         throw new Error('Post was not found or you do not have permission to delete it.');
       }
 
-      supabase
-        .from('posts')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', userId)
-        .then(({ error }) => {
-          if (error) console.warn('Post soft-deleted but hard delete cleanup failed:', error);
-        });
-
       get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
       return true;
     } catch (err) {
@@ -2116,7 +2112,7 @@ export const useStore = create<AppState>((set, get) => ({
 
         const savedPosts = (savedRows || [])
           .map((row: any) => row.post)
-          .filter((p: any) => p && (!p.archived || p.user_id === userId) && !p.deleted_at);
+          .filter((p: any) => p && !p.archived && !p.deleted_at);
 
         const formattedSavedPosts: Post[] = savedPosts.map((p: any) => ({
           id: p.id,

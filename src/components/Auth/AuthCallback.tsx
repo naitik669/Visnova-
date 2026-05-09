@@ -19,26 +19,34 @@ export default function AuthCallback() {
         const { data: { session }, error } = result;
         if (error) throw error;
 
-        if (session) {
-          const store = useStore.getState();
-          setSession(session);
-          const profile = await store.ensureCurrentUserProfile();
-          
-          if (profile) {
-            await store.loadUserProfile(session.user.id);
-            if (profile.onboarded) {
-              addToast({ type: 'success', title: 'Welcome back', description: 'Redirecting to your dashboard...' });
-            }
-            navigate('/', { replace: true });
-          } else {
-             navigate('/', { replace: true });
-          }
-        } else {
+        if (!session) {
+          addToast({
+            type: 'error',
+            title: 'Auth link invalid',
+            description: 'Auth link expired or invalid. Please request a new login link.'
+          });
           navigate('/', { replace: true });
+          return;
         }
+
+        const store = useStore.getState();
+        setSession(session);
+        const profile = await store.ensureCurrentUserProfile();
+
+        if (profile) {
+          await store.loadUserProfile(session.user.id);
+          if (profile.onboarded) {
+            addToast({ type: 'success', title: 'Welcome back', description: 'Redirecting to your dashboard...' });
+          }
+        }
+        navigate('/', { replace: true });
       } catch (err: any) {
         console.error('Auth Callback Error:', err);
-        addToast({ type: 'error', title: 'Authentication failed', description: err.message });
+        addToast({
+          type: 'error',
+          title: 'Authentication failed',
+          description: err.message || 'Auth link expired or invalid. Please request a new login link.'
+        });
         navigate('/', { replace: true });
       }
     };

@@ -270,14 +270,9 @@ export default function UserProfileModal() {
                     </button>
                     <button 
                       onClick={() => {
-                        if (selectedProfileId === 'me') {
-                          setSelectedProfileId('me');
-                          navigate('/profile');
-                        } else {
-                          // Navigate to specific user profile
-                          navigate('/profile');
-                        }
+                        const profileTarget = selectedProfileId === 'me' ? session?.user?.id : selectedProfileId;
                         setSelectedProfileId(null);
+                        navigate(profileTarget && profileTarget !== session?.user?.id ? `/profile/${profileTarget}` : '/profile');
                       }}
                       className="px-10 h-14 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all"
                     >

@@ -4,7 +4,6 @@ import { User, MessageSquare, Bookmark, Settings, LogOut, Bell, HelpCircle } fro
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
-import { supabase } from '../lib/supabase';
 
 interface ProfileDropdownProps {
   isOpen: boolean;
@@ -14,7 +13,7 @@ interface ProfileDropdownProps {
 export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProps) {
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, setSelectedProfileId } = useStore();
+  const { user, setSelectedProfileId, signOut } = useStore();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -32,8 +31,9 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      location.reload(); // Refresh to clean up listeners and state
+      await signOut();
+      onClose();
+      navigate('/');
     } catch (error) {
       console.error('Logout failed:', error);
     }

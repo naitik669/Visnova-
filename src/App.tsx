@@ -32,7 +32,6 @@ import { cn } from './lib/utils';
 import { useStore } from './store/useStore';
 import FocusOverlay from './components/Dashboard/FocusOverlay';
 import Settings from './components/Settings/Settings';
-import { supabase } from './lib/supabase';
 
 function AccountabilityNudge() {
   const [visible, setVisible] = useState(false);
@@ -146,7 +145,7 @@ function Sidebar() {
             "text-base font-display font-semibold tracking-tight text-text-main transition-all duration-500 uppercase overflow-hidden whitespace-nowrap",
             isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2"
           )}>
-            Vis<span className="text-accent/30 font-light">nova</span>
+            <span className="text-text-main">Vis</span><span className="text-accent font-semibold">Nova</span>
           </span>
         </div>
       </div>
@@ -287,7 +286,7 @@ function Sidebar() {
 function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useStore();
+  const { user, signOut } = useStore();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const primaryItems = [
@@ -312,8 +311,9 @@ function MobileNav() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.reload();
+    await signOut();
+    setIsMoreOpen(false);
+    navigate('/');
   };
 
   return (
@@ -431,8 +431,8 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Dashboard', subtitle: 'Your daily progress space' },
   '/feed': { title: 'Feed', subtitle: 'Share progress and support others' },
   '/vision': { title: 'Visions', subtitle: 'Plan goals and move tasks forward' },
-  '/notes': { title: 'Notes', subtitle: 'Normal notes, audio notes, vault, and journal' },
-  '/journal': { title: 'Notes', subtitle: 'Normal notes, audio notes, vault, and journal' },
+  '/notes': { title: 'Library', subtitle: 'Notes, audio, and journal' },
+  '/journal': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
   '/growth': { title: 'Growth', subtitle: 'Learn with purpose and turn resources into action' },
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
@@ -585,6 +585,7 @@ function AppContent() {
                     <Route path="/notes" element={<NotesSystem />} />
                     <Route path="/journal" element={<Navigate to="/notes?tab=journal" replace />} />
                     <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/profile/:profileId" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/nova-clock" element={<NovaClock />} />
                     <Route path="/nova" element={<Navigate to="/nova-clock" replace />} />

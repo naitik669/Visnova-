@@ -32,6 +32,14 @@ type GrowthStatus = 'saved' | 'learning' | 'completed' | 'applied' | 'archived';
 type SourceType = 'youtube' | 'article' | 'course' | 'book' | 'podcast' | 'pdf' | 'website' | 'other';
 type GrowthTab = 'library' | 'active' | 'applied' | 'paths' | 'skills';
 
+const growthTabs: { id: GrowthTab; label: string }[] = [
+  { id: 'library', label: 'Learning Library' },
+  { id: 'active', label: 'Active Learning' },
+  { id: 'applied', label: 'Applied' },
+  { id: 'paths', label: 'Learning Paths' },
+  { id: 'skills', label: 'Skills' }
+];
+
 type GrowthResource = {
   id: string;
   user_id: string;
@@ -507,13 +515,7 @@ export default function MindVisualizer() {
       <section className="bg-card border border-card-border rounded-[2rem] shadow-soft overflow-hidden">
         <div className="p-4 lg:p-5 border-b border-card-border space-y-4">
           <div className="flex flex-wrap gap-2">
-            {[
-              { id: 'library', label: 'Learning Library' },
-              { id: 'active', label: 'Active Learning' },
-              { id: 'applied', label: 'Applied' },
-              { id: 'paths', label: 'Learning Paths' },
-              { id: 'skills', label: 'Skills' }
-            ].map(tab => (
+            {growthTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}

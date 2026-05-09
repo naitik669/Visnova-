@@ -326,7 +326,7 @@ export default function NotesSystem() {
         {/* Top Header - Reduced size and condensed content */}
         {!isJournalFullView && (
           <header className={cn(
-            "flex items-center justify-between px-3 sm:px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500 gap-3",
+            "hidden items-center justify-between px-3 sm:px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500 gap-3",
             "min-h-24 sm:h-28"
           )}>
             <div className="flex items-center gap-3 sm:gap-8 lg:gap-12 min-w-0 flex-1">
@@ -335,14 +335,14 @@ export default function NotesSystem() {
                   "font-black text-text-main tracking-tight uppercase transition-all",
                   "text-xl sm:text-3xl"
                 )}>
-                  Notes
+                  Library
                 </h1>
-                <p className="hidden sm:block text-[10px] font-bold text-text-secondary/50 uppercase tracking-[0.2em] mt-1">Vault, audio notes, and journal</p>
+                <p className="hidden sm:block text-[10px] font-bold text-text-secondary/50 uppercase tracking-[0.2em] mt-1">Notes, audio, and journal</p>
               </div>
               <div className="flex max-w-full overflow-x-auto bg-surface-muted p-1 rounded-2xl border border-card-border/50 custom-scrollbar">
                 {[
                   { label: 'Vault', value: 'vault' as const },
-                  { label: 'Audio Notes', value: 'audio' as const },
+                  { label: 'Audio', value: 'audio' as const },
                   { label: 'Journal', value: 'journal' as const }
                 ].map((tab) => (
                   <button
@@ -387,6 +387,56 @@ export default function NotesSystem() {
           "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
           isJournalFullView ? "p-0" : activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-2 sm:px-8 md:px-12 py-5 sm:py-10"
         )}>
+          {!isJournalFullView && (
+            <header className="mx-auto max-w-[1600px] flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 sm:pb-8 mb-5 sm:mb-8 border-b border-card-border/30">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 min-w-0">
+                <div className="min-w-0">
+                  <h1 className="font-black text-text-main tracking-tight uppercase text-2xl sm:text-3xl">Library</h1>
+                  <p className="text-[10px] font-bold text-text-secondary/50 uppercase tracking-[0.2em] mt-1">Notes, audio, and journal</p>
+                </div>
+                <div className="flex max-w-full overflow-x-auto bg-surface-muted p-1 rounded-2xl border border-card-border/50 custom-scrollbar">
+                  {[
+                    { label: 'Notes', value: 'vault' as const },
+                    { label: 'Audio', value: 'audio' as const },
+                    { label: 'Journal', value: 'journal' as const }
+                  ].map((tab) => (
+                    <button
+                      key={tab.value}
+                      onClick={() => {
+                        setActiveTab(tab.value);
+                        setSelectedNoteId(null);
+                      }}
+                      className={cn(
+                        "h-9 px-3 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                        activeTab === tab.value ? "bg-card text-accent shadow-sm" : "text-text-secondary/45 hover:text-text-main"
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                <div className="relative group hidden sm:block">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 group-focus-within:text-accent transition-colors" />
+                  <input
+                    placeholder="Search Library..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-11 pl-10 pr-4 w-64 max-w-[40vw] bg-surface-muted border border-card-border/50 rounded-2xl text-[11px] font-bold text-text-main focus:outline-none focus:border-accent/40 focus:bg-card transition-all placeholder:text-text-secondary/30 shadow-sm"
+                  />
+                </div>
+                <button
+                  onClick={() => activeTab === 'audio' ? setIsAudioModalOpen(true) : handleCreateNote(activeTab === 'journal' ? 'journal' : 'normal')}
+                  className="h-11 px-4 rounded-2xl bg-accent text-accent-contrast shadow-lg shadow-accent/10 hover:scale-105 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                >
+                  {activeTab === 'audio' ? <Mic size={18} /> : <Plus size={18} />}
+                  <span className="hidden sm:inline">{activeTab === 'audio' ? 'Audio Note' : activeTab === 'journal' ? 'Journal Entry' : 'New Note'}</span>
+                </button>
+              </div>
+            </header>
+          )}
           <AnimatePresence mode="wait">
             {selectedNote ? (
               <NoteEditor 
@@ -456,7 +506,7 @@ export default function NotesSystem() {
                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div className="space-y-1">
                           <h3 className="text-xl font-black text-text-main tracking-tight uppercase">
-                            {activeTab === 'vault' ? 'VAULT' : activeTab === 'audio' ? 'AUDIO NOTES' : 'JOURNAL'}
+                            {activeTab === 'vault' ? 'NOTES' : activeTab === 'audio' ? 'AUDIO NOTES' : 'JOURNAL'}
                           </h3>
                           <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">
                             {activeTab === 'vault' ? 'Normal notes and folders' : activeTab === 'audio' ? 'Recorded notes with private playback' : 'Daily writing space'}
@@ -541,7 +591,7 @@ export default function NotesSystem() {
                     ) : (
                       <div className={cn(
                         "grid",
-                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-10 gap-y-2" : "grid-cols-1"
+                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "grid-cols-1"
                       )}>
                         {filteredNotes.map((note, idx) => (
                           <NoteCard key={note.id || `note-${idx}`} note={note} onClick={() => setSelectedNoteId(note.id)} viewMode={viewMode} />
@@ -662,7 +712,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   };
 
   const handleDropNote = (noteContent: string) => {
-    setContent(prev => prev + (prev ? '\n\n' : '') + `From Vault:\n${noteContent}`);
+      setContent(prev => prev + (prev ? '\n\n' : '') + `From Library:\n${noteContent}`);
   };
 
   const updateCurrentPage = (updater: string | ((value: string) => string)) => {
@@ -775,7 +825,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
         {fullView && (
           <div className="w-64 shrink-0 flex flex-col gap-6 animate-in slide-in-from-left duration-700">
              <div className="space-y-1">
-               <h3 className="text-xs font-black text-text-main uppercase tracking-widest">Vault Stickies</h3>
+               <h3 className="text-xs font-black text-text-main uppercase tracking-widest">Library Stickies</h3>
                <p className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-40">Drag to Journal</p>
              </div>
              <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
@@ -1096,7 +1146,7 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
         <div className="p-8 border-b border-card-border/40 flex items-center justify-between">
           <div>
             <h3 className="text-xl font-black uppercase tracking-tight text-text-main">New Folder</h3>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent/60 mt-1">Vault collection</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent/60 mt-1">Library collection</p>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-text-main transition-all flex items-center justify-center">
             <X size={18} />
@@ -1475,6 +1525,23 @@ function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
 function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void, viewMode?: 'grid' | 'list' }) {
   const isAudioNote = note.note_type === 'audio' || !!note.audio_path;
   const NoteIcon = isAudioNote ? Volume2 : FileText;
+  const [cardAudioUrl, setCardAudioUrl] = useState(note.audio_url || '');
+
+  useEffect(() => {
+    let cancelled = false;
+    setCardAudioUrl(note.audio_url || '');
+    if (!note.audio_path) return;
+
+    getAudioNoteUrl(note.audio_path)
+      .then(url => {
+        if (!cancelled && url) setCardAudioUrl(url);
+      })
+      .catch(error => console.error('Failed to load audio preview URL:', error));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [note.audio_path, note.audio_url]);
 
   if (viewMode === 'list') {
     return (
@@ -1488,6 +1555,14 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-black text-text-main group-hover:text-accent transition-colors truncate uppercase tracking-tight">{note.title}</h4>
           <p className="text-[10px] text-text-secondary font-bold uppercase tracking-wider opacity-60">Updated {format(note.updatedAt, 'MMM dd, h:mm a')}</p>
+          {isAudioNote && cardAudioUrl && (
+            <audio
+              src={cardAudioUrl}
+              controls
+              onClick={(event) => event.stopPropagation()}
+              className="mt-2 h-8 w-full max-w-sm"
+            />
+          )}
         </div>
         <div className="flex items-center gap-4 px-6 border-l border-card-border/50">
            {note.tags.slice(0, 2).map((t, i) => (
@@ -1502,13 +1577,13 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
   return (
     <div 
       onClick={onClick}
-      className="min-h-64 p-5 border-b border-card-border/60 hover:border-accent/50 transition-all group cursor-pointer flex flex-col relative overflow-hidden"
+      className="min-h-40 p-4 border-b border-card-border/60 hover:border-accent/50 transition-all group cursor-pointer flex flex-col relative overflow-hidden"
     >
        <div className="absolute left-0 top-5 bottom-5 w-px bg-card-border group-hover:bg-accent transition-colors" />
        
-       <div className="flex items-center justify-between mb-8">
-          <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all shadow-sm">
-             <NoteIcon size={22} />
+       <div className="flex items-center justify-between mb-4">
+          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all shadow-sm">
+             <NoteIcon size={19} />
           </div>
           <div className="flex flex-col items-end">
             <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-[0.2em]">{format(note.updatedAt, 'yyyy')}</p>
@@ -1517,18 +1592,19 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
        </div>
 
        <div className="flex-1 space-y-3 min-w-0">
-          <h4 className="text-lg font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight">{note.title}</h4>
-          <p className="text-[11px] text-text-secondary/70 font-medium line-clamp-4 leading-relaxed">
+          <h4 className="text-base font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight line-clamp-1">{note.title}</h4>
+          <p className="text-[11px] text-text-secondary/70 font-medium line-clamp-2 leading-relaxed">
             {note.content ? note.content.substring(0, 120) + '...' : "No content yet."}
           </p>
-          {isAudioNote && (
-            <p className="inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-accent">
-              <Volume2 size={11} /> Audio Note
-            </p>
+          {isAudioNote && cardAudioUrl && (
+            <div onClick={(event) => event.stopPropagation()} className="rounded-xl border border-accent/10 bg-accent/5 px-3 py-2">
+              <audio src={cardAudioUrl} controls className="h-8 w-full" />
+              <p className="mt-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/45">Transcript not generated yet.</p>
+            </div>
           )}
        </div>
 
-       <div className="mt-8 pt-5 border-t border-card-border/30 flex items-center justify-between">
+       <div className="mt-4 pt-3 border-t border-card-border/30 flex items-center justify-between">
           <div className="flex -space-x-2">
             {note.tags.slice(0, 3).map((t, i) => (
               <div key={i} className="w-6 h-6 rounded-full bg-card border border-card-border flex items-center justify-center shadow-sm" title={`#${t}`}>

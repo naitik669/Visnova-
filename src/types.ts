@@ -130,6 +130,9 @@ export interface Note {
   audio_path?: string;
   audio_duration?: number;
   audio_mime_type?: string;
+  transcript?: string;
+  transcript_status?: 'none' | 'pending' | 'completed' | 'failed';
+  transcribed_at?: string | null;
   createdAt: number;
   updatedAt: number;
 }
