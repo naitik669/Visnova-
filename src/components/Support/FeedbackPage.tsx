@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { sanitizePlainText, sanitizeText } from '../../lib/security';
 import { useStore } from '../../store/useStore';
 
-const supportEmail = 'support@visnova.app';
+const supportEmail = 'naitik.business69@gmail.com';
 
 export default function FeedbackPage() {
   const { session, addToast } = useStore();

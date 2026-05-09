@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-const supportEmail = 'support@visnova.app';
+const supportEmail = 'naitik.business69@gmail.com';
 
 function LegalShell({ title, children }: { title: string; children: ReactNode }) {
   return (

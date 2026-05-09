@@ -20,7 +20,7 @@ Legend:
 - [x] YouTube embed usage follows YouTube embed/API rules in policy copy
 - [x] Notes, journals, audio notes, and private data are clearly described as private by default
 - [ ] <mark>OWNER</mark> Legal review of Privacy Policy / Terms / Cookie Policy
-- [ ] <mark>OWNER</mark> Replace placeholder support email if `support@visnova.app` is not the final inbox
+- [x] Temporary beta contact email set to `naitik.business69@gmail.com`
 
 ## Auth & Account Security
 
