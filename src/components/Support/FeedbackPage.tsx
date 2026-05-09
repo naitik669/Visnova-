@@ -7,6 +7,24 @@ import { SelectMenu } from '../ui/SelectMenu';
 
 const supportEmail = 'naitik.business69@gmail.com';
 
+function buildFeedbackMailto(category: string, message: string, contactEmail: string) {
+  const subject = encodeURIComponent(`VisNova feedback: ${category}`);
+  const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const body = encodeURIComponent([
+    message,
+    '',
+    contactEmail ? `Contact email: ${contactEmail}` : '',
+    pageUrl ? `Page: ${pageUrl}` : ''
+  ].filter(Boolean).join('\n'));
+
+  return `mailto:${supportEmail}?subject=${subject}&body=${body}`;
+}
+
+function isMissingFeedbackTable(error: any) {
+  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return text.includes('feedback_reports') && (text.includes('schema cache') || text.includes('could not find the table'));
+}
+
 export default function FeedbackPage() {
   const { session, addToast } = useStore();
   const [category, setCategory] = useState('bug');
@@ -35,7 +53,17 @@ export default function FeedbackPage() {
       setMessage('');
       addToast({ type: 'success', title: 'Feedback sent', description: 'Thanks. We will review it for beta stability.' });
     } catch (error: any) {
-      addToast({ type: 'error', title: 'Feedback failed', description: error.message || `Email ${supportEmail} instead.` });
+      console.error('Feedback submission failed:', error);
+      const mailto = buildFeedbackMailto(category, safeMessage, safeEmail);
+      if (typeof window !== 'undefined') window.location.href = mailto;
+
+      addToast({
+        type: isMissingFeedbackTable(error) ? 'warning' : 'error',
+        title: isMissingFeedbackTable(error) ? 'Feedback email opened' : 'Feedback fallback opened',
+        description: isMissingFeedbackTable(error)
+          ? 'The feedback database is not ready yet, so an email draft was opened instead.'
+          : `Could not save feedback in-app. Send the email draft to ${supportEmail}.`
+      });
     } finally {
       setIsSubmitting(false);
     }
