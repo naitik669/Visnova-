@@ -758,7 +758,7 @@ export const useStore = create<AppState>((set, get) => ({
       safeUpdates = validateVisionPayload(updates);
     } catch (error: any) {
       get().addToast({ type: 'error', title: 'Vision update blocked', description: error.message || 'This Vision update is invalid.' });
-      return;
+      return false;
     }
     const previousVisions = get().visions;
     set((state) => ({
@@ -783,10 +783,12 @@ export const useStore = create<AppState>((set, get) => ({
       const query = supabase.from('visions').update(dbUpdates).eq('id', id);
       const { error } = userId ? await query.eq('user_id', userId) : await query;
       if (error) throw error;
+      return true;
     } catch (error: any) {
       console.error('Failed to update vision:', error);
       set({ visions: previousVisions });
       get().addToast({ type: 'error', title: 'Vision update failed', description: error.message || 'Could not save vision.' });
+      return false;
     }
   },
 

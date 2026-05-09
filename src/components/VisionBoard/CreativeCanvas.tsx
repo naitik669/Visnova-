@@ -1,236 +1,238 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { TransformWrapper, TransformComponent, useTransformContext } from 'react-zoom-pan-pinch';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Vision, 
-  VisionElement 
-} from '../../types';
+import {
+  Check,
+  Circle as CircleIcon,
+  FileText,
+  GitBranch,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Loader2,
+  Maximize2,
+  Minus,
+  Plus,
+  RotateCcw,
+  Save,
+  Square,
+  StickyNote,
+  Target,
+  Trash2,
+  Type,
+  X
+} from 'lucide-react';
+import { Vision, VisionElement } from '../../types';
 import { cn } from '../../lib/utils';
 import { uploadVisionBoardImage } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
-import { 
-  X, 
-  Plus,
-  Minus,
-  Type, 
-  Image as ImageIcon,
-  Link as LinkIcon, 
-  FileText, 
-  ExternalLink,
-  Quote,
-  Square,
-  Circle as CircleIcon,
-  ArrowRight,
-  Maximize2,
-  Target,
-  Trash2,
-  GitBranch
-} from 'lucide-react';
 
 interface CreativeCanvasProps {
   vision: Vision;
-  updateVision: (id: string, updates: Partial<Vision>) => void | Promise<void>;
+  updateVision: (id: string, updates: Partial<Vision>) => void | boolean | Promise<void | boolean>;
   onActiveChange?: (active: boolean) => void;
 }
 
-const STICKER_GALLERY = [
-  { label: 'Rocket', value: '\u{1F680}', color: '#fee2e2' },
-  { label: 'Spark', value: '\u2728', color: '#fef3c7' },
-  { label: 'Target', value: '\u{1F3AF}', color: '#dbeafe' },
-  { label: 'Idea', value: '\u{1F4A1}', color: '#fef9c3' },
-  { label: 'Fire', value: '\u{1F525}', color: '#ffedd5' },
-  { label: 'Growth', value: '\u{1F331}', color: '#dcfce7' },
-  { label: 'Star', value: '\u2B50', color: '#fef3c7' },
-  { label: 'Heart', value: '\u{1F49C}', color: '#ede9fe' },
-  { label: 'Check', value: '\u2705', color: '#dcfce7' },
-  { label: 'Warning', value: '\u26A0\uFE0F', color: '#fef3c7' },
-  { label: 'Money', value: '\u{1F4B8}', color: '#dcfce7' },
-  { label: 'Mind', value: '\u{1F9E0}', color: '#fce7f3' },
-  { label: 'Build', value: '\u{1F6E0}\uFE0F', color: '#e5e7eb' },
-  { label: 'Time', value: '\u23F3', color: '#e0f2fe' },
-  { label: 'Win', value: '\u{1F3C6}', color: '#fef3c7' },
-  { label: 'Flag', value: '\u{1F6A9}', color: '#fee2e2' }
-];
+type SaveStatus = 'saved' | 'dirty' | 'saving' | 'failed';
+type ChecklistItem = NonNullable<NonNullable<VisionElement['metadata']>['checklist']>[number];
+type ResizeCorner = 'se' | 'sw' | 'ne' | 'nw';
+
+const CANVAS_SIZE = 5200;
+const CANVAS_CENTER = CANVAS_SIZE / 2;
+const SAVE_DELAY_MS = 850;
+
+const newId = (prefix = 'el') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const defaultSize = (type: VisionElement['type']) => {
+  if (type === 'image') return { width: 360, height: 240 };
+  if (type === 'sticky') return { width: 260, height: 220 };
+  if (type === 'checklist') return { width: 300, height: 250 };
+  if (type === 'flowchartNode') return { width: 190, height: 96 };
+  if (type === 'shape') return { width: 150, height: 110 };
+  if (type === 'heading') return { width: 360, height: 90 };
+  return { width: 260, height: 90 };
+};
+
+const centerOf = (element: VisionElement) => ({
+  x: element.x + (element.width || defaultSize(element.type).width) / 2,
+  y: element.y + (element.height || defaultSize(element.type).height) / 2
+});
 
 export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVision, onActiveChange }) => {
+  const [elements, setElements] = useState<VisionElement[]>(vision.elements || []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [linkingFromId, setLinkingFromId] = useState<string | null>(null);
-  const [tempConnectorEnd, setTempConnectorEnd] = useState<{ x: number, y: number } | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'failed'>('saved');
+  const [tempConnectorEnd, setTempConnectorEnd] = useState<{ x: number; y: number } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
+  const [isUploading, setIsUploading] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const transformWrapperRef = useRef<any>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingElementsRef = useRef<VisionElement[]>(vision.elements || []);
   const { session, addToast } = useStore();
 
-  const elements = vision.elements || [];
+  const selectedElement = useMemo(
+    () => elements.find(element => element.id === selectedId) || null,
+    [elements, selectedId]
+  );
 
-  const persistElements = async (nextElements: VisionElement[]) => {
+  useEffect(() => {
+    setElements(vision.elements || []);
+    pendingElementsRef.current = vision.elements || [];
+    setSelectedId(null);
+    setLinkingFromId(null);
+    setTempConnectorEnd(null);
+    setSaveStatus('saved');
+  }, [vision.id, vision.elements]);
+
+  useEffect(() => () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  }, []);
+
+  const persistNow = useCallback(async (nextElements?: VisionElement[]) => {
+    const payload = nextElements || pendingElementsRef.current;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaveStatus('saving');
     try {
-      await Promise.resolve(updateVision(vision.id, { elements: nextElements }));
+      const result = await Promise.resolve(updateVision(vision.id, { elements: payload }));
+      if (result === false) throw new Error('Could not save this board change.');
       setSaveStatus('saved');
+      setLastSavedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (error) {
       console.error('Vision Board save failed:', error);
       setSaveStatus('failed');
       addToast({ type: 'error', title: 'Board save failed', description: 'Could not save this board change.' });
     }
-  };
+  }, [addToast, updateVision, vision.id]);
+
+  const scheduleSave = useCallback((nextElements: VisionElement[]) => {
+    pendingElementsRef.current = nextElements;
+    setSaveStatus('dirty');
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      persistNow(nextElements);
+    }, SAVE_DELAY_MS);
+  }, [persistNow]);
+
+  const applyElements = useCallback((updater: VisionElement[] | ((current: VisionElement[]) => VisionElement[]), save = true) => {
+    setElements(current => {
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      pendingElementsRef.current = next;
+      if (save) scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave]);
 
   const getCurrentScale = () => {
     const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
     return transformState?.scale || 1;
   };
 
-  const addElement = (element: VisionElement) => {
-    persistElements([...elements, element]);
-  };
-
-  const addQuickElement = (type: VisionElement['type'], content: string, metadata: VisionElement['metadata'] = {}) => {
-    addElement({
-      id: Math.random().toString(36).substring(7),
-      type,
-      content,
-      x: 2500 + Math.random() * 180,
-      y: 2500 + Math.random() * 120,
-      width: type === 'sticky' ? 256 : undefined,
-      height: type === 'sticky' ? 256 : undefined,
-      metadata
-    });
-  };
-
-  const importImageFile = async (file: File, x?: number, y?: number) => {
-    try {
-      const { publicUrl, filePath } = await uploadVisionBoardImage(file, vision.id, session?.user?.id);
-      addElement({
-        id: Math.random().toString(36).substring(7),
-        type: 'image',
-        content: publicUrl,
-        x: x ?? (2500 + Math.random() * 180),
-        y: y ?? (2500 + Math.random() * 120),
-        width: 360,
-        metadata: {
-          title: file.name,
-          imageUrl: publicUrl,
-          storagePath: filePath
-        }
-      });
-      addToast({ type: 'success', title: 'Image added', description: 'Vision Board image uploaded.' });
-    } catch (error: any) {
-      console.error('Vision Board image import failed:', error);
-      addToast({ type: 'error', title: 'Image failed', description: error.message || 'Could not add this image.' });
-    }
-  };
-
-  const addSticker = (sticker: typeof STICKER_GALLERY[number], x = 2500, y = 2500) => {
-    addElement({
-      id: Math.random().toString(36).substring(7),
-      type: 'emoji',
-      content: sticker.value,
-      x,
-      y,
-      width: 96,
-      height: 96,
-      metadata: {
-        title: sticker.label,
-        color: sticker.color
-      }
-    });
-  };
-
-  const updateElement = (id: string, updates: Partial<VisionElement>) => {
-    const newElements = elements.map(el => el.id === id ? { ...el, ...updates } : el);
-    persistElements(newElements);
-  };
-
-  const deleteElement = (id: string) => {
-    // Also delete any connectors associated with this element
-    const newElements = elements.filter(el => 
-      el.id !== id && 
-      el.metadata?.fromElementId !== id && 
-      el.metadata?.toElementId !== id
-    );
-    persistElements(newElements);
-    if (selectedId === id) setSelectedId(null);
-  };
-
-  const startLinking = (fromId: string) => {
-    setLinkingFromId(fromId);
-    const fromEl = elements.find(el => el.id === fromId);
-    if (fromEl) {
-      setTempConnectorEnd({ x: fromEl.x + (fromEl.width || 100) / 2, y: fromEl.y + (fromEl.height || 100) / 2 });
-    }
-  };
-
-  const finishLinking = (toId: string) => {
-    if (!linkingFromId || linkingFromId === toId) {
-      setLinkingFromId(null);
-      setTempConnectorEnd(null);
-      return;
-    }
-
-    // Check if link already exists
-    const exists = elements.some(el => 
-      el.type === 'connector' && 
-      el.metadata?.fromElementId === linkingFromId && 
-      el.metadata?.toElementId === toId
-    );
-
-    if (!exists) {
-      const newConnector: VisionElement = {
-        id: `conn-${Math.random().toString(36).substring(7)}`,
-        type: 'connector',
-        content: '',
-        x: 0,
-        y: 0,
-        metadata: {
-          fromElementId: linkingFromId,
-          toElementId: toId
-        }
-      };
-      persistElements([...elements, newConnector]);
-    }
-
-    setLinkingFromId(null);
-    setTempConnectorEnd(null);
-  };
-
-  const getCanvasPointFromEvent = (e: React.DragEvent | React.MouseEvent) => {
-    const bounds = e.currentTarget.getBoundingClientRect();
+  const getCanvasPointFromEvent = (event: React.DragEvent | React.MouseEvent) => {
+    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
     const scale = transformState?.scale || 1;
     const positionX = transformState?.positionX || 0;
     const positionY = transformState?.positionY || 0;
 
     return {
-      x: (e.clientX - bounds.left - positionX) / scale,
-      y: (e.clientY - bounds.top - positionY) / scale
+      x: (event.clientX - bounds.left - positionX) / scale,
+      y: (event.clientY - bounds.top - positionY) / scale
     };
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    if (linkingFromId && tempConnectorEnd) {
-      // We need to account for zooming and panning if we want accuracy, 
-      // but for now let's just track the mouse relative to the transform content if possible
-      // Simplification: We'll update it when hovering over another element
+  const createElement = useCallback((
+    type: VisionElement['type'],
+    content: string,
+    metadata: VisionElement['metadata'] = {},
+    x = CANVAS_CENTER + Math.random() * 180 - 90,
+    y = CANVAS_CENTER + Math.random() * 120 - 60
+  ) => {
+    const size = defaultSize(type);
+    const element: VisionElement = {
+      id: newId(type),
+      type,
+      content,
+      x,
+      y,
+      width: size.width,
+      height: size.height,
+      rotation: 0,
+      zIndex: Date.now(),
+      metadata
+    };
+    applyElements(current => [...current, element]);
+    setSelectedId(element.id);
+    setMobileToolsOpen(false);
+  }, [applyElements]);
+
+  const updateElement = useCallback((id: string, updates: Partial<VisionElement>, save = true) => {
+    applyElements(current => current.map(element => (
+      element.id === id
+        ? { ...element, ...updates, metadata: { ...(element.metadata || {}), ...(updates.metadata || {}) } }
+        : element
+    )), save);
+  }, [applyElements]);
+
+  const deleteElement = useCallback((id: string) => {
+    applyElements(current => current.filter(element => (
+      element.id !== id &&
+      element.metadata?.fromElementId !== id &&
+      element.metadata?.toElementId !== id
+    )));
+    setSelectedId(current => current === id ? null : current);
+  }, [applyElements]);
+
+  const importImageFile = useCallback(async (file: File, x?: number, y?: number) => {
+    setIsUploading(true);
+    try {
+      const { publicUrl, filePath } = await uploadVisionBoardImage(file, vision.id, session?.user?.id);
+      createElement('image', publicUrl, { title: file.name, imageUrl: publicUrl, storagePath: filePath }, x, y);
+      addToast({ type: 'success', title: 'Image added', description: 'Vision Board image uploaded.' });
+    } catch (error: any) {
+      console.error('Vision Board image import failed:', error);
+      addToast({ type: 'error', title: 'Image failed', description: error.message || 'Could not add this image.' });
+    } finally {
+      setIsUploading(false);
     }
+  }, [addToast, createElement, session?.user?.id, vision.id]);
+
+  const handleCanvasDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    const dropPoint = getCanvasPointFromEvent(event);
+    const file = Array.from(event.dataTransfer.files || []).find(item => item.type.startsWith('image/'));
+    if (file) importImageFile(file, dropPoint.x - 180, dropPoint.y - 120);
   };
 
-  const handleCanvasDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const dropPoint = getCanvasPointFromEvent(e);
-    const stickerPayload = e.dataTransfer.getData('application/x-visnova-sticker');
-    if (stickerPayload) {
-      try {
-        addSticker(JSON.parse(stickerPayload), dropPoint.x - 48, dropPoint.y - 48);
-        return;
-      } catch (error) {
-        console.warn('Sticker payload could not be read:', error);
-      }
+  const finishLinking = useCallback((toId: string) => {
+    if (!linkingFromId || linkingFromId === toId) {
+      setLinkingFromId(null);
+      setTempConnectorEnd(null);
+      return;
     }
+    const exists = elements.some(element =>
+      element.type === 'connector' &&
+      element.metadata?.fromElementId === linkingFromId &&
+      element.metadata?.toElementId === toId
+    );
+    if (!exists) {
+      applyElements(current => [...current, {
+        id: newId('connector'),
+        type: 'connector',
+        content: '',
+        x: 0,
+        y: 0,
+        metadata: { fromElementId: linkingFromId, toElementId: toId, arrowType: 'arrow' }
+      }]);
+    }
+    setLinkingFromId(null);
+    setTempConnectorEnd(null);
+  }, [applyElements, elements, linkingFromId]);
 
-    const file = Array.from(e.dataTransfer.files || []).find(item => item.type.startsWith('image/'));
-    if (!file) return;
-
-    importImageFile(file, dropPoint.x - 160, dropPoint.y - 120);
+  const addChecklistItem = (element: VisionElement, text: string) => {
+    const checklist = [...(element.metadata?.checklist || []), { id: newId('item'), text, completed: false }];
+    updateElement(element.id, { metadata: { checklist } });
   };
 
   useEffect(() => {
@@ -242,55 +244,66 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         event.preventDefault();
         deleteElement(selectedId);
       }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        persistNow();
+      }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, elements]);
+  }, [deleteElement, persistNow, selectedId]);
+
+  const toolGroups = (
+    <>
+      <CanvasToolButton icon={<Type size={18} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} />
+      <CanvasToolButton icon={<Target size={18} />} label="Heading" onClick={() => createElement('heading', 'New goal', { fontSize: '46px', color: 'var(--text-main)' })} />
+      <CanvasToolButton icon={<StickyNote size={18} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
+      <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} />
+      <CanvasToolButton icon={<Square size={18} />} label="Rectangle" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#3b82f622', strokeColor: '#3b82f6' })} />
+      <CanvasToolButton icon={<CircleIcon size={18} />} label="Circle" onClick={() => createElement('shape', '', { shapeType: 'circle', fillColor: '#10b98122', strokeColor: '#10b981' })} />
+      <CanvasToolButton icon={<GitBranch size={18} />} label="Flow" onClick={() => createElement('flowchartNode', 'Process step', { shapeType: 'rectangle', fillColor: 'var(--accent-soft)', strokeColor: 'var(--accent)' })} />
+      <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
+      <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => createElement('link', 'https://example.com', { url: 'https://example.com', title: 'Resource' })} />
+    </>
+  );
 
   return (
-    <div 
+    <div
       className="flex-1 relative overflow-hidden bg-bg-base/20 group/canvas select-none"
-      onMouseMove={handleCanvasMouseMove}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(event) => event.preventDefault()}
       onDrop={handleCanvasDrop}
     >
-      <div className="absolute left-1/2 bottom-4 -translate-x-1/2 md:left-6 md:top-1/2 md:bottom-auto md:translate-x-0 md:-translate-y-1/2 z-40 bg-card/90 backdrop-blur-xl border border-card-border rounded-2xl p-2 shadow-2xl flex flex-row md:flex-col gap-1 max-w-[calc(100vw-2rem)] overflow-x-auto custom-scrollbar">
-        <CanvasToolButton icon={<Type size={18} />} label="Text" onClick={() => addQuickElement('text', 'Write anything', { fontSize: '22px' })} />
-        <CanvasToolButton icon={<Target size={18} />} label="Goal" onClick={() => addQuickElement('heading', 'New goal', { color: 'var(--accent)' })} />
-        <CanvasToolButton icon={<FileText size={18} />} label="Sticky" onClick={() => addQuickElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
-        <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} />
-        <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => addQuickElement('shape', 'Label', { shapeType: 'rectangle', color: '#3b82f6' })} />
-        <CanvasToolButton icon={<GitBranch size={18} />} label="Flow" onClick={() => addQuickElement('flowchartNode', 'Process step', { shapeType: 'rectangle', color: 'var(--accent)' })} />
-        <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => addQuickElement('checklist', 'Checklist', { checklist: [{ id: Math.random().toString(36).slice(2), text: 'First item', completed: false }] })} />
-        <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => addQuickElement('link', 'https://example.com', { url: 'https://example.com', title: 'Resource' })} />
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) importImageFile(file);
-            event.target.value = '';
-          }}
-        />
+      <div className="hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 z-40 bg-card/90 backdrop-blur-xl border border-card-border rounded-2xl p-2 shadow-2xl flex-col gap-1">
+        {toolGroups}
       </div>
 
-      <div className={cn(
-        "absolute right-3 top-3 z-40 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest shadow-lg backdrop-blur-md",
-        saveStatus === 'saving' && "bg-accent/10 border-accent/20 text-accent",
-        saveStatus === 'failed' && "bg-danger/10 border-danger/20 text-danger",
-        saveStatus === 'saved' && "bg-card/90 border-card-border text-text-secondary/50"
-      )}>
-        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'failed' ? 'Save failed' : 'Saved'}
-      </div>
+      <button
+        onClick={() => setMobileToolsOpen(true)}
+        className="md:hidden absolute left-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 w-14 h-14 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center shadow-2xl"
+        aria-label="Add board item"
+      >
+        <Plus size={24} />
+      </button>
+
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) importImageFile(file);
+          event.target.value = '';
+        }}
+      />
+
+      <SavePill status={saveStatus} lastSavedAt={lastSavedAt} onRetry={() => persistNow()} />
 
       <TransformWrapper
         ref={transformWrapperRef}
         initialScale={1}
-        minScale={0.1}
-        maxScale={4}
+        minScale={0.2}
+        maxScale={3}
         centerOnInit
         limitToBounds={false}
         onTransform={(ref) => onActiveChange?.(ref.state.scale > 1.05)}
@@ -302,10 +315,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
           <>
             <TransformComponent
               wrapperStyle={{ width: '100%', height: '100%' }}
-              contentStyle={{ width: '5000px', height: '5000px' }}
+              contentStyle={{ width: `${CANVAS_SIZE}px`, height: `${CANVAS_SIZE}px` }}
             >
-              <div 
-                className="relative w-full h-full bg-[radial-gradient(circle,rgba(120,120,120,0.25)_1px,transparent_1px)] [background-size:24px_24px]"
+              <div
+                className="relative w-full h-full overflow-hidden bg-[radial-gradient(circle,rgba(120,120,120,0.22)_1px,transparent_1px)] [background-size:24px_24px]"
                 onClick={() => {
                   setSelectedId(null);
                   setLinkingFromId(null);
@@ -314,103 +327,164 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                 onDoubleClick={(event) => {
                   event.stopPropagation();
                   const point = getCanvasPointFromEvent(event);
-                  addElement({
-                    id: Math.random().toString(36).substring(7),
-                    type: 'text',
-                    content: 'New idea',
-                    x: point.x,
-                    y: point.y,
-                    width: 220,
-                    metadata: { fontSize: '22px' }
-                  });
+                  createElement('text', 'New idea', { fontSize: '22px' }, point.x, point.y);
                 }}
-              />
-              
-              <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible z-0">
-                <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orientation="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" className="text-accent" />
-                  </marker>
-                </defs>
-                {elements.filter(el => el.type === 'connector').map(connector => (
-                  <ConnectorLine 
-                    key={connector.id}
-                    connector={connector}
-                    elements={elements}
-                    onDelete={() => deleteElement(connector.id)}
+              >
+                <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible z-0">
+                  <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orientation="auto">
+                      <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" className="text-accent" />
+                    </marker>
+                  </defs>
+                  {elements.filter(element => element.type === 'connector').map(connector => (
+                    <ConnectorLine
+                      key={connector.id}
+                      connector={connector}
+                      elements={elements}
+                      onDelete={() => deleteElement(connector.id)}
+                    />
+                  ))}
+                  {linkingFromId && tempConnectorEnd && <TempConnectorLine fromId={linkingFromId} toPos={tempConnectorEnd} elements={elements} />}
+                </svg>
+
+                {elements.filter(element => element.type !== 'connector').map(element => (
+                  <CanvasElement
+                    key={element.id}
+                    element={element}
+                    isSelected={selectedId === element.id}
+                    isLinking={linkingFromId !== null}
+                    isLinkingFrom={linkingFromId === element.id}
+                    getScale={getCurrentScale}
+                    onSelect={() => linkingFromId ? finishLinking(element.id) : setSelectedId(element.id)}
+                    onUpdate={(updates, save) => updateElement(element.id, updates, save)}
+                    onDelete={() => deleteElement(element.id)}
+                    onStartLink={() => {
+                      setLinkingFromId(element.id);
+                      setTempConnectorEnd(centerOf(element));
+                    }}
+                    onHover={() => {
+                      if (linkingFromId) setTempConnectorEnd(centerOf(element));
+                    }}
                   />
                 ))}
-                {linkingFromId && tempConnectorEnd && (
-                   <TempConnectorLine fromId={linkingFromId} toPos={tempConnectorEnd} elements={elements} />
-                )}
-              </svg>
-
-              {elements.filter(el => el.type !== 'connector').map((element) => (
-                <CanvasElement
-                  key={element.id}
-                  element={element}
-                  isSelected={selectedId === element.id}
-                  isLinking={linkingFromId !== null}
-                  isLinkingFrom={linkingFromId === element.id}
-                  onSelect={() => {
-                    if (linkingFromId) {
-                      finishLinking(element.id);
-                    } else {
-                      setSelectedId(element.id);
-                    }
-                  }}
-                  onUpdate={(updates) => updateElement(element.id, updates)}
-                  onDelete={() => deleteElement(element.id)}
-                  onStartLink={() => startLinking(element.id)}
-                  getScale={getCurrentScale}
-                  onHover={(x, y) => {
-                    if (linkingFromId) setTempConnectorEnd({ x, y });
-                  }}
-                />
-              ))}
+              </div>
             </TransformComponent>
 
-            {/* Floating Navigation Controls */}
             <div className="absolute bottom-24 md:bottom-10 right-3 md:right-10 z-40 flex flex-col gap-2">
-              <div className="bg-card/80 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
+              <div className="bg-card/85 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
                 <ControlButton onClick={() => zoomIn()} icon={<Plus size={18} />} label="Zoom In" />
                 <div className="h-px bg-card-border mx-2" />
                 <ControlButton onClick={() => zoomOut()} icon={<Minus size={18} />} label="Zoom Out" />
               </div>
-              <div className="bg-card/80 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
-                <ControlButton onClick={() => resetTransform()} icon={<Maximize2 size={18} />} label="Reset View" />
-                <ControlButton onClick={() => centerView()} icon={<Target size={18} />} label="Center" />
+              <div className="bg-card/85 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
+                <ControlButton onClick={() => resetTransform()} icon={<RotateCcw size={18} />} label="Reset View" />
+                <ControlButton onClick={() => centerView()} icon={<Maximize2 size={18} />} label="Center" />
               </div>
             </div>
           </>
         )}
       </TransformWrapper>
+
+      <AnimatePresence>
+        {selectedElement && (
+          <ElementEditor
+            element={selectedElement}
+            onUpdate={(updates) => updateElement(selectedElement.id, updates)}
+            onDelete={() => deleteElement(selectedElement.id)}
+            onClose={() => setSelectedId(null)}
+            onStartLink={() => {
+              setLinkingFromId(selectedElement.id);
+              setTempConnectorEnd(centerOf(selectedElement));
+            }}
+            onAddChecklistItem={(text) => addChecklistItem(selectedElement, text)}
+          />
+        )}
+        {mobileToolsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[180] md:hidden"
+          >
+            <button className="absolute inset-0 bg-overlay/60" onClick={() => setMobileToolsOpen(false)} aria-label="Close tools" />
+            <motion.div
+              initial={{ y: 80 }}
+              animate={{ y: 0 }}
+              exit={{ y: 80 }}
+              className="absolute inset-x-0 bottom-0 rounded-t-[2rem] border border-card-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-black uppercase tracking-widest text-text-secondary">Add to board</p>
+                <button onClick={() => setMobileToolsOpen(false)} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary"><X size={16} /></button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">{toolGroups}</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {elements.length === 0 && (
+        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-6 z-10 px-6 text-center">
+          <div className="max-w-md space-y-3">
+            <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-text-main/25">Start building your vision.</h2>
+            <p className="text-sm sm:text-base font-semibold text-text-secondary/50">Add text, images, shapes, or a checklist. Everything saves back to this Vision Board.</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 pointer-events-auto">
+            <QuickStartAction label="Text" onClick={() => createElement('heading', 'Main Goal', { fontSize: '46px' })} />
+            <QuickStartAction label="Image" onClick={() => imageInputRef.current?.click()} />
+            <QuickStartAction label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
+            <QuickStartAction label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// --- Subcomponents ---
-
-function ControlButton({ onClick, icon, label }: { onClick: () => void, icon: React.ReactNode, label: string }) {
+function QuickStartAction({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="min-w-11 min-h-11 p-3 text-text-secondary hover:text-accent hover:bg-accent/5 rounded-xl transition-all"
-      title={label}
-    >
+    <button onClick={onClick} className="h-11 px-4 rounded-xl bg-card border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/30 shadow-lg">
+      {label}
+    </button>
+  );
+}
+
+function SavePill({ status, lastSavedAt, onRetry }: { status: SaveStatus; lastSavedAt: string | null; onRetry: () => void }) {
+  const label = status === 'saving' ? 'Saving...' : status === 'dirty' ? 'Unsaved changes' : status === 'failed' ? 'Failed to save' : lastSavedAt ? `Saved ${lastSavedAt}` : 'Saved';
+  return (
+    <div className={cn(
+      'absolute right-3 top-3 z-40 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest shadow-lg backdrop-blur-md flex items-center gap-2',
+      status === 'saving' && 'bg-accent/10 border-accent/20 text-accent',
+      status === 'dirty' && 'bg-warning/10 border-warning/20 text-warning',
+      status === 'failed' && 'bg-danger/10 border-danger/20 text-danger',
+      status === 'saved' && 'bg-card/90 border-card-border text-text-secondary/60'
+    )}>
+      {status === 'saving' ? <Loader2 size={13} className="animate-spin" /> : status === 'saved' ? <Save size={13} /> : null}
+      {label}
+      {status === 'failed' && <button onClick={onRetry} className="ml-1 underline">Retry</button>}
+    </div>
+  );
+}
+
+function ControlButton({ onClick, icon, label }: { onClick: () => void; icon: React.ReactNode; label: string }) {
+  return (
+    <button onClick={onClick} className="min-w-11 min-h-11 p-3 text-text-secondary hover:text-accent hover:bg-accent/5 rounded-xl transition-all" title={label} aria-label={label}>
       {icon}
     </button>
   );
 }
 
-function CanvasToolButton({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
+function CanvasToolButton({ icon, label, onClick, loading = false }: { icon: React.ReactNode; label: string; onClick: () => void; loading?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className="min-w-11 w-11 h-11 rounded-xl flex items-center justify-center text-text-secondary hover:text-accent hover:bg-accent/10 transition-all group relative"
+      disabled={loading}
+      className="min-w-11 h-11 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 text-text-secondary hover:text-accent hover:bg-accent/10 transition-all group relative disabled:opacity-50"
       title={label}
+      aria-label={label}
     >
-      {icon}
+      {loading ? <Loader2 size={18} className="animate-spin" /> : icon}
+      <span className="md:hidden text-[8px] font-black uppercase tracking-widest">{label}</span>
       <span className="hidden md:block absolute left-full ml-3 px-2 py-1 rounded-lg bg-text-main text-bg-base text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">
         {label}
       </span>
@@ -423,173 +497,152 @@ const CanvasElement: React.FC<{
   isSelected: boolean;
   isLinking: boolean;
   isLinkingFrom: boolean;
+  getScale: () => number;
   onSelect: () => void;
-  onUpdate: (updates: Partial<VisionElement>) => void;
+  onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void;
   onDelete: () => void;
   onStartLink: () => void;
-  getScale: () => number;
-  onHover: (x: number, y: number) => void;
-}> = ({ element, isSelected, isLinking, isLinkingFrom, onSelect, onUpdate, onDelete, onStartLink, getScale, onHover }) => {
-  const [isDragging, setIsDragging] = useState(false);
+  onHover: () => void;
+}> = ({ element, isSelected, isLinking, isLinkingFrom, getScale, onSelect, onUpdate, onDelete, onStartLink, onHover }) => {
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
 
   return (
     <motion.div
       drag={!isLinking}
       dragMomentum={false}
       onDragStart={() => {
-        setIsDragging(true);
+        setDragStart({ x: element.x, y: element.y });
         onSelect();
+      }}
+      onDrag={(_, info) => {
+        if (!dragStart) return;
+        const scale = getScale();
+        onUpdate({ x: dragStart.x + info.offset.x / scale, y: dragStart.y + info.offset.y / scale }, false);
       }}
       onDragEnd={(_, info) => {
-        setIsDragging(false);
+        const origin = dragStart || { x: element.x, y: element.y };
         const scale = getScale();
-        onUpdate({ x: element.x + info.offset.x / scale, y: element.y + info.offset.y / scale });
+        setDragStart(null);
+        onUpdate({ x: origin.x + info.offset.x / scale, y: origin.y + info.offset.y / scale }, true);
       }}
       onMouseMove={() => {
-        if (isLinking && !isLinkingFrom) {
-          onHover(element.x + (element.width || 100) / 2, element.y + (element.height || 100) / 2);
-        }
+        if (isLinking && !isLinkingFrom) onHover();
       }}
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{
-        opacity: 1,
-        scale: 1,
-        x: element.x,
-        y: element.y,
-        zIndex: isSelected ? 100 : (element.zIndex || 1),
-      }}
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, x: element.x, y: element.y, zIndex: isSelected ? 120 : (element.zIndex || 1) }}
       className={cn(
-        "absolute cursor-grab active:cursor-grabbing",
-        isSelected && !isLinking && "ring-2 ring-accent ring-offset-4 ring-offset-bg-base/50 rounded-xl",
-        isLinking && !isLinkingFrom && "hover:ring-2 hover:ring-accent/50 hover:ring-offset-2 rounded-xl transition-all"
+        'absolute cursor-grab active:cursor-grabbing touch-none',
+        isSelected && !isLinking && 'ring-2 ring-accent ring-offset-4 ring-offset-bg-base/50 rounded-xl',
+        isLinking && !isLinkingFrom && 'hover:ring-2 hover:ring-accent/50 hover:ring-offset-2 rounded-xl transition-all'
       )}
-      onClick={(e) => {
-        e.stopPropagation();
+      onClick={(event) => {
+        event.stopPropagation();
         onSelect();
       }}
+      data-no-pan
     >
       <div className="relative group/content">
         {isSelected && !isLinking && (
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-card border border-card-border rounded-xl shadow-2xl p-1.5 flex items-center gap-1 animate-in fade-in zoom-in slide-in-from-bottom-2">
-            <button onClick={onDelete} className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-all" title="Delete"><Trash2 size={14} /></button>
-            <div className="w-px h-4 bg-card-border mx-1" />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const next = window.prompt('Edit content', element.content);
-                if (next !== null) onUpdate({ content: next });
-              }}
-              className="p-2 text-text-secondary hover:bg-surface-muted rounded-lg transition-all"
-              title="Edit Text"
-            >
-              <Type size={14} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const current = element.metadata?.color || '#fef08a';
-                const next = window.prompt('Color hex', current);
-                if (next) onUpdate({ metadata: { ...(element.metadata || {}), color: next } });
-              }}
-              className="p-2 text-text-secondary hover:bg-surface-muted rounded-lg transition-all"
-              title="Color"
-            >
-              <CircleIcon size={14} />
-            </button>
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                onStartLink();
-              }} 
-              className="p-2 text-accent hover:bg-accent/10 rounded-lg transition-all" 
-              title="Draw Connector"
-            >
-              <LinkIcon size={14} />
-            </button>
-            <div className="w-px h-4 bg-card-border mx-1" />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const current = element.type === 'text' || element.type === 'heading'
-                  ? String(element.metadata?.fontSize || (element.type === 'heading' ? '48px' : '22px'))
-                  : String(element.width || 240);
-                const next = window.prompt(element.type === 'text' || element.type === 'heading' ? 'Font size, for example 28px' : 'Width in pixels', current);
-                if (!next) return;
-                if (element.type === 'text' || element.type === 'heading') {
-                  onUpdate({ metadata: { ...(element.metadata || {}), fontSize: next } });
-                } else {
-                  const width = Number(next);
-                  if (!Number.isNaN(width) && width > 40) onUpdate({ width });
-                }
-              }}
-              className="p-2 text-text-secondary hover:bg-surface-muted rounded-lg transition-all"
-              title="Size"
-            >
-              <Maximize2 size={14} />
-            </button>
+          <ElementToolbar onDelete={onDelete} onStartLink={onStartLink} />
+        )}
+        {isLinkingFrom && (
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-accent text-accent-contrast rounded-full text-[8px] font-black uppercase tracking-widest">
+            Pick target
           </div>
         )}
-
-        {isLinkingFrom && (
-           <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-accent text-accent-contrast rounded-full text-[8px] font-black uppercase tracking-widest animate-bounce">
-              Pick target
-           </div>
+        <ElementContent element={element} onUpdate={(updates) => onUpdate(updates, true)} />
+        {isSelected && ['image', 'shape', 'sticky', 'checklist', 'flowchartNode'].includes(element.type) && (
+          <ResizeHandles element={element} getScale={getScale} onUpdate={onUpdate} />
         )}
-
-        <ElementContent element={element} onUpdate={onUpdate} />
       </div>
     </motion.div>
   );
 };
 
-function ConnectorLine({ connector, elements, onDelete }: { connector: VisionElement, elements: VisionElement[], onDelete: () => void }) {
-  const fromEl = elements.find(el => el.id === connector.metadata?.fromElementId);
-  const toEl = elements.find(el => el.id === connector.metadata?.toElementId);
+function ElementToolbar({ onDelete, onStartLink }: { onDelete: () => void; onStartLink: () => void }) {
+  return (
+    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-card border border-card-border rounded-xl shadow-2xl p-1.5 flex items-center gap-1 z-20">
+      <button onClick={(event) => { event.stopPropagation(); onStartLink(); }} className="p-2 text-accent hover:bg-accent/10 rounded-lg" title="Connect"><LinkIcon size={14} /></button>
+      <button onClick={(event) => { event.stopPropagation(); onDelete(); }} className="p-2 text-danger hover:bg-danger/10 rounded-lg" title="Delete"><Trash2 size={14} /></button>
+    </div>
+  );
+}
 
+function ResizeHandles({ element, getScale, onUpdate }: { element: VisionElement; getScale: () => number; onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void }) {
+  const startRef = useRef<{ x: number; y: number; width: number; height: number; left: number; top: number } | null>(null);
+  const width = element.width || defaultSize(element.type).width;
+  const height = element.height || defaultSize(element.type).height;
+  const corners: ResizeCorner[] = ['nw', 'ne', 'sw', 'se'];
+
+  const onPointerDown = (corner: ResizeCorner, event: React.PointerEvent) => {
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    startRef.current = { x: event.clientX, y: event.clientY, width, height, left: element.x, top: element.y };
+
+    const move = (moveEvent: PointerEvent) => {
+      if (!startRef.current) return;
+      const scale = getScale();
+      const dx = (moveEvent.clientX - startRef.current.x) / scale;
+      const dy = (moveEvent.clientY - startRef.current.y) / scale;
+      const leftEdge = corner.includes('w');
+      const topEdge = corner.includes('n');
+      const nextWidth = Math.max(64, startRef.current.width + (leftEdge ? -dx : dx));
+      const nextHeight = Math.max(48, startRef.current.height + (topEdge ? -dy : dy));
+      onUpdate({
+        width: nextWidth,
+        height: nextHeight,
+        x: leftEdge ? startRef.current.left + (startRef.current.width - nextWidth) : startRef.current.left,
+        y: topEdge ? startRef.current.top + (startRef.current.height - nextHeight) : startRef.current.top
+      }, false);
+    };
+
+    const up = () => {
+      if (startRef.current) {
+        startRef.current = null;
+        onUpdate({}, true);
+      }
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <>
+      {corners.map(corner => (
+        <button
+          key={corner}
+          onPointerDown={(event) => onPointerDown(corner, event)}
+          className={cn(
+            'absolute w-4 h-4 rounded-full bg-accent border-2 border-card shadow-lg z-30',
+            corner.includes('n') ? '-top-2' : '-bottom-2',
+            corner.includes('w') ? '-left-2' : '-right-2'
+          )}
+          aria-label={`Resize ${corner}`}
+        />
+      ))}
+    </>
+  );
+}
+
+function ConnectorLine({ connector, elements, onDelete }: { connector: VisionElement; elements: VisionElement[]; onDelete: () => void }) {
+  const fromEl = elements.find(element => element.id === connector.metadata?.fromElementId);
+  const toEl = elements.find(element => element.id === connector.metadata?.toElementId);
   if (!fromEl || !toEl) return null;
-
-  // Simplified center point calculations
-  const x1 = fromEl.x + (fromEl.width || 120) / 2;
-  const y1 = fromEl.y + (fromEl.height || 120) / 2;
-  const x2 = toEl.x + (toEl.width || 120) / 2;
-  const y2 = toEl.y + (toEl.height || 120) / 2;
-
-  // Smooth curve calculation
-  const dx = Math.abs(x1 - x2);
-  const dy = Math.abs(y1 - y2);
-  const midX = (x1 + x2) / 2;
-  const midY = (y1 + y2) / 2;
+  const from = centerOf(fromEl);
+  const to = centerOf(toEl);
+  const midX = (from.x + to.x) / 2;
+  const midY = (from.y + to.y) / 2;
+  const curve = `M ${from.x} ${from.y} Q ${midX} ${from.y} ${to.x} ${to.y}`;
 
   return (
     <g className="group/line">
-      <path
-        d={`M ${x1} ${y1} Q ${x1} ${y2} ${x2} ${y2}`}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeDasharray="8 8"
-        className="text-accent/30 transition-all group-hover/line:text-accent group-hover/line:stroke-[4]"
-        markerEnd="url(#arrowhead)"
-      />
-      
-      {/* Invisible thicker path for easier interaction */}
-      <path
-        d={`M ${x1} ${y1} Q ${x1} ${y2} ${x2} ${y2}`}
-        fill="none"
-        stroke="transparent"
-        strokeWidth="20"
-        className="pointer-events-auto cursor-pointer"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-      />
-
+      <path d={curve} fill="none" stroke="currentColor" strokeWidth="3" className="text-accent/45 transition-all group-hover/line:text-accent" markerEnd="url(#arrowhead)" />
+      <path d={curve} fill="none" stroke="transparent" strokeWidth="24" className="pointer-events-auto cursor-pointer" onClick={(event) => { event.stopPropagation(); onDelete(); }} />
       <foreignObject x={midX - 12} y={midY - 12} width="24" height="24" className="opacity-0 group-hover/line:opacity-100 transition-opacity">
-        <button 
-          onClick={onDelete}
-          className="w-6 h-6 rounded-full bg-danger text-white flex items-center justify-center shadow-lg hover:scale-110 transition-all pointer-events-auto"
-        >
+        <button onClick={onDelete} className="w-6 h-6 rounded-full bg-danger text-white flex items-center justify-center shadow-lg pointer-events-auto" aria-label="Delete connector">
           <X size={12} />
         </button>
       </foreignObject>
@@ -597,182 +650,281 @@ function ConnectorLine({ connector, elements, onDelete }: { connector: VisionEle
   );
 }
 
-function TempConnectorLine({ fromId, toPos, elements }: { fromId: string, toPos: { x: number, y: number }, elements: VisionElement[] }) {
-  const fromEl = elements.find(el => el.id === fromId);
+function TempConnectorLine({ fromId, toPos, elements }: { fromId: string; toPos: { x: number; y: number }; elements: VisionElement[] }) {
+  const fromEl = elements.find(element => element.id === fromId);
   if (!fromEl) return null;
-
-  const x1 = fromEl.x + (fromEl.width || 120) / 2;
-  const y1 = fromEl.y + (fromEl.height || 120) / 2;
-
-  return (
-    <path
-      d={`M ${x1} ${y1} L ${toPos.x} ${toPos.y}`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeDasharray="4 4"
-      className="text-accent animate-pulse"
-    />
-  );
+  const from = centerOf(fromEl);
+  return <path d={`M ${from.x} ${from.y} L ${toPos.x} ${toPos.y}`} fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="text-accent animate-pulse" />;
 }
 
 const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Partial<VisionElement>) => void }> = ({ element, onUpdate }) => {
-  switch (element.type) {
-    case 'sticky':
-      return (
-        <div 
-          className="p-6 w-64 h-64 shadow-2xl flex flex-col justify-between"
-          style={{ backgroundColor: element.metadata?.color || '#fef08a' }}
-        >
-          <p className="text-lg font-bold text-black/80 font-serif leading-tight">{element.content}</p>
-          <div className="flex justify-between items-center opacity-40">
-             <Quote size={18} className="text-black" />
-             <span className="text-[10px] font-black uppercase tracking-widest text-black">Note</span>
-          </div>
-        </div>
-      );
-    case 'emoji':
-      return (
-        <div
-          className="w-24 h-24 rounded-3xl border border-card-border shadow-2xl flex items-center justify-center text-5xl bg-card"
-          style={{ backgroundColor: element.metadata?.color || '#fff' }}
-          title={element.metadata?.title || 'Sticker'}
-        >
-          {element.content}
-        </div>
-      );
-    case 'image':
-      return (
-        <div
-          className="max-w-md bg-card rounded-2xl overflow-hidden shadow-2xl border border-card-border"
-          style={{ width: element.width || 360 }}
-        >
-          <img src={element.content} className="w-full h-auto object-cover max-h-[500px]" alt="Board asset" />
-          {element.metadata?.title && (
-            <div className="p-4 border-t border-card-border bg-card/80">
-              <p className="text-xs font-bold text-text-main">{element.metadata.title}</p>
-            </div>
-          )}
-        </div>
-      );
-    case 'text':
-    case 'heading':
-      return (
-        <div className={cn(
-          "max-w-xl",
-          element.type === 'heading' ? "text-5xl font-black tracking-tighter" : "text-xl font-bold tracking-tight"
-        )}
+  const width = element.width || defaultSize(element.type).width;
+  const height = element.height || defaultSize(element.type).height;
+
+  if (element.type === 'text' || element.type === 'heading') {
+    return (
+      <div
+        contentEditable
+        suppressContentEditableWarning
+        onPointerDown={(event) => event.stopPropagation()}
+        onBlur={(event) => onUpdate({ content: event.currentTarget.textContent || '' })}
+        className={cn('outline-none whitespace-pre-wrap break-words', element.type === 'heading' ? 'font-black tracking-tight' : 'font-bold')}
         style={{
+          width,
+          minHeight: height,
           color: element.metadata?.color || (element.type === 'heading' ? 'var(--text-main)' : 'var(--text-secondary)'),
+          fontSize: element.metadata?.fontSize || (element.type === 'heading' ? '46px' : '22px'),
           fontFamily: element.metadata?.fontFamily,
-          fontSize: element.metadata?.fontSize
-        }}>
-          {element.content}
-        </div>
-      );
-    case 'quote':
-      return (
-        <div className="p-10 bg-card border-l-4 border-accent rounded-r-[2.5rem] shadow-2xl max-w-lg space-y-6">
-          <Quote size={40} className="text-accent opacity-20" />
-          <p className="text-2xl font-black text-text-main leading-tight tracking-tight ">"{element.content}"</p>
-          {element.metadata?.author && (
-            <p className="text-sm font-bold text-accent uppercase tracking-widest">- {element.metadata.author}</p>
-          )}
-        </div>
-      );
-    case 'link':
-      return (
-        <div className="w-80 bg-card-dark border border-card-border rounded-[2rem] overflow-hidden shadow-2xl group/link">
-          <div className="aspect-video bg-bg-base flex items-center justify-center overflow-hidden">
-             {element.metadata?.favicon ? (
-               <img src={element.metadata.favicon} className="w-full h-full object-cover opacity-80" alt="" />
-             ) : (
-               <LinkIcon size={40} className="text-text-secondary/20" />
-             )}
-          </div>
-          <div className="p-6 space-y-3">
-             <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">{new URL(element.metadata?.url || element.content).hostname}</span>
-             </div>
-             <h4 className="font-bold text-text-main line-clamp-2 leading-tight">{element.metadata?.title || element.content}</h4>
-             <p className="text-xs text-text-secondary line-clamp-2">{element.metadata?.description}</p>
-             <a href={element.metadata?.url || element.content} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full h-10 mt-2 rounded-xl bg-accent/10 text-accent text-[9px] font-black uppercase tracking-widest hover:bg-accent hover:text-accent-contrast transition-all">
-                Open Resource <ExternalLink size={12} />
-             </a>
-          </div>
-        </div>
-      );
-    case 'shape':
-    case 'flowchartNode':
-      return (
-        <div 
-          className={cn("flex items-center justify-center border-4 border-accent bg-accent/5", element.type === 'flowchartNode' && "shadow-xl")}
-          style={{ 
-            width: element.width || (element.type === 'flowchartNode' ? 180 : 120),
-            height: element.height || (element.type === 'flowchartNode' ? 96 : 120),
-            backgroundColor: element.metadata?.color ? `${element.metadata.color}22` : undefined,
-            borderColor: element.metadata?.color || undefined,
-            borderRadius: element.metadata?.shapeType === 'circle' ? '50%' : '12px',
-            transform: element.metadata?.shapeType === 'diamond' ? 'rotate(45deg)' : undefined
-          }}
-        >
-          <div style={{ transform: element.metadata?.shapeType === 'diamond' ? 'rotate(-45deg)' : undefined }}>
-            <p className="text-center font-bold text-text-main px-4">{element.content}</p>
-          </div>
-        </div>
-      );
-    case 'note':
-    case 'checklist':
-      return (
-        <div className="w-72 bg-card p-6 rounded-3xl border border-card-border shadow-2xl relative">
-          <div className="flex items-center justify-between mb-4">
-             <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                <FileText size={16} />
-             </div>
-             <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">{element.type === 'checklist' ? 'Checklist' : 'Linked Note'}</span>
-          </div>
-          <h4 className="font-bold text-text-main mb-3">{element.metadata?.title || element.content}</h4>
-          {element.type === 'checklist' ? (
-            <div className="space-y-2">
-              {(element.metadata?.checklist || []).map(item => (
-                <button
-                  key={item.id}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    const checklist = (element.metadata?.checklist || []).map(entry => entry.id === item.id ? { ...entry, completed: !entry.completed } : entry);
-                    onUpdate({ metadata: { ...(element.metadata || {}), checklist } });
-                  }}
-                  className="w-full flex items-center gap-2 text-xs font-bold text-text-secondary text-left hover:text-accent transition-colors"
-                >
-                  <span className={cn("w-4 h-4 rounded border flex items-center justify-center shrink-0", item.completed ? "bg-success border-success text-white" : "border-card-border")}>
-                    {item.completed ? "✓" : ""}
-                  </span>
-                  <span className={cn(item.completed && "line-through opacity-50")}>{item.text}</span>
-                </button>
-              ))}
-              <button
-                onClick={(event) => {
-                  event.stopPropagation();
-                  const text = window.prompt('Checklist item');
-                  if (!text) return;
-                  const checklist = [...(element.metadata?.checklist || []), { id: Math.random().toString(36).slice(2), text, completed: false }];
-                  onUpdate({ metadata: { ...(element.metadata || {}), checklist } });
-                }}
-                className="pt-2 text-[10px] font-black uppercase tracking-widest text-accent"
-              >
-                Add item
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2 opacity-60">
-               <div className="h-2 w-full bg-card-border rounded-full" />
-               <div className="h-2 w-3/4 bg-card-border rounded-full" />
-               <div className="h-2 w-1/2 bg-card-border rounded-full" />
-            </div>
-          )}
-        </div>
-      );
-    default:
-      return <div className="p-4 bg-accent text-accent-contrast rounded-xl">{element.content}</div>;
+          fontWeight: element.metadata?.fontWeight,
+          textAlign: element.metadata?.textAlign || 'left'
+        }}
+      >
+        {element.content}
+      </div>
+    );
   }
+
+  if (element.type === 'sticky') {
+    return (
+      <textarea
+        value={element.content}
+        onPointerDown={(event) => event.stopPropagation()}
+        onChange={(event) => onUpdate({ content: event.target.value })}
+        className="resize-none border-none outline-none shadow-2xl p-5 text-base font-bold text-black/80 leading-tight"
+        style={{ width, height, backgroundColor: element.metadata?.color || '#fef08a' }}
+        data-no-pan
+      />
+    );
+  }
+
+  if (element.type === 'image') {
+    return (
+      <div className="bg-card rounded-2xl overflow-hidden shadow-2xl border border-card-border" style={{ width, height }}>
+        <img src={element.metadata?.imageUrl || element.content} className="w-full h-full object-cover" alt={element.metadata?.title || 'Board asset'} draggable={false} />
+      </div>
+    );
+  }
+
+  if (element.type === 'shape' || element.type === 'flowchartNode') {
+    const shapeType = element.metadata?.shapeType || 'rectangle';
+    return (
+      <div
+        className="flex items-center justify-center border-4 shadow-xl"
+        style={{
+          width,
+          height,
+          backgroundColor: element.metadata?.fillColor || element.metadata?.color || 'var(--accent-soft)',
+          borderColor: element.metadata?.strokeColor || element.metadata?.color || 'var(--accent)',
+          borderRadius: shapeType === 'circle' ? '50%' : '14px',
+          transform: shapeType === 'diamond' ? 'rotate(45deg)' : undefined
+        }}
+      >
+        <textarea
+          value={element.content}
+          onPointerDown={(event) => event.stopPropagation()}
+          onChange={(event) => onUpdate({ content: event.target.value })}
+          className="w-full bg-transparent resize-none border-none outline-none text-center font-bold text-text-main px-4"
+          style={{ transform: shapeType === 'diamond' ? 'rotate(-45deg)' : undefined }}
+          data-no-pan
+        />
+      </div>
+    );
+  }
+
+  if (element.type === 'checklist') {
+    const checklist = element.metadata?.checklist || [];
+    return (
+      <div className="bg-card p-5 rounded-3xl border border-card-border shadow-2xl space-y-4" style={{ width, minHeight: height }}>
+        <input
+          value={element.content}
+          onPointerDown={(event) => event.stopPropagation()}
+          onChange={(event) => onUpdate({ content: event.target.value })}
+          className="w-full bg-transparent border-none outline-none font-black text-text-main"
+          data-no-pan
+        />
+        <div className="space-y-2">
+          {checklist.map(item => (
+            <ChecklistRow key={item.id} item={item} checklist={checklist} onUpdate={(next) => onUpdate({ metadata: { checklist: next } })} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (element.type === 'link') {
+    const url = element.metadata?.url || element.content;
+    return (
+      <div className="bg-card-dark border border-card-border rounded-[2rem] overflow-hidden shadow-2xl p-5 space-y-3" style={{ width }}>
+        <p className="text-[10px] font-black uppercase tracking-widest text-accent truncate">{url}</p>
+        <input value={element.metadata?.title || 'Resource'} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ metadata: { title: event.target.value } })} className="w-full bg-transparent outline-none font-bold text-text-main" data-no-pan />
+        <a href={url} target="_blank" rel="noreferrer" onPointerDown={(event) => event.stopPropagation()} className="inline-flex h-10 px-4 rounded-xl bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest items-center">Open</a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-card border border-card-border rounded-xl shadow-xl" style={{ width, minHeight: height }}>
+      {element.content}
+    </div>
+  );
 };
+
+function ChecklistRow({ item, checklist, onUpdate }: { item: ChecklistItem; checklist: ChecklistItem[]; onUpdate: (items: ChecklistItem[]) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onUpdate(checklist.map(entry => entry.id === item.id ? { ...entry, completed: !entry.completed } : entry));
+        }}
+        className={cn('w-5 h-5 rounded-lg border flex items-center justify-center shrink-0', item.completed ? 'bg-success border-success text-white' : 'border-card-border')}
+      >
+        {item.completed && <Check size={12} />}
+      </button>
+      <input
+        value={item.text}
+        onPointerDown={(event) => event.stopPropagation()}
+        onChange={(event) => onUpdate(checklist.map(entry => entry.id === item.id ? { ...entry, text: event.target.value } : entry))}
+        className={cn('min-w-0 flex-1 bg-transparent outline-none text-sm font-bold text-text-secondary', item.completed && 'line-through opacity-50')}
+        data-no-pan
+      />
+      <button
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onUpdate(checklist.filter(entry => entry.id !== item.id));
+        }}
+        className="w-8 h-8 rounded-lg text-text-secondary/45 hover:text-danger hover:bg-danger/10 flex items-center justify-center"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
+
+function ElementEditor({
+  element,
+  onUpdate,
+  onDelete,
+  onClose,
+  onStartLink,
+  onAddChecklistItem
+}: {
+  element: VisionElement;
+  onUpdate: (updates: Partial<VisionElement>) => void;
+  onDelete: () => void;
+  onClose: () => void;
+  onStartLink: () => void;
+  onAddChecklistItem: (text: string) => void;
+}) {
+  const [newChecklistText, setNewChecklistText] = useState('');
+  const canColor = ['text', 'heading', 'sticky', 'shape', 'flowchartNode'].includes(element.type);
+  const width = element.width || defaultSize(element.type).width;
+  const height = element.height || defaultSize(element.type).height;
+
+  return (
+    <motion.aside
+      initial={{ opacity: 0, x: 30 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 30 }}
+      className="fixed md:absolute inset-x-0 bottom-0 md:inset-x-auto md:right-4 md:top-16 md:bottom-auto z-[170] md:w-80 max-h-[75dvh] overflow-y-auto custom-scrollbar bg-card/95 backdrop-blur-xl border border-card-border rounded-t-[2rem] md:rounded-[2rem] p-4 shadow-2xl"
+      data-no-pan
+    >
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-accent">{element.type}</p>
+          <h3 className="text-sm font-black text-text-main">Element settings</h3>
+        </div>
+        <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary flex items-center justify-center"><X size={16} /></button>
+      </div>
+
+      <div className="space-y-4">
+        {element.type !== 'image' && element.type !== 'checklist' && (
+          <label className="block space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Content</span>
+            <textarea value={element.content} onChange={(event) => onUpdate({ content: event.target.value })} className="w-full min-h-24 rounded-2xl bg-surface-muted border border-card-border p-3 text-sm font-semibold outline-none focus:border-accent resize-y" />
+          </label>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <NumberField label="Width" value={width} onChange={(value) => onUpdate({ width: value })} />
+          <NumberField label="Height" value={height} onChange={(value) => onUpdate({ height: value })} />
+        </div>
+
+        {(element.type === 'text' || element.type === 'heading') && (
+          <NumberField
+            label="Font size"
+            value={parseInt(String(element.metadata?.fontSize || (element.type === 'heading' ? 46 : 22)), 10)}
+            onChange={(value) => onUpdate({ metadata: { fontSize: `${value}px` } })}
+          />
+        )}
+
+        {canColor && (
+          <label className="block space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Color</span>
+            <input
+              value={element.metadata?.strokeColor || element.metadata?.color || element.metadata?.fillColor || '#8da482'}
+              onChange={(event) => onUpdate({
+                metadata: element.type === 'shape' || element.type === 'flowchartNode'
+                  ? { strokeColor: event.target.value, fillColor: `${event.target.value}22` }
+                  : { color: event.target.value }
+              })}
+              className="w-full h-11 rounded-xl bg-surface-muted border border-card-border px-3 text-sm font-bold outline-none focus:border-accent"
+            />
+          </label>
+        )}
+
+        {(element.type === 'shape' || element.type === 'flowchartNode') && (
+          <div className="grid grid-cols-3 gap-2">
+            {(['rectangle', 'circle', 'diamond'] as const).map(shape => (
+              <button
+                key={shape}
+                onClick={() => onUpdate({ metadata: { shapeType: shape } })}
+                className={cn('h-10 rounded-xl border text-[9px] font-black uppercase tracking-widest', element.metadata?.shapeType === shape ? 'border-accent bg-accent/10 text-accent' : 'border-card-border text-text-secondary')}
+              >
+                {shape}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {element.type === 'checklist' && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const text = newChecklistText.trim();
+              if (!text) return;
+              onAddChecklistItem(text);
+              setNewChecklistText('');
+            }}
+            className="flex gap-2"
+          >
+            <input value={newChecklistText} onChange={(event) => setNewChecklistText(event.target.value)} placeholder="Add checklist item" className="min-w-0 flex-1 h-11 rounded-xl bg-surface-muted border border-card-border px-3 text-sm font-bold outline-none focus:border-accent" />
+            <button type="submit" className="h-11 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest">Add</button>
+          </form>
+        )}
+
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-card-border">
+          <button onClick={onStartLink} className="h-11 rounded-xl bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest">Connect</button>
+          <button onClick={onDelete} className="h-11 rounded-xl bg-danger/10 text-danger text-[10px] font-black uppercase tracking-widest">Delete</button>
+        </div>
+      </div>
+    </motion.aside>
+  );
+}
+
+function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <label className="block space-y-2">
+      <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{label}</span>
+      <input
+        type="number"
+        min={20}
+        value={Math.round(value)}
+        onChange={(event) => onChange(Math.max(20, Number(event.target.value) || 20))}
+        className="w-full h-11 rounded-xl bg-surface-muted border border-card-border px-3 text-sm font-bold outline-none focus:border-accent"
+      />
+    </label>
+  );
+}

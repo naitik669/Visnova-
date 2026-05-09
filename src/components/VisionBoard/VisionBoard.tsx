@@ -212,9 +212,10 @@ export default function VisionBoard() {
                       <h3 className="text-2xl font-black text-text-main tracking-tight uppercase mt-1">Idea Repository</h3>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button className="h-10 px-6 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest border border-card-border hover:text-text-main transition-all">Filter</button>
-                    <button className="h-10 px-6 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest border border-card-border hover:text-text-main transition-all">Sort</button>
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span className="h-10 px-5 rounded-xl bg-surface-muted/70 text-text-secondary/60 text-[10px] font-black uppercase tracking-widest border border-card-border flex items-center" title="Filters and sorting are intentionally hidden until the beta board flows are stable.">
+                      All visions
+                    </span>
                   </div>
                </div>
                

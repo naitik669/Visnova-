@@ -321,7 +321,7 @@ export interface AppState {
   toggleGrinding: () => void;
   updateCircleMember: (id: string, updates: Partial<CircleMember>) => void;
   addVision: (vision: Partial<Vision>) => Promise<Vision>;
-  updateVision: (id: string, updates: Partial<Vision>) => void;
+  updateVision: (id: string, updates: Partial<Vision>) => Promise<boolean>;
   deleteVision: (id: string) => void;
   moveVision: (id: string, newStatus: Vision['status']) => void;
   reorderVisions: (visions: Vision[]) => void;

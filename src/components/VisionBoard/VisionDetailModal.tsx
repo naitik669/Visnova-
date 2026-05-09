@@ -546,67 +546,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                  </motion.div>
                )}
 
-               {/* Quick Creation Menu (Floating Target) */}
-               {activeTab === 'board' && (
-                 <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4">
-                    <AnimatePresence>
-                      {showAddMenu && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                          className="bg-card/90 backdrop-blur-2xl border border-card-border p-4 rounded-[2.5rem] shadow-[0_30px_70px_rgba(0,0,0,0.5)] grid grid-cols-4 gap-4"
-                        >
-                           <GridItem key="grid-image" icon={<ImageIcon size={20} />} label="Image" onClick={() => addElement('image')} />
-                           <GridItem key="grid-title" icon={<Type size={20} />} label="Title" onClick={() => addElement('heading', 'New Vision')} />
-                           <GridItem key="grid-sticky" icon={<FileText size={20} />} label="Sticky" onClick={() => addElement('sticky', 'Brainstorm...')} />
-                           <GridItem key="grid-resource" icon={<LinkIcon size={20} />} label="Resource" onClick={() => addElement('link')} />
-                           <GridItem key="grid-checklist" icon={<CheckSquare size={20} />} label="Checklist" onClick={() => addElement('checklist', 'Checklist', { checklist: [{ id: Math.random().toString(36).slice(2), text: 'First item', completed: false }] })} />
-                           <GridItem key="grid-quote" icon={<Quote size={20} />} label="Quote" onClick={() => addElement('quote')} />
-                           <GridItem key="grid-import" icon={<Users size={20} />} label="Import" onClick={() => imageImportRef.current?.click()} />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <button 
-                      onClick={() => setShowAddMenu(!showAddMenu)}
-                      className={cn(
-                        "w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-premium ring-4 ring-bg-base",
-                        showAddMenu ? "bg-text-main text-bg-base rotate-45" : "bg-accent text-accent-contrast hover:scale-110 active:scale-90"
-                      )}
-                    >
-                       <Plus size={32} />
-                    </button>
-                    <input
-                      ref={imageImportRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) importImageFile(file);
-                        e.target.value = '';
-                      }}
-                    />
-                 </div>
-               )}
             </div>
-
-            {/* Empty State Overlay */}
-            {!vision.elements?.length && activeTab === 'board' && (
-              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-8 z-10 px-10">
-                 <div className="text-center space-y-4 max-w-lg">
-                    <h1 className="text-6xl font-black tracking-tighter text-text-main opacity-20">Start building your vision.</h1>
-                    <p className="text-lg font-medium text-text-secondary opacity-40 ">Drop an image, write a goal, or map your next move.</p>
-                 </div>
-                 <div className="flex flex-wrap justify-center gap-3 pointer-events-auto">
-                    <QuickStartAction label="Add Image" onClick={() => imageImportRef.current?.click()} />
-                    <QuickStartAction label="Write Goal" onClick={() => addElement('heading', 'Main Goal')} />
-                    <QuickStartAction label="Checklist" onClick={() => addElement('checklist', 'Checklist', { checklist: [{ id: Math.random().toString(36).slice(2), text: 'First item', completed: false }] })} />
-                    <QuickStartAction label="Inspire" onClick={() => addElement('quote')} />
-                 </div>
-              </div>
-            )}
           </motion.div>
 
           {/* Publish Modal Implementation */}
