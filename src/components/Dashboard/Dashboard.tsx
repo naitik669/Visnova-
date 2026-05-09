@@ -225,17 +225,17 @@ export default function Dashboard() {
 
   if (isDashboardLoading && !hasAnyDashboardData) {
     return (
-      <div className="max-w-[1400px] mx-auto space-y-8 p-6 lg:p-10">
+      <div className="max-w-[1400px] mx-auto space-y-5 sm:space-y-8 p-2 sm:p-6 lg:p-10">
         <div className="h-10 w-64 bg-card-dark rounded-xl animate-pulse" />
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-1 space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="h-48 bg-card rounded-[2.5rem] animate-pulse" />
-              <div className="h-48 bg-card rounded-[2.5rem] animate-pulse" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="h-36 sm:h-48 bg-card rounded-[1.5rem] sm:rounded-[2.5rem] animate-pulse" />
+              <div className="h-36 sm:h-48 bg-card rounded-[1.5rem] sm:rounded-[2.5rem] animate-pulse" />
             </div>
-            <div className="h-64 bg-card rounded-[2.5rem] animate-pulse" />
+            <div className="h-56 sm:h-64 bg-card rounded-[1.5rem] sm:rounded-[2.5rem] animate-pulse" />
           </div>
-          <div className="w-80 space-y-4">
+          <div className="w-full lg:w-80 space-y-4">
              <div className="h-32 bg-card rounded-[2rem] animate-pulse" />
              <div className="h-32 bg-card rounded-[2rem] animate-pulse" />
              <div className="h-32 bg-card rounded-[2rem] animate-pulse" />
@@ -246,14 +246,14 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20 px-4">
+    <div className="w-full max-w-[1400px] mx-auto space-y-5 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20 px-0 sm:px-4 overflow-x-hidden">
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 ml-2">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 px-1 sm:ml-2">
         <div id="dashboard-header">
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-accent opacity-60 mb-1 block">
             System Operational
           </span>
-          <h1 className="text-2xl lg:text-3xl font-display tracking-tight text-text-main uppercase font-black">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-display tracking-tight text-text-main uppercase font-black break-words">
             HELLO, {(user.name || "Visionary").split(" ")[0]}!
           </h1>
         </div>
@@ -277,7 +277,7 @@ export default function Dashboard() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col gap-6">
           {/* Today's Focus Section */}
-          <div className="bg-card rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden group">
+          <div className="bg-card rounded-[1.6rem] sm:rounded-[2.5rem] p-4 sm:p-8 shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
             
             <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start">
@@ -337,7 +337,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[2rem] p-5 flex flex-col gap-4 min-w-[240px] border border-card-border/50">
+              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 flex flex-col gap-4 md:min-w-[240px] border border-card-border/50">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-1">Streak Fire</p>
@@ -383,7 +383,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[2rem] p-6 flex flex-col items-center gap-3 min-w-[200px] border border-card-border/50">
+              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 flex flex-col items-center gap-3 md:min-w-[200px] border border-card-border/50">
                 <div className="text-center">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-1">Total Progress</p>
                   <p className="text-3xl font-display font-black text-accent">{globalProgress}%</p>

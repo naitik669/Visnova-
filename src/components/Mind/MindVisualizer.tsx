@@ -725,12 +725,12 @@ function ActionButton({ label, onClick }: { label: string; onClick: () => void }
 
 function SimpleModal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/80 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-xl bg-app-container rounded-[2rem] border border-card-border shadow-2xl p-6">
-        <div className="flex items-center justify-between gap-4 mb-6">
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-xl max-h-[94vh] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl p-4 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="sticky -top-4 sm:-top-6 z-10 bg-app-container/95 backdrop-blur flex items-center justify-between gap-4 mb-6 py-2">
           <h2 className="text-lg font-black uppercase tracking-tight text-text-main">{title}</h2>
-          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary hover:text-text-main"><X size={18} /></button>
+          <button onClick={onClose} className="w-11 h-11 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary hover:text-text-main"><X size={18} /></button>
         </div>
         {children}
       </motion.div>
@@ -1118,9 +1118,9 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
           : 'Saved';
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4">
+    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} className="absolute inset-0 bg-overlay/75 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.98, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 12 }} className="relative w-full max-w-[1380px] h-[92vh] overflow-hidden bg-app-container rounded-xl border border-card-border shadow-2xl flex flex-col">
+      <motion.div initial={{ opacity: 0, scale: 0.98, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 12 }} className="relative w-full max-w-[1380px] h-[100dvh] sm:h-[92vh] overflow-hidden bg-app-container rounded-none sm:rounded-xl border border-card-border shadow-2xl flex flex-col">
         <header className="shrink-0 bg-app-container/95 backdrop-blur border-b border-card-border px-4 lg:px-5 py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[9px] font-black uppercase tracking-[0.28em] text-accent">Learning Session</p>
@@ -1139,8 +1139,8 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 overflow-hidden grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(430px,0.75fr)]">
-          <section className="min-h-0 overflow-y-auto custom-scrollbar p-4 lg:p-5 space-y-4 border-b xl:border-b-0 xl:border-r border-card-border">
+        <div className="flex-1 min-h-0 overflow-y-auto xl:overflow-hidden grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(430px,0.75fr)]">
+          <section className="min-h-0 overflow-visible xl:overflow-y-auto custom-scrollbar p-3 sm:p-4 lg:p-5 space-y-4 border-b xl:border-b-0 xl:border-r border-card-border">
             <div className="xl:sticky xl:top-0 space-y-4">
               <div className="bg-card border border-card-border rounded-xl overflow-hidden shadow-sm">
                 {videoId ? (
@@ -1185,15 +1185,15 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
           </section>
 
           <aside className="min-h-0 flex flex-col">
-            <div className="shrink-0 border-b border-card-border p-3 bg-app-container/95">
-              <div role="tablist" aria-label="Learning Session sections" className="grid grid-cols-5 gap-1 rounded-2xl bg-surface-muted p-1">
+            <div className="shrink-0 border-b border-card-border p-3 bg-app-container/95 sticky top-0 z-10 xl:static">
+              <div role="tablist" aria-label="Learning Session sections" className="flex sm:grid sm:grid-cols-5 gap-1 rounded-2xl bg-surface-muted p-1 overflow-x-auto custom-scrollbar">
                 {tabs.map(tab => (
                   <button
                     key={tab.id}
                     role="tab"
                     aria-selected={activeTab === tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={cn('h-10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors focus:outline-none focus:ring-2 focus:ring-accent', activeTab === tab.id ? 'bg-card text-accent shadow-sm' : 'text-text-secondary/55 hover:text-text-main')}
+                    className={cn('h-10 min-w-24 sm:min-w-0 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors focus:outline-none focus:ring-2 focus:ring-accent', activeTab === tab.id ? 'bg-card text-accent shadow-sm' : 'text-text-secondary/55 hover:text-text-main')}
                   >
                     {tab.label}
                   </button>
@@ -1228,7 +1228,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
                     <textarea value={notes} onChange={event => updateField(setNotes, event.target.value)} placeholder="Write what you learn while watching." className="w-full h-64 rounded-lg bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
                   </WorkspacePanel>
                   <WorkspacePanel title="Timestamp notes" subtitle="Use manual seconds for now. Current-time capture can come later with the YouTube player API.">
-                    <div className="grid grid-cols-[90px_minmax(0,1fr)_auto] gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-[90px_minmax(0,1fr)_auto] gap-2">
                       <input value={timestampSeconds} onChange={event => setTimestampSeconds(event.target.value)} inputMode="numeric" placeholder="Seconds" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
                       <input value={timestampContent} onChange={event => setTimestampContent(event.target.value)} placeholder="Add timestamp note" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
                       <button onClick={addTimestampNote} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-accent">Add</button>
@@ -1238,7 +1238,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
                     ) : (
                       <div className="space-y-2">
                         {timestampNotes.map(note => (
-                          <div key={note.id} className="grid grid-cols-[68px_minmax(0,1fr)_auto] gap-2 items-center rounded-xl bg-surface-muted/60 border border-card-border p-2">
+                          <div key={note.id} className="grid grid-cols-1 sm:grid-cols-[68px_minmax(0,1fr)_auto] gap-2 items-center rounded-xl bg-surface-muted/60 border border-card-border p-2">
                             <span className="text-[10px] font-black uppercase tracking-widest text-accent">{formatTimestamp(note.timestamp_seconds)}</span>
                             <input value={note.content} onChange={event => updateTimestampNote(note, event.target.value)} className="h-9 rounded-lg bg-card border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
                             <button aria-label="Delete timestamp note" onClick={() => deleteTimestampNote(note.id)} className="w-9 h-9 rounded-lg bg-danger/10 text-danger flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-danger/30"><Trash2 size={13} /></button>
@@ -1252,14 +1252,14 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
 
               {activeTab === 'takeaways' && (
                 <WorkspacePanel number="4" title="Key takeaways" subtitle="Capture the ideas worth remembering. Keep each takeaway short and reusable.">
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
                     <input value={takeawayInput} onChange={event => setTakeawayInput(event.target.value)} placeholder="Add the idea worth remembering" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
                     <button onClick={addTakeaway} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-accent">Add</button>
                   </div>
                   {takeaways.length === 0 ? <EmptyInline text="Add the ideas worth remembering." /> : (
                     <div className="space-y-2">
                       {takeaways.map((takeaway, index) => (
-                        <div key={`${takeaway}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-xl bg-surface-muted/60 border border-card-border p-2">
+                        <div key={`${takeaway}-${index}`} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-xl bg-surface-muted/60 border border-card-border p-2">
                           <input value={takeaway} onChange={event => updateTakeaway(index, event.target.value)} className="h-9 rounded-lg bg-card border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
                           <button aria-label="Delete takeaway" onClick={() => deleteTakeaway(index)} className="w-9 h-9 rounded-lg bg-danger/10 text-danger flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-danger/30"><Trash2 size={13} /></button>
                         </div>
@@ -1271,7 +1271,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
 
               {activeTab === 'actions' && (
                 <WorkspacePanel number="5" title="Action points" subtitle="Turn the session into practical steps, then convert the useful ones to Vision tasks.">
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
                     <input value={actionText} onChange={event => setActionText(event.target.value)} placeholder="Turn what you learned into action" className="h-10 rounded-xl bg-surface-muted border border-card-border px-3 text-xs font-semibold outline-none focus:border-accent" />
                     <button onClick={addActionPoint} className="h-10 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-accent">Add</button>
                   </div>
@@ -1426,9 +1426,9 @@ function ResourceDetailModal({ resource, visions, visionTitle, onClose, onUpdate
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-5">
+    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-5">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/80 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-6xl max-h-[92vh] overflow-y-auto custom-scrollbar bg-app-container rounded-[2rem] border border-card-border shadow-2xl">
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-6xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl">
         <div className="sticky top-0 z-10 bg-app-container/95 backdrop-blur border-b border-card-border p-5 flex items-center justify-between gap-4">
           <div>
             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent">Growth Resource</p>

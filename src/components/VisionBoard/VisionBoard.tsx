@@ -107,8 +107,8 @@ export default function VisionBoard() {
   };
 
   return (
-    <div className="w-full max-w-none mx-auto space-y-24 animate-in fade-in slide-in-from-bottom-8 duration-1000 pb-48 px-2 sm:px-4 pt-8">
-      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-16">
+    <div className="w-full max-w-none mx-auto space-y-10 sm:space-y-16 lg:space-y-24 animate-in fade-in slide-in-from-bottom-8 duration-1000 pb-32 sm:pb-48 px-0 sm:px-4 pt-3 sm:pt-8 overflow-x-hidden">
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 lg:gap-16 px-1">
         <div className="space-y-4 max-w-4xl">
            <div className="flex items-center gap-4 text-accent/60">
               <div className="w-10 h-px bg-accent/30" />
@@ -117,18 +117,18 @@ export default function VisionBoard() {
            </div>
            
            <div className="space-y-1">
-             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-text-main leading-[0.85] uppercase sm:-ml-1">
+             <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight sm:tracking-tighter text-text-main leading-tight sm:leading-[0.85] uppercase sm:-ml-1 break-words">
                Future<br/>
                <span className="text-accent underline decoration-accent/10 underline-offset-8">Vision</span>
              </h1>
            </div>
 
-           <p className="text-text-secondary/70 font-medium max-w-xl leading-relaxed text-base border-l-2 border-accent/20 pl-6">
+           <p className="text-text-secondary/70 font-medium max-w-xl leading-relaxed text-sm sm:text-base border-l-2 border-accent/20 pl-4 sm:pl-6">
              Build your goals and aspirations. Align inspirations, define milestones, and manifest the specific future you are building.
            </p>
         </div>
         
-        <div className="flex items-center gap-4 bg-app-container border border-card-border p-2.5 rounded-[3rem] shadow-2xl shadow-accent/5 backdrop-blur-xl">
+        <div className="flex items-center gap-2 sm:gap-4 bg-app-container border border-card-border p-2 rounded-[2rem] sm:rounded-[3rem] shadow-2xl shadow-accent/5 backdrop-blur-xl overflow-x-auto custom-scrollbar max-w-full">
            {(['grid', 'kanban'] as const).map(mode => (
              <button
                key={mode}
@@ -145,7 +145,7 @@ export default function VisionBoard() {
            <button
              id="add-vision-btn"
              onClick={handleAddNew}
-             className="w-14 h-14 bg-accent text-accent-contrast rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all"
+             className="min-w-12 w-12 h-12 sm:min-w-14 sm:w-14 sm:h-14 bg-accent text-accent-contrast rounded-[1.25rem] sm:rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all"
            >
              <Plus size={24} />
            </button>

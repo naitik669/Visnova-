@@ -79,7 +79,7 @@ export default function UserProfileModal() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -92,7 +92,7 @@ export default function UserProfileModal() {
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-xl bg-app-container rounded-[2.5rem] shadow-2xl overflow-hidden border border-card-border z-[101]"
+          className="relative w-full max-w-xl max-h-[96vh] sm:max-h-[92vh] bg-app-container rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl overflow-y-auto custom-scrollbar border border-card-border z-[101]"
         >
           {isLoading ? (
             <div className="h-96 flex flex-col items-center justify-center gap-4">
@@ -101,21 +101,21 @@ export default function UserProfileModal() {
             </div>
           ) : (
             <>
-              <div className="h-40 bg-accent/20 relative">
+              <div className="h-32 sm:h-40 bg-accent/20 relative sticky top-0 z-10">
                  <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1000')] bg-cover bg-center mix-blend-overlay opacity-30" />
                  <div className="absolute inset-0 bg-gradient-to-t from-app-container to-transparent" />
                  <button
                    onClick={() => setSelectedProfileId(null)}
-                   className="absolute top-6 right-6 w-10 h-10 bg-card rounded-xl text-text-secondary flex items-center justify-center hover:text-accent transition-all z-20 border border-card-border"
+                   className="absolute top-4 sm:top-6 right-4 sm:right-6 w-11 h-11 bg-card rounded-xl text-text-secondary flex items-center justify-center hover:text-accent transition-all z-20 border border-card-border"
                  >
                    <X size={20} />
                  </button>
               </div>
 
-              <div className="px-10 pb-10">
-                 <div className="flex flex-col sm:flex-row gap-8 relative -mt-16 mb-10">
+              <div className="px-4 sm:px-10 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:pb-10">
+                 <div className="flex flex-col sm:flex-row gap-5 sm:gap-8 relative -mt-14 sm:-mt-16 mb-6 sm:mb-10">
                    <div className="relative shrink-0">
-                      <div className="w-32 h-32 rounded-[2rem] p-1 bg-app-container shadow-2xl">
+                      <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-[1.5rem] sm:rounded-[2rem] p-1 bg-app-container shadow-2xl">
                         <img src={profile?.avatar_url || 'https://api.dicebear.com/7.x/shapes/svg?seed=' + profile?.id} alt={profile?.full_name} className="w-full h-full rounded-[1.8rem] object-cover border-2 border-card-border bg-card" />
                       </div>
                       <div className="absolute -bottom-2 -right-2 bg-card text-accent w-10 h-10 rounded-xl border-4 border-app-container flex items-center justify-center shadow-lg">
@@ -123,10 +123,10 @@ export default function UserProfileModal() {
                       </div>
                    </div>
 
-                   <div className="pt-2 sm:pt-20 flex-1">
-                     <div className="flex items-center justify-between gap-4">
+                   <div className="pt-0 sm:pt-20 flex-1 min-w-0">
+                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="space-y-1">
-                          <h2 className="text-3xl font-black text-text-main tracking-tight uppercase flex items-center gap-3">
+                          <h2 className="text-2xl sm:text-3xl font-black text-text-main tracking-tight uppercase flex items-center gap-3 break-words">
                             {profile?.full_name || profile?.display_name || 'Explorer'}
                             <VerifiedBadge verified={!!profile?.verified} className="shrink-0" />
                           </h2>

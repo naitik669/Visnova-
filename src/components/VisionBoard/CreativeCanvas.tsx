@@ -223,7 +223,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleCanvasDrop}
     >
-      <div className="absolute left-6 top-1/2 -translate-y-1/2 z-40 bg-card/90 backdrop-blur-xl border border-card-border rounded-2xl p-2 shadow-2xl flex flex-col gap-1">
+      <div className="absolute left-1/2 bottom-4 -translate-x-1/2 md:left-6 md:top-1/2 md:bottom-auto md:translate-x-0 md:-translate-y-1/2 z-40 bg-card/90 backdrop-blur-xl border border-card-border rounded-2xl p-2 shadow-2xl flex flex-row md:flex-col gap-1 max-w-[calc(100vw-2rem)] overflow-x-auto custom-scrollbar">
         <CanvasToolButton icon={<Type size={18} />} label="Text" onClick={() => addQuickElement('text', 'Write anything', { fontSize: '22px' })} />
         <CanvasToolButton icon={<Target size={18} />} label="Goal" onClick={() => addQuickElement('heading', 'New goal', { color: 'var(--accent)' })} />
         <CanvasToolButton icon={<FileText size={18} />} label="Sticky" onClick={() => addQuickElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
@@ -328,7 +328,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             </TransformComponent>
 
             {/* Floating Navigation Controls */}
-            <div className="absolute bottom-10 right-10 z-40 flex flex-col gap-2">
+            <div className="absolute bottom-24 md:bottom-10 right-3 md:right-10 z-40 flex flex-col gap-2">
               <div className="bg-card/80 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
                 <ControlButton onClick={() => zoomIn()} icon={<Plus size={18} />} label="Zoom In" />
                 <div className="h-px bg-card-border mx-2" />
@@ -352,7 +352,7 @@ function ControlButton({ onClick, icon, label }: { onClick: () => void, icon: Re
   return (
     <button
       onClick={onClick}
-      className="p-3 text-text-secondary hover:text-accent hover:bg-accent/5 rounded-xl transition-all"
+      className="min-w-11 min-h-11 p-3 text-text-secondary hover:text-accent hover:bg-accent/5 rounded-xl transition-all"
       title={label}
     >
       {icon}
@@ -364,11 +364,11 @@ function CanvasToolButton({ icon, label, onClick }: { icon: React.ReactNode, lab
   return (
     <button
       onClick={onClick}
-      className="w-11 h-11 rounded-xl flex items-center justify-center text-text-secondary hover:text-accent hover:bg-accent/10 transition-all group relative"
+      className="min-w-11 w-11 h-11 rounded-xl flex items-center justify-center text-text-secondary hover:text-accent hover:bg-accent/10 transition-all group relative"
       title={label}
     >
       {icon}
-      <span className="absolute left-full ml-3 px-2 py-1 rounded-lg bg-text-main text-bg-base text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">
+      <span className="hidden md:block absolute left-full ml-3 px-2 py-1 rounded-lg bg-text-main text-bg-base text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">
         {label}
       </span>
     </button>

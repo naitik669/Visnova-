@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, MoreHorizontal, GraduationCap } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, MoreHorizontal, GraduationCap, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -286,27 +286,144 @@ function Sidebar() {
 
 function MobileNav() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useStore();
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+  const primaryItems = [
+    { icon: Home, label: 'Home', path: '/' },
+    { icon: Compass, label: 'Feed', path: '/feed' },
+    { icon: Target, label: 'Visions', path: '/vision' },
+    { icon: LibraryBig, label: 'Notes', path: '/notes' },
+  ];
+
+  const moreItems = [
+    { icon: Users, label: 'Circle', path: '/circle' },
+    { icon: Globe, label: 'Communities', path: '/communities' },
+    { icon: GraduationCap, label: 'Growth', path: '/growth' },
+    { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
+    { icon: MessageCircle, label: 'Messages', path: '/messages' },
+    { icon: SettingsIcon, label: 'Settings', path: '/settings' },
+  ];
+
+  const goTo = (path: string) => {
+    setIsMoreOpen(false);
+    navigate(path);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+  };
+
   return (
-    <nav className="absolute bottom-0 left-0 right-0 h-20 bg-sidebar border-t border-card-border lg:hidden flex items-center justify-around px-8 z-50 transition-colors duration-500">
-      <Link to="/" className={cn(location.pathname === '/' ? "text-accent" : "text-text-secondary/50")}>
-        <Home size={22} />
-      </Link>
-      <Link to="/feed" className={cn(location.pathname === '/feed' ? "text-accent" : "text-text-secondary/50")}>
-        <Compass size={22} />
-      </Link>
-      <Link to="/vision" className={cn(location.pathname === '/vision' ? "text-accent" : "text-text-secondary/50")}>
-        <Target size={22} />
-      </Link>
-      <Link to="/notes" className={cn(location.pathname === '/notes' ? "text-accent" : "text-text-secondary/50")}>
-        <LibraryBig size={22} />
-      </Link>
-      <Link to="/growth" className={cn(location.pathname === '/growth' ? "text-accent" : "text-text-secondary/50")}>
-        <GraduationCap size={22} />
-      </Link>
-      <Link to="/profile" className={cn(location.pathname === '/profile' ? "text-accent" : "text-text-secondary/50")}>
-        <User size={22} />
-      </Link>
-    </nav>
+    <>
+      <AnimatePresence>
+        {isMoreOpen && (
+          <>
+            <motion.button
+              aria-label="Close menu"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMoreOpen(false)}
+              className="fixed inset-0 bg-overlay z-[88] lg:hidden"
+            />
+            <motion.div
+              initial={{ y: 320, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 320, opacity: 0 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 260 }}
+              className="fixed inset-x-0 bottom-0 z-[90] lg:hidden bg-card border-t border-card-border rounded-t-[2rem] shadow-2xl px-4 pt-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+            >
+              <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-text-secondary/20" />
+              <div className="flex items-center gap-3 px-2 pb-4 border-b border-card-border/60">
+                <img
+                  src={user?.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${user?.id || 'visnova'}`}
+                  alt="Profile"
+                  className="h-11 w-11 rounded-2xl object-cover border border-card-border"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Profile'}</p>
+                  <p className="text-[11px] font-semibold text-text-secondary/60 truncate">@{user?.username || 'user'}</p>
+                </div>
+                <button
+                  onClick={() => goTo('/profile')}
+                  className="h-11 px-4 rounded-xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-wider"
+                >
+                  Profile
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 py-4">
+                {moreItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = location.pathname === item.path;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => goTo(item.path)}
+                      className={cn(
+                        "h-12 rounded-2xl border flex items-center gap-3 px-3 text-left transition-all",
+                        active ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface-muted border-card-border/50 text-text-secondary"
+                      )}
+                    >
+                      <Icon size={18} />
+                      <span className="text-[11px] font-black uppercase tracking-wider truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-2 gap-2 border-t border-card-border/60 pt-3">
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new Event('open-visnova-notifications'));
+                    setIsMoreOpen(false);
+                  }}
+                  className="h-11 rounded-2xl bg-surface-muted text-text-secondary flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-wider"
+                >
+                  <Bell size={16} /> Alerts
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="h-11 rounded-2xl bg-danger/10 text-danger flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-wider"
+                >
+                  <LogOut size={16} /> Log out
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+      <nav className="fixed bottom-0 left-0 right-0 min-h-[4.75rem] bg-sidebar/95 backdrop-blur-xl border-t border-card-border lg:hidden grid grid-cols-5 gap-1 px-2 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] z-[80] transition-colors duration-500">
+        {primaryItems.map((item) => {
+          const Icon = item.icon;
+          const active = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all",
+                active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
+              )}
+            >
+              <Icon size={21} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+        <button
+          onClick={() => setIsMoreOpen(true)}
+          className={cn(
+            "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all",
+            isMoreOpen || moreItems.some(item => location.pathname === item.path) ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
+          )}
+        >
+          <MoreHorizontal size={22} />
+          <span>More</span>
+        </button>
+      </nav>
+    </>
   );
 }
 
@@ -329,10 +446,10 @@ function PageContextHeader() {
   if (!meta) return null;
 
   return (
-    <div className="hidden md:flex xl:hidden px-4 pt-4 pb-2 items-center justify-between border-b border-card-border/60 bg-app-container/95">
+    <div className="flex xl:hidden px-4 pt-[calc(0.85rem+env(safe-area-inset-top))] md:pt-4 pb-2 items-center justify-between border-b border-card-border/60 bg-app-container/95">
       <div>
-        <h1 className="text-sm font-black uppercase tracking-[0.22em] text-text-main">{meta.title}</h1>
-        {meta.subtitle && <p className="text-[10px] font-semibold text-text-secondary mt-1">{meta.subtitle}</p>}
+        <h1 className="text-sm md:text-sm font-black uppercase tracking-[0.18em] md:tracking-[0.22em] text-text-main">{meta.title}</h1>
+        {meta.subtitle && <p className="hidden sm:block text-[10px] font-semibold text-text-secondary mt-1">{meta.subtitle}</p>}
       </div>
     </div>
   );
@@ -456,7 +573,7 @@ function AppContent() {
               <VisionAssistant />
               <main className="flex-1 min-w-0 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
                 <PageContextHeader />
-                <div className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <div className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/feed" element={<CommunityFeed />} />

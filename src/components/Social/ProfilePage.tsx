@@ -2,17 +2,17 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
-import { 
-  Zap, 
-  Map, 
-  BookOpen, 
-  MessageCircle, 
+import {
+  Zap,
+  Map,
+  BookOpen,
+  MessageCircle,
   MessageSquare,
-  Settings as SettingsIcon, 
-  Edit3, 
-  Plus, 
-  Clock, 
-  TrendingUp, 
+  Settings as SettingsIcon,
+  Edit3,
+  Plus,
+  Clock,
+  TrendingUp,
   Heart,
   Bookmark,
   Share2,
@@ -62,7 +62,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'followers' | 'following' | 'archived' | 'achievements' | 'settings';
-  
+
   const [profile, setProfile] = useState<any>(null);
   const [profilePosts, setProfilePosts] = useState<Post[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -74,7 +74,7 @@ export default function ProfilePage() {
   const [followers, setFollowers] = useState<SocialProfile[]>([]);
   const [following, setFollowing] = useState<SocialProfile[]>([]);
   const [isLoadingSocialList, setIsLoadingSocialList] = useState(false);
-  
+
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -149,7 +149,7 @@ export default function ProfilePage() {
         .select('*')
         .eq('id', targetId)
         .maybeSingle();
-      
+
       if (profileError) throw profileError;
       if (!profileData && targetId === session?.user?.id) {
         setProfile({
@@ -470,41 +470,41 @@ export default function ProfilePage() {
   );
 
   return (
-    <div className="w-full max-w-5xl mx-auto pb-24 animate-in fade-in duration-700">
+    <div className="w-full max-w-5xl mx-auto pb-24 animate-in fade-in duration-700 overflow-x-hidden">
       {/* Profile Header */}
       <div className="relative mb-8">
-        <div className="h-64 rounded-[2.5rem] bg-gradient-to-r from-accent/20 via-card-dark to-accent/10 border border-card-border overflow-hidden relative">
+        <div className="h-40 sm:h-64 rounded-[1.5rem] sm:rounded-[2.5rem] bg-gradient-to-r from-accent/20 via-card-dark to-accent/10 border border-card-border overflow-hidden relative">
            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1620121692029-d088224ddc74?auto=format&fit=crop&q=80&w=2000')] bg-cover bg-center mix-blend-overlay opacity-20" />
            <div className="absolute inset-0 bg-gradient-to-t from-app-container to-transparent" />
         </div>
 
-        <div className="px-8 -mt-32 relative flex flex-col md:flex-row items-end gap-6">
+        <div className="px-3 sm:px-8 -mt-20 sm:-mt-32 relative flex flex-col md:flex-row items-start md:items-end gap-4 sm:gap-6">
           <div className="relative group">
-            <div className="w-48 h-48 rounded-[2.5rem] p-1.5 bg-app-container shadow-2xl relative z-10 transition-transform group-hover:scale-[1.02]">
-              <img 
-                src={profile?.avatar_url || 'https://api.dicebear.com/7.x/shapes/svg?seed=' + profile?.id} 
-                className="w-full h-full rounded-[2.2rem] object-cover border-2 border-card-border shadow-inner" 
-                alt={profile?.full_name} 
+            <div className="w-28 h-28 sm:w-48 sm:h-48 rounded-[1.75rem] sm:rounded-[2.5rem] p-1.5 bg-app-container shadow-2xl relative z-10 transition-transform group-hover:scale-[1.02]">
+              <img
+                src={profile?.avatar_url || 'https://api.dicebear.com/7.x/shapes/svg?seed=' + profile?.id}
+                className="w-full h-full rounded-[1.45rem] sm:rounded-[2.2rem] object-cover border-2 border-card-border shadow-inner"
+                alt={profile?.full_name}
               />
             </div>
             {profile?.verified && (
-              <div className="absolute -bottom-2 -right-2 w-14 h-14 bg-card rounded-2xl flex items-center justify-center text-accent shadow-xl border-4 border-app-container z-20">
-                 <VerifiedBadge verified={true} className="scale-125" />
+              <div className="absolute -bottom-2 -right-2 w-11 h-11 sm:w-14 sm:h-14 bg-card rounded-2xl flex items-center justify-center text-accent shadow-xl border-4 border-app-container z-20">
+                 <VerifiedBadge verified={true} className="scale-110 sm:scale-125" />
               </div>
             )}
           </div>
 
-          <div className="flex-1 pb-4">
+          <div className="flex-1 pb-4 min-w-0">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <h1 className="text-4xl font-black text-text-main tracking-tight uppercase flex items-center gap-4">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-4xl font-black text-text-main tracking-tight uppercase flex flex-wrap items-center gap-3 sm:gap-4 break-words">
                   {profile?.display_name || profile?.full_name || 'Explorer'}
                   <VerifiedBadge verified={!!profile?.verified} className="shrink-0" />
                   <span className="text-[11px] bg-accent/10 border border-accent/20 text-accent px-4 py-1.5 rounded-full uppercase tracking-[0.2em] font-black">
                     LVL {profile?.level || 1} {profile?.role || 'Explorer'}
                   </span>
                 </h1>
-                <div className="flex items-center gap-4 mt-2">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-2">
                   <p className="text-sm font-bold text-text-secondary opacity-60 tracking-widest uppercase">
                     @{profile?.username || 'user'}
                   </p>
@@ -520,16 +520,16 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                  { (selectedProfileId === 'me' || targetId === session?.user?.id) ? (
                    <>
-                    <button 
+                    <button
                       onClick={startEditingProfile}
-                      className="h-12 px-8 rounded-2xl bg-surface-muted border border-card-border text-text-secondary text-[11px] font-black uppercase tracking-widest hover:bg-card-dark hover:text-text-main transition-all flex items-center gap-3"
+                      className="h-12 px-5 sm:px-8 rounded-2xl bg-surface-muted border border-card-border text-text-secondary text-[11px] font-black uppercase tracking-widest hover:bg-card-dark hover:text-text-main transition-all flex items-center gap-3"
                     >
                         <Edit3 size={18} /> Edit Profile
                     </button>
-                    <button 
+                    <button
                         onClick={() => setSelectedProfileId(null)}
                         className="h-12 w-12 rounded-2xl bg-surface-muted border border-card-border text-text-secondary flex items-center justify-center hover:text-danger transition-all"
                       >
@@ -538,12 +538,12 @@ export default function ProfilePage() {
                    </>
                  ) : (
                    <>
-                     <button 
+                     <button
                        onClick={handleToggleFollow}
                        className={cn(
                         "h-12 px-10 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 shadow-xl",
-                        isFollowing 
-                          ? "bg-surface-muted border border-card-border text-text-secondary hover:text-danger hover:border-danger/30" 
+                        isFollowing
+                          ? "bg-surface-muted border border-card-border text-text-secondary hover:text-danger hover:border-danger/30"
                           : "bg-accent text-accent-contrast shadow-accent/20 hover:scale-105"
                        )}
                      >
@@ -782,7 +782,7 @@ export default function ProfilePage() {
                     </div>
                   ))}
                </div>
-               
+
                <div className="space-y-6 mt-12">
                   <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50 ml-2">Milestone Arc</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -800,7 +800,7 @@ export default function ProfilePage() {
                          <h4 className="text-lg font-black text-text-main uppercase tracking-tight mb-2">{ms.title}</h4>
                          <p className="text-sm text-text-secondary font-medium leading-relaxed opacity-70 mb-6">{ms.description}</p>
                          <div className="relative h-2 w-full bg-surface-muted rounded-full overflow-hidden mb-4 border border-card-border/50">
-                            <motion.div 
+                            <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${ms.progress}%` }}
                               className="absolute inset-y-0 left-0 bg-success shadow-[0_0_15px_rgba(34,197,94,0.4)]"
@@ -825,12 +825,12 @@ export default function ProfilePage() {
                     <h3 className="text-xl font-bold text-text-main mb-2">Profile</h3>
                     <p className="text-sm text-text-secondary">Update your personal information and profile details.</p>
                   </div>
-                  <div className="lg:col-span-2 system-card p-10 bg-card border-card-border shadow-2xl relative overflow-hidden">
+                  <div className="lg:col-span-2 system-card p-4 sm:p-8 lg:p-10 bg-card border-card-border shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 blur-3xl rounded-full -mr-32 -mt-32 pointer-events-none" />
-                    
+
                     {!isEditingProfile ? (
                       <div className="space-y-8 relative z-10">
-                        <div className="flex items-center gap-8">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
                            <div className="relative">
                               <img src={currentUser.avatar} className="w-24 h-24 rounded-3xl object-cover border-4 border-surface-muted shadow-2xl" />
                               <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-accent text-accent-contrast flex items-center justify-center shadow-lg border-2 border-card">
@@ -848,7 +848,7 @@ export default function ProfilePage() {
                         <div className="p-6 bg-surface-muted rounded-2xl border border-card-border/50  opacity-80">
                            <p className="text-sm font-medium text-text-secondary leading-relaxed">"{currentUser.bio || 'Bio not set.'}"</p>
                         </div>
-                        <button 
+                        <button
                           onClick={startEditingProfile}
                           className="px-10 py-4 bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest rounded-2xl hover:scale-105 active:scale-95 shadow-xl shadow-accent/20 transition-all font-display"
                         >
@@ -902,7 +902,7 @@ export default function ProfilePage() {
                               />
                             </div>
                          </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                             <div className="space-y-3">
                               <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Name</label>
                               <input
@@ -942,7 +942,7 @@ export default function ProfilePage() {
                               className="w-full h-32 p-6 rounded-2xl bg-surface-muted border border-card-border text-text-main focus:outline-none focus:border-accent font-medium text-sm resize-none transition-all"
                             />
                          </div>
-                         <div className="flex gap-4">
+                         <div className="sticky bottom-0 bg-card/95 backdrop-blur py-3 flex flex-col sm:flex-row gap-3 sm:gap-4">
                             <button
                               onClick={handleSaveProfile}
                               disabled={isSavingProfile || usernameStatus === 'checking' || usernameStatus === 'taken' || usernameStatus === 'invalid'}
@@ -985,8 +985,8 @@ export default function ProfilePage() {
                                <t.icon size={24} />
                             </div>
                             {theme === t.id && (
-                              <motion.div 
-                                layoutId="active-theme" 
+                              <motion.div
+                                layoutId="active-theme"
                                 className="px-4 py-1.5 bg-accent text-accent-contrast rounded-full text-[9px] font-black uppercase tracking-widest"
                               >
                                 Active
@@ -1008,7 +1008,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="lg:col-span-2 grid grid-cols-1 gap-4">
                     {settingsSections.map(item => (
-                      <button 
+                      <button
                         key={item.label}
                         onClick={() => { if (item.action === 'restart') restartTutorial(); }}
                         className="group p-6 rounded-3xl bg-card border border-card-border flex items-center justify-between hover:border-accent/20 hover:bg-surface-muted transition-all hover:scale-[1.01]"
@@ -1103,11 +1103,11 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
       return part;
     });
   };
-  
+
   return (
     <div className="system-card p-6 sm:p-10 bg-card border-card-border group relative overflow-hidden transition-all hover:border-accent/20">
       <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 blur-2xl rounded-full -mr-8 -mt-8 pointer-events-none" />
-      
+
       <div className="flex items-start justify-between relative z-10">
         <div className="flex flex-wrap gap-3">
           {post.type === 'sprint' && (
@@ -1237,7 +1237,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
              </div>
           </div>
         )}
-        
+
         {post.media && post.media.length > 0 && (
           <button
             onClick={() => setExpandedImage(post.media?.[0]?.url || null)}
@@ -1250,7 +1250,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
       </div>
 
       <div className="mt-10 pt-8 border-t border-card-border/50 flex items-center gap-10 relative z-10">
-        <button 
+        <button
           onClick={async () => {
             if (!currentUserId) return;
             const wasLiked = isLiked;

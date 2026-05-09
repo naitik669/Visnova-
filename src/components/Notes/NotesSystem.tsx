@@ -199,7 +199,7 @@ export default function NotesSystem() {
 
   return (
     <div className={cn(
-      "flex bg-app-container text-text-main transition-all duration-700 font-sans relative overflow-hidden",
+      "flex bg-app-container text-text-main transition-all duration-700 font-sans relative overflow-hidden max-w-full",
       isJournalFullView ? "h-screen fixed inset-0 z-[100]" : "h-full min-h-[calc(100vh-3rem)]"
     )}>
       {/* 1. Left Support Sidebar - Hidden with animation on Journal or Full View */}
@@ -326,20 +326,20 @@ export default function NotesSystem() {
         {/* Top Header - Reduced size and condensed content */}
         {!isJournalFullView && (
           <header className={cn(
-            "flex items-center justify-between px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500",
-            "h-28"
+            "flex items-center justify-between px-3 sm:px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500 gap-3",
+            "min-h-24 sm:h-28"
           )}>
-            <div className="flex items-center gap-12">
-              <div>
+            <div className="flex items-center gap-3 sm:gap-8 lg:gap-12 min-w-0 flex-1">
+              <div className="min-w-0">
                 <h1 className={cn(
                   "font-black text-text-main tracking-tight uppercase transition-all",
-                  "text-3xl"
+                  "text-xl sm:text-3xl"
                 )}>
                   Notes
                 </h1>
-                <p className="text-[10px] font-bold text-text-secondary/50 uppercase tracking-[0.2em] mt-1">Vault, audio notes, and journal</p>
+                <p className="hidden sm:block text-[10px] font-bold text-text-secondary/50 uppercase tracking-[0.2em] mt-1">Vault, audio notes, and journal</p>
               </div>
-              <div className="flex max-w-[52vw] overflow-x-auto bg-surface-muted p-1 rounded-2xl border border-card-border/50 custom-scrollbar">
+              <div className="flex max-w-full overflow-x-auto bg-surface-muted p-1 rounded-2xl border border-card-border/50 custom-scrollbar">
                 {[
                   { label: 'Vault', value: 'vault' as const },
                   { label: 'Audio Notes', value: 'audio' as const },
@@ -352,7 +352,7 @@ export default function NotesSystem() {
                       setSelectedNoteId(null);
                     }}
                     className={cn(
-                      "h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                      "h-9 px-3 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                       activeTab === tab.value ? "bg-card text-accent shadow-sm" : "text-text-secondary/45 hover:text-text-main"
                     )}
                   >
@@ -362,7 +362,7 @@ export default function NotesSystem() {
               </div>
             </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 sm:gap-6 shrink-0">
               <div className="relative group hidden sm:block animate-in fade-in slide-in-from-right duration-500">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 group-focus-within:text-accent transition-colors" />
                 <input
@@ -374,7 +374,7 @@ export default function NotesSystem() {
               </div>
               <button 
                 onClick={() => activeTab === 'audio' ? setIsAudioModalOpen(true) : handleCreateNote(activeTab === 'journal' ? 'journal' : 'normal')}
-                className="w-12 h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/10 hover:scale-105 transition-all md:hidden"
+                className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/10 hover:scale-105 transition-all md:hidden"
               >
                 {activeTab === 'audio' ? <Mic size={22} /> : <Plus size={24} />}
               </button>
@@ -385,7 +385,7 @@ export default function NotesSystem() {
         {/* Content Section */}
         <div className={cn(
           "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
-          isJournalFullView ? "p-0" : activeTab === 'journal' ? "px-4 md:px-8 py-4" : "px-8 md:px-12 py-10"
+          isJournalFullView ? "p-0" : activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-2 sm:px-8 md:px-12 py-5 sm:py-10"
         )}>
           <AnimatePresence mode="wait">
             {selectedNote ? (
@@ -769,7 +769,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
 
       <div className={cn(
         "flex transition-all duration-1000",
-        fullView ? "h-[calc(100vh-4rem)] p-10 gap-10" : "flex-col lg:flex-row gap-8 items-stretch min-h-[700px]"
+        fullView ? "h-[calc(100vh-4rem)] p-3 sm:p-6 lg:p-10 gap-4 lg:gap-10" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[700px]"
       )}>
         {/* Sticky Notes Sidebar in Full View */}
         {fullView && (
@@ -800,7 +800,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
           key={`journal-page-${selectedDate.toISOString()}`}
           layout
           className={cn(
-            "flex-1 flex gap-0 lg:gap-8 perspective-[1500px]",
+            "flex-1 flex flex-col lg:flex-row gap-5 lg:gap-8 perspective-[1500px]",
             fullView ? "h-full" : "min-h-[700px]"
           )}
         >
@@ -809,12 +809,12 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             initial={{ rotateY: -10, opacity: 0 }}
             animate={{ rotateY: 0, opacity: 1 }}
             transition={{ duration: 0.8, type: 'spring' }}
-            className="flex-1 bg-card rounded-[2rem] border border-card-border/50 shadow-2xl p-10 flex flex-col items-center text-center space-y-10 origin-right relative overflow-hidden"
+            className="flex-1 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col items-center text-center space-y-5 sm:space-y-8 lg:space-y-10 origin-right relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-2 h-full bg-surface-muted/30 border-l border-card-border/10" />
             
             <div className="space-y-2">
-              <h2 className="text-4xl font-black text-text-main tracking-tighter uppercase">{format(selectedDate, 'EEEE')}</h2>
+              <h2 className="text-2xl sm:text-4xl font-black text-text-main tracking-tight sm:tracking-tighter uppercase">{format(selectedDate, 'EEEE')}</h2>
               <p className="text-xs font-bold text-accent uppercase tracking-[0.3em] opacity-60">{format(selectedDate, 'MMMM dd, yyyy')}</p>
               {isLocked && <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Locked until you click edit</p>}
             </div>
@@ -822,7 +822,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             {/* Memory / Visual Card */}
             <div 
               onClick={() => !fullView && toggleFullView()}
-              className="w-full aspect-square rounded-[2rem] bg-surface-muted border-2 border-dashed border-card-border/50 flex flex-col items-center justify-center p-8 group hover:bg-accent/[0.02] transition-colors relative overflow-hidden cursor-pointer"
+              className="w-full max-h-64 lg:max-h-none aspect-square rounded-[1.5rem] sm:rounded-[2rem] bg-surface-muted border-2 border-dashed border-card-border/50 flex flex-col items-center justify-center p-5 sm:p-8 group hover:bg-accent/[0.02] transition-colors relative overflow-hidden cursor-pointer"
             >
               {entry?.image_url ? (
                  <img src={entry.image_url} alt="Memory" className="absolute inset-0 w-full h-full object-cover" />
@@ -857,7 +857,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                       key={i}
                       onClick={() => setSelectedDate(date)}
                       className={cn(
-                        "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all min-w-[50px]",
+                        "flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-xl transition-all min-w-10 sm:min-w-[50px]",
                         isActive ? "bg-card-elevated shadow-md text-accent scale-105" : "text-text-secondary/40 hover:text-text-main hover:bg-card/70"
                       )}
                     >
@@ -913,19 +913,19 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               const noteContent = e.dataTransfer.getData('text/plain');
               if (noteContent) handleDropNote(noteContent);
             }}
-            className="flex-1 bg-card rounded-[2rem] border border-card-border/50 shadow-2xl p-10 flex flex-col space-y-8 relative origin-left overflow-hidden"
+            className="flex-1 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col space-y-5 sm:space-y-8 relative origin-left overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-2 h-full bg-surface-muted/30 border-r border-card-border/10" />
             <div className="absolute top-0 left-0 w-1.5 h-full bg-accent/5 rounded-l-full" />
             
             {/* Prompt Card */}
-            <div className="bg-surface-muted rounded-[2rem] p-8 border border-card-border/50 space-y-3 relative overflow-hidden group">
+            <div className="bg-surface-muted rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-8 border border-card-border/50 space-y-3 relative overflow-hidden group">
               <div className="absolute -right-4 -top-4 w-24 h-24 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors" />
               <div className="flex items-center gap-3">
                 <Sparkles size={14} className="text-accent" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-accent">Daily Reflection</span>
               </div>
-              <p className="text-lg font-bold text-text-main leading-snug">
+              <p className="text-base sm:text-lg font-bold text-text-main leading-snug">
                 {prompt}
               </p>
               <div className="pt-4 flex flex-wrap items-center gap-2">
