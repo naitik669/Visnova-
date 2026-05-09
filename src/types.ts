@@ -354,6 +354,7 @@ export interface AppState {
   deleteFolder: (id: string) => void;
   addNote: (note: Partial<Note>) => Promise<Note | false>;
   updateNote: (id: string, updates: Partial<Note>) => void;
+  moveNoteToFolder: (noteId: string, folderId: string | null) => Promise<boolean>;
   deleteNote: (id: string) => void;
   addTodo: (text: string) => void;
   toggleTodo: (id: string) => void;

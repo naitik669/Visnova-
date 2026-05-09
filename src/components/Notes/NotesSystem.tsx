@@ -44,8 +44,35 @@ import { Note, Folder as FolderType } from '../../types';
 import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
 import { SelectMenu } from '../ui/SelectMenu';
 
+const UNFILED_FOLDER_ID = '__unfiled__';
+
+function formatDuration(seconds?: number) {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.max(0, seconds % 60);
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+function cleanPreview(content?: string) {
+  const cleaned = (content || '')
+    .replace(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/\S+/gi, 'YouTube')
+    .replace(/https?:\/\/\S+/gi, 'Link')
+    .replace(/[#*_`>[\]()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return cleaned || 'No content yet.';
+}
+
+function getTranscriptLabel(note: Note) {
+  if (note.transcript_status === 'completed') return 'Transcript ready';
+  if (note.transcript_status === 'pending') return 'Transcribing...';
+  if (note.transcript_status === 'failed') return 'Transcript failed';
+  return 'Transcript not generated yet';
+}
+
 export default function NotesSystem() {
-  const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user, addToast } = useStore();
+  const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, moveNoteToFolder, user, addToast } = useStore();
   const location = useLocation();
   const initialTabParam = new URLSearchParams(location.search).get('tab');
   const initialTab = initialTabParam === 'journal' || location.pathname.includes('journal') ? 'journal' : initialTabParam === 'audio' ? 'audio' : 'vault';
@@ -73,6 +100,8 @@ export default function NotesSystem() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLibrarySidebarHovered, setIsLibrarySidebarHovered] = useState(false);
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('all');
+  const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const libraryNoteTypes: Note['note_type'][] = ['normal', 'audio'];
 
   useEffect(() => {
@@ -146,7 +175,9 @@ export default function NotesSystem() {
 
       // Vault-specific folder filter
       if ((activeTab === 'vault' || activeTab === 'audio') && selectedFolder) {
-        result = result.filter(n => n.folderId === selectedFolder);
+        result = selectedFolder === UNFILED_FOLDER_ID
+          ? result.filter(n => !n.folderId)
+          : result.filter(n => n.folderId === selectedFolder);
       }
 
       if (timeFilter === 'today') {
@@ -168,6 +199,21 @@ export default function NotesSystem() {
 
     return result;
   }, [notes, activeTab, sidebarFilter, searchQuery, selectedFolder, timeFilter]);
+
+  const noteCounts = useMemo(() => {
+    const visibleLibraryNotes = notes.filter(n => !n.isDeleted && libraryNoteTypes.includes(n.note_type));
+    const byFolder = new Map<string, number>();
+    visibleLibraryNotes.forEach(note => {
+      if (!note.folderId) return;
+      byFolder.set(note.folderId, (byFolder.get(note.folderId) || 0) + 1);
+    });
+
+    return {
+      all: visibleLibraryNotes.length,
+      unfiled: visibleLibraryNotes.filter(note => !note.folderId).length,
+      byFolder
+    };
+  }, [notes]);
 
   const filteredFolders = useMemo(() => {
     if (timeFilter === 'all') return folders;
@@ -191,11 +237,16 @@ export default function NotesSystem() {
       title: defaultTitle,
       content: '',
       note_type: type,
-      folderId: type === 'normal' ? selectedFolder : null,
+      folderId: type === 'normal' && selectedFolder !== UNFILED_FOLDER_ID ? selectedFolder : null,
       tags: [],
       createdAt: Date.now(),
       updatedAt: Date.now()
     });
+  };
+
+  const handleMoveNote = async (noteId: string, folderId: string | null) => {
+    const targetFolderId = folderId === UNFILED_FOLDER_ID ? null : folderId;
+    await moveNoteToFolder(noteId, targetFolderId);
   };
 
   return (
@@ -479,24 +530,54 @@ export default function NotesSystem() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8 gap-6">
+                    <div className={cn(
+                      "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 transition-all",
+                      draggingNoteId && "rounded-3xl bg-accent/5 p-2"
+                    )}>
+                       <FolderCard
+                         folder={{ id: null, name: 'All Notes', color: 'var(--accent)' }}
+                         active={!selectedFolder}
+                         count={noteCounts.all}
+                         dropActive={false}
+                         onClick={() => setSelectedFolder(null)}
+                         onDoubleClick={() => setSelectedFolder(null)}
+                       />
+                       <FolderCard
+                         folder={{ id: UNFILED_FOLDER_ID, name: 'Unfiled', color: 'var(--surface-muted)' }}
+                         active={selectedFolder === UNFILED_FOLDER_ID}
+                         count={noteCounts.unfiled}
+                         dropActive={dragOverFolderId === UNFILED_FOLDER_ID}
+                         onClick={() => setSelectedFolder(selectedFolder === UNFILED_FOLDER_ID ? null : UNFILED_FOLDER_ID)}
+                         onDoubleClick={() => setSelectedFolder(UNFILED_FOLDER_ID)}
+                         onDropNote={(noteId) => handleMoveNote(noteId, null)}
+                         onDragEnter={() => setDragOverFolderId(UNFILED_FOLDER_ID)}
+                         onDragLeave={() => setDragOverFolderId(null)}
+                       />
                        {filteredFolders.map((folder, idx) => (
                          <FolderCard 
                            key={folder.id || `folder-${idx}`} 
                           folder={folder}
                           active={selectedFolder === folder.id}
+                          count={noteCounts.byFolder.get(folder.id) || 0}
+                          dropActive={dragOverFolderId === folder.id}
                           onClick={() => setSelectedFolder(selectedFolder === folder.id ? null : folder.id)}
                           onDoubleClick={() => setFolderViewer(folder)}
+                          onDropNote={(noteId) => handleMoveNote(noteId, folder.id)}
+                          onDragEnter={() => setDragOverFolderId(folder.id)}
+                          onDragLeave={() => setDragOverFolderId(null)}
                          />
                        ))}
                        <button 
                          onClick={() => setIsFolderModalOpen(true)}
-                         className="aspect-[4/3] rounded-lg border-2 border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-3"
+                         className="min-h-24 rounded-2xl border border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex items-center justify-center gap-3 px-4"
                        >
-                          <div className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
+                          <div className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors shrink-0">
                              <Plus size={20} />
                           </div>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40 group-hover:text-accent transition-colors">New Folder</span>
+                          <div className="text-left">
+                            <span className="block text-[10px] font-black uppercase tracking-widest text-text-secondary/40 group-hover:text-accent transition-colors">New Folder</span>
+                            <span className="block text-[11px] text-text-secondary/45 font-medium">Organize notes</span>
+                          </div>
                        </button>
                     </div>
                   </section>
@@ -595,18 +676,34 @@ export default function NotesSystem() {
                         viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "grid-cols-1"
                       )}>
                         {filteredNotes.map((note, idx) => (
-                          <NoteCard key={note.id || `note-${idx}`} note={note} onClick={() => setSelectedNoteId(note.id)} viewMode={viewMode} />
+                          <NoteCard
+                            key={note.id || `note-${idx}`}
+                            note={note}
+                            folders={folders}
+                            folderName={note.folderId ? folders.find(folder => folder.id === note.folderId)?.name : 'Unfiled'}
+                            onClick={() => setSelectedNoteId(note.id)}
+                            onMove={handleMoveNote}
+                            onDragStart={() => setDraggingNoteId(note.id)}
+                            onDragEnd={() => {
+                              setDraggingNoteId(null);
+                              setDragOverFolderId(null);
+                            }}
+                            viewMode={viewMode}
+                          />
                         ))}
                         {viewMode === 'grid' && (
                           <button 
                             onClick={() => activeTab === 'audio' ? setIsAudioModalOpen(true) : handleCreateNote('normal')}
-                            className="min-h-32 border-b border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-4"
+                            className="min-h-40 rounded-2xl border border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-3"
                           >
                              <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors">
                                 {activeTab === 'audio' ? <Mic size={24} /> : <Plus size={24} />}
                              </div>
-                             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary/40 group-hover:text-accent transition-colors">
+                             <span className="text-[11px] font-black uppercase tracking-[0.18em] text-text-secondary/50 group-hover:text-accent transition-colors">
                               {activeTab === 'audio' ? 'Record Audio Note' : 'Add New Note'}
+                             </span>
+                             <span className="text-[11px] text-text-secondary/45 font-medium">
+                              {activeTab === 'audio' ? 'Capture a recording' : 'Create a normal note'}
                              </span>
                           </button>
                         )}
@@ -626,7 +723,7 @@ export default function NotesSystem() {
       />
       <NewAudioNoteModal
         isOpen={isAudioModalOpen}
-        selectedFolder={selectedFolder}
+        selectedFolder={selectedFolder === UNFILED_FOLDER_ID ? null : selectedFolder}
         onClose={() => setIsAudioModalOpen(false)}
         onSaved={(noteId) => {
           setIsAudioModalOpen(false);
@@ -1299,31 +1396,70 @@ function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }:
   );
 }
 
-function FolderCard({ folder, active, onClick, onDoubleClick }: { folder: any, active: boolean, onClick: () => void, onDoubleClick: () => void }) {
+function FolderCard({
+  folder,
+  active,
+  count = 0,
+  dropActive = false,
+  onClick,
+  onDoubleClick,
+  onDropNote,
+  onDragEnter,
+  onDragLeave
+}: {
+  folder: any;
+  active: boolean;
+  count?: number;
+  dropActive?: boolean;
+  onClick: () => void;
+  onDoubleClick: () => void;
+  onDropNote?: (noteId: string) => void;
+  onDragEnter?: () => void;
+  onDragLeave?: () => void;
+}) {
   return (
     <button 
       onClick={onClick} 
       onDoubleClick={onDoubleClick}
+      onDragOver={(event) => {
+        if (!onDropNote) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        onDragEnter?.();
+      }}
+      onDragLeave={onDragLeave}
+      onDrop={(event) => {
+        if (!onDropNote) return;
+        event.preventDefault();
+        const noteId = event.dataTransfer.getData('text/plain');
+        onDragLeave?.();
+        if (noteId) onDropNote(noteId);
+      }}
       className={cn(
-        "h-36 flex flex-col items-center justify-center gap-3 transition-all group text-center",
-        active ? "scale-[1.03]" : "hover:-translate-y-1"
+        "min-h-24 rounded-2xl border px-4 py-3 transition-all group text-left flex items-center gap-3",
+        active ? "border-accent/40 bg-accent/10 shadow-sm" : "border-card-border/70 bg-card hover:-translate-y-0.5 hover:border-accent/30",
+        dropActive && "border-accent bg-accent/15 ring-2 ring-accent/20"
       )}
     >
-       <Folder
-         size={72}
-         strokeWidth={1.4}
-         fill={active ? "var(--accent)" : (folder.color || "var(--card-dark)")}
-         className={cn(
-           "drop-shadow-sm transition-all",
-           active ? "text-accent" : "text-text-secondary/40 group-hover:text-accent"
-         )}
-       />
-       <p className={cn(
-         "w-full px-2 text-xs font-bold tracking-tight truncate",
-         active ? "text-accent" : "text-text-main"
-       )}>
-         {folder.name}
-       </p>
+      <div
+        className={cn(
+          "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors",
+          active || dropActive ? "bg-accent text-accent-contrast" : "bg-surface-muted text-text-secondary/60 group-hover:text-accent"
+        )}
+      >
+        <Folder size={20} fill={active || dropActive ? "currentColor" : (folder.color || "transparent")} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={cn(
+          "text-sm font-black tracking-tight truncate",
+          active || dropActive ? "text-accent" : "text-text-main"
+        )}>
+          {folder.name}
+        </p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
+          {dropActive ? 'Drop to move here' : `${count} ${count === 1 ? 'note' : 'notes'}`}
+        </p>
+      </div>
     </button>
   );
 }
@@ -1523,10 +1659,30 @@ function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
   );
 }
 
-function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void, viewMode?: 'grid' | 'list' }) {
+function NoteCard({
+  note,
+  folders,
+  folderName,
+  onClick,
+  onMove,
+  onDragStart,
+  onDragEnd,
+  viewMode
+}: {
+  note: Note;
+  folders: FolderType[];
+  folderName?: string;
+  onClick: () => void;
+  onMove: (noteId: string, folderId: string | null) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  viewMode?: 'grid' | 'list';
+}) {
   const isAudioNote = note.note_type === 'audio' || !!note.audio_path;
-  const NoteIcon = isAudioNote ? Volume2 : FileText;
+  const isJournalNote = note.note_type === 'journal';
+  const NoteIcon = isAudioNote ? Volume2 : isJournalNote ? BookOpen : FileText;
   const [cardAudioUrl, setCardAudioUrl] = useState(note.audio_url || '');
+  const dragStartedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1544,18 +1700,53 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
     };
   }, [note.audio_path, note.audio_url]);
 
+  const createdOrUpdated = format(note.updatedAt || note.createdAt, 'MMM dd');
+  const preview = cleanPreview(note.content);
+  const sourceBadge = /youtube|youtu\.be/i.test(note.content || '') || /youtube|youtu\.be/i.test(note.title || '') ? 'YouTube' : null;
+  const currentFolderValue = note.folderId || '';
+
+  const handleCardClick = () => {
+    if (dragStartedRef.current) return;
+    onClick();
+  };
+
+  const handleMoveChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    event.stopPropagation();
+    onMove(note.id, event.target.value || null);
+  };
+
+  const dragProps = {
+    draggable: true,
+    onDragStart: (event: React.DragEvent<HTMLDivElement>) => {
+      dragStartedRef.current = true;
+      event.dataTransfer.setData('text/plain', note.id);
+      event.dataTransfer.effectAllowed = 'move';
+      onDragStart();
+    },
+    onDragEnd: () => {
+      onDragEnd();
+      window.setTimeout(() => {
+        dragStartedRef.current = false;
+      }, 0);
+    }
+  };
+
   if (viewMode === 'list') {
     return (
       <div 
-        onClick={onClick}
-        className="group cursor-pointer py-4 border-b border-card-border/60 hover:border-accent/50 transition-all flex items-center gap-5"
+        {...dragProps}
+        onClick={handleCardClick}
+        className="group cursor-pointer rounded-2xl border border-card-border/70 bg-card hover:border-accent/35 hover:-translate-y-0.5 transition-all flex flex-col sm:flex-row sm:items-center gap-4 p-4"
       >
-        <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all">
+        <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all shrink-0">
           <NoteIcon size={20} />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-black text-text-main group-hover:text-accent transition-colors truncate uppercase tracking-tight">{note.title}</h4>
-          <p className="text-[10px] text-text-secondary font-bold uppercase tracking-wider opacity-60">Updated {format(note.updatedAt, 'MMM dd, h:mm a')}</p>
+          <h4 className="text-sm font-black text-text-main group-hover:text-accent transition-colors truncate tracking-tight">{note.title || 'Untitled Note'}</h4>
+          <p className="mt-1 text-[11px] text-text-secondary/65 line-clamp-1">{preview}</p>
+          <p className="mt-2 text-[10px] text-text-secondary font-bold uppercase tracking-wider opacity-60">
+            Updated {format(note.updatedAt, 'MMM dd, h:mm a')} - {folderName || 'Unfiled'}
+          </p>
           {isAudioNote && cardAudioUrl && (
             <audio
               src={cardAudioUrl}
@@ -1565,10 +1756,20 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
             />
           )}
         </div>
-        <div className="flex items-center gap-4 px-6 border-l border-card-border/50">
+        <div className="flex items-center gap-3 sm:px-4">
            {note.tags.slice(0, 2).map((t, i) => (
-             <span key={i} className="text-[9px] font-black text-accent/40 uppercase tracking-widest">#{t}</span>
+             <span key={i} className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent uppercase tracking-widest">#{t}</span>
            ))}
+           <select
+             value={currentFolderValue}
+             onClick={(event) => event.stopPropagation()}
+             onChange={handleMoveChange}
+             className="h-9 rounded-xl border border-card-border bg-bg-base px-3 text-[10px] font-bold text-text-secondary outline-none"
+             aria-label="Move note to folder"
+           >
+             <option value="">Unfiled</option>
+             {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+           </select>
         </div>
         <ChevronRight size={16} className="text-text-secondary/20 group-hover:text-accent group-hover:translate-x-1 transition-all" />
       </div>
@@ -1577,44 +1778,67 @@ function NoteCard({ note, onClick, viewMode }: { note: Note, onClick: () => void
 
   return (
     <div 
-      onClick={onClick}
-      className="min-h-40 p-4 border-b border-card-border/60 hover:border-accent/50 transition-all group cursor-pointer flex flex-col relative overflow-hidden"
+      {...dragProps}
+      onClick={handleCardClick}
+      className="min-h-40 rounded-2xl border border-card-border/70 bg-card p-4 hover:border-accent/35 hover:-translate-y-0.5 hover:shadow-sm transition-all group cursor-pointer flex flex-col relative overflow-hidden"
     >
-       <div className="absolute left-0 top-5 bottom-5 w-px bg-card-border group-hover:bg-accent transition-colors" />
-       
-       <div className="flex items-center justify-between mb-4">
-          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all shadow-sm">
-             <NoteIcon size={19} />
+       <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all shadow-sm shrink-0">
+            <NoteIcon size={19} />
           </div>
-          <div className="flex flex-col items-end">
-            <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-[0.2em]">{format(note.updatedAt, 'yyyy')}</p>
-            <p className="text-[10px] font-black text-text-secondary uppercase tracking-widest">{format(note.updatedAt, 'MMM dd')}</p>
+          <div className="min-w-0 flex-1">
+            <h4 className="text-[15px] font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight line-clamp-1">{note.title || 'Untitled Note'}</h4>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45 truncate">
+              {createdOrUpdated} - {folderName || 'Unfiled'}{isAudioNote && note.audio_duration ? ` - ${formatDuration(note.audio_duration)}` : ''}
+            </p>
           </div>
+          <button
+            type="button"
+            aria-label="Note actions"
+            onClick={(event) => event.stopPropagation()}
+            className="w-8 h-8 rounded-xl text-text-secondary/45 hover:text-accent hover:bg-surface-muted flex items-center justify-center shrink-0"
+          >
+            <MoreVertical size={16} />
+          </button>
        </div>
 
-       <div className="flex-1 space-y-3 min-w-0">
-          <h4 className="text-base font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight line-clamp-1">{note.title}</h4>
-          <p className="text-[11px] text-text-secondary/70 font-medium line-clamp-2 leading-relaxed">
-            {note.content ? note.content.substring(0, 120) + '...' : "No content yet."}
+       <div className="flex-1 mt-4 space-y-3 min-w-0">
+          <p className="text-[12px] text-text-secondary/75 font-medium line-clamp-2 leading-relaxed">
+            {preview}
           </p>
           {isAudioNote && cardAudioUrl && (
             <div onClick={(event) => event.stopPropagation()} className="rounded-xl border border-accent/10 bg-accent/5 px-3 py-2">
               <audio src={cardAudioUrl} controls className="h-8 w-full" />
-              <p className="mt-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/45">Transcript not generated yet.</p>
+              <p className="mt-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/45">{getTranscriptLabel(note)}</p>
             </div>
           )}
        </div>
 
-       <div className="mt-4 pt-3 border-t border-card-border/30 flex items-center justify-between">
-          <div className="flex -space-x-2">
+       <div className="mt-4 pt-3 border-t border-card-border/40 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1 min-w-0">
+            {sourceBadge && (
+              <span className="rounded-full bg-danger/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-danger">
+                {sourceBadge}
+              </span>
+            )}
             {note.tags.slice(0, 3).map((t, i) => (
-              <div key={i} className="w-6 h-6 rounded-full bg-card border border-card-border flex items-center justify-center shadow-sm" title={`#${t}`}>
-                <Hash size={10} className="text-accent" />
-              </div>
+              <span key={i} className="rounded-full bg-surface-muted px-2 py-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60 truncate max-w-20">#{t}</span>
             ))}
           </div>
-          <div className="flex items-center gap-1 text-[9px] font-black text-accent uppercase tracking-widest group-hover:translate-x-1 transition-transform">
-             Open <ChevronRight size={12} />
+          <div className="flex items-center gap-2 shrink-0">
+            <select
+              value={currentFolderValue}
+              onClick={(event) => event.stopPropagation()}
+              onChange={handleMoveChange}
+              className="h-8 max-w-24 sm:max-w-28 rounded-lg border border-card-border bg-bg-base px-2 text-[9px] font-bold text-text-secondary outline-none"
+              aria-label="Move note to folder"
+            >
+              <option value="">Unfiled</option>
+              {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+            </select>
+            <div className="flex items-center gap-1 text-[9px] font-black text-accent uppercase tracking-widest group-hover:translate-x-1 transition-transform">
+              Open <ChevronRight size={12} />
+            </div>
           </div>
        </div>
     </div>

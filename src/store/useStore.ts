@@ -1473,6 +1473,53 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  moveNoteToFolder: async (noteId, folderId) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to organize notes.' });
+      return false;
+    }
+
+    const note = get().notes.find(n => n.id === noteId);
+    if (!note || note.isDeleted) {
+      get().addToast({ type: 'error', title: 'Note unavailable', description: 'Refresh Library and try again.' });
+      return false;
+    }
+
+    if (folderId && !get().folders.some(folder => folder.id === folderId)) {
+      get().addToast({ type: 'error', title: 'Folder unavailable', description: 'Choose one of your folders.' });
+      return false;
+    }
+
+    const previousNotes = get().notes;
+    const now = Date.now();
+    set((state) => ({
+      notes: state.notes.map(n => n.id === noteId ? { ...n, folderId, updatedAt: now } : n)
+    }));
+
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .update({ folder_id: folderId, updated_at: new Date(now).toISOString() })
+        .eq('id', noteId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      get().addToast({
+        type: 'success',
+        title: folderId ? 'Note moved' : 'Note unfiled',
+        description: folderId ? 'Folder assignment saved.' : 'Removed from folder.'
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Failed to move note:', error);
+      set({ notes: previousNotes });
+      get().addToast({ type: 'error', title: 'Move failed', description: error.message || 'Could not move this note.' });
+      return false;
+    }
+  },
+
   fetchNotes: async () => {
     const userId = get().session?.user?.id;
     if (!userId) return;
