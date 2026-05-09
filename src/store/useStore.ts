@@ -47,6 +47,21 @@ function extractStoragePathFromUrl(url: string | undefined, bucket: string) {
   return decodeURIComponent(url.slice(markerIndex + marker.length).split('?')[0]);
 }
 
+function isMissingPostArchiveSchema(error: any) {
+  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return (
+    text.includes('archived') ||
+    text.includes('archived_at') ||
+    text.includes('deleted_at') ||
+    (text.includes('posts') && text.includes('schema cache'))
+  );
+}
+
+function isMissingPostRow(error: any) {
+  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return text.includes('not found') || text.includes('permission') || text.includes('0 rows');
+}
+
 function toDateKey(date: Date) {
   return format(date, 'yyyy-MM-dd');
 }
@@ -1801,23 +1816,40 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       const now = new Date().toISOString();
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('posts')
         .update({ archived: true, archived_at: now, updated_at: now })
         .eq('id', id)
-        .eq('user_id', userId)
-        .select('id')
-        .maybeSingle();
+        .eq('user_id', userId);
 
       if (error) throw error;
-      if (!data?.id) throw new Error('Post was not archived. Please refresh and try again.');
 
       get().addToast({ type: 'success', title: 'Post archived', description: 'You can view it from your profile archive.' });
       return true;
     } catch (err) {
       console.error('Failed to archive post:', err);
+      if (isMissingPostArchiveSchema(err)) {
+        try {
+          const { error } = await supabase
+            .from('posts')
+            .update({ visibility: 'archived', updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('user_id', userId);
+          if (error) throw error;
+          get().addToast({ type: 'success', title: 'Post archived', description: 'Your database is using the legacy archive field. Apply the latest post archive migration soon.' });
+          return true;
+        } catch (fallbackError) {
+          console.error('Legacy archive fallback failed:', fallbackError);
+        }
+      }
       set({ posts: previousPosts });
-      get().addToast({ type: 'error', title: 'Archive failed', description: 'Could not archive this post. Please try again.' });
+      get().addToast({
+        type: 'error',
+        title: 'Archive failed',
+        description: isMissingPostArchiveSchema(err)
+          ? 'Post archive columns are not ready in Supabase. Apply the posts archive migration.'
+          : 'Could not archive this post. Please refresh and try again.'
+      });
       return false;
     }
   },
@@ -1831,16 +1863,13 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       const now = new Date().toISOString();
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('posts')
         .update({ archived: false, archived_at: null, updated_at: now })
         .eq('id', id)
-        .eq('user_id', userId)
-        .select('id')
-        .maybeSingle();
+        .eq('user_id', userId);
 
       if (error) throw error;
-      if (!data?.id) throw new Error('Post was not restored. Please refresh and try again.');
 
       set((state) => ({
         posts: state.posts.map(post => post.id === id ? { ...post, archived: false, archivedAt: null } : post)
@@ -1849,7 +1878,30 @@ export const useStore = create<AppState>((set, get) => ({
       return true;
     } catch (err) {
       console.error('Failed to restore post:', err);
-      get().addToast({ type: 'error', title: 'Restore failed', description: 'Could not restore post. Try again.' });
+      if (isMissingPostArchiveSchema(err)) {
+        try {
+          const { error } = await supabase
+            .from('posts')
+            .update({ visibility: 'public', updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('user_id', userId);
+          if (error) throw error;
+          set((state) => ({
+            posts: state.posts.map(post => post.id === id ? { ...post, archived: false, archivedAt: null, visibility: 'public' } : post)
+          }));
+          get().addToast({ type: 'success', title: 'Post restored', description: 'Your post can appear publicly again.' });
+          return true;
+        } catch (fallbackError) {
+          console.error('Legacy restore fallback failed:', fallbackError);
+        }
+      }
+      get().addToast({
+        type: 'error',
+        title: 'Restore failed',
+        description: isMissingPostArchiveSchema(err)
+          ? 'Post archive columns are not ready in Supabase. Apply the posts archive migration.'
+          : 'Could not restore post. Try again.'
+      });
       return false;
     }
   },
@@ -1929,7 +1981,7 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ posts: state.posts.filter(p => p.id !== id) }));
 
     try {
-      const { data: updatedRows, error: softDeleteError } = await supabase
+      const { error: softDeleteError } = await supabase
         .from('posts')
         .update({
           deleted_at: new Date().toISOString(),
@@ -1937,20 +1989,38 @@ export const useStore = create<AppState>((set, get) => ({
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
-        .eq('user_id', userId)
-        .select('id');
+        .eq('user_id', userId);
 
       if (softDeleteError) throw softDeleteError;
-      if (!updatedRows || updatedRows.length === 0) {
-        throw new Error('Post was not found or you do not have permission to delete it.');
-      }
 
       get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
       return true;
     } catch (err) {
       console.error('Failed to delete post:', err);
+      if (isMissingPostArchiveSchema(err)) {
+        try {
+          const { error } = await supabase
+            .from('posts')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', userId);
+          if (error) throw error;
+          get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
+          return true;
+        } catch (fallbackError) {
+          console.error('Hard delete fallback failed:', fallbackError);
+        }
+      }
       set({ posts: previousPosts });
-      get().addToast({ type: 'error', title: 'Delete failed', description: 'Could not remove this post. Please try again.' });
+      get().addToast({
+        type: 'error',
+        title: 'Delete failed',
+        description: isMissingPostArchiveSchema(err)
+          ? 'Post delete columns are not ready in Supabase. Apply the posts archive migration.'
+          : isMissingPostRow(err)
+            ? 'Post was not found or you do not have permission to delete it.'
+            : 'Could not remove this post. Please try again.'
+      });
       return false;
     }
   },

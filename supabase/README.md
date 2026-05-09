@@ -9,3 +9,5 @@ New public tables need both RLS policies and explicit grants for authenticated c
 If the deployed app reports `Bucket not found` for avatars, post images, audio notes, or NovaCapsules, the live project has not applied the latest storage migrations yet. Run `supabase/urgent_apply_storage_buckets.sql` once in the Supabase SQL editor, then continue applying the normal migration chain.
 
 If the Feedback page reports `Could not find the table 'public.feedback_reports' in the schema cache`, apply `supabase/migrations/20260509133000_feedback_reports.sql` to the live VisNova project. If the table was just created, reload the Supabase schema cache or wait briefly for PostgREST to refresh.
+
+If archive/delete/restore post actions fail, run `supabase/urgent_apply_posts_archive.sql` once in the Supabase SQL editor. It creates the `archived`, `archived_at`, and `deleted_at` columns plus owner-only RLS policies used by the app.
