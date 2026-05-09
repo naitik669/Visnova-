@@ -24,7 +24,7 @@ export default function ToastViewport() {
     <div className="fixed top-6 right-6 z-[300] flex w-[min(380px,calc(100vw-3rem))] flex-col gap-3 pointer-events-none">
       <AnimatePresence initial={false}>
         {toasts.map((toast) => {
-          const Icon = icons[toast.type];
+          const Icon = icons[toast.type] || Info;
           return (
             <motion.div
               key={toast.id}

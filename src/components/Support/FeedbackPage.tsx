@@ -58,7 +58,7 @@ export default function FeedbackPage() {
       if (typeof window !== 'undefined') window.location.href = mailto;
 
       addToast({
-        type: isMissingFeedbackTable(error) ? 'warning' : 'error',
+        type: isMissingFeedbackTable(error) ? 'info' : 'error',
         title: isMissingFeedbackTable(error) ? 'Feedback email opened' : 'Feedback fallback opened',
         description: isMissingFeedbackTable(error)
           ? 'The feedback database is not ready yet, so an email draft was opened instead.'
