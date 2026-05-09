@@ -57,9 +57,9 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          className="fixed left-3 right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:left-20 sm:right-auto sm:bottom-6 w-auto sm:w-64 max-h-[calc(100dvh-6rem)] overflow-y-auto custom-scrollbar bg-card border border-card-border rounded-[1.5rem] shadow-2xl p-2 z-[100]"
+          className="visnova-menu fixed left-3 right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:left-20 sm:right-auto sm:bottom-6 w-auto sm:w-72 max-h-[calc(100dvh-6rem)] overflow-y-auto custom-scrollbar p-2 z-[100]"
         >
-          <div className="px-4 py-3 border-b border-card-border mb-1">
+          <div className="px-4 py-3 border-b border-card-border/70 mb-1">
             <p className="text-sm font-bold text-text-main truncate">{user.name}</p>
             <p className="text-[10px] font-medium text-text-secondary opacity-50 truncate uppercase tracking-widest">@{user.username || 'user'}</p>
           </div>
@@ -69,7 +69,7 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
               <button
                 key={idx}
                 onClick={item.onClick}
-                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-text-secondary hover:text-text-main hover:bg-surface-muted transition-all group"
+                className="visnova-menu-item group"
               >
                 <item.icon size={16} className="text-text-secondary/60 group-hover:text-accent transition-colors" />
                 <span className="text-sm font-semibold">{item.label}</span>
@@ -80,7 +80,7 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
           <div className="mt-1 pt-1 border-t border-card-border">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-danger hover:bg-danger/5 transition-all group"
+              className="visnova-menu-item visnova-menu-item-danger group"
             >
               <LogOut size={16} className="text-danger opacity-60 group-hover:opacity-100 transition-opacity" />
               <span className="text-sm font-bold">Log out</span>

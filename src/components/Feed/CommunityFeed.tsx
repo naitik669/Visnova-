@@ -1380,7 +1380,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                 initial={{ opacity: 0, scale: 0.96, y: -4 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: -4 }}
-                className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-48 max-h-[70dvh] overflow-y-auto custom-scrollbar bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2"
+                className="visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-56 max-h-[70dvh] overflow-y-auto custom-scrollbar p-1.5 z-50"
               >
               {!isOwnPost && (
                 <button
@@ -1406,7 +1406,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                     });
                     useStore.getState().addToast({ type: 'success', title: 'Post reported', description: 'Thank you for keeping the community safe.' });
                   }}
-                  className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                  className="visnova-menu-item visnova-menu-item-danger"
                 >
                   <Flag size={14} /> Report Post
                 </button>
@@ -1418,7 +1418,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                       setIsMenuOpen(false);
                       setIsEditOpen(true);
                     }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                    className="visnova-menu-item"
                   >
                     <Edit3 size={14} /> Edit Post
                   </button>
@@ -1429,7 +1429,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                         const archived = await archivePost(post.id);
                         if (archived) onPostArchived?.(post.id);
                       }}
-                      className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                      className="visnova-menu-item"
                     >
                       <Archive size={14} /> Archive Post
                     </button>
@@ -1441,7 +1441,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                       const deleted = await deletePost(post.id);
                       if (deleted) onPostDeleted?.(post.id);
                     }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                    className="visnova-menu-item visnova-menu-item-danger"
                   >
                      <Trash2 size={14} /> Delete Post
                   </button>
@@ -1454,7 +1454,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                       await toggleFollow(post.userId);
                       trackInteraction(post.id, 'follow');
                     }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                    className="visnova-menu-item"
                   >
                     <UserPlus size={14} /> {isFollowingAuthor ? 'Unfollow User' : 'Follow User'}
                   </button>
@@ -1464,7 +1464,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                       const muted = await muteUserPosts(post.userId);
                       if (muted) onAuthorMuted?.(post.userId);
                     }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                    className="visnova-menu-item visnova-menu-item-danger"
                   >
                     <VolumeX size={14} /> Mute Posts
                   </button>

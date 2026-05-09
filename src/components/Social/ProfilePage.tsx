@@ -1156,14 +1156,14 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                   initial={{ opacity: 0, scale: 0.96, y: -4 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.96, y: -4 }}
-                  className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-44 max-h-[70dvh] overflow-y-auto custom-scrollbar bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2"
+                  className="visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-52 max-h-[70dvh] overflow-y-auto custom-scrollbar p-1.5 z-50"
                 >
                   <button
                     onClick={() => {
                       setIsMenuOpen(false);
                       setIsEditOpen(true);
                     }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                    className="visnova-menu-item"
                   >
                     <Edit3 size={14} /> Edit Post
                   </button>
@@ -1174,7 +1174,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                         const archived = await archivePost(post.id);
                         if (archived) onArchived?.(post.id);
                       }}
-                      className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                      className="visnova-menu-item"
                     >
                       <Archive size={14} /> Archive Post
                     </button>
@@ -1186,7 +1186,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                         const restored = await restorePost(post.id);
                         if (restored) onUpdated?.(post.id, { archived: false, archivedAt: null });
                       }}
-                      className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-accent/10 hover:text-accent transition-colors flex items-center gap-3"
+                      className="visnova-menu-item"
                     >
                       <Archive size={14} /> Restore Post
                     </button>
@@ -1198,7 +1198,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                       const deleted = await deletePost(post.id);
                       if (deleted) onDeleted?.(post.id);
                     }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-danger/10 hover:text-danger transition-colors flex items-center gap-3"
+                    className="visnova-menu-item visnova-menu-item-danger"
                   >
                     <Trash2 size={14} /> Delete Post
                   </button>

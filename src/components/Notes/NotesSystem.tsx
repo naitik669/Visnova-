@@ -42,6 +42,7 @@ import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOf
 import { motion, AnimatePresence } from 'motion/react';
 import { Note, Folder as FolderType } from '../../types';
 import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
+import { SelectMenu } from '../ui/SelectMenu';
 
 export default function NotesSystem() {
   const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, user, addToast } = useStore();
@@ -1839,16 +1840,13 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             {(note.note_type === 'normal' || note.note_type === 'audio') && (
               <div className="flex items-center gap-3">
                 <Folder size={16} className="text-accent" />
-                <select
+                <SelectMenu
                   value={note.folderId || ''}
-                  onChange={(e) => updateNote(note.id, { folderId: e.target.value || null })}
-                  className="h-11 px-4 rounded-lg bg-card border border-card-border text-xs font-bold text-text-main focus:outline-none focus:border-accent"
-                >
-                  <option value="">No folder</option>
-                  {folders.map(folder => (
-                    <option key={folder.id} value={folder.id}>{folder.name}</option>
-                  ))}
-                </select>
+                  onChange={(value) => updateNote(note.id, { folderId: value || null })}
+                  options={[{ value: '', label: 'No folder' }, ...folders.map(folder => ({ value: folder.id, label: folder.name }))]}
+                  className="w-full max-w-xs"
+                  triggerClassName="h-11 rounded-xl bg-card text-xs"
+                />
               </div>
             )}
             <div className="flex flex-wrap gap-3">

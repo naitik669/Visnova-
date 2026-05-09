@@ -193,9 +193,9 @@ export default function UserProfileModal() {
                                      initial={{ opacity: 0, scale: 0.9, y: 10 }}
                                      animate={{ opacity: 1, scale: 1, y: 0 }}
                                      exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                     className="absolute top-full right-0 mt-2 w-48 bg-card border border-card-border rounded-2xl shadow-2xl z-50 p-2 overflow-hidden"
+                                     className="visnova-menu absolute top-full right-0 mt-2 w-56 p-1.5 z-50"
                                    >
-                                      <div className="p-3 border-b border-card-border/50 mb-1">
+                                      <div className="px-3 py-2 border-b border-card-border/50 mb-1">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40">Circle</p>
                                       </div>
                                       {(['friend', 'close_friend', 'collaborator'] as const).map(type => (
@@ -203,8 +203,8 @@ export default function UserProfileModal() {
                                           key={type}
                                           onClick={() => handleCircleAdd(type)}
                                           className={cn(
-                                            "w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors",
-                                            currentCircle === type ? "bg-accent/10 text-accent" : "text-text-secondary hover:bg-surface-muted hover:text-text-main"
+                                            "visnova-menu-item capitalize",
+                                            currentCircle === type && "visnova-menu-item-active"
                                           )}
                                         >
                                           {type.replace('_', ' ')}
@@ -216,7 +216,7 @@ export default function UserProfileModal() {
                                             removeFromCircle(selectedProfileId!);
                                             setShowCircleMenu(false);
                                           }}
-                                          className="w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-danger hover:bg-danger/10 transition-colors mt-1"
+                                          className="visnova-menu-item visnova-menu-item-danger mt-1"
                                         >
                                           Remove from Circle
                                         </button>

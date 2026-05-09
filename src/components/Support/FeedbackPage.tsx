@@ -3,6 +3,7 @@ import { Send } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { sanitizePlainText, sanitizeText } from '../../lib/security';
 import { useStore } from '../../store/useStore';
+import { SelectMenu } from '../ui/SelectMenu';
 
 const supportEmail = 'naitik.business69@gmail.com';
 
@@ -51,12 +52,16 @@ export default function FeedbackPage() {
       <div className="rounded-3xl border border-card-border bg-card p-5 sm:p-6 space-y-4">
         <label className="block space-y-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Type</span>
-          <select value={category} onChange={event => setCategory(event.target.value)} className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main">
-            <option value="bug">Bug report</option>
-            <option value="content">Report content/profile</option>
-            <option value="account">Account/support</option>
-            <option value="feedback">Product feedback</option>
-          </select>
+          <SelectMenu
+            value={category}
+            onChange={setCategory}
+            options={[
+              { value: 'bug', label: 'Bug report' },
+              { value: 'content', label: 'Report content/profile' },
+              { value: 'account', label: 'Account/support' },
+              { value: 'feedback', label: 'Product feedback' }
+            ]}
+          />
         </label>
 
         <label className="block space-y-2">

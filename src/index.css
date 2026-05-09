@@ -327,3 +327,25 @@ select {
     scrollbar-width: none;
   }
 }
+
+@layer components {
+  .visnova-menu {
+    @apply z-[220] rounded-2xl border border-card-border bg-card/95 text-text-main shadow-2xl backdrop-blur-xl ring-1 ring-white/10;
+  }
+
+  .visnova-menu-item {
+    @apply flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-xs font-bold text-text-secondary transition-all hover:bg-surface-muted hover:text-text-main focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
+  }
+
+  .visnova-menu-item-active {
+    @apply bg-accent/10 text-accent;
+  }
+
+  .visnova-menu-item-danger {
+    @apply text-danger hover:bg-danger/10 hover:text-danger;
+  }
+
+  .visnova-select-trigger {
+    @apply flex h-12 w-full min-w-0 items-center gap-2 rounded-2xl border border-card-border bg-surface-muted px-4 text-sm font-bold text-text-main shadow-sm transition-all hover:border-accent/35 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}

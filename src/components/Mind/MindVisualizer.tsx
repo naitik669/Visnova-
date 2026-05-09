@@ -28,6 +28,7 @@ import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { checkClientRateLimit, sanitizePlainText, sanitizeText, validateYouTubeUrl } from '../../lib/security';
+import { SelectMenu } from '../ui/SelectMenu';
 
 type GrowthStatus = 'saved' | 'learning' | 'completed' | 'applied' | 'archived';
 type SourceType = 'youtube' | 'article' | 'course' | 'book' | 'podcast' | 'pdf' | 'website' | 'other';
@@ -648,12 +649,14 @@ function OverviewCard({ label, value, icon: Icon }: { label: string; value: numb
 
 function Select({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
   return (
-    <label className="h-11 rounded-xl bg-surface-muted border border-card-border px-3 flex items-center gap-2">
-      <Filter size={14} className="text-text-secondary/40" />
-      <select value={value} onChange={event => onChange(event.target.value)} className="bg-transparent outline-none text-xs font-black uppercase tracking-widest text-text-secondary min-w-36">
-        {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-    </label>
+    <SelectMenu
+      value={value}
+      onChange={onChange}
+      options={options}
+      icon={<Filter size={14} />}
+      className="min-w-44"
+      triggerClassName="h-11 rounded-xl text-xs uppercase tracking-widest"
+    />
   );
 }
 
@@ -770,15 +773,10 @@ function ResourceCreateModal({ form, setForm, visions, isSaving, onSave, onClose
         <input value={form.title} onChange={event => setForm(current => ({ ...current, title: event.target.value }))} placeholder="What are you learning?" className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent" />
         <input value={form.url} onChange={event => setForm(current => ({ ...current, url: event.target.value }))} placeholder="Resource URL optional" className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <select value={form.source_type} onChange={event => setForm(current => ({ ...current, source_type: event.target.value as SourceType }))} className="h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent">
-            {sourceTypes.map(type => <option key={type} value={type}>{type}</option>)}
-          </select>
+          <SelectMenu value={form.source_type} onChange={value => setForm(current => ({ ...current, source_type: value as SourceType }))} options={sourceTypes.map(type => ({ value: type, label: type }))} placeholder="Source type" />
           <input value={form.category} onChange={event => setForm(current => ({ ...current, category: event.target.value }))} placeholder="Category" className="h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent" />
         </div>
-        <select value={form.linked_vision_id} onChange={event => setForm(current => ({ ...current, linked_vision_id: event.target.value }))} className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent">
-          <option value="">Link to Vision optional</option>
-          {visions.map(vision => <option key={vision.id} value={vision.id}>{vision.title}</option>)}
-        </select>
+        <SelectMenu value={form.linked_vision_id} onChange={value => setForm(current => ({ ...current, linked_vision_id: value }))} options={[{ value: '', label: 'Link to Vision optional' }, ...visions.map(vision => ({ value: vision.id, label: vision.title }))]} />
         <textarea value={form.purpose} onChange={event => setForm(current => ({ ...current, purpose: event.target.value }))} placeholder="Why are you learning this?" className="w-full h-24 rounded-2xl bg-surface-muted border border-card-border p-4 text-sm font-medium outline-none focus:border-accent resize-none" />
         <input value={form.tags} onChange={event => setForm(current => ({ ...current, tags: event.target.value }))} placeholder="Tags, comma separated" className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent" />
         <button onClick={onSave} disabled={isSaving || !form.title.trim()} className="w-full h-12 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
@@ -1228,10 +1226,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
                     <textarea value={purpose} onChange={event => updateField(setPurpose, event.target.value)} placeholder="Why is this resource useful for your growth?" className="w-full h-40 rounded-xl bg-surface-muted border border-card-border p-3 text-sm font-medium outline-none focus:border-accent resize-none" />
                   </WorkspacePanel>
                   <WorkspacePanel number="3" title="How does it connect to my Visions?" subtitle="Link the session to one active Vision before turning learning into tasks.">
-                    <select value={linkedVisionId} onChange={event => updateField(setLinkedVisionId, event.target.value)} className="w-full h-11 rounded-xl bg-surface-muted border border-card-border px-3 text-sm font-semibold outline-none focus:border-accent">
-                      <option value="">No Vision linked</option>
-                      {visions.map(vision => <option key={vision.id} value={vision.id}>{vision.title}</option>)}
-                    </select>
+                    <SelectMenu value={linkedVisionId} onChange={value => updateField(setLinkedVisionId, value)} options={[{ value: '', label: 'No Vision linked' }, ...visions.map(vision => ({ value: vision.id, label: vision.title }))]} triggerClassName="h-11 rounded-xl" />
                     {!linkedVisionId && <p className="text-xs font-semibold text-text-secondary/50">Link this resource to a Vision so learning becomes progress.</p>}
                   </WorkspacePanel>
                 </div>
@@ -1473,10 +1468,7 @@ function ResourceDetailModal({ resource, visions, visionTitle, onClose, onUpdate
             </QuestionBlock>
 
             <QuestionBlock number="3" title="How does it connect to my Visions?">
-              <select value={linkedVisionId} onChange={event => setLinkedVisionId(event.target.value)} className="w-full h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-semibold outline-none focus:border-accent">
-                <option value="">No Vision linked</option>
-                {visions.map(vision => <option key={vision.id} value={vision.id}>{vision.title}</option>)}
-              </select>
+              <SelectMenu value={linkedVisionId} onChange={setLinkedVisionId} options={[{ value: '', label: 'No Vision linked' }, ...visions.map(vision => ({ value: vision.id, label: vision.title }))]} triggerClassName="bg-card" />
               {!linkedVisionId && <p className="text-xs font-semibold text-text-secondary/50">Link this resource to a Vision so it becomes part of your progress.</p>}
               {visionTitle && <p className="text-xs font-black uppercase tracking-widest text-accent">Currently linked to {visionTitle}</p>}
             </QuestionBlock>

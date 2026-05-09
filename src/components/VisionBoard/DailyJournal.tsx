@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import { JournalEntry, Vision } from '../../types';
+import { SelectMenu } from '../ui/SelectMenu';
 
 const moods = [
   { id: 'ecstatic', icon: Flame, color: 'text-orange-500', label: 'Ecstatic' },
@@ -209,16 +210,12 @@ export default function DailyJournal() {
                    </div>
                    <div className="mt-4 space-y-2">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/40 px-2">By Vision</p>
-                      <select 
+                      <SelectMenu
                         value={filterVisionId}
-                        onChange={(e) => setFilterVisionId(e.target.value)}
-                        className="w-full bg-card border border-card-border rounded-xl py-2.5 px-3 text-xs outline-none"
-                      >
-                         <option value="all">All Visions</option>
-                         {visions.map(v => (
-                           <option key={v.id} value={v.id}>{v.title}</option>
-                         ))}
-                      </select>
+                        onChange={setFilterVisionId}
+                        options={[{ value: 'all', label: 'All Visions' }, ...visions.map(v => ({ value: v.id, label: v.title }))]}
+                        triggerClassName="h-11 rounded-xl bg-card text-xs"
+                      />
                    </div>
                 </div>
               </div>
