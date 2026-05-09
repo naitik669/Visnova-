@@ -1,7 +1,6 @@
 -- Urgent live Supabase repair for VisNova storage buckets.
 --
--- Run this in the Supabase SQL editor for project:
--- https://mmzlgntkhkeextqjaagi.supabase.co
+-- Run this in the Supabase SQL editor for the VisNova project.
 --
 -- This is a focused copy of the storage setup from the latest migrations.
 -- It fixes:

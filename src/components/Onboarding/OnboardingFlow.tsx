@@ -5,6 +5,7 @@ import { useStore } from '../../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
+import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
 
@@ -48,8 +49,11 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any
     setError('');
 
     try {
+      const normalizedEmail = sanitizeText(email, 254).toLowerCase();
+      const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_login', 5, 15);
+      if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password
       });
 
@@ -189,7 +193,10 @@ function ScreenForgotPassword({ email, setEmail, backToLogin }: any) {
     setError('');
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email);
+      const normalizedEmail = sanitizeText(email, 254).toLowerCase();
+      const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_reset', 5, 15);
+      if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail);
       if (resetError) throw resetError;
       setSuccess('Recovery dispatch sent. Check your inbox.');
       addToast({ type: 'success', title: 'Recovery sent', description: 'Check your inbox for the reset link.' });
@@ -398,7 +405,9 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
 
     // Trigger signup
     try {
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail = sanitizeText(email, 254).toLowerCase();
+      const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_signup', 5, 15);
+      if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
       
       const { data, error: signupError } = await supabase.auth.signUp({
         email: normalizedEmail,
@@ -585,7 +594,6 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
       const user = updatedUser;
 
       if (user?.email_confirmed_at) {
-        console.log('User verified globally. Advancing...');
         nextStep();
       } else if (user) {
         setError('Verification pending. Please check your email and click the link.');
@@ -616,7 +624,14 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
     setError('');
     try {
       if (session?.user) {
-        await supabase.auth.resetPasswordForEmail(session.user.email!);
+        const normalizedEmail = sanitizeText(session.user.email || email, 254).toLowerCase();
+        const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_resend', 5, 15);
+        if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
+        await supabase.auth.resend({
+          type: 'signup',
+          email: normalizedEmail,
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+        });
         setError('A new verification link has been dispatched to your inbox.');
       }
     } catch (err: any) {
@@ -741,10 +756,6 @@ function Screen2({ interests, toggleInterest, interestOptions, nextStep }: any) 
 }
 
 function Screen3({ intent, setIntent, nextStep }: any) {
-  useEffect(() => {
-    console.log('[Onboarding] Screen3 (Intent) mounted');
-  }, []);
-
   return (
     <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
       <div className="space-y-2">
@@ -1384,11 +1395,6 @@ export default function OnboardingFlow() {
     }
   }, [session?.user]);
 
-  // Logging for debug
-  useEffect(() => {
-    console.log('[Onboarding] Current Step:', step);
-  }, [step]);
-
   // Handle session-based redirection
   useEffect(() => {
     const syncOnboardingStep = async () => {
@@ -1432,7 +1438,6 @@ export default function OnboardingFlow() {
   // Automatic progression for email confirmation
   useEffect(() => {
     if (session?.user?.email_confirmed_at && step === 2) {
-      console.log('Verification detected automatically. Progressing...');
       nextStep();
     }
   }, [session?.user, step]);

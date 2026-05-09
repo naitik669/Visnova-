@@ -27,6 +27,7 @@ import {
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
+import { checkClientRateLimit, sanitizePlainText, sanitizeText, validateYouTubeUrl } from '../../lib/security';
 
 type GrowthStatus = 'saved' | 'learning' | 'completed' | 'applied' | 'archived';
 type SourceType = 'youtube' | 'article' | 'course' | 'book' | 'podcast' | 'pdf' | 'website' | 'other';
@@ -131,9 +132,9 @@ const sourceIcons: Record<SourceType, LucideIcon> = {
   other: Layers
 };
 
-const parseLines = (value: string) => value.split('\n').map(line => line.trim()).filter(Boolean);
+const parseLines = (value: string) => value.split('\n').map(line => sanitizeText(line, 500)).filter(Boolean).slice(0, 50);
 const stringifyLines = (value?: string[] | null) => (value || []).join('\n');
-const parseTags = (value: string) => value.split(',').map(tag => tag.trim().replace(/^#/, '').toLowerCase()).filter(Boolean);
+const parseTags = (value: string) => value.split(',').map(tag => sanitizeText(tag, 30).replace(/^#/, '').toLowerCase().replace(/[^a-z0-9_-]/g, '')).filter(Boolean).slice(0, 20);
 const formatTimestamp = (seconds?: number | null) => {
   if (seconds === null || seconds === undefined) return 'No time';
   const minutes = Math.floor(seconds / 60);
@@ -250,21 +251,26 @@ export default function MindVisualizer() {
       addToast({ type: 'error', title: 'Title required', description: 'Add a resource title.' });
       return false;
     }
+    const limit = checkClientRateLimit(userId!, 'growth_resource_create', 50, 24 * 60);
+    if (!limit.allowed) {
+      addToast({ type: 'error', title: 'Slow down', description: 'Growth resource imports are limited for closed beta.' });
+      return false;
+    }
 
     setIsSaving(true);
     const { data, error } = await supabase
       .from('growth_resources')
       .insert({
         user_id: userId,
-        title: payload.title.trim(),
-        url: payload.url || null,
+        title: sanitizeText(payload.title, 160),
+        url: payload.url && /^https:\/\//i.test(payload.url) ? payload.url : null,
         video_id: payload.video_id || null,
         source_type: payload.source_type || 'other',
-        source_name: payload.source_name || null,
+        source_name: sanitizeText(payload.source_name || '', 60) || null,
         thumbnail_url: payload.thumbnail_url || null,
-        category: payload.category || null,
+        category: sanitizeText(payload.category || '', 80) || null,
         status: payload.status || 'saved',
-        purpose: payload.purpose || null,
+        purpose: sanitizePlainText(payload.purpose || '', 1000) || null,
         linked_vision_id: payload.linked_vision_id || null,
         tags: payload.tags || [],
         key_takeaways: [],
@@ -308,19 +314,21 @@ export default function MindVisualizer() {
   };
 
   const importYouTubeResource = async () => {
-    const videoId = getYouTubeVideoId(youtubeUrl);
-    if (!videoId) {
+    let parsed: { url: string; videoId: string };
+    try {
+      parsed = validateYouTubeUrl(youtubeUrl);
+    } catch {
       addToast({ type: 'error', title: 'Invalid YouTube link', description: 'Paste a valid YouTube link.' });
       return;
     }
 
     const created = await createGrowthResource({
       title: 'YouTube Video',
-      url: youtubeUrl.trim(),
-      video_id: videoId,
+      url: parsed.url,
+      video_id: parsed.videoId,
       source_type: 'youtube',
       source_name: 'YouTube',
-      thumbnail_url: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      thumbnail_url: `https://img.youtube.com/vi/${parsed.videoId}/hqdefault.jpg`,
       status: 'saved',
       tags: []
     });
@@ -338,6 +346,14 @@ export default function MindVisualizer() {
       ...updates,
       updated_at: new Date().toISOString()
     };
+    if (payload.title !== undefined) payload.title = sanitizeText(payload.title, 160);
+    if (payload.purpose !== undefined) payload.purpose = sanitizePlainText(payload.purpose, 1000);
+    if (payload.notes !== undefined) payload.notes = sanitizePlainText(payload.notes, 20000);
+    if (payload.applied_note !== undefined) payload.applied_note = sanitizePlainText(payload.applied_note, 2000);
+    if (payload.category !== undefined) payload.category = sanitizeText(payload.category, 80);
+    if (payload.key_takeaways !== undefined) payload.key_takeaways = Array.isArray(payload.key_takeaways) ? payload.key_takeaways.map((item: string) => sanitizeText(item, 500)).filter(Boolean).slice(0, 50) : [];
+    if (payload.action_points !== undefined) payload.action_points = Array.isArray(payload.action_points) ? payload.action_points.map((item: string) => sanitizeText(item, 500)).filter(Boolean).slice(0, 50) : [];
+    if (payload.tags !== undefined) payload.tags = Array.isArray(payload.tags) ? payload.tags.map((item: string) => sanitizeText(item, 30).toLowerCase().replace(/[^a-z0-9_-]/g, '')).filter(Boolean).slice(0, 20) : [];
     delete payload.id;
     delete payload.user_id;
     delete payload.created_at;
@@ -423,7 +439,7 @@ export default function MindVisualizer() {
       .insert({
         user_id: userId,
         vision_id: visionId,
-        text: taskText.trim(),
+        text: sanitizeText(taskText, 500),
         completed: false,
         sub_tasks: (resource.action_points || []).map(text => ({ text, completed: false }))
       })
@@ -923,7 +939,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
         resource_id: resource.id,
         user_id: userId,
         timestamp_seconds: parsedTimestamp,
-        content: timestampContent.trim()
+        content: sanitizePlainText(timestampContent, 1000)
       })
       .select('*')
       .single();
@@ -943,7 +959,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
     if (!requireSessionUser()) return;
     const { data, error } = await supabase
       .from('growth_resource_notes')
-      .update({ content, updated_at: new Date().toISOString() })
+      .update({ content: sanitizePlainText(content, 1000), updated_at: new Date().toISOString() })
       .eq('id', note.id)
       .eq('user_id', userId)
       .select('*')
@@ -970,14 +986,14 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
 
   const addTakeaway = async () => {
     if (!takeawayInput.trim()) return;
-    const nextTakeaways = [...takeaways, takeawayInput.trim()];
+    const nextTakeaways = [...takeaways, sanitizeText(takeawayInput, 500)].filter(Boolean).slice(0, 50);
     setTakeaways(nextTakeaways);
     setTakeawayInput('');
     markDirty();
   };
 
   const updateTakeaway = async (index: number, value: string) => {
-    const nextTakeaways = takeaways.map((item, itemIndex) => itemIndex === index ? value : item).filter(Boolean);
+    const nextTakeaways = takeaways.map((item, itemIndex) => itemIndex === index ? sanitizeText(value, 500) : item).filter(Boolean);
     setTakeaways(nextTakeaways);
     markDirty();
   };
@@ -1000,7 +1016,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
       .insert({
         resource_id: resource.id,
         user_id: userId,
-        text: actionText.trim(),
+        text: sanitizeText(actionText, 500),
         completed: false
       })
       .select('*')
@@ -1017,9 +1033,11 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
 
   const updateActionPoint = async (actionPoint: GrowthActionPoint, updates: Partial<GrowthActionPoint>) => {
     if (!requireSessionUser()) return false;
+    const safeUpdates = { ...updates };
+    if (safeUpdates.text !== undefined) safeUpdates.text = sanitizeText(safeUpdates.text, 500);
     const { data, error } = await supabase
       .from('growth_action_points')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...safeUpdates, updated_at: new Date().toISOString() })
       .eq('id', actionPoint.id)
       .eq('user_id', userId)
       .select('*')
@@ -1073,7 +1091,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
       .insert({
         user_id: userId,
         vision_id: linkedVisionId,
-        text: actionPoint.text,
+        text: sanitizeText(actionPoint.text, 500),
         completed: false
       })
       .select('id')

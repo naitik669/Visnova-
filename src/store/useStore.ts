@@ -9,6 +9,17 @@ import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { format } from 'date-fns';
+import {
+  checkClientRateLimit,
+  sanitizePlainText,
+  sanitizeText,
+  validateCommentPayload,
+  validateDisplayName,
+  validateNotePayload,
+  validatePostPayload,
+  validateUsername,
+  validateVisionPayload
+} from '../lib/security';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -727,24 +738,31 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   updateVision: async (id, updates) => {
+    let safeUpdates: Partial<Vision>;
+    try {
+      safeUpdates = validateVisionPayload(updates);
+    } catch (error: any) {
+      get().addToast({ type: 'error', title: 'Vision update blocked', description: error.message || 'This Vision update is invalid.' });
+      return;
+    }
     const previousVisions = get().visions;
     set((state) => ({
-      visions: state.visions.map((v) => (v.id === id ? { ...v, ...updates } : v)),
+      visions: state.visions.map((v) => (v.id === id ? { ...v, ...safeUpdates } : v)),
     }));
 
     try {
       const dbUpdates: any = {};
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
-      if (updates.status !== undefined) dbUpdates.status = updates.status;
-      if (updates.progress !== undefined) dbUpdates.progress = updates.progress;
-      if (updates.category !== undefined) dbUpdates.category = updates.category;
-      if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
-      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
-      if (updates.proof !== undefined) dbUpdates.proof = updates.proof;
-      if (updates.elements !== undefined) dbUpdates.elements = updates.elements;
-      if (updates.visibility !== undefined) dbUpdates.visibility = updates.visibility;
-      if (updates.deadline !== undefined) dbUpdates.deadline = updates.deadline;
+      if (safeUpdates.title !== undefined) dbUpdates.title = safeUpdates.title;
+      if (safeUpdates.description !== undefined) dbUpdates.description = safeUpdates.description;
+      if (safeUpdates.status !== undefined) dbUpdates.status = safeUpdates.status;
+      if (safeUpdates.progress !== undefined) dbUpdates.progress = safeUpdates.progress;
+      if (safeUpdates.category !== undefined) dbUpdates.category = sanitizeText(safeUpdates.category, 80);
+      if (safeUpdates.tags !== undefined) dbUpdates.tags = safeUpdates.tags;
+      if (safeUpdates.notes !== undefined) dbUpdates.notes = safeUpdates.notes;
+      if (safeUpdates.proof !== undefined) dbUpdates.proof = sanitizePlainText(safeUpdates.proof, 5000);
+      if (safeUpdates.elements !== undefined) dbUpdates.elements = safeUpdates.elements;
+      if (safeUpdates.visibility !== undefined) dbUpdates.visibility = safeUpdates.visibility;
+      if (safeUpdates.deadline !== undefined) dbUpdates.deadline = safeUpdates.deadline;
       dbUpdates.updated_at = new Date().toISOString();
       const userId = get().session?.user?.id;
       const query = supabase.from('visions').update(dbUpdates).eq('id', id);
@@ -814,6 +832,8 @@ export const useStore = create<AppState>((set, get) => ({
   
   signInWithGoogle: async () => {
     try {
+      const limit = checkClientRateLimit('browser', 'auth_google', 5, 15);
+      if (!limit.allowed) throw new Error('Too many sign-in attempts. Try again in 15 minutes.');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -878,22 +898,25 @@ export const useStore = create<AppState>((set, get) => ({
     const previousProfile = get().profile;
 
     try {
+      const profileLimit = checkClientRateLimit(userId, 'profile_update', 10, 60);
+      if (!profileLimit.allowed) throw new Error('You are updating your profile too often. Try again later.');
+      if (updates.username !== undefined && normalizeUsernameInput(String(updates.username || '')) !== previousUser.username) {
+        const usernameLimit = checkClientRateLimit(userId, 'username_change', 3, 24 * 60);
+        if (!usernameLimit.allowed) throw new Error('Username changes are limited to 3 per day.');
+      }
+
       const dbUpdates: any = {};
       const nextUserUpdates: Partial<AppState['user']> = {};
 
       if (updates.name !== undefined) {
-        const displayName = String(updates.name || '').trim();
-        if (!displayName) throw new Error('Display name is required.');
+        const displayName = validateDisplayName(String(updates.name || ''));
         dbUpdates.display_name = displayName;
         dbUpdates.full_name = displayName;
         nextUserUpdates.name = displayName;
       }
 
       if (updates.username !== undefined) {
-        const normalizedUsername = normalizeUsernameInput(String(updates.username || ''));
-        if (!/^[a-z0-9_]{3,24}$/.test(normalizedUsername)) {
-          throw new Error('Use 3-24 lowercase letters, numbers, or underscores for your username.');
-        }
+        const normalizedUsername = validateUsername(String(updates.username || ''));
 
         if (normalizedUsername !== previousUser.username) {
           const { data: available, error: availabilityError } = await supabase.rpc('is_username_available', {
@@ -913,21 +936,21 @@ export const useStore = create<AppState>((set, get) => ({
         nextUserUpdates.avatar = updates.avatar;
       }
       if (updates.bio !== undefined) {
-        dbUpdates.bio = updates.bio || '';
-        nextUserUpdates.bio = updates.bio || '';
+        dbUpdates.bio = sanitizePlainText(updates.bio || '', 300);
+        nextUserUpdates.bio = dbUpdates.bio;
       }
       if (updates.role !== undefined) {
-        dbUpdates.role = updates.role || null;
+        dbUpdates.role = updates.role ? sanitizeText(updates.role, 80) : null;
         nextUserUpdates.role = updates.role || '';
         nextUserUpdates.rank = updates.role || previousUser.rank;
       }
       if (updates.mainGoal !== undefined) {
-        dbUpdates.main_goal = updates.mainGoal || '';
-        nextUserUpdates.mainGoal = updates.mainGoal || '';
+        dbUpdates.main_goal = sanitizePlainText(updates.mainGoal || '', 300);
+        nextUserUpdates.mainGoal = dbUpdates.main_goal;
       }
       if (updates.interests !== undefined) {
-        dbUpdates.interests = updates.interests || [];
-        nextUserUpdates.interests = updates.interests || [];
+        dbUpdates.interests = Array.isArray(updates.interests) ? updates.interests.map((interest: string) => sanitizeText(interest, 40)).filter(Boolean).slice(0, 20) : [];
+        nextUserUpdates.interests = dbUpdates.interests;
       }
 
       dbUpdates.updated_at = new Date().toISOString();
@@ -1261,34 +1284,40 @@ export const useStore = create<AppState>((set, get) => ({
       get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to create notes.' });
       return false;
     }
+    const noteLimit = checkClientRateLimit(userId, 'note_create', 120, 60);
+    if (!noteLimit.allowed) {
+      get().addToast({ type: 'error', title: 'Slow down', description: 'You are creating notes too quickly. Try again later.' });
+      return false;
+    }
+    const safeNote = validateNotePayload(note);
     const tempId = Math.random().toString(36).substring(7);
 
     const newNote: Note = {
       id: tempId,
-      title: note.title || 'Untitled Note',
-      content: note.content || '',
-      note_type: note.note_type || 'normal',
-      folderId: note.folderId || null,
-      tags: note.tags || [],
-      linkedVisionId: note.linkedVisionId || null,
-      visibility: note.visibility || 'private',
-      isPinned: note.isPinned || false,
-      isFavorite: note.isFavorite || false,
+      title: safeNote.title,
+      content: safeNote.content,
+      note_type: safeNote.note_type,
+      folderId: safeNote.folderId || null,
+      tags: safeNote.tags || [],
+      linkedVisionId: safeNote.linkedVisionId || null,
+      visibility: safeNote.visibility || 'private',
+      isPinned: safeNote.isPinned || false,
+      isFavorite: safeNote.isFavorite || false,
       isDeleted: false,
-      mood: note.mood,
-      journal_date: note.journal_date,
-      location: note.location,
-      image_url: note.image_url,
-      audio_url: note.audio_url,
-      audio_path: note.audio_path,
-      audio_duration: note.audio_duration,
-      audio_mime_type: note.audio_mime_type,
-      transcript: note.transcript,
-      transcript_status: note.transcript_status || 'none',
-      transcribed_at: note.transcribed_at,
+      mood: safeNote.mood,
+      journal_date: safeNote.journal_date,
+      location: safeNote.location,
+      image_url: safeNote.image_url,
+      audio_url: safeNote.audio_url,
+      audio_path: safeNote.audio_path,
+      audio_duration: safeNote.audio_duration,
+      audio_mime_type: safeNote.audio_mime_type,
+      transcript: safeNote.transcript,
+      transcript_status: safeNote.transcript_status || 'none',
+      transcribed_at: safeNote.transcribed_at,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      ...note,
+      ...safeNote,
     };
 
     set((state) => ({ notes: [newNote, ...state.notes] }));
@@ -1332,16 +1361,20 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   updateNote: async (id, updates) => {
+    const safeUpdates = { ...updates };
+    if (safeUpdates.title !== undefined) safeUpdates.title = sanitizeText(safeUpdates.title, 120) || 'Untitled Note';
+    if (safeUpdates.content !== undefined) safeUpdates.content = sanitizePlainText(safeUpdates.content, 50000);
+    if (safeUpdates.tags !== undefined) safeUpdates.tags = Array.isArray(safeUpdates.tags) ? safeUpdates.tags.map((tag: string) => sanitizeText(tag, 30)).filter(Boolean).slice(0, 20) : [];
     set((state) => ({
-      notes: state.notes.map((n) => (n.id === id ? { ...n, ...updates, updatedAt: Date.now() } : n)),
+      notes: state.notes.map((n) => (n.id === id ? { ...n, ...safeUpdates, updatedAt: Date.now() } : n)),
     }));
 
     try {
       const dbUpdates: any = {};
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.content !== undefined) dbUpdates.content = updates.content;
+      if (updates.title !== undefined) dbUpdates.title = safeUpdates.title;
+      if (updates.content !== undefined) dbUpdates.content = safeUpdates.content;
       if (updates.folderId !== undefined) dbUpdates.folder_id = updates.folderId;
-      if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+      if (updates.tags !== undefined) dbUpdates.tags = safeUpdates.tags;
       if (updates.isPinned !== undefined) dbUpdates.is_pinned = updates.isPinned;
       if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
       if (updates.isDeleted !== undefined) dbUpdates.is_deleted = updates.isDeleted;
@@ -1502,7 +1535,9 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     try {
-      console.log('Attempting to add post for user:', userId);
+      const postLimit = checkClientRateLimit(userId, 'post_create', 20, 60);
+      if (!postLimit.allowed) throw new Error('You are posting too often. Try again later.');
+      const safePost = validatePostPayload(post);
       // 0. Try to ensure the profile exists, but do not block posting on a slow profile read.
       try {
         await withTimeout(get().ensureCurrentUserProfile(), 4000, 'Preparing your profile');
@@ -1511,15 +1546,14 @@ export const useStore = create<AppState>((set, get) => ({
       }
 
       // 1. Insert core post data
-      console.log('Inserting post data...', post);
       const insertPost = () => supabase
         .from('posts')
         .insert({
           user_id: userId,
-          type: post.type,
-          caption: post.caption,
-          content: post.content || '',
-          visibility: post.visibility || 'public',
+          type: safePost.type,
+          caption: safePost.caption,
+          content: safePost.content || '',
+          visibility: safePost.visibility || 'public',
           metadata: postMetadata
         })
         .select('id, user_id, type, caption, content, visibility, metadata, stats, created_at, updated_at')
@@ -1557,15 +1591,13 @@ export const useStore = create<AppState>((set, get) => ({
         throw new Error('Post could not be confirmed. Please refresh the feed before trying again.');
       }
       const postId = postData.id;
-      console.log('Post inserted with ID:', postId);
 
       // 2. Insert Media
-      if (post.media && post.media.length > 0) {
-        console.log('Inserting media...', post.media);
+      if (safePost.media && safePost.media.length > 0) {
         const { error: mediaError } = await withTimeout<any>(
           supabase
             .from('post_media')
-            .insert(post.media.map((m: any) => ({
+            .insert(safePost.media.map((m: any) => ({
               post_id: postId,
               media_url: m.url,
               media_type: m.type,
@@ -1581,10 +1613,9 @@ export const useStore = create<AppState>((set, get) => ({
       }
 
       // 3. Insert Tags
-      if (post.tags && post.tags.length > 0) {
-        const uniqueTags = Array.from(new Set(post.tags.map((t: string) => normalizePostTag(t)).filter(Boolean)));
+      if (safePost.tags && safePost.tags.length > 0) {
+        const uniqueTags = Array.from(new Set(safePost.tags.map((t: string) => normalizePostTag(t)).filter(Boolean)));
         if (uniqueTags.length > 0) {
-          console.log('Inserting tags...', uniqueTags);
           const { error: tagsError } = await withTimeout<any>(
             supabase
               .from('post_tags')
@@ -1602,17 +1633,16 @@ export const useStore = create<AppState>((set, get) => ({
         }
       }
 
-      const textMentions = extractMentionUsernames(`${post.caption || ''} ${post.content || ''}`)
+      const textMentions = extractMentionUsernames(`${safePost.caption || ''} ${safePost.content || ''}`)
         .map(username => ({ username }));
-      const notificationMentions = [...(post.mentions || []), ...textMentions];
+      const notificationMentions = [...(safePost.mentions || []), ...textMentions];
 
       // 4. Insert Mentions
-      if (post.mentions && post.mentions.length > 0) {
-        console.log('Inserting mentions...', post.mentions);
+      if (safePost.mentions && safePost.mentions.length > 0) {
         const { error: mentionsError } = await withTimeout<any>(
           supabase
             .from('post_mentions')
-            .insert(post.mentions.map((m: any) => ({
+            .insert(safePost.mentions.map((m: any) => ({
               post_id: postId,
               mentioned_user_id: m.userId
             }))),
@@ -1633,7 +1663,7 @@ export const useStore = create<AppState>((set, get) => ({
         });
       }
 
-      const localPost = toLocalPost(postData, { ...post, metadata: postMetadata }, get().user);
+      const localPost = toLocalPost(postData, { ...safePost, metadata: postMetadata }, get().user);
       set((state) => ({
         posts: [localPost, ...state.posts.filter(p => p.id !== localPost.id)]
       }));
@@ -1643,7 +1673,7 @@ export const useStore = create<AppState>((set, get) => ({
       get().recordDailyActivity('post');
       get().addActivity({
         type: 'social',
-        description: `Shared a new ${post.type} with the community.`
+        description: `Shared a new ${safePost.type} with the community.`
       });
 
       get().fetchPosts().catch((error) => {
@@ -1671,24 +1701,31 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     const previousPosts = get().posts;
-    const nextTags = Array.from(new Set((updates.tags || []).map(normalizePostTag).filter(Boolean)));
+    let safeUpdates: any;
+    try {
+      safeUpdates = validatePostPayload({ ...get().posts.find(post => post.id === id), ...updates });
+    } catch (err: any) {
+      get().addToast({ type: 'error', title: 'Update blocked', description: err.message || 'This post update is invalid.' });
+      return false;
+    }
+    const nextTags = Array.from(new Set((safeUpdates.tags || []).map(normalizePostTag).filter(Boolean)));
     const nextMentions = Array.from(
-      new Map((updates.mentions || []).filter(m => m.userId).map(m => [m.userId, m])).values()
+      new Map<string, any>((safeUpdates.mentions || []).filter((m: any) => m.userId).map((m: any) => [m.userId, m])).values()
     );
     const postUpdates: any = {
       updated_at: new Date().toISOString()
     };
 
-    if (updates.caption !== undefined) postUpdates.caption = updates.caption;
-    if (updates.content !== undefined) postUpdates.content = updates.content;
-    if (updates.type !== undefined) postUpdates.type = updates.type;
+    if (updates.caption !== undefined) postUpdates.caption = safeUpdates.caption;
+    if (updates.content !== undefined) postUpdates.content = safeUpdates.content;
+    if (updates.type !== undefined) postUpdates.type = safeUpdates.type;
     if (updates.metadata !== undefined) postUpdates.metadata = updates.metadata;
-    if (updates.visibility !== undefined) postUpdates.visibility = updates.visibility;
+    if (updates.visibility !== undefined) postUpdates.visibility = safeUpdates.visibility;
 
     set((state) => ({
       posts: state.posts.map(post => post.id === id ? {
         ...post,
-        ...updates,
+        ...safeUpdates,
         tags: updates.tags !== undefined ? nextTags : post.tags,
         mentions: updates.mentions !== undefined ? nextMentions : post.mentions
       } : post)
@@ -1971,7 +2008,6 @@ export const useStore = create<AppState>((set, get) => ({
       // 2. If not found, upsert immediately. The database trigger handles normal signup sync;
       // this is a fast fallback for older accounts or delayed auth events.
       if (!profile) {
-        console.log('Profile not found, upserting fallback profile for:', userId);
         const userMetadata = session.user.user_metadata || {};
         const displayName = userMetadata.display_name || userMetadata.full_name || userMetadata.name || 'Explorer';
         const avatarUrl = userMetadata.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`;
@@ -2887,9 +2923,16 @@ export const useStore = create<AppState>((set, get) => ({
       return null;
     }
 
-    const trimmedContent = content.trim();
-    if (!trimmedContent) {
-      get().addToast({ type: 'error', title: 'Comment required', description: 'Write a comment before posting.' });
+    const commentLimit = checkClientRateLimit(userId, 'comment_create', 60, 60);
+    if (!commentLimit.allowed) {
+      get().addToast({ type: 'error', title: 'Slow down', description: 'You are commenting too often. Try again later.' });
+      return null;
+    }
+    let trimmedContent: string;
+    try {
+      trimmedContent = validateCommentPayload(content);
+    } catch (error: any) {
+      get().addToast({ type: 'error', title: 'Comment required', description: error.message || 'Write a comment before posting.' });
       return null;
     }
 
@@ -2954,6 +2997,11 @@ export const useStore = create<AppState>((set, get) => ({
     }
     if (userId === followingId) {
       get().addToast({ type: 'info', title: 'That is you', description: 'You cannot follow your own profile.' });
+      return null;
+    }
+    const followLimit = checkClientRateLimit(userId, 'follow_toggle', 50, 60);
+    if (!followLimit.allowed) {
+      get().addToast({ type: 'error', title: 'Slow down', description: 'You are following/unfollowing too quickly. Try again later.' });
       return null;
     }
 

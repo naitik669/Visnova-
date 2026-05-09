@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { validateFile } from './security';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -58,16 +59,8 @@ const getCurrentUserId = async (currentUserId?: string) => {
 export const uploadMedia = async (file: File, bucket: string = 'post-images', currentUserId?: string) => {
   const userId = await getCurrentUserId(currentUserId);
 
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
-  if (!allowedTypes.includes(file.type)) {
-    throw new Error('Unsupported file type. Please upload PNG, JPEG, or WebP images.');
-  }
-
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error('Image size exceeds 10MB limit.');
-  }
-
-  const fileExt = file.name.split('.').pop();
+  const { normalizedType, safeExt } = validateFile(file, ['image/png', 'image/jpeg', 'image/webp'], 10 * 1024 * 1024, 'image');
+  const fileExt = safeExt || extensionForMime(normalizedType) || 'jpg';
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
   const filePath = `${userId}/posts/${fileName}`;
 
@@ -76,6 +69,7 @@ export const uploadMedia = async (file: File, bucket: string = 'post-images', cu
       .from(bucket)
       .upload(filePath, file, {
         cacheControl: '3600',
+        contentType: normalizedType,
         upsert: false
       }),
     60000,
@@ -99,15 +93,8 @@ export const uploadMedia = async (file: File, bucket: string = 'post-images', cu
 
 export const uploadAvatar = async (file: File, currentUserId?: string) => {
   const userId = await getCurrentUserId(currentUserId);
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
-  if (!allowedTypes.includes(file.type)) {
-    throw new Error('Unsupported avatar type. Please upload PNG, JPEG, or WebP images.');
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    throw new Error('Avatar size exceeds 5MB limit.');
-  }
-
-  const fileExt = file.name.split('.').pop() || 'jpg';
+  const { normalizedType, safeExt } = validateFile(file, ['image/png', 'image/jpeg', 'image/webp'], 5 * 1024 * 1024, 'avatar');
+  const fileExt = safeExt || extensionForMime(normalizedType) || 'jpg';
   const filePath = `${userId}/profile/avatar-${Date.now()}.${fileExt}`;
 
   const { error } = await withTimeout(
@@ -115,6 +102,7 @@ export const uploadAvatar = async (file: File, currentUserId?: string) => {
       .from('avatars')
       .upload(filePath, file, {
         cacheControl: '3600',
+        contentType: normalizedType,
         upsert: true
       }),
     60000,
@@ -153,12 +141,7 @@ export const uploadAudioNote = async (file: File, currentUserId?: string, noteId
     'audio/ogg',
     'application/ogg'
   ];
-  if (!allowedTypes.includes(normalizedType)) {
-    throw new Error('Unsupported audio type. Please upload WebM, MP3, MP4, WAV, or OGG audio.');
-  }
-  if (file.size > 25 * 1024 * 1024) {
-    throw new Error('Audio note exceeds 25MB limit.');
-  }
+  validateFile(file, allowedTypes, 25 * 1024 * 1024, 'audio note');
 
   const extensionByType: Record<string, string> = {
     'audio/webm': 'webm',
@@ -173,7 +156,7 @@ export const uploadAudioNote = async (file: File, currentUserId?: string, noteId
     'audio/ogg': 'ogg',
     'application/ogg': 'ogg'
   };
-  const fileExt = file.name.includes('.') ? file.name.split('.').pop() : extensionByType[normalizedType] || 'webm';
+  const fileExt = (file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') : '') || extensionByType[normalizedType] || 'webm';
   const filePath = noteId
     ? `${userId}/notes/${noteId}/audio.${fileExt}`
     : `${userId}/audio/audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
@@ -226,15 +209,9 @@ export const getAudioNoteUrl = async (path: string) => {
 
 export const uploadCapsuleImage = async (file: File, capsuleId: string, currentUserId?: string) => {
   const userId = await getCurrentUserId(currentUserId);
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
-  if (!allowedTypes.includes(file.type)) {
-    throw new Error('Unsupported image type. Please upload PNG, JPEG, or WebP images.');
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error('NovaCapsule image exceeds 10MB limit.');
-  }
+  const { normalizedType, safeExt } = validateFile(file, ['image/png', 'image/jpeg', 'image/webp'], 10 * 1024 * 1024, 'NovaCapsule image');
 
-  const fileExt = file.name.split('.').pop() || 'jpg';
+  const fileExt = safeExt || extensionForMime(normalizedType) || 'jpg';
   const filePath = `${userId}/${capsuleId}/image-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${fileExt}`;
 
   const { error } = await withTimeout(
@@ -242,7 +219,7 @@ export const uploadCapsuleImage = async (file: File, capsuleId: string, currentU
       .from('nova-capsules')
       .upload(filePath, file, {
         cacheControl: '3600',
-        contentType: file.type,
+        contentType: normalizedType,
         upsert: false
       }),
     60000,
@@ -285,15 +262,9 @@ export const getCapsuleImageUrl = async (path: string) => {
 
 export const uploadVisionBoardImage = async (file: File, visionId: string, currentUserId?: string) => {
   const userId = await getCurrentUserId(currentUserId);
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
-  if (!allowedTypes.includes(file.type)) {
-    throw new Error('Unsupported board image type. Please upload PNG, JPEG, or WebP images.');
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    throw new Error('Vision Board image exceeds 10MB limit.');
-  }
+  const { normalizedType, safeExt } = validateFile(file, ['image/png', 'image/jpeg', 'image/webp'], 10 * 1024 * 1024, 'Vision Board image');
 
-  const fileExt = file.name.split('.').pop() || 'jpg';
+  const fileExt = safeExt || extensionForMime(normalizedType) || 'jpg';
   const safeName = file.name
     .replace(/\.[^.]+$/, '')
     .replace(/[^a-z0-9-_]+/gi, '-')
@@ -305,7 +276,7 @@ export const uploadVisionBoardImage = async (file: File, visionId: string, curre
       .from('vision-board-images')
       .upload(filePath, file, {
         cacheControl: '3600',
-        contentType: file.type,
+        contentType: normalizedType,
         upsert: false
       }),
     60000,
@@ -334,5 +305,12 @@ const inferAudioTypeFromName = (fileName: string) => {
   if (ext === 'wav') return 'audio/wav';
   if (ext === 'ogg' || ext === 'oga') return 'audio/ogg';
   if (ext === 'webm') return 'audio/webm';
+  return '';
+};
+
+const extensionForMime = (mimeType: string) => {
+  if (mimeType === 'image/png') return 'png';
+  if (mimeType === 'image/jpeg') return 'jpg';
+  if (mimeType === 'image/webp') return 'webp';
   return '';
 };
