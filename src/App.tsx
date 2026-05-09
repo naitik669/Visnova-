@@ -32,6 +32,10 @@ import { cn } from './lib/utils';
 import { useStore } from './store/useStore';
 import FocusOverlay from './components/Dashboard/FocusOverlay';
 import Settings from './components/Settings/Settings';
+import ErrorBoundary from './components/ErrorBoundary';
+import CookieNotice from './components/CookieNotice';
+import FeedbackPage from './components/Support/FeedbackPage';
+import { CookiePolicyPage, PrivacyPolicyPage, SupportPage, TermsPage } from './components/Legal/LegalPages';
 
 function AccountabilityNudge() {
   const [visible, setVisible] = useState(false);
@@ -438,6 +442,11 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
   '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
   '/profile': { title: 'Profile', subtitle: 'Your public progress page' },
+  '/privacy': { title: 'Privacy', subtitle: 'How VisNova handles data' },
+  '/terms': { title: 'Terms', subtitle: 'Rules for using VisNova' },
+  '/cookies': { title: 'Cookies', subtitle: 'Browser storage and cookies' },
+  '/support': { title: 'Support', subtitle: 'Legal, account, and help requests' },
+  '/feedback': { title: 'Feedback', subtitle: 'Report bugs and beta feedback' },
 };
 
 function PageContextHeader() {
@@ -524,6 +533,7 @@ function AppContent() {
   return (
     <>
       <ToastViewport />
+      <CookieNotice />
       <AnimatePresence mode="wait">
         {isAuthCallbackPath ? (
           <motion.div
@@ -592,6 +602,11 @@ function AppContent() {
                     <Route path="/timeline" element={<Navigate to="/nova-clock" replace />} />
                     <Route path="/growth" element={<MindVisualizer />} />
                     <Route path="/mind-map" element={<Navigate to="/growth" replace />} />
+                    <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                    <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/cookies" element={<CookiePolicyPage />} />
+                    <Route path="/support" element={<SupportPage />} />
+                    <Route path="/feedback" element={<FeedbackPage />} />
                     <Route path="*" element={<div className="p-20 text-center text-[10px] font-black text-text-secondary opacity-30 uppercase tracking-[0.4em]">Page Not Found</div>} />
                   </Routes>
                 </div>
@@ -607,8 +622,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AppContent />
+      </Router>
+    </ErrorBoundary>
   );
 }

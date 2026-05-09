@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, MessageSquare, Bookmark, Settings, LogOut, Bell, HelpCircle } from 'lucide-react';
+import { User, MessageSquare, Bookmark, Settings, LogOut, Bell, HelpCircle, MessageCircleWarning } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
@@ -46,6 +46,7 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
     { icon: Settings, label: 'Settings', onClick: () => { setSelectedProfileId(null); navigate('/settings'); onClose(); } },
     { icon: Bell, label: 'Notifications', onClick: () => { window.dispatchEvent(new Event('open-visnova-notifications')); onClose(); } },
     { icon: HelpCircle, label: 'Help / Support', onClick: () => { window.dispatchEvent(new Event('open-visnova-help')); onClose(); } },
+    { icon: MessageCircleWarning, label: 'Feedback', onClick: () => { navigate('/feedback'); onClose(); } },
   ];
 
   return (
