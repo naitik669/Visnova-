@@ -213,8 +213,9 @@ export default function MessagesPage() {
     }
 
     loadMessages(selectedId);
+    const channelId = `messages:${selectedId}-${Math.random().toString(36).substring(7)}`;
     const channel = supabase
-      .channel(`messages:${selectedId}`)
+      .channel(channelId)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedId}` }, (payload) => {
         setMessages((current) => current.some((m) => m.id === (payload.new as ChatMessage).id) ? current : [...current, payload.new as ChatMessage]);
       })

@@ -185,8 +185,9 @@ function useUnreadMessageCount() {
     };
 
     loadCount();
+    const channelId = `nav-message-badge:${currentUserId || 'guest'}-${Math.random().toString(36).substring(7)}`;
     const channel = supabase
-      .channel(`nav-message-badge:${currentUserId || 'guest'}`)
+      .channel(channelId)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, loadCount)
       .subscribe();
 

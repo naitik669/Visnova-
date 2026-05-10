@@ -4132,8 +4132,9 @@ export const useStore = create<AppState>((set, get) => ({
       syncSocial();
 
       // Realtime Notifications
+      const notificationChannelId = `notifications-${Math.random().toString(36).substring(7)}`;
       supabase
-        .channel('notifications')
+        .channel(notificationChannelId)
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
