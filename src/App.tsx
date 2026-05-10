@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, MoreHorizontal, GraduationCap, Settings as SettingsIcon, LogOut } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, MoreHorizontal, GraduationCap, Settings as SettingsIcon, LogOut, Wallet } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -36,6 +36,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import CookieNotice from './components/CookieNotice';
 import FeedbackPage from './components/Support/FeedbackPage';
 import { CookiePolicyPage, PrivacyPolicyPage, SupportPage, TermsPage } from './components/Legal/LegalPages';
+import MoneyPage from './components/Money/MoneyPage';
 
 function AccountabilityNudge() {
   const [visible, setVisible] = useState(false);
@@ -123,12 +124,13 @@ function Sidebar() {
     { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Target, label: 'Visions', path: '/vision', id: 'nav-vision' },
-    { icon: LibraryBig, label: 'Notes', path: '/notes' },
+    { icon: LibraryBig, label: 'Library', path: '/notes' },
+    { icon: GraduationCap, label: 'Growth', path: '/growth' },
+    { icon: Wallet, label: 'Money', path: '/money' },
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
-    { icon: MessageCircle, label: 'Messages', path: '/messages' },
-    { icon: GraduationCap, label: 'Growth', path: '/growth' },
     { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
+    { icon: MessageCircle, label: 'Messages', path: '/messages' },
   ];
 
   return (
@@ -297,13 +299,14 @@ function MobileNav() {
     { icon: Home, label: 'Home', path: '/' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Target, label: 'Visions', path: '/vision' },
-    { icon: LibraryBig, label: 'Notes', path: '/notes' },
+    { icon: LibraryBig, label: 'Library', path: '/notes' },
   ];
 
   const moreItems = [
+    { icon: Wallet, label: 'Money', path: '/money' },
+    { icon: GraduationCap, label: 'Growth', path: '/growth' },
     { icon: Users, label: 'Circle', path: '/circle' },
     { icon: Globe, label: 'Communities', path: '/communities' },
-    { icon: GraduationCap, label: 'Growth', path: '/growth' },
     { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
     { icon: MessageCircle, label: 'Messages', path: '/messages' },
     { icon: SettingsIcon, label: 'Settings', path: '/settings' },
@@ -439,6 +442,7 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/journal': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
   '/growth': { title: 'Growth', subtitle: 'Learn with purpose and turn resources into action' },
+  '/money': { title: 'Money', subtitle: 'Track spending and fund your Visions' },
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
   '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
   '/profile': { title: 'Profile', subtitle: 'Your public progress page' },
@@ -597,6 +601,7 @@ function AppContent() {
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/profile/:profileId" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/money" element={<MoneyPage />} />
                     <Route path="/nova-clock" element={<NovaClock />} />
                     <Route path="/nova" element={<Navigate to="/nova-clock" replace />} />
                     <Route path="/timeline" element={<Navigate to="/nova-clock" replace />} />

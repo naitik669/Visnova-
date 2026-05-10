@@ -26,6 +26,7 @@ import {
   Plus,
   Flame,
   Minus,
+  Wallet,
 } from "lucide-react";
 import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
@@ -116,6 +117,7 @@ export default function Dashboard() {
     notes,
     userStreak,
     weeklyActivity,
+    moneyOverview,
   } = useStore();
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = React.useState(new Date());
@@ -227,6 +229,13 @@ export default function Dashboard() {
 
   // Use vitals from store to allow persistence of manual adjustments
   const { focus: focusForce, energy: energyState, sleep: systemLoad } = vitals;
+  const formatMoney = (amount: number) => {
+    try {
+      return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
+    } catch {
+      return `INR ${Math.round(amount || 0).toLocaleString('en-IN')}`;
+    }
+  };
   
   // Alignment is calculated from current vision data
   const globalProgress =
@@ -941,6 +950,44 @@ export default function Dashboard() {
         {/* Right Sidebar stats panel */}
         <div className="w-full lg:w-[300px] shrink-0 bg-card rounded-[2.5rem] p-6 flex flex-col shadow-sm relative pt-8">
           <div className="flex flex-col gap-4 w-full h-auto">
+            <div className="rounded-[1.6rem] border border-card-border bg-app-container p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Money</p>
+                  <p className="text-sm font-bold text-text-main mt-1">
+                    {moneyOverview ? formatMoney(moneyOverview.monthSavings) : 'Start tracking'}
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
+                  <Wallet size={18} />
+                </div>
+              </div>
+              {moneyOverview?.topGoal ? (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-bold text-text-secondary truncate">{moneyOverview.topGoal.title}</span>
+                    <span className="text-[10px] font-black text-accent">
+                      {Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}%
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded-full bg-surface-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-accent"
+                      style={{ width: `${Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-[11px] font-semibold text-text-secondary/65">Start tracking money for your Visions.</p>
+              )}
+              <button
+                onClick={() => navigate('/money')}
+                className="mt-4 h-9 w-full rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest"
+              >
+                Open Money
+              </button>
+            </div>
+
             <div className="flex items-center justify-between pb-2 border-b border-card-border/60">
               <h3 className="text-[14px] font-bold text-text-main">
                 To-Do List

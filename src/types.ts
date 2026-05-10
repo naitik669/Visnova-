@@ -172,6 +172,101 @@ export interface NovaCapsule {
   items: NovaCapsuleItem[];
 }
 
+export type FinanceTransactionType = 'income' | 'expense' | 'transfer' | 'saving';
+export type FinanceGoalStatus = 'active' | 'completed' | 'paused' | 'archived';
+export type FinanceGoalPriority = 'low' | 'medium' | 'high';
+export type FinanceBillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
+
+export interface FinanceTransaction {
+  id: string;
+  userId: string;
+  type: FinanceTransactionType;
+  amount: number;
+  currency: string;
+  category?: string | null;
+  title: string;
+  note?: string | null;
+  transactionDate: string;
+  paymentMethod?: string | null;
+  linkedVisionId?: string | null;
+  linkedGoalId?: string | null;
+  receiptUrl?: string | null;
+  receiptPath?: string | null;
+  isRecurring?: boolean;
+  createdAt: number;
+  updatedAt: number;
+  deletedAt?: string | null;
+}
+
+export interface FinanceGoal {
+  id: string;
+  userId: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  currency: string;
+  deadline?: string | null;
+  linkedVisionId?: string | null;
+  priority: FinanceGoalPriority;
+  status: FinanceGoalStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FinanceBudget {
+  id: string;
+  userId: string;
+  month: number;
+  year: number;
+  category: string;
+  limitAmount: number;
+  spentAmount: number;
+  currency: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FinanceSubscription {
+  id: string;
+  userId: string;
+  name: string;
+  amount: number;
+  currency: string;
+  billingCycle: FinanceBillingCycle;
+  nextBillingDate?: string | null;
+  category?: string | null;
+  linkedVisionId?: string | null;
+  active: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FinanceReview {
+  id: string;
+  userId: string;
+  periodType: 'weekly' | 'monthly';
+  periodStart: string;
+  periodEnd: string;
+  incomeTotal: number;
+  expenseTotal: number;
+  savingsTotal: number;
+  reflection?: string | null;
+  improvement?: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MoneyOverview {
+  monthIncome: number;
+  monthExpenses: number;
+  monthSavings: number;
+  budgetLeft: number;
+  topSpendingCategory: string | null;
+  activeGoals: number;
+  upcomingSubscriptions: FinanceSubscription[];
+  topGoal: FinanceGoal | null;
+}
+
 export interface Vitals {
   focus: number;
   energy: number;
@@ -291,6 +386,13 @@ export interface AppState {
   followingCounts: Record<string, number>;
   userStreak: UserStreak | null;
   weeklyActivity: DailyActivitySummary[];
+  financeTransactions: FinanceTransaction[];
+  financeGoals: FinanceGoal[];
+  financeBudgets: FinanceBudget[];
+  financeSubscriptions: FinanceSubscription[];
+  financeReviews: FinanceReview[];
+  moneyOverview: MoneyOverview | null;
+  isMoneyLoading: boolean;
   notifications: any[];
   unreadNotificationCount: number;
   authLoading: boolean;
@@ -314,6 +416,27 @@ export interface AppState {
   isAuthInitialized: boolean;
   selectedProfileId: string | null;
   fetchDashboardData: () => Promise<void>;
+  fetchMoneyOverview: () => Promise<void>;
+  fetchFinanceTransactions: () => Promise<void>;
+  createFinanceTransaction: (transaction: Partial<FinanceTransaction> & Record<string, any>) => Promise<FinanceTransaction | false>;
+  updateFinanceTransaction: (id: string, updates: Partial<FinanceTransaction> & Record<string, any>) => Promise<boolean>;
+  deleteFinanceTransaction: (id: string) => Promise<boolean>;
+  fetchFinanceGoals: () => Promise<void>;
+  createFinanceGoal: (goal: Partial<FinanceGoal> & Record<string, any>) => Promise<FinanceGoal | false>;
+  updateFinanceGoal: (id: string, updates: Partial<FinanceGoal> & Record<string, any>) => Promise<boolean>;
+  deleteFinanceGoal: (id: string) => Promise<boolean>;
+  contributeToFinanceGoal: (goalId: string, amount: number, title?: string) => Promise<boolean>;
+  fetchFinanceBudgets: () => Promise<void>;
+  createFinanceBudget: (budget: Partial<FinanceBudget> & Record<string, any>) => Promise<FinanceBudget | false>;
+  updateFinanceBudget: (id: string, updates: Partial<FinanceBudget> & Record<string, any>) => Promise<boolean>;
+  deleteFinanceBudget: (id: string) => Promise<boolean>;
+  fetchFinanceSubscriptions: () => Promise<void>;
+  createFinanceSubscription: (subscription: Partial<FinanceSubscription> & Record<string, any>) => Promise<FinanceSubscription | false>;
+  updateFinanceSubscription: (id: string, updates: Partial<FinanceSubscription> & Record<string, any>) => Promise<boolean>;
+  deleteFinanceSubscription: (id: string) => Promise<boolean>;
+  fetchFinanceReviews: () => Promise<void>;
+  createFinanceReview: (review: Partial<FinanceReview> & Record<string, any>) => Promise<FinanceReview | false>;
+  fetchVisionFinanceSummary: (visionId: string) => Promise<{ goals: FinanceGoal[]; transactions: FinanceTransaction[]; saved: number; expenses: number; target: number }>;
   fetchVisions: () => Promise<void>;
   fetchTodos: () => Promise<void>;
   loadUserProfile: (userId: string) => Promise<void>;

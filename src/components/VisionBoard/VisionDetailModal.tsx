@@ -35,7 +35,8 @@ import {
   MoreVertical,
   MousePointer2,
   Globe,
-  UserPlus
+  UserPlus,
+  Wallet
 } from 'lucide-react';
 import {
   DndContext,
@@ -567,13 +568,31 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
 /// --- Internal Helper Components ---
 
 function ExecutionPlan({ vision }: { vision: Vision }) {
-  const { notes, updateVision, session, addToast } = useStore();
+  const { notes, updateVision, session, addToast, financeGoals, financeTransactions, fetchMoneyOverview } = useStore();
+  const navigate = useNavigate();
   const [taskText, setTaskText] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+  const linkedMoneyGoals = financeGoals.filter(goal => goal.linkedVisionId === vision.id && goal.status !== 'archived');
+  const linkedMoneyTransactions = financeTransactions.filter(transaction => transaction.linkedVisionId === vision.id && !transaction.deletedAt);
+  const visionMoneyTarget = linkedMoneyGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+  const visionMoneySaved = linkedMoneyGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+  const visionMoneyExpenses = linkedMoneyTransactions.filter(transaction => transaction.type === 'expense').reduce((sum, transaction) => sum + transaction.amount, 0);
+  const visionMoneyProgress = Math.min(100, Math.round((visionMoneySaved / Math.max(1, visionMoneyTarget)) * 100));
+  const formatMoney = (amount: number) => {
+    try {
+      return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
+    } catch {
+      return `INR ${Math.round(amount || 0).toLocaleString('en-IN')}`;
+    }
+  };
+
+  useEffect(() => {
+    fetchMoneyOverview().catch(error => console.error('Failed to load Vision Money summary:', error));
+  }, [fetchMoneyOverview, vision.id]);
 
   const handleToggleTask = (taskId: string) => {
     const task = vision.tasks.find(t => t.id === taskId);
@@ -745,6 +764,47 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
              <span className="text-[10px] font-black uppercase tracking-widest text-accent">Main Goal</span>
              <h2 className="text-3xl font-black text-text-main tracking-tighter">{vision.title}</h2>
              <p className="text-xl text-text-secondary font-medium  border-l-4 border-accent/20 pl-8">{vision.description}</p>
+          </div>
+
+          <div className="rounded-[2rem] border border-card-border bg-card p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-text-main">Money for this Vision</h3>
+                  <p className="text-xs font-semibold text-text-secondary mt-1">
+                    {linkedMoneyGoals.length > 0
+                      ? `${formatMoney(visionMoneySaved)} saved of ${formatMoney(visionMoneyTarget)} target`
+                      : 'Track the money needed to make this Vision real.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/money')}
+                className="h-10 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest"
+              >
+                Open Money
+              </button>
+            </div>
+            <div className="mt-5 h-2 rounded-full bg-surface-muted overflow-hidden">
+              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${visionMoneyProgress}%` }} />
+            </div>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-2xl bg-app-container border border-card-border p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Goals</p>
+                <p className="text-sm font-black text-text-main mt-1">{linkedMoneyGoals.length}</p>
+              </div>
+              <div className="rounded-2xl bg-app-container border border-card-border p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Saved</p>
+                <p className="text-sm font-black text-success mt-1">{formatMoney(visionMoneySaved)}</p>
+              </div>
+              <div className="rounded-2xl bg-app-container border border-card-border p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Expenses</p>
+                <p className="text-sm font-black text-danger mt-1">{formatMoney(visionMoneyExpenses)}</p>
+              </div>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">

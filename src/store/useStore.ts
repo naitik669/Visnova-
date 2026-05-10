@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary } from '../types';
+import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary, FinanceTransaction, FinanceGoal, FinanceBudget, FinanceSubscription, FinanceReview } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -21,6 +21,13 @@ import {
   validateUsername,
   validateVisionPayload
 } from '../lib/security';
+import {
+  validateFinanceBudget,
+  validateFinanceGoal,
+  validateFinanceReview,
+  validateFinanceSubscription,
+  validateFinanceTransaction
+} from '../lib/financeValidation';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -147,6 +154,95 @@ function lastSevenDateKeys() {
   });
 }
 
+function formatFinanceTransaction(row: any): FinanceTransaction {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    amount: Number(row.amount || 0),
+    currency: row.currency || 'INR',
+    category: row.category,
+    title: row.title,
+    note: row.note,
+    transactionDate: row.transaction_date,
+    paymentMethod: row.payment_method,
+    linkedVisionId: row.linked_vision_id,
+    linkedGoalId: row.linked_goal_id,
+    receiptUrl: row.receipt_url,
+    receiptPath: row.receipt_path,
+    isRecurring: !!row.is_recurring,
+    createdAt: new Date(row.created_at || Date.now()).getTime(),
+    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+    deletedAt: row.deleted_at || null
+  };
+}
+
+function formatFinanceGoal(row: any): FinanceGoal {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    title: row.title,
+    targetAmount: Number(row.target_amount || 0),
+    currentAmount: Number(row.current_amount || 0),
+    currency: row.currency || 'INR',
+    deadline: row.deadline,
+    linkedVisionId: row.linked_vision_id,
+    priority: row.priority || 'medium',
+    status: row.status || 'active',
+    createdAt: new Date(row.created_at || Date.now()).getTime(),
+    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+  };
+}
+
+function formatFinanceBudget(row: any): FinanceBudget {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    month: Number(row.month),
+    year: Number(row.year),
+    category: row.category,
+    limitAmount: Number(row.limit_amount || 0),
+    spentAmount: Number(row.spent_amount || 0),
+    currency: row.currency || 'INR',
+    createdAt: new Date(row.created_at || Date.now()).getTime(),
+    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+  };
+}
+
+function formatFinanceSubscription(row: any): FinanceSubscription {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    amount: Number(row.amount || 0),
+    currency: row.currency || 'INR',
+    billingCycle: row.billing_cycle || 'monthly',
+    nextBillingDate: row.next_billing_date,
+    category: row.category,
+    linkedVisionId: row.linked_vision_id,
+    active: row.active !== false,
+    createdAt: new Date(row.created_at || Date.now()).getTime(),
+    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+  };
+}
+
+function formatFinanceReview(row: any): FinanceReview {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    periodType: row.period_type || 'weekly',
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    incomeTotal: Number(row.income_total || 0),
+    expenseTotal: Number(row.expense_total || 0),
+    savingsTotal: Number(row.savings_total || 0),
+    reflection: row.reflection,
+    improvement: row.improvement,
+    createdAt: new Date(row.created_at || Date.now()).getTime(),
+    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+  };
+}
+
 async function notifyMentionedUsers({
   actorId,
   postId,
@@ -258,6 +354,13 @@ function privateStateReset() {
     followingCounts: {},
     userStreak: null,
     weeklyActivity: [],
+    financeTransactions: [],
+    financeGoals: [],
+    financeBudgets: [],
+    financeSubscriptions: [],
+    financeReviews: [],
+    moneyOverview: null,
+    isMoneyLoading: false,
     notifications: [],
     unreadNotificationCount: 0,
   };
@@ -358,6 +461,13 @@ export const useStore = create<AppState>((set, get) => ({
   followingCounts: {},
   userStreak: null,
   weeklyActivity: [],
+  financeTransactions: [],
+  financeGoals: [],
+  financeBudgets: [],
+  financeSubscriptions: [],
+  financeReviews: [],
+  moneyOverview: null,
+  isMoneyLoading: false,
   notifications: [],
   unreadNotificationCount: 0,
   achievements: [],
@@ -494,6 +604,449 @@ export const useStore = create<AppState>((set, get) => ({
     runBackground('Dashboard feed context refresh', () => get().fetchFeedContext());
     runBackground('Dashboard circle refresh', () => get().fetchCircleData());
     runBackground('Dashboard notifications refresh', () => get().fetchNotifications());
+    runBackground('Dashboard money refresh', () => get().fetchMoneyOverview());
+  },
+
+  fetchMoneyOverview: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to view Money.' });
+      return;
+    }
+    set({ isMoneyLoading: true });
+    try {
+      await Promise.all([
+        get().fetchFinanceTransactions(),
+        get().fetchFinanceGoals(),
+        get().fetchFinanceBudgets(),
+        get().fetchFinanceSubscriptions(),
+        get().fetchFinanceReviews(),
+      ]);
+
+      const { financeTransactions, financeGoals, financeBudgets, financeSubscriptions } = get();
+      const now = new Date();
+      const month = now.getMonth();
+      const year = now.getFullYear();
+      const monthTransactions = financeTransactions.filter((transaction) => {
+        const date = new Date(`${transaction.transactionDate}T00:00:00`);
+        return date.getMonth() === month && date.getFullYear() === year && !transaction.deletedAt;
+      });
+      const monthIncome = monthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+      const monthExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      const categoryTotals = monthTransactions
+        .filter(t => t.type === 'expense')
+        .reduce<Record<string, number>>((acc, t) => {
+          const key = t.category || 'Other';
+          acc[key] = (acc[key] || 0) + t.amount;
+          return acc;
+        }, {});
+      const topSpendingCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      const budgetLeft = financeBudgets
+        .filter(b => b.month === month + 1 && b.year === year)
+        .reduce((sum, budget) => {
+          const spent = monthTransactions.filter(t => t.type === 'expense' && t.category === budget.category).reduce((acc, t) => acc + t.amount, 0);
+          return sum + (budget.limitAmount - spent);
+        }, 0);
+      const inTwoWeeks = new Date(now);
+      inTwoWeeks.setDate(now.getDate() + 14);
+      const upcomingSubscriptions = financeSubscriptions
+        .filter(sub => sub.active && sub.nextBillingDate && new Date(`${sub.nextBillingDate}T00:00:00`) <= inTwoWeeks)
+        .sort((a, b) => String(a.nextBillingDate).localeCompare(String(b.nextBillingDate)))
+        .slice(0, 3);
+      const activeGoals = financeGoals.filter(goal => goal.status === 'active');
+      const topGoal = [...activeGoals].sort((a, b) => (b.currentAmount / Math.max(1, b.targetAmount)) - (a.currentAmount / Math.max(1, a.targetAmount)))[0] || null;
+
+      set({
+        moneyOverview: {
+          monthIncome,
+          monthExpenses,
+          monthSavings: monthIncome - monthExpenses,
+          budgetLeft,
+          topSpendingCategory,
+          activeGoals: activeGoals.length,
+          upcomingSubscriptions,
+          topGoal
+        },
+        isMoneyLoading: false
+      });
+    } catch (error: any) {
+      console.error('Failed to load Money overview:', error);
+      set({ isMoneyLoading: false });
+      get().addToast({ type: 'error', title: 'Money failed', description: error.message || 'Could not load Money.' });
+    }
+  },
+
+  fetchFinanceTransactions: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+    const { data, error } = await supabase
+      .from('finance_transactions')
+      .select('*')
+      .eq('user_id', userId)
+      .is('deleted_at', null)
+      .order('transaction_date', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    set({ financeTransactions: (data || []).map(formatFinanceTransaction) });
+  },
+
+  createFinanceTransaction: async (transaction) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before adding Money data.' });
+      return false;
+    }
+    try {
+      const payload = validateFinanceTransaction(transaction);
+      if (payload.linked_vision_id && !get().visions.some(v => v.id === payload.linked_vision_id)) throw new Error('Choose one of your Visions.');
+      if (payload.linked_goal_id && !get().financeGoals.some(goal => goal.id === payload.linked_goal_id)) throw new Error('Choose one of your Money goals.');
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('finance_transactions')
+        .insert({ ...payload, user_id: userId, updated_at: now })
+        .select('*')
+        .single();
+      if (error) throw error;
+      const saved = formatFinanceTransaction(data);
+      set((state) => ({ financeTransactions: [saved, ...state.financeTransactions] }));
+      await get().fetchMoneyOverview();
+      get().addToast({ type: 'success', title: 'Money saved', description: `${saved.title} was added.` });
+      return saved;
+    } catch (error: any) {
+      console.error('Failed to create finance transaction:', error);
+      get().addToast({ type: 'error', title: 'Transaction failed', description: error.message || 'Could not save transaction.' });
+      return false;
+    }
+  },
+
+  updateFinanceTransaction: async (id, updates) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing Money data.' });
+      return false;
+    }
+    try {
+      const current = get().financeTransactions.find(t => t.id === id);
+      if (!current) throw new Error('Transaction unavailable.');
+      const payload = validateFinanceTransaction({ ...current, ...updates });
+      const { data, error } = await supabase
+        .from('finance_transactions')
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select('*')
+        .single();
+      if (error) throw error;
+      const saved = formatFinanceTransaction(data);
+      set((state) => ({ financeTransactions: state.financeTransactions.map(t => t.id === id ? saved : t) }));
+      await get().fetchMoneyOverview();
+      return true;
+    } catch (error: any) {
+      console.error('Failed to update finance transaction:', error);
+      get().addToast({ type: 'error', title: 'Transaction failed', description: error.message || 'Could not update transaction.' });
+      return false;
+    }
+  },
+
+  deleteFinanceTransaction: async (id) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before deleting Money data.' });
+      return false;
+    }
+    try {
+      const { error } = await supabase
+        .from('finance_transactions')
+        .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('user_id', userId);
+      if (error) throw error;
+      set((state) => ({ financeTransactions: state.financeTransactions.filter(t => t.id !== id) }));
+      await get().fetchMoneyOverview();
+      return true;
+    } catch (error: any) {
+      console.error('Failed to delete finance transaction:', error);
+      get().addToast({ type: 'error', title: 'Delete failed', description: error.message || 'Could not delete transaction.' });
+      return false;
+    }
+  },
+
+  fetchFinanceGoals: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+    const { data, error } = await supabase.from('finance_goals').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
+    if (error) throw error;
+    set({ financeGoals: (data || []).map(formatFinanceGoal) });
+  },
+
+  createFinanceGoal: async (goal) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before creating a Money goal.' });
+      return false;
+    }
+    try {
+      const payload = validateFinanceGoal(goal);
+      if (payload.linked_vision_id && !get().visions.some(v => v.id === payload.linked_vision_id)) throw new Error('Choose one of your Visions.');
+      const { data, error } = await supabase.from('finance_goals').insert({ ...payload, user_id: userId, updated_at: new Date().toISOString() }).select('*').single();
+      if (error) throw error;
+      const saved = formatFinanceGoal(data);
+      set((state) => ({ financeGoals: [saved, ...state.financeGoals] }));
+      await get().fetchMoneyOverview();
+      get().addToast({ type: 'success', title: 'Goal created', description: `${saved.title} is now tracked.` });
+      return saved;
+    } catch (error: any) {
+      console.error('Failed to create finance goal:', error);
+      get().addToast({ type: 'error', title: 'Goal failed', description: error.message || 'Could not save goal.' });
+      return false;
+    }
+  },
+
+  updateFinanceGoal: async (id, updates) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing Money goals.' });
+      return false;
+    }
+    try {
+      const current = get().financeGoals.find(goal => goal.id === id);
+      if (!current) throw new Error('Goal unavailable.');
+      const payload = validateFinanceGoal({ ...current, ...updates, target_amount: updates.targetAmount ?? current.targetAmount, current_amount: updates.currentAmount ?? current.currentAmount, linked_vision_id: updates.linkedVisionId ?? current.linkedVisionId });
+      const { data, error } = await supabase.from('finance_goals').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', userId).select('*').single();
+      if (error) throw error;
+      const saved = formatFinanceGoal(data);
+      set((state) => ({ financeGoals: state.financeGoals.map(goal => goal.id === id ? saved : goal) }));
+      await get().fetchMoneyOverview();
+      return true;
+    } catch (error: any) {
+      console.error('Failed to update finance goal:', error);
+      get().addToast({ type: 'error', title: 'Goal failed', description: error.message || 'Could not update goal.' });
+      return false;
+    }
+  },
+
+  deleteFinanceGoal: async (id) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before deleting Money goals.' });
+      return false;
+    }
+    try {
+      const { error } = await supabase.from('finance_goals').delete().eq('id', id).eq('user_id', userId);
+      if (error) throw error;
+      set((state) => ({ financeGoals: state.financeGoals.filter(goal => goal.id !== id) }));
+      await get().fetchMoneyOverview();
+      return true;
+    } catch (error: any) {
+      console.error('Failed to delete finance goal:', error);
+      get().addToast({ type: 'error', title: 'Delete failed', description: error.message || 'Could not delete goal.' });
+      return false;
+    }
+  },
+
+  contributeToFinanceGoal: async (goalId, amount, title) => {
+    const goal = get().financeGoals.find(g => g.id === goalId);
+    if (!goal) {
+      get().addToast({ type: 'error', title: 'Goal unavailable', description: 'Refresh Money and try again.' });
+      return false;
+    }
+    const transaction = await get().createFinanceTransaction({
+      type: 'saving',
+      title: title || `Contribution to ${goal.title}`,
+      amount,
+      category: 'Saving Goal',
+      linkedGoalId: goal.id,
+      linkedVisionId: goal.linkedVisionId || null,
+      transactionDate: new Date().toISOString().slice(0, 10)
+    });
+    if (!transaction) return false;
+    const nextAmount = Math.min(goal.targetAmount, goal.currentAmount + Number(amount));
+    return get().updateFinanceGoal(goal.id, { currentAmount: nextAmount, status: nextAmount >= goal.targetAmount ? 'completed' : goal.status });
+  },
+
+  fetchFinanceBudgets: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+    const { data, error } = await supabase.from('finance_budgets').select('*').eq('user_id', userId).order('year', { ascending: false }).order('month', { ascending: false });
+    if (error) throw error;
+    set({ financeBudgets: (data || []).map(formatFinanceBudget) });
+  },
+
+  createFinanceBudget: async (budget) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before creating budgets.' });
+      return false;
+    }
+    try {
+      const payload = validateFinanceBudget(budget);
+      const { data, error } = await supabase.from('finance_budgets').upsert({ ...payload, user_id: userId, updated_at: new Date().toISOString() }, { onConflict: 'user_id,month,year,category' }).select('*').single();
+      if (error) throw error;
+      const saved = formatFinanceBudget(data);
+      set((state) => ({ financeBudgets: [saved, ...state.financeBudgets.filter(b => b.id !== saved.id)] }));
+      await get().fetchMoneyOverview();
+      get().addToast({ type: 'success', title: 'Budget saved', description: `${saved.category} limit is active.` });
+      return saved;
+    } catch (error: any) {
+      console.error('Failed to create finance budget:', error);
+      get().addToast({ type: 'error', title: 'Budget failed', description: error.message || 'Could not save budget.' });
+      return false;
+    }
+  },
+
+  updateFinanceBudget: async (id, updates) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing budgets.' });
+      return false;
+    }
+    try {
+      const current = get().financeBudgets.find(b => b.id === id);
+      if (!current) throw new Error('Budget unavailable.');
+      const payload = validateFinanceBudget({ ...current, ...updates, limit_amount: updates.limitAmount ?? current.limitAmount });
+      const { data, error } = await supabase.from('finance_budgets').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', userId).select('*').single();
+      if (error) throw error;
+      const saved = formatFinanceBudget(data);
+      set((state) => ({ financeBudgets: state.financeBudgets.map(b => b.id === id ? saved : b) }));
+      await get().fetchMoneyOverview();
+      return true;
+    } catch (error: any) {
+      console.error('Failed to update finance budget:', error);
+      get().addToast({ type: 'error', title: 'Budget failed', description: error.message || 'Could not update budget.' });
+      return false;
+    }
+  },
+
+  deleteFinanceBudget: async (id) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before deleting budgets.' });
+      return false;
+    }
+    const { error } = await supabase.from('finance_budgets').delete().eq('id', id).eq('user_id', userId);
+    if (error) {
+      get().addToast({ type: 'error', title: 'Delete failed', description: error.message });
+      return false;
+    }
+    set((state) => ({ financeBudgets: state.financeBudgets.filter(b => b.id !== id) }));
+    await get().fetchMoneyOverview();
+    return true;
+  },
+
+  fetchFinanceSubscriptions: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+    const { data, error } = await supabase.from('finance_subscriptions').select('*').eq('user_id', userId).order('next_billing_date', { ascending: true });
+    if (error) throw error;
+    set({ financeSubscriptions: (data || []).map(formatFinanceSubscription) });
+  },
+
+  createFinanceSubscription: async (subscription) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before adding subscriptions.' });
+      return false;
+    }
+    try {
+      const payload = validateFinanceSubscription(subscription);
+      if (payload.linked_vision_id && !get().visions.some(v => v.id === payload.linked_vision_id)) throw new Error('Choose one of your Visions.');
+      const { data, error } = await supabase.from('finance_subscriptions').insert({ ...payload, user_id: userId, updated_at: new Date().toISOString() }).select('*').single();
+      if (error) throw error;
+      const saved = formatFinanceSubscription(data);
+      set((state) => ({ financeSubscriptions: [saved, ...state.financeSubscriptions] }));
+      await get().fetchMoneyOverview();
+      get().addToast({ type: 'success', title: 'Subscription saved', description: `${saved.name} is tracked.` });
+      return saved;
+    } catch (error: any) {
+      console.error('Failed to create finance subscription:', error);
+      get().addToast({ type: 'error', title: 'Subscription failed', description: error.message || 'Could not save subscription.' });
+      return false;
+    }
+  },
+
+  updateFinanceSubscription: async (id, updates) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing subscriptions.' });
+      return false;
+    }
+    try {
+      const current = get().financeSubscriptions.find(sub => sub.id === id);
+      if (!current) throw new Error('Subscription unavailable.');
+      const payload = validateFinanceSubscription({ ...current, ...updates, billing_cycle: updates.billingCycle ?? current.billingCycle, next_billing_date: updates.nextBillingDate ?? current.nextBillingDate, linked_vision_id: updates.linkedVisionId ?? current.linkedVisionId });
+      const { data, error } = await supabase.from('finance_subscriptions').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', userId).select('*').single();
+      if (error) throw error;
+      const saved = formatFinanceSubscription(data);
+      set((state) => ({ financeSubscriptions: state.financeSubscriptions.map(sub => sub.id === id ? saved : sub) }));
+      await get().fetchMoneyOverview();
+      return true;
+    } catch (error: any) {
+      console.error('Failed to update finance subscription:', error);
+      get().addToast({ type: 'error', title: 'Subscription failed', description: error.message || 'Could not update subscription.' });
+      return false;
+    }
+  },
+
+  deleteFinanceSubscription: async (id) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before deleting subscriptions.' });
+      return false;
+    }
+    const { error } = await supabase.from('finance_subscriptions').delete().eq('id', id).eq('user_id', userId);
+    if (error) {
+      get().addToast({ type: 'error', title: 'Delete failed', description: error.message });
+      return false;
+    }
+    set((state) => ({ financeSubscriptions: state.financeSubscriptions.filter(sub => sub.id !== id) }));
+    await get().fetchMoneyOverview();
+    return true;
+  },
+
+  fetchFinanceReviews: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+    const { data, error } = await supabase.from('finance_reviews').select('*').eq('user_id', userId).order('period_start', { ascending: false }).limit(20);
+    if (error) throw error;
+    set({ financeReviews: (data || []).map(formatFinanceReview) });
+  },
+
+  createFinanceReview: async (review) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before saving a review.' });
+      return false;
+    }
+    try {
+      const payload = validateFinanceReview(review);
+      const { data, error } = await supabase.from('finance_reviews').insert({ ...payload, user_id: userId, updated_at: new Date().toISOString() }).select('*').single();
+      if (error) throw error;
+      const saved = formatFinanceReview(data);
+      set((state) => ({ financeReviews: [saved, ...state.financeReviews] }));
+      get().addToast({ type: 'success', title: 'Review saved', description: 'Your money habit note was saved.' });
+      return saved;
+    } catch (error: any) {
+      console.error('Failed to create finance review:', error);
+      get().addToast({ type: 'error', title: 'Review failed', description: error.message || 'Could not save review.' });
+      return false;
+    }
+  },
+
+  fetchVisionFinanceSummary: async (visionId) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to view Money.' });
+      return { goals: [], transactions: [], saved: 0, expenses: 0, target: 0 };
+    }
+    const goals = get().financeGoals.filter(goal => goal.linkedVisionId === visionId);
+    const transactions = get().financeTransactions.filter(transaction => transaction.linkedVisionId === visionId && !transaction.deletedAt);
+    return {
+      goals,
+      transactions,
+      saved: goals.reduce((sum, goal) => sum + goal.currentAmount, 0),
+      expenses: transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0),
+      target: goals.reduce((sum, goal) => sum + goal.targetAmount, 0)
+    };
   },
 
   loadUserProfile: async (userId: string) => {
