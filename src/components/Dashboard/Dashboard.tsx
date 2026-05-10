@@ -112,6 +112,7 @@ export default function Dashboard() {
     isDashboardLoading,
     fetchDashboardData,
     toggleVisionTask,
+    updateUser,
     notes,
     userStreak,
     weeklyActivity,
@@ -129,6 +130,22 @@ export default function Dashboard() {
 
   const [focusNote, setFocusNote] = React.useState(user.statusNote || "");
   const [isEditingFocus, setIsEditingFocus] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isEditingFocus) {
+      setFocusNote(user.statusNote || "");
+    }
+  }, [isEditingFocus, user.statusNote]);
+
+  const saveFocusNote = React.useCallback(() => {
+    const nextFocusNote = focusNote.trim();
+    setFocusNote(nextFocusNote);
+    setIsEditingFocus(false);
+
+    if (nextFocusNote !== (user.statusNote || "")) {
+      void updateUser({ statusNote: nextFocusNote });
+    }
+  }, [focusNote, updateUser, user.statusNote]);
 
   const dateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
   const currentJournalEntry = journalEntries.find((e) => e.date === dateKey);
@@ -315,14 +332,11 @@ export default function Dashboard() {
                         type="text"
                         value={focusNote}
                         onChange={(e) => setFocusNote(e.target.value)}
-                        onBlur={() => {
-                          setIsEditingFocus(false);
-                          useStore.getState().updateUser({ statusNote: focusNote });
-                        }}
+                        onBlur={saveFocusNote}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
-                            setIsEditingFocus(false);
-                            useStore.getState().updateUser({ statusNote: focusNote });
+                            e.preventDefault();
+                            saveFocusNote();
                           }
                         }}
                         className="text-xl lg:text-3xl font-display font-medium text-text-main bg-transparent border-b-2 border-accent outline-none w-full pb-2"

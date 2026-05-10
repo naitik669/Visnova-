@@ -1032,6 +1032,10 @@ export const useStore = create<AppState>((set, get) => ({
         dbUpdates.main_goal = sanitizePlainText(updates.mainGoal || '', 300);
         nextUserUpdates.mainGoal = dbUpdates.main_goal;
       }
+      if (updates.statusNote !== undefined) {
+        dbUpdates.status_note = sanitizePlainText(updates.statusNote || '', 300);
+        nextUserUpdates.statusNote = dbUpdates.status_note;
+      }
       if (updates.interests !== undefined) {
         dbUpdates.interests = Array.isArray(updates.interests) ? updates.interests.map((interest: string) => sanitizeText(interest, 40)).filter(Boolean).slice(0, 20) : [];
         nextUserUpdates.interests = dbUpdates.interests;
