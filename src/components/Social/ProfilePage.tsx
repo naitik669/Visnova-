@@ -43,7 +43,7 @@ import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { uploadAvatar } from '../../lib/supabase';
-import { ImageLightbox, PostEditModal } from '../Feed/CommunityFeed';
+import { ImageLightbox, PostEditModal, PostReportModal } from '../Feed/CommunityFeed';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
@@ -120,6 +120,7 @@ export default function ProfilePage() {
     archived: !!p?.archived,
     archivedAt: p?.archived_at || null,
     deletedAt: p?.deleted_at || null,
+    editedAt: p?.edited_at || null,
     media: safeArray<any>(p?.media).map((m: any) => ({
       id: m.id,
       url: m.media_url,
@@ -1060,13 +1061,16 @@ export default function ProfilePage() {
 }
 
 function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived }: { post: Post, onOpenThread: () => void, onDeleted?: (postId: string) => void, onUpdated?: (postId: string, updates: Partial<Post>) => void, onArchived?: (postId: string) => void }) {
-  const { deletePost, updatePost, archivePost, restorePost, session } = useStore();
+  const { deletePost, updatePost, archivePost, restorePost, reportPost, session } = useStore();
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(!!post.isLiked);
   const [isSaved, setIsSaved] = useState(!!post.isSaved);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDetails, setReportDetails] = useState('');
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const isOwnPost = post.userId === session?.user?.id;
   const currentUserId = session?.user?.id;
@@ -1141,8 +1145,13 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
           <span className="text-[10px] font-black text-text-secondary/30 uppercase tracking-[0.3em] flex items-center gap-2">
              <Clock size={12} /> {post.timestamp}
           </span>
+          {post.editedAt && (
+            <span className="text-[10px] font-black text-text-secondary/40 uppercase tracking-[0.3em] flex items-center gap-2">
+              Edited {safeFormat(post.editedAt, 'MMM d, h:mm a')}
+            </span>
+          )}
         </div>
-        {isOwnPost && (
+        {(isOwnPost || currentUserId) && (
           <div className="relative">
             <button
               onClick={() => setIsMenuOpen(open => !open)}
@@ -1159,50 +1168,64 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                   exit={{ opacity: 0, scale: 0.96, y: -4 }}
                   className="visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-52 max-h-[70dvh] overflow-y-auto custom-scrollbar p-1.5 z-50"
                 >
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setIsEditOpen(true);
-                    }}
-                    className="visnova-menu-item"
-                  >
-                    <Edit3 size={14} /> Edit Post
-                  </button>
-                  {!post.archived && (
+                  {isOwnPost ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          setIsEditOpen(true);
+                        }}
+                        className="visnova-menu-item"
+                      >
+                        <Edit3 size={14} /> Edit Post
+                      </button>
+                      {!post.archived && (
+                        <button
+                          onClick={async () => {
+                            setIsMenuOpen(false);
+                            const archived = await archivePost(post.id);
+                            if (archived) onArchived?.(post.id);
+                          }}
+                          className="visnova-menu-item"
+                        >
+                          <Archive size={14} /> Archive Post
+                        </button>
+                      )}
+                      {post.archived && (
+                        <button
+                          onClick={async () => {
+                            setIsMenuOpen(false);
+                            const restored = await restorePost(post.id);
+                            if (restored) onUpdated?.(post.id, { archived: false, archivedAt: null });
+                          }}
+                          className="visnova-menu-item"
+                        >
+                          <Archive size={14} /> Restore Post
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Delete this post? This will remove it from your profile and feeds.')) return;
+                          setIsMenuOpen(false);
+                          const deleted = await deletePost(post.id);
+                          if (deleted) onDeleted?.(post.id);
+                        }}
+                        className="visnova-menu-item visnova-menu-item-danger"
+                      >
+                        <Trash2 size={14} /> Delete Post
+                      </button>
+                    </>
+                  ) : (
                     <button
-                      onClick={async () => {
+                      onClick={() => {
                         setIsMenuOpen(false);
-                        const archived = await archivePost(post.id);
-                        if (archived) onArchived?.(post.id);
+                        setIsReportOpen(true);
                       }}
-                      className="visnova-menu-item"
+                      className="visnova-menu-item visnova-menu-item-danger"
                     >
-                      <Archive size={14} /> Archive Post
+                      <Flag size={14} /> Report Post
                     </button>
                   )}
-                  {post.archived && (
-                    <button
-                      onClick={async () => {
-                        setIsMenuOpen(false);
-                        const restored = await restorePost(post.id);
-                        if (restored) onUpdated?.(post.id, { archived: false, archivedAt: null });
-                      }}
-                      className="visnova-menu-item"
-                    >
-                      <Archive size={14} /> Restore Post
-                    </button>
-                  )}
-                  <button
-                    onClick={async () => {
-                      if (!confirm('Delete this post? This cannot be undone.')) return;
-                      setIsMenuOpen(false);
-                      const deleted = await deletePost(post.id);
-                      if (deleted) onDeleted?.(post.id);
-                    }}
-                    className="visnova-menu-item visnova-menu-item-danger"
-                  >
-                    <Trash2 size={14} /> Delete Post
-                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1349,8 +1372,23 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
             onClose={() => setIsEditOpen(false)}
             onSave={async (updates) => {
               const updated = await updatePost(post.id, updates);
-              if (updated) onUpdated?.(post.id, updates);
+              if (updated) onUpdated?.(post.id, { ...updates, editedAt: new Date().toISOString() });
               return updated;
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isReportOpen && (
+          <PostReportModal
+            onClose={() => setIsReportOpen(false)}
+            reason={reportReason}
+            setReason={setReportReason}
+            details={reportDetails}
+            setDetails={setReportDetails}
+            onSubmit={async () => {
+              const ok = await reportPost(post.id, reportReason, reportDetails);
+              if (ok) setIsReportOpen(false);
             }}
           />
         )}

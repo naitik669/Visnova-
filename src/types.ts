@@ -488,6 +488,7 @@ export interface AppState {
   restorePost: (id: string) => Promise<boolean>;
   fetchArchivedPosts: () => Promise<Post[]>;
   deletePost: (id: string) => Promise<boolean>;
+  reportPost: (id: string, reason: string, details?: string) => Promise<boolean>;
   muteUserPosts: (userId: string) => Promise<boolean>;
   toggleLikePost: (id: string) => Promise<void>;
   toggleSavePost: (id: string) => Promise<void>;
@@ -537,6 +538,7 @@ export interface Post {
   archived?: boolean;
   archivedAt?: string | null;
   deletedAt?: string | null;
+  editedAt?: string | null;
   createdAt?: number;
   media?: {
     id: string;

@@ -44,6 +44,21 @@ const extractHashtags = (text: string) => {
   const matches = text.match(/(^|\s)#([a-zA-Z0-9_-]+)/g) || [];
   return matches.map(tag => normalizeHashtag(tag.trim()));
 };
+const reportReasons = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'harassment', label: 'Harassment' },
+  { value: 'hate', label: 'Hate or abusive content' },
+  { value: 'sexual_content', label: 'Sexual content' },
+  { value: 'violence', label: 'Violence' },
+  { value: 'self_harm', label: 'Self-harm concern' },
+  { value: 'scam', label: 'Scam or fraud' },
+  { value: 'impersonation', label: 'Impersonation' },
+  { value: 'privacy', label: 'Privacy violation' },
+  { value: 'illegal_content', label: 'Illegal content' },
+  { value: 'other', label: 'Other' }
+];
+
+const editedLabel = (editedAt?: string | null) => editedAt ? `Edited ${safeFormat(editedAt, 'MMM d, h:mm a')}` : '';
 
 function DiscoverCommunitiesPreview() {
   const [communities, setCommunities] = useState<any[]>([]);
@@ -267,6 +282,7 @@ export default function CommunityFeed() {
     archived: !!p?.archived,
     archivedAt: p?.archived_at || null,
     deletedAt: p?.deleted_at || null,
+    editedAt: p?.edited_at || null,
     media: safeArray<any>(p?.media).map((m: any) => ({
       id: m.id,
       url: m.media_url,
@@ -1211,10 +1227,13 @@ export function ImageLightbox({ src, alt, onClose }: { src: string, alt: string,
 }
 
 function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpdated, onPostArchived, onAuthorMuted }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void, onPostDeleted?: (postId: string) => void, onPostUpdated?: (postId: string, updates: Partial<Post>) => void, onPostArchived?: (postId: string) => void, onAuthorMuted?: (authorId: string) => void }) {
-  const { trackInteraction, session, followingIds, toggleFollow, deletePost, updatePost, archivePost, muteUserPosts, addToast } = useStore();
+  const { trackInteraction, session, followingIds, toggleFollow, deletePost, updatePost, archivePost, restorePost, reportPost, muteUserPosts, addToast } = useStore();
   const hasTrackedView = useRef(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDetails, setReportDetails] = useState('');
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState(!!post.isLiked);
@@ -1383,35 +1402,6 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                 exit={{ opacity: 0, scale: 0.96, y: -4 }}
                 className="visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-56 max-h-[70dvh] overflow-y-auto custom-scrollbar p-1.5 z-50"
               >
-              {!isOwnPost && (
-                <button
-                  onClick={async () => {
-                    if (!currentUserId) return;
-                    setIsMenuOpen(false);
-
-                    const { error } = await supabase.from('reports').insert({
-                      reporter_id: currentUserId,
-                      target_id: post.id,
-                      target_type: 'post',
-                      reason: 'User Reported'
-                    });
-
-                    if (error) {
-                      useStore.getState().addToast({ type: 'error', title: 'Report failed', description: 'Could not send report.' });
-                      return;
-                    }
-
-                    useStore.getState().addActivity({
-                      type: 'social',
-                      description: 'Reported post for moderation'
-                    });
-                    useStore.getState().addToast({ type: 'success', title: 'Post reported', description: 'Thank you for keeping the community safe.' });
-                  }}
-                  className="visnova-menu-item visnova-menu-item-danger"
-                >
-                  <Flag size={14} /> Report Post
-                </button>
-              )}
               {isOwnPost ? (
                 <>
                   <button
@@ -1435,9 +1425,21 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                       <Archive size={14} /> Archive Post
                     </button>
                   )}
+                  {post.archived && (
+                    <button
+                      onClick={async () => {
+                        setIsMenuOpen(false);
+                        const restored = await restorePost(post.id);
+                        if (restored) onPostUpdated?.(post.id, { archived: false, archivedAt: null });
+                      }}
+                      className="visnova-menu-item"
+                    >
+                      <Archive size={14} /> Restore Post
+                    </button>
+                  )}
                   <button
                     onClick={async () => {
-                      if (!confirm('Delete this post? This cannot be undone.')) return;
+                      if (!confirm('Delete this post? This will remove it from your profile and feeds.')) return;
                       setIsMenuOpen(false);
                       const deleted = await deletePost(post.id);
                       if (deleted) onPostDeleted?.(post.id);
@@ -1449,6 +1451,15 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                 </>
               ) : (
                 <>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsReportOpen(true);
+                    }}
+                    className="visnova-menu-item visnova-menu-item-danger"
+                  >
+                    <Flag size={14} /> Report Post
+                  </button>
                   <button
                     onClick={async () => {
                       setIsMenuOpen(false);
@@ -1478,6 +1489,20 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
       </div>
 
       <div className="mt-8 space-y-6 relative z-10">
+        {(post.editedAt || post.archived) && (
+          <div className="flex flex-wrap gap-2">
+            {post.editedAt && (
+              <span className="inline-flex items-center rounded-full bg-surface-muted px-3 py-1 text-[9px] font-black uppercase tracking-widest text-text-secondary">
+                {editedLabel(post.editedAt)}
+              </span>
+            )}
+            {post.archived && (
+              <span className="inline-flex items-center rounded-full bg-warning/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-warning">
+                Archived
+              </span>
+            )}
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {post.type === 'achievement' && (
             <div className="flex flex-col gap-1">
@@ -1632,8 +1657,23 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
             onClose={() => setIsEditOpen(false)}
             onSave={async (updates) => {
               const updated = await updatePost(post.id, updates);
-              if (updated) onPostUpdated?.(post.id, updates);
+              if (updated) onPostUpdated?.(post.id, { ...updates, editedAt: new Date().toISOString() });
               return updated;
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isReportOpen && (
+          <PostReportModal
+            onClose={() => setIsReportOpen(false)}
+            reason={reportReason}
+            setReason={setReportReason}
+            details={reportDetails}
+            setDetails={setReportDetails}
+            onSubmit={async () => {
+              const ok = await reportPost(post.id, reportReason, reportDetails);
+              if (ok) setIsReportOpen(false);
             }}
           />
         )}
@@ -1648,6 +1688,49 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+export function PostReportModal({ onClose, reason, setReason, details, setDetails, onSubmit }: { onClose: () => void; reason: string; setReason: (value: string) => void; details: string; setDetails: (value: string) => void; onSubmit: () => Promise<void> }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submit = async () => {
+    setIsSubmitting(true);
+    await onSubmit();
+    setIsSubmitting(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/80 backdrop-blur-md" />
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-md max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl p-5 sm:p-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between gap-4 mb-5">
+          <div>
+            <h3 className="text-lg font-black uppercase tracking-tight text-text-main">Report Post</h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50 mt-1">Reports are private.</p>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/50 hover:text-text-main">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="space-y-4">
+          <label className="block space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Reason</span>
+            <select value={reason} onChange={(event) => setReason(event.target.value)} className="w-full h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent">
+              {reportReasons.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </label>
+          <label className="block space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details optional</span>
+            <textarea value={details} onChange={(event) => setDetails(event.target.value.slice(0, 1000))} placeholder="Add context for moderation..." className="w-full min-h-28 rounded-2xl bg-card border border-card-border px-4 py-3 text-sm font-semibold text-text-main outline-none focus:border-accent resize-none" />
+          </label>
+          <button onClick={submit} disabled={isSubmitting} className="w-full h-12 rounded-2xl bg-danger text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50">
+            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+            Submit Report
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 

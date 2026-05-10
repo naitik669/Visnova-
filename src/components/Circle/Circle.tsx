@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
-import { Check, Clock, Inbox, MessageCircle, Plus, Sparkles, Target, Users } from 'lucide-react';
+import { Check, Clock, Globe, Inbox, MessageCircle, Plus, Sparkles, Target, Users } from 'lucide-react';
 import VerifiedBadge from '../VerifiedBadge';
 import { getSuggestedUsers, SuggestedUser } from '../../services/discoveryService';
 import { supabase } from '../../lib/supabase';
@@ -21,6 +21,7 @@ const relationLabels: Record<string, string> = {
 
 export default function Circle() {
   const { circle, user, sharedVisions, acceptVision, fetchCircleData, followingIds, toggleFollow, setSelectedProfileId } = useStore();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
   const [activity, setActivity] = useState<Post[]>([]);
@@ -107,11 +108,20 @@ export default function Circle() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20 pt-10">
-      <section className="px-2">
-        <h1 className="text-3xl font-black text-text-main tracking-tight uppercase mb-3">Circle</h1>
-        <p className="max-w-2xl text-sm text-text-secondary leading-relaxed">
-          Your Circle helps you stay connected with people you follow, collaborators, and progress partners.
-        </p>
+      <section className="px-2 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-text-main tracking-tight uppercase mb-3">Circle</h1>
+          <p className="max-w-2xl text-sm text-text-secondary leading-relaxed">
+            Your Circle helps you stay connected with people you follow, collaborators, and progress partners.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/communities')}
+          className="lg:hidden h-11 px-4 rounded-2xl bg-card border border-card-border text-text-secondary hover:text-accent hover:border-accent/30 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest"
+        >
+          <Globe size={16} />
+          Communities
+        </button>
       </section>
 
       <div className="flex flex-wrap gap-2 px-2">

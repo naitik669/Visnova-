@@ -1,9 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Settings, LogOut } from 'lucide-react';
+import { Bug, HelpCircle, LogOut, MessageCircleWarning, Palette, Settings, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { cn } from '../lib/utils';
 
 interface ProfileDropdownProps {
   isOpen: boolean;
@@ -21,11 +20,18 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
         onClose();
       }
     }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    }
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
 
@@ -42,6 +48,10 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
   const menuItems = [
     { icon: User, label: 'View Profile', onClick: () => { setSelectedProfileId(null); navigate('/profile'); onClose(); } },
     { icon: Settings, label: 'Settings', onClick: () => { setSelectedProfileId(null); navigate('/settings'); onClose(); } },
+    { icon: Palette, label: 'Appearance', onClick: () => { setSelectedProfileId(null); navigate('/settings#appearance'); onClose(); } },
+    { icon: MessageCircleWarning, label: 'Feedback', onClick: () => { setSelectedProfileId(null); navigate('/feedback'); onClose(); } },
+    { icon: HelpCircle, label: 'Help', onClick: () => { setSelectedProfileId(null); navigate('/support'); onClose(); } },
+    { icon: Bug, label: 'Report Bug', onClick: () => { setSelectedProfileId(null); navigate('/feedback?type=bug'); onClose(); } },
   ];
 
   return (

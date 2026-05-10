@@ -81,6 +81,34 @@ function isMissingPostActionRpc(error: any) {
     text.includes('schema cache');
 }
 
+const VALID_REPORT_REASONS = new Set([
+  'spam',
+  'harassment',
+  'hate',
+  'sexual_content',
+  'violence',
+  'self_harm',
+  'scam',
+  'impersonation',
+  'privacy',
+  'illegal_content',
+  'other'
+]);
+
+function postPatchFromDb(row: any): Partial<Post> {
+  return {
+    caption: row?.caption || '',
+    content: row?.content || '',
+    type: row?.type || 'update',
+    visibility: row?.visibility || 'public',
+    archived: !!row?.archived,
+    archivedAt: row?.archived_at || null,
+    deletedAt: row?.deleted_at || null,
+    editedAt: row?.edited_at || null,
+    metadata: row?.metadata || {}
+  };
+}
+
 function toDateKey(date: Date) {
   return format(date, 'yyyy-MM-dd');
 }
@@ -456,6 +484,7 @@ function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
     archived: safeBoolean(row?.archived),
     archivedAt: row?.archived_at || null,
     deletedAt: row?.deleted_at || null,
+    editedAt: row?.edited_at || null,
     media: safeMedia.map((m: any) => ({
       id: m.id || m.storagePath || m.url,
       url: m.url,
@@ -2491,8 +2520,10 @@ export const useStore = create<AppState>((set, get) => ({
     const nextMentions = Array.from(
       new Map<string, any>((safeUpdates.mentions || []).filter((m: any) => m.userId).map((m: any) => [m.userId, m])).values()
     );
+    const now = new Date().toISOString();
     const postUpdates: any = {
-      updated_at: new Date().toISOString()
+      updated_at: now,
+      edited_at: now
     };
 
     if (updates.caption !== undefined) postUpdates.caption = safeUpdates.caption;
@@ -2505,6 +2536,7 @@ export const useStore = create<AppState>((set, get) => ({
       posts: state.posts.map(post => post.id === id ? {
         ...post,
         ...safeUpdates,
+        editedAt: now,
         tags: updates.tags !== undefined ? nextTags : post.tags,
         mentions: updates.mentions !== undefined ? nextMentions : post.mentions
       } : post)
@@ -2516,11 +2548,20 @@ export const useStore = create<AppState>((set, get) => ({
         .update(postUpdates)
         .eq('id', id)
         .eq('user_id', userId)
-        .select('id')
+        .select('id, caption, content, type, visibility, archived, archived_at, deleted_at, edited_at, metadata')
         .maybeSingle();
 
       if (error) throw error;
       if (!data?.id) throw new Error('Post was not updated. Please refresh and try again.');
+      const dbPatch = postPatchFromDb(data);
+      set((state) => ({
+        posts: state.posts.map(post => post.id === id ? {
+          ...post,
+          ...dbPatch,
+          tags: updates.tags !== undefined ? nextTags : post.tags,
+          mentions: updates.mentions !== undefined ? nextMentions : post.mentions
+        } : post)
+      }));
 
       if (updates.tags !== undefined) {
         const { error: deleteTagsError } = await supabase.from('post_tags').delete().eq('post_id', id);
@@ -2748,6 +2789,7 @@ export const useStore = create<AppState>((set, get) => ({
         archived: !!p.archived,
         archivedAt: p.archived_at || null,
         deletedAt: p.deleted_at || null,
+        editedAt: p.edited_at || null,
         media: p.media?.map((m: any) => ({ id: m.id, url: m.media_url, type: m.media_type })) || [],
         tags: p.post_tags?.map((t: any) => t.tag) || [],
         mentions: p.mentions?.map((m: any) => ({ userId: m.mentioned_user_id, username: m.user?.username || 'user' })) || [],
@@ -2785,8 +2827,6 @@ export const useStore = create<AppState>((set, get) => ({
             .from('posts')
             .update({
               deleted_at: now,
-              archived: true,
-              archived_at: now,
               updated_at: now
             })
             .eq('id', id)
@@ -2829,6 +2869,65 @@ export const useStore = create<AppState>((set, get) => ({
             ? 'Post was not found or you do not have permission to delete it.'
             : 'Could not remove this post. Please try again.'
       });
+      return false;
+    }
+  },
+
+  reportPost: async (id: string, reason: string, details?: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to report posts.' });
+      return false;
+    }
+
+    const safeReason = VALID_REPORT_REASONS.has(reason) ? reason : 'other';
+    const safeDetails = sanitizePlainText(details || '', 1000);
+    const localPost = get().posts.find(post => post.id === id);
+    if (localPost?.userId === userId) {
+      get().addToast({ type: 'info', title: 'Report unavailable', description: 'You cannot report your own post.' });
+      return false;
+    }
+
+    try {
+      let targetOwnerId = localPost?.userId || null;
+      if (!targetOwnerId) {
+        const { data: postRow, error: postError } = await supabase
+          .from('posts')
+          .select('user_id')
+          .eq('id', id)
+          .maybeSingle();
+        if (postError) throw postError;
+        targetOwnerId = postRow?.user_id || null;
+      }
+
+      if (!targetOwnerId) throw new Error('Post was not found.');
+      if (targetOwnerId === userId) {
+        get().addToast({ type: 'info', title: 'Report unavailable', description: 'You cannot report your own post.' });
+        return false;
+      }
+
+      const { error } = await supabase.from('reports').insert({
+        reporter_id: userId,
+        target_type: 'post',
+        target_id: id,
+        target_owner_id: targetOwnerId,
+        reason: safeReason,
+        details: safeDetails || null
+      });
+
+      if (error) {
+        if (error.code === '23505') {
+          get().addToast({ type: 'info', title: 'Already reported', description: 'You already reported this post.' });
+          return true;
+        }
+        throw error;
+      }
+
+      get().addToast({ type: 'success', title: 'Report submitted', description: 'Thanks. We saved this for review.' });
+      return true;
+    } catch (err: any) {
+      console.error('Failed to report post:', err);
+      get().addToast({ type: 'error', title: 'Report failed', description: err.message || 'Could not submit report. Try again.' });
       return false;
     }
   },
@@ -3054,6 +3153,7 @@ export const useStore = create<AppState>((set, get) => ({
           archived: !!p.archived,
           archivedAt: p.archived_at || null,
           deletedAt: p.deleted_at || null,
+          editedAt: p.edited_at || null,
           media: p.media?.map((m: any) => ({
             id: m.id,
             url: m.media_url,
@@ -3189,6 +3289,7 @@ export const useStore = create<AppState>((set, get) => ({
         archived: !!p.archived,
         archivedAt: p.archived_at || null,
         deletedAt: p.deleted_at || null,
+        editedAt: p.edited_at || null,
         media: p.media?.map((m: any) => ({
           id: m.id,
           url: m.media_url,

@@ -4,8 +4,8 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, LibraryBig, MoreHorizontal, GraduationCap, Settings as SettingsIcon, LogOut, Wallet, HelpCircle, MessageCircleWarning } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -123,13 +123,7 @@ const mainNavBase: NavItem[] = [
   { icon: Wallet, label: 'Wallet', path: '/wallet' },
   { icon: Users, label: 'Circle', path: '/circle' },
   { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
-];
-
-const moreItems: NavItem[] = [
   { icon: Globe, label: 'Communities', path: '/communities' },
-  { icon: SettingsIcon, label: 'Settings', path: '/settings' },
-  { icon: MessageCircleWarning, label: 'Feedback', path: '/feedback' },
-  { icon: HelpCircle, label: 'Help', path: '/support' },
 ];
 
 const isRouteActive = (pathname: string, path: string) => {
@@ -215,10 +209,6 @@ function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const moreButtonRef = useRef<HTMLButtonElement>(null);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
-  const [morePosition, setMorePosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     const openNotifications = () => setIsNotificationsOpen(true);
@@ -226,49 +216,9 @@ function Sidebar() {
     return () => window.removeEventListener('open-visnova-notifications', openNotifications);
   }, []);
 
-  useEffect(() => {
-    const closeMore = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (!moreButtonRef.current?.contains(target) && !moreMenuRef.current?.contains(target)) {
-        setIsMoreOpen(false);
-      }
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsMoreOpen(false);
-    };
-    if (isMoreOpen) {
-      document.addEventListener('mousedown', closeMore);
-      document.addEventListener('keydown', closeOnEscape);
-    }
-    return () => {
-      document.removeEventListener('mousedown', closeMore);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [isMoreOpen]);
-
-  useEffect(() => {
-    if (!isMoreOpen) return;
-    const updatePosition = () => {
-      const rect = moreButtonRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const menuWidth = isExpanded ? 256 : 240;
-      const top = Math.min(Math.max(16, rect.top), Math.max(16, window.innerHeight - 368));
-      const left = Math.min(rect.right + 8, Math.max(16, window.innerWidth - menuWidth - 16));
-      setMorePosition({ top, left });
-    };
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
-    return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
-    };
-  }, [isMoreOpen, isExpanded]);
-
   const navItems = mainNavBase.map(item => (
     item.path === '/circle' ? { ...item, badge: unreadMessageCount } : item
   ));
-  const moreActive = moreItems.some(item => isRouteActive(location.pathname, item.path));
 
   return (
     <aside
@@ -334,66 +284,6 @@ function Sidebar() {
             </Link>
           );
         })}
-        <div className="relative">
-          <button
-            ref={moreButtonRef}
-            type="button"
-            onClick={() => setIsMoreOpen(open => !open)}
-            title={!isExpanded ? 'More' : undefined}
-            aria-haspopup="menu"
-            aria-expanded={isMoreOpen}
-            className={cn(
-              'w-full flex items-center h-11 rounded-xl transition-all duration-300 group relative',
-              isExpanded ? 'justify-start gap-4 px-3' : 'justify-center px-0',
-              moreActive || isMoreOpen
-                ? 'bg-accent/5 text-accent font-semibold'
-                : 'text-text-secondary hover:text-text-main hover:bg-surface-muted'
-            )}
-          >
-            <MoreHorizontal size={18} className={cn('shrink-0 transition-all duration-500', moreActive || isMoreOpen ? 'text-accent' : '[data-theme=sage]:text-white/70 text-text-secondary/60 group-hover:text-text-main')} />
-            <span className={cn(
-              "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap overflow-hidden",
-              isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2",
-              moreActive || isMoreOpen ? "text-accent" : "[data-theme=sage]:text-white/80 text-text-secondary"
-            )}>
-              More
-            </span>
-            {moreActive && <motion.div layoutId="sidebar-active" className="absolute left-0 w-1 h-8 bg-accent rounded-r-full" />}
-          </button>
-          <AnimatePresence>
-            {isMoreOpen && (
-              <motion.div
-                initial={{ opacity: 0, x: -8, scale: 0.98 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -8, scale: 0.98 }}
-                role="menu"
-                ref={moreMenuRef}
-                style={{ top: morePosition.top, left: morePosition.left }}
-                className="visnova-menu fixed w-60 sm:w-64 max-h-[min(22rem,calc(100dvh-2rem))] overflow-y-auto custom-scrollbar p-2 z-[220]"
-              >
-                {moreItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = isRouteActive(location.pathname, item.path);
-                  return (
-                    <button
-                      key={item.path}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setIsMoreOpen(false);
-                        navigate(item.path);
-                      }}
-                      className={cn("visnova-menu-item group", active && "visnova-menu-item-active")}
-                    >
-                      <Icon size={16} className="text-text-secondary/60 group-hover:text-accent transition-colors" />
-                      <span className="text-sm font-semibold">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </nav>
 
       {/* User Section */}
@@ -471,18 +361,21 @@ function Sidebar() {
               </span>
             )}
           </button>
-          {isExpanded && (
-            <button
-              onClick={(event) => {
-                event.stopPropagation();
-                setIsProfileOpen(open => !open);
-              }}
-              className="mr-2 w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary/50 hover:text-accent hover:bg-accent/5 transition-colors"
-              aria-label="Open profile menu"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-          )}
+          <button
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsProfileOpen(open => !open);
+            }}
+            className={cn(
+              "rounded-lg flex items-center justify-center text-text-secondary/50 hover:text-accent hover:bg-accent/5 transition-colors",
+              isExpanded ? "mr-2 w-8 h-8" : "absolute -right-1 -bottom-1 w-5 h-5 bg-card border border-card-border"
+            )}
+            aria-label="Open profile menu"
+            title={!isExpanded ? "Profile menu" : undefined}
+          >
+            <MoreHorizontal size={isExpanded ? 16 : 12} />
+          </button>
           <ProfileDropdown isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
         </div>
       </div>
@@ -493,167 +386,41 @@ function Sidebar() {
 
 function MobileNav() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, signOut } = useStore();
   const unreadMessageCount = useUnreadMessageCount();
-  const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const primaryItems = [
     { icon: Home, label: 'Dashboard', path: '/' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Target, label: 'Visions', path: '/visions' },
     { icon: LibraryBig, label: 'Library', path: '/library' },
-  ];
-
-  const mobileMoreItems = [
-    { icon: GraduationCap, label: 'Growth', path: '/growth' },
-    { icon: Wallet, label: 'Wallet', path: '/wallet' },
     { icon: Users, label: 'Circle', path: '/circle', badge: unreadMessageCount },
-    { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
-    { icon: Globe, label: 'Communities', path: '/communities' },
-    { icon: SettingsIcon, label: 'Settings', path: '/settings' },
-    { icon: MessageCircleWarning, label: 'Feedback', path: '/feedback' },
-    { icon: HelpCircle, label: 'Help', path: '/support' },
   ];
-
-  const goTo = (path: string) => {
-    setIsMoreOpen(false);
-    navigate(path);
-  };
-
-  const handleLogout = async () => {
-    await signOut();
-    setIsMoreOpen(false);
-    navigate('/');
-  };
 
   return (
-    <>
-      <AnimatePresence>
-        {isMoreOpen && (
-          <>
-            <motion.button
-              aria-label="Close menu"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMoreOpen(false)}
-              className="fixed inset-0 bg-overlay z-[88] lg:hidden"
-            />
-            <motion.div
-              initial={{ y: 320, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 320, opacity: 0 }}
-              transition={{ type: 'spring', damping: 26, stiffness: 260 }}
-              className="fixed inset-x-0 bottom-0 z-[90] lg:hidden bg-card border-t border-card-border rounded-t-[2rem] shadow-2xl px-4 pt-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-            >
-              <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-text-secondary/20" />
-              <div className="flex items-center gap-3 px-2 pb-4 border-b border-card-border/60">
-                <img
-                  src={user?.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${user?.id || 'visnova'}`}
-                  alt="Profile"
-                  className="h-11 w-11 rounded-2xl object-cover border border-card-border"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-text-main truncate">{user?.name || 'Profile'}</p>
-                  <p className="text-[11px] font-semibold text-text-secondary/60 truncate">@{user?.username || 'user'}</p>
-                </div>
-                <button
-                  onClick={() => goTo('/profile')}
-                  className="h-11 px-4 rounded-xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-wider"
-                >
-                  Profile
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 py-4 max-h-[45dvh] overflow-y-auto custom-scrollbar">
-                {mobileMoreItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = isRouteActive(location.pathname, item.path);
-                  return (
-                    <button
-                      key={item.path}
-                      onClick={() => goTo(item.path)}
-                      className={cn(
-                        "h-12 rounded-2xl border flex items-center gap-3 px-3 text-left transition-all relative",
-                        active ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface-muted border-card-border/50 text-text-secondary"
-                      )}
-                    >
-                      <Icon size={18} />
-                      <span className="text-[11px] font-black uppercase tracking-wider truncate">{item.label}</span>
-                      {!!item.badge && (
-                        <span className="ml-auto min-w-5 h-5 px-1 rounded-full bg-accent text-accent-contrast text-[9px] font-black flex items-center justify-center">
-                          {item.badge > 9 ? '9+' : item.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => goTo('/profile')}
-                  className={cn(
-                    "h-12 rounded-2xl border flex items-center gap-3 px-3 text-left transition-all",
-                    isRouteActive(location.pathname, '/profile') ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface-muted border-card-border/50 text-text-secondary"
-                  )}
-                >
-                  <img
-                    src={user?.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${user?.id || 'visnova'}`}
-                    alt=""
-                    className="h-6 w-6 rounded-lg object-cover border border-card-border"
-                  />
-                  <span className="text-[11px] font-black uppercase tracking-wider truncate">Profile</span>
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 border-t border-card-border/60 pt-3">
-                <button
-                  onClick={() => {
-                    window.dispatchEvent(new Event('open-visnova-notifications'));
-                    setIsMoreOpen(false);
-                  }}
-                  className="h-11 rounded-2xl bg-surface-muted text-text-secondary flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-wider"
-                >
-                  <Bell size={16} /> Alerts
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="h-11 rounded-2xl bg-danger/10 text-danger flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-wider"
-                >
-                  <LogOut size={16} /> Log out
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-      <nav className="fixed bottom-0 left-0 right-0 min-h-[4.75rem] bg-sidebar/95 backdrop-blur-xl border-t border-card-border lg:hidden grid grid-cols-5 gap-1 px-2 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] z-[80] transition-colors duration-500">
-        {primaryItems.map((item) => {
-          const Icon = item.icon;
-          const active = isRouteActive(location.pathname, item.path);
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all",
-                active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
-              )}
-            >
-              <Icon size={21} />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-        <button
-          onClick={() => setIsMoreOpen(true)}
-          className={cn(
-            "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all",
-            isMoreOpen || mobileMoreItems.some(item => isRouteActive(location.pathname, item.path)) || isRouteActive(location.pathname, '/profile') ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
-          )}
-        >
-          <MoreHorizontal size={22} />
-          <span>More</span>
-        </button>
-      </nav>
-    </>
+    <nav className="fixed bottom-0 left-0 right-0 min-h-[4.75rem] bg-sidebar/95 backdrop-blur-xl border-t border-card-border lg:hidden grid grid-cols-5 gap-1 px-2 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] z-[80] transition-colors duration-500">
+      {primaryItems.map((item) => {
+        const Icon = item.icon;
+        const active = isRouteActive(location.pathname, item.path);
+        return (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={cn(
+              "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
+              active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
+            )}
+          >
+            <Icon size={21} />
+            {!!item.badge && (
+              <span className="absolute top-1.5 right-3 min-w-4 h-4 px-1 bg-accent text-accent-contrast text-[8px] font-black rounded-full flex items-center justify-center">
+                {item.badge > 9 ? '9+' : item.badge}
+              </span>
+            )}
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -682,6 +449,9 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
 
 function PageContextHeader() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useStore();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const meta = pageContext[location.pathname] || (location.pathname.startsWith('/post/') ? { title: 'Thread', subtitle: 'Post comments' } : null);
   if (!meta) return null;
 
@@ -690,6 +460,31 @@ function PageContextHeader() {
       <div>
         <h1 className="text-sm md:text-sm font-black uppercase tracking-[0.18em] md:tracking-[0.22em] text-text-main">{meta.title}</h1>
         {meta.subtitle && <p className="hidden sm:block text-[10px] font-semibold text-text-secondary mt-1">{meta.subtitle}</p>}
+      </div>
+      <div className="relative flex items-center gap-2">
+        <button
+          onClick={() => {
+            setIsProfileOpen(false);
+            navigate('/profile');
+          }}
+          className="h-10 w-10 rounded-2xl border border-card-border bg-card overflow-hidden flex items-center justify-center active:scale-95 transition-transform"
+          aria-label="View profile"
+        >
+          <img
+            src={user?.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${user?.id || 'visnova'}`}
+            className="h-full w-full object-cover"
+            alt="Profile"
+          />
+        </button>
+        <button
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={() => setIsProfileOpen(open => !open)}
+          className="h-10 w-10 rounded-2xl border border-card-border bg-card text-text-secondary flex items-center justify-center active:scale-95 transition-colors hover:text-accent"
+          aria-label="Open profile menu"
+        >
+          <MoreHorizontal size={18} />
+        </button>
+        <ProfileDropdown isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       </div>
     </div>
   );

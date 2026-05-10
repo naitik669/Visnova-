@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bookmark, Heart, Image as ImageIcon, Loader2, MessageSquare, Send } from 'lucide-react';
+import { Archive, ArrowLeft, Bookmark, Edit3, Flag, Heart, Image as ImageIcon, Loader2, MessageSquare, MoreHorizontal, Send, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -9,6 +9,7 @@ import { Comment, Post } from '../../types';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
+import { PostEditModal, PostReportModal } from './CommunityFeed';
 
 const COMMENTS_PAGE_SIZE = 50;
 
@@ -34,6 +35,7 @@ const mapPostRow = (p: any): Post => ({
   archived: !!p?.archived,
   archivedAt: p?.archived_at || null,
   deletedAt: p?.deleted_at || null,
+  editedAt: p?.edited_at || null,
   media: safeArray<any>(p?.media).map((m: any) => ({ id: m.id, url: m.media_url, type: (m.media_type || 'image') as 'image' | 'video' })),
   tags: safeArray<any>(p?.post_tags).map((t: any) => t.tag).filter(Boolean)
 });
@@ -55,7 +57,7 @@ const mapCommentRow = (comment: any): Comment => ({
 export default function PostThreadPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { addComment, session, addToast } = useStore();
+  const { addComment, session, addToast, updatePost, archivePost, restorePost, deletePost, reportPost } = useStore();
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
@@ -63,6 +65,11 @@ export default function PostThreadPage() {
   const [isCommenting, setIsCommenting] = useState(false);
   const [isLoadingMoreComments, setIsLoadingMoreComments] = useState(false);
   const [hasMoreComments, setHasMoreComments] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDetails, setReportDetails] = useState('');
 
   const firstImage = useMemo(() => post?.media?.find(item => item.type === 'image'), [post]);
 
@@ -96,6 +103,12 @@ export default function PostThreadPage() {
       if (commentError) throw commentError;
       if (postRow) {
         const nextPost = mapPostRow(postRow);
+        if (nextPost.deletedAt || (nextPost.archived && nextPost.userId !== session?.user?.id)) {
+          setPost(null);
+          setComments([]);
+          setHasMoreComments(false);
+          return;
+        }
         if (session?.user?.id) {
           const [{ data: likeRow }, { data: saveRow }] = await Promise.all([
             supabase.from('post_likes').select('post_id').eq('post_id', postId).eq('user_id', session.user.id).maybeSingle(),
@@ -232,6 +245,7 @@ export default function PostThreadPage() {
   }
 
   return (
+    <>
     <div className="w-full max-w-5xl mx-auto pb-10 animate-in fade-in duration-500">
       <button onClick={() => navigate(-1)} className="mb-5 h-11 px-4 rounded-xl bg-card border border-card-border text-text-secondary hover:text-text-main flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
         <ArrowLeft size={16} /> Back
@@ -247,7 +261,8 @@ export default function PostThreadPage() {
             </div>
           )}
           <div className="p-6 space-y-5">
-            <div className="flex items-center gap-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
               <img src={post.author.avatar} alt={post.author.name} className="w-12 h-12 rounded-2xl object-cover border border-card-border" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -256,9 +271,45 @@ export default function PostThreadPage() {
                   </Link>
                   <VerifiedBadge verified={post.author.verified} size={15} />
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{post.author.handle} - {post.timestamp}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">
+                  {post.author.handle} - {post.timestamp}
+                  {post.editedAt && <span> - Edited {safeFormat(post.editedAt, 'MMM d, h:mm a')}</span>}
+                </p>
               </div>
+              </div>
+              {session?.user?.id && (
+                <div className="relative shrink-0">
+                  <button onClick={() => setIsMenuOpen(open => !open)} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/50 hover:text-text-main" aria-label="Post options">
+                    <MoreHorizontal size={18} />
+                  </button>
+                  <AnimatePresence>
+                    {isMenuOpen && (
+                      <motion.div initial={{ opacity: 0, scale: 0.96, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: -4 }} className="visnova-menu absolute right-0 top-full mt-2 w-56 p-1.5 z-30">
+                        {post.userId === session.user.id ? (
+                          <>
+                            <button onClick={() => { setIsMenuOpen(false); setIsEditOpen(true); }} className="visnova-menu-item"><Edit3 size={14} /> Edit Post</button>
+                            {!post.archived ? (
+                              <button onClick={async () => { setIsMenuOpen(false); const ok = await archivePost(post.id); if (ok) setPost(current => current ? { ...current, archived: true, archivedAt: new Date().toISOString() } : current); }} className="visnova-menu-item"><Archive size={14} /> Archive Post</button>
+                            ) : (
+                              <button onClick={async () => { setIsMenuOpen(false); const ok = await restorePost(post.id); if (ok) setPost(current => current ? { ...current, archived: false, archivedAt: null } : current); }} className="visnova-menu-item"><Archive size={14} /> Restore Post</button>
+                            )}
+                            <button onClick={async () => { if (!confirm('Delete this post? This will remove it from your profile and feeds.')) return; setIsMenuOpen(false); const ok = await deletePost(post.id); if (ok) navigate('/feed'); }} className="visnova-menu-item visnova-menu-item-danger"><Trash2 size={14} /> Delete Post</button>
+                          </>
+                        ) : (
+                          <button onClick={() => { setIsMenuOpen(false); setIsReportOpen(true); }} className="visnova-menu-item visnova-menu-item-danger"><Flag size={14} /> Report Post</button>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
+
+            {post.archived && (
+              <div className="inline-flex items-center gap-2 rounded-full bg-warning/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-warning">
+                <Archive size={13} /> Archived
+              </div>
+            )}
 
             {(post.caption || post.content) && (
               <div className="space-y-3">
@@ -345,5 +396,34 @@ export default function PostThreadPage() {
         </section>
       </div>
     </div>
+      <AnimatePresence>
+        {post && isEditOpen && (
+          <PostEditModal
+            post={post}
+            onClose={() => setIsEditOpen(false)}
+            onSave={async (updates) => {
+              const ok = await updatePost(post.id, updates);
+              if (ok) setPost(current => current ? { ...current, ...updates, editedAt: new Date().toISOString() } : current);
+              return ok;
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {post && isReportOpen && (
+          <PostReportModal
+            onClose={() => setIsReportOpen(false)}
+            reason={reportReason}
+            setReason={setReportReason}
+            details={reportDetails}
+            setDetails={setReportDetails}
+            onSubmit={async () => {
+              const ok = await reportPost(post.id, reportReason, reportDetails);
+              if (ok) setIsReportOpen(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }

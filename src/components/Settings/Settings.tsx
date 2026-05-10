@@ -240,7 +240,7 @@ export default function Settings() {
       </section>
 
       {/* Grid Appearance */}
-      <section className="space-y-8 px-4">
+      <section id="appearance" className="space-y-8 px-4 scroll-mt-6">
         <div className="flex items-center gap-4">
            <h2 className="text-2xl font-bold tracking-tight text-text-main">Environmental Aesthetics</h2>
            <div className="flex-1 h-px bg-card-border" />
