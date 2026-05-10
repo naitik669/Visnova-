@@ -120,7 +120,7 @@ const mainNavBase: NavItem[] = [
   { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
   { icon: LibraryBig, label: 'Library', path: '/library' },
   { icon: GraduationCap, label: 'Growth', path: '/growth' },
-  { icon: Wallet, label: 'Money', path: '/money' },
+  { icon: Wallet, label: 'Wallet', path: '/wallet' },
   { icon: Users, label: 'Circle', path: '/circle' },
   { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
 ];
@@ -132,9 +132,11 @@ const moreItems: NavItem[] = [
   { icon: HelpCircle, label: 'Help', path: '/support' },
 ];
 
-const isRouteActive = (pathname: string, path: string) => (
-  path === '/' ? pathname === '/' : pathname === path || pathname.startsWith(`${path}/`)
-);
+const isRouteActive = (pathname: string, path: string) => {
+  if (path === '/') return pathname === '/';
+  if (path === '/wallet') return pathname === '/wallet' || pathname === '/money';
+  return pathname === path || pathname.startsWith(`${path}/`);
+};
 
 function useUnreadMessageCount() {
   const session = useStore(state => state.session);
@@ -172,7 +174,8 @@ function useUnreadMessageCount() {
         .select('id', { count: 'exact', head: true })
         .in('conversation_id', conversationIds)
         .neq('user_id', currentUserId)
-        .is('read_at', null);
+        .is('read_at', null)
+        .is('deleted_at', null);
 
       if (cancelled) return;
       if (unreadError) {
@@ -184,15 +187,19 @@ function useUnreadMessageCount() {
       setCount(unreadCount || 0);
     };
 
+    const refreshCount = () => loadCount();
+    window.addEventListener('visnova-messages-read', refreshCount);
     loadCount();
     const channelId = `nav-message-badge:${currentUserId || 'guest'}-${Math.random().toString(36).substring(7)}`;
     const channel = supabase
       .channel(channelId)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, loadCount)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, loadCount)
       .subscribe();
 
     return () => {
       cancelled = true;
+      window.removeEventListener('visnova-messages-read', refreshCount);
       supabase.removeChannel(channel);
     };
   }, [currentUserId]);
@@ -209,7 +216,9 @@ function Sidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const [morePosition, setMorePosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     const openNotifications = () => setIsNotificationsOpen(true);
@@ -219,7 +228,8 @@ function Sidebar() {
 
   useEffect(() => {
     const closeMore = (event: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!moreButtonRef.current?.contains(target) && !moreMenuRef.current?.contains(target)) {
         setIsMoreOpen(false);
       }
     };
@@ -235,6 +245,25 @@ function Sidebar() {
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [isMoreOpen]);
+
+  useEffect(() => {
+    if (!isMoreOpen) return;
+    const updatePosition = () => {
+      const rect = moreButtonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const menuWidth = isExpanded ? 256 : 240;
+      const top = Math.min(Math.max(16, rect.top), Math.max(16, window.innerHeight - 368));
+      const left = Math.min(rect.right + 8, Math.max(16, window.innerWidth - menuWidth - 16));
+      setMorePosition({ top, left });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isMoreOpen, isExpanded]);
 
   const navItems = mainNavBase.map(item => (
     item.path === '/circle' ? { ...item, badge: unreadMessageCount } : item
@@ -305,8 +334,9 @@ function Sidebar() {
             </Link>
           );
         })}
-        <div ref={moreRef} className="relative">
+        <div className="relative">
           <button
+            ref={moreButtonRef}
             type="button"
             onClick={() => setIsMoreOpen(open => !open)}
             title={!isExpanded ? 'More' : undefined}
@@ -337,10 +367,9 @@ function Sidebar() {
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -8, scale: 0.98 }}
                 role="menu"
-                className={cn(
-                  "visnova-menu absolute top-0 max-h-[min(22rem,calc(100vh-8rem))] overflow-y-auto custom-scrollbar p-2 z-[120]",
-                  isExpanded ? "left-full ml-2 w-64" : "left-[calc(100%+0.5rem)] w-60"
-                )}
+                ref={moreMenuRef}
+                style={{ top: morePosition.top, left: morePosition.left }}
+                className="visnova-menu fixed w-60 sm:w-64 max-h-[min(22rem,calc(100dvh-2rem))] overflow-y-auto custom-scrollbar p-2 z-[220]"
               >
                 {moreItems.map((item) => {
                   const Icon = item.icon;
@@ -478,7 +507,7 @@ function MobileNav() {
 
   const mobileMoreItems = [
     { icon: GraduationCap, label: 'Growth', path: '/growth' },
-    { icon: Wallet, label: 'Money', path: '/money' },
+    { icon: Wallet, label: 'Wallet', path: '/wallet' },
     { icon: Users, label: 'Circle', path: '/circle', badge: unreadMessageCount },
     { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
     { icon: Globe, label: 'Communities', path: '/communities' },
@@ -639,7 +668,8 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/circle': { title: 'Circle', subtitle: 'Connections, messages, requests, and activity' },
   '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
   '/growth': { title: 'Growth', subtitle: 'Learn with purpose and turn resources into action' },
-  '/money': { title: 'Money', subtitle: 'Track spending and fund your Visions' },
+  '/money': { title: 'Wallet', subtitle: 'Track spending, subscriptions, and savings for your Visions' },
+  '/wallet': { title: 'Wallet', subtitle: 'Track spending, subscriptions, and savings for your Visions' },
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
   '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
   '/profile': { title: 'Profile', subtitle: 'Your public progress page' },
@@ -814,6 +844,7 @@ function AppContent() {
                     <Route path="/profile/:profileId" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/money" element={<MoneyPage />} />
+                    <Route path="/wallet" element={<MoneyPage />} />
                     <Route path="/nova-clock" element={<NovaClock />} />
                     <Route path="/nova" element={<Navigate to="/nova-clock" replace />} />
                     <Route path="/timeline" element={<Navigate to="/nova-clock" replace />} />

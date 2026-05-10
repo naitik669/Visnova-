@@ -946,49 +946,73 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          {/* Wallet Snapshot */}
+          <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col gap-5 border border-card-border/40">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
+                    <Wallet size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-text-main">Wallet</h3>
+                    <p className="text-[11px] font-semibold text-text-secondary/65">Spending and savings for your Visions</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/wallet')}
+                className="h-10 px-4 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shrink-0"
+              >
+                Open Wallet
+              </button>
+            </div>
+
+            {moneyOverview ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Saved this month</p>
+                  <p className="mt-2 text-lg font-black text-text-main">{formatMoney(moneyOverview.monthSavings)}</p>
+                </div>
+                <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Income</p>
+                  <p className="mt-2 text-lg font-black text-success">{formatMoney(moneyOverview.monthIncome)}</p>
+                </div>
+                <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Expenses</p>
+                  <p className="mt-2 text-lg font-black text-danger">{formatMoney(moneyOverview.monthExpenses)}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-app-container border border-dashed border-card-border p-5">
+                <p className="text-sm font-semibold text-text-main">Track spending and savings for your Visions.</p>
+                <p className="mt-1 text-xs text-text-secondary">Add income, expenses, goals, and subscriptions when you are ready.</p>
+              </div>
+            )}
+
+            {moneyOverview?.topGoal && (
+              <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-bold text-text-secondary truncate">Top Goal: {moneyOverview.topGoal.title}</span>
+                  <span className="text-[10px] font-black text-accent">
+                    {Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}%
+                  </span>
+                </div>
+                <div className="mt-2 h-2 rounded-full bg-surface-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Sidebar stats panel */}
         <div className="w-full lg:w-[300px] shrink-0 bg-card rounded-[2.5rem] p-6 flex flex-col shadow-sm relative pt-8">
           <div className="flex flex-col gap-4 w-full h-auto">
-            <div className="rounded-[1.6rem] border border-card-border bg-app-container p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Money</p>
-                  <p className="text-sm font-bold text-text-main mt-1">
-                    {moneyOverview ? formatMoney(moneyOverview.monthSavings) : 'Start tracking'}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
-                  <Wallet size={18} />
-                </div>
-              </div>
-              {moneyOverview?.topGoal ? (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[10px] font-bold text-text-secondary truncate">{moneyOverview.topGoal.title}</span>
-                    <span className="text-[10px] font-black text-accent">
-                      {Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}%
-                    </span>
-                  </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-surface-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-accent"
-                      style={{ width: `${Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}%` }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-[11px] font-semibold text-text-secondary/65">Start tracking money for your Visions.</p>
-              )}
-              <button
-                onClick={() => navigate('/money')}
-                className="mt-4 h-9 w-full rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest"
-              >
-                Open Money
-              </button>
-            </div>
-
             <div className="flex items-center justify-between pb-2 border-b border-card-border/60">
               <h3 className="text-[14px] font-bold text-text-main">
                 To-Do List

@@ -224,12 +224,12 @@ export default function MoneyPage() {
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent">
               <Wallet size={14} />
-              Private Money
+              Private Wallet
             </div>
             <div>
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-text-main">Money</h1>
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-text-main">Wallet</h1>
               <p className="mt-2 max-w-2xl text-sm sm:text-base font-medium text-text-secondary">
-                Track spending, fund your Visions, and build better money habits.
+                Track spending, subscriptions, and savings connected to your Visions.
               </p>
             </div>
           </div>
@@ -281,7 +281,7 @@ export default function MoneyPage() {
                 <button onClick={() => setModal('goal')} className="h-10 px-3 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest">New Goal</button>
               </div>
               {activeGoals.length === 0 ? (
-                <EmptyState title="No saving goals yet." description="Create a money goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} />
+                <EmptyState title="No saving goals yet." description="Create a savings goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} />
               ) : (
                 <div className="space-y-3">
                   {activeGoals.slice(0, 4).map(goal => <GoalRow key={goal.id} goal={goal} visions={visions} onContribute={() => setContributionGoal(goal)} onEdit={() => { setEditingGoal(goal); setModal('goal'); }} onDelete={() => deleteFinanceGoal(goal.id)} />)}
@@ -334,7 +334,7 @@ export default function MoneyPage() {
       {activeTab === 'goals' && (
         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {financeGoals.length === 0 ? (
-            <div className="md:col-span-2 xl:col-span-3"><EmptyState title="No saving goals yet." description="Create a money goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} /></div>
+            <div className="md:col-span-2 xl:col-span-3"><EmptyState title="No saving goals yet." description="Create a savings goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} /></div>
           ) : financeGoals.map(goal => (
             <GoalCard key={goal.id} goal={goal} visions={visions} onContribute={() => setContributionGoal(goal)} onEdit={() => { setEditingGoal(goal); setModal('goal'); }} onDelete={() => deleteFinanceGoal(goal.id)} />
           ))}
@@ -374,8 +374,8 @@ export default function MoneyPage() {
       {activeTab === 'review' && (
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div className="rounded-[2rem] bg-card border border-card-border p-5">
-            <h2 className="text-xl font-black text-text-main">Weekly Money Review</h2>
-            <p className="text-sm font-medium text-text-secondary mt-2">Reflect on what helped your Visions, what leaked money, and what you will improve next week.</p>
+            <h2 className="text-xl font-black text-text-main">Weekly Wallet Review</h2>
+            <p className="text-sm font-medium text-text-secondary mt-2">Reflect on what helped your Visions, what spending leaked value, and what you will improve next week.</p>
             <button onClick={() => setModal('review')} className="mt-5 h-11 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest">Write Review</button>
           </div>
           <div className="rounded-[2rem] bg-card border border-card-border p-5">
@@ -390,9 +390,9 @@ export default function MoneyPage() {
         </section>
       )}
 
-      {isMoneyLoading && <p className="text-center text-[10px] font-black uppercase tracking-widest text-text-secondary">Refreshing Money...</p>}
+      {isMoneyLoading && <p className="text-center text-[10px] font-black uppercase tracking-widest text-text-secondary">Refreshing Wallet...</p>}
 
-      <ResponsiveModal open={!!modal || !!contributionGoal} onClose={closeModal} title={modalTitle(modal, editingTransaction, editingGoal, editingSubscription, contributionGoal)} subtitle="Money is private by default." size="md">
+      <ResponsiveModal open={!!modal || !!contributionGoal} onClose={closeModal} title={modalTitle(modal, editingTransaction, editingGoal, editingSubscription, contributionGoal)} subtitle="Wallet is private by default." size="md">
         <div className="p-4 sm:p-6">
           {(modal === 'income' || modal === 'expense') && (
             <TransactionForm mode={modal} transaction={editingTransaction} visions={visions} goals={financeGoals} onSubmit={handleTransactionSubmit} />
@@ -419,7 +419,7 @@ function modalTitle(modal: MoneyModal, transaction: FinanceTransaction | null, g
   if (modal === 'subscription') return 'Add Subscription';
   if (modal === 'budget') return 'Add Budget';
   if (modal === 'review') return 'Weekly Review';
-  return 'Money';
+  return 'Wallet';
 }
 
 function MetricCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: 'success' | 'danger' | 'accent' | 'neutral' }) {

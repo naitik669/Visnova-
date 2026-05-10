@@ -591,7 +591,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
   };
 
   useEffect(() => {
-    fetchMoneyOverview().catch(error => console.error('Failed to load Vision Money summary:', error));
+    fetchMoneyOverview().catch(error => console.error('Failed to load Vision Wallet summary:', error));
   }, [fetchMoneyOverview, vision.id]);
 
   const handleToggleTask = (taskId: string) => {
@@ -773,19 +773,19 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
                   <Wallet size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-text-main">Money for this Vision</h3>
+                  <h3 className="text-base font-black text-text-main">Wallet for this Vision</h3>
                   <p className="text-xs font-semibold text-text-secondary mt-1">
                     {linkedMoneyGoals.length > 0
                       ? `${formatMoney(visionMoneySaved)} saved of ${formatMoney(visionMoneyTarget)} target`
-                      : 'Track the money needed to make this Vision real.'}
+                      : 'Track the funds needed to make this Vision real.'}
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => navigate('/money')}
+                onClick={() => navigate('/wallet')}
                 className="h-10 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest"
               >
-                Open Money
+                Open Wallet
               </button>
             </div>
             <div className="mt-5 h-2 rounded-full bg-surface-muted overflow-hidden">
@@ -926,5 +926,4 @@ function QuickStartAction({ label, onClick }: { label: string, onClick: () => vo
     </button>
   );
 }
-
 

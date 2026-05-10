@@ -663,7 +663,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchMoneyOverview: async () => {
     const userId = get().session?.user?.id;
     if (!userId) {
-      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to view Money.' });
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to view Wallet.' });
       return;
     }
     set({ isMoneyLoading: true });
@@ -723,9 +723,9 @@ export const useStore = create<AppState>((set, get) => ({
         isMoneyLoading: false
       });
     } catch (error: any) {
-      console.error('Failed to load Money overview:', error);
+      console.error('Failed to load Wallet overview:', error);
       set({ isMoneyLoading: false });
-      get().addToast({ type: 'error', title: 'Money failed', description: error.message || 'Could not load Money.' });
+      get().addToast({ type: 'error', title: 'Wallet failed', description: error.message || 'Could not load Wallet.' });
     }
   },
 
@@ -746,13 +746,13 @@ export const useStore = create<AppState>((set, get) => ({
   createFinanceTransaction: async (transaction) => {
     const userId = get().session?.user?.id;
     if (!userId) {
-      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before adding Money data.' });
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before adding Wallet data.' });
       return false;
     }
     try {
       const payload = validateFinanceTransaction(transaction);
       if (payload.linked_vision_id && !get().visions.some(v => v.id === payload.linked_vision_id)) throw new Error('Choose one of your Visions.');
-      if (payload.linked_goal_id && !get().financeGoals.some(goal => goal.id === payload.linked_goal_id)) throw new Error('Choose one of your Money goals.');
+      if (payload.linked_goal_id && !get().financeGoals.some(goal => goal.id === payload.linked_goal_id)) throw new Error('Choose one of your Wallet goals.');
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('finance_transactions')
@@ -763,7 +763,7 @@ export const useStore = create<AppState>((set, get) => ({
       const saved = formatFinanceTransaction(data);
       set((state) => ({ financeTransactions: [saved, ...state.financeTransactions] }));
       await get().fetchMoneyOverview();
-      get().addToast({ type: 'success', title: 'Money saved', description: `${saved.title} was added.` });
+      get().addToast({ type: 'success', title: 'Wallet saved', description: `${saved.title} was added.` });
       return saved;
     } catch (error: any) {
       console.error('Failed to create finance transaction:', error);
@@ -775,7 +775,7 @@ export const useStore = create<AppState>((set, get) => ({
   updateFinanceTransaction: async (id, updates) => {
     const userId = get().session?.user?.id;
     if (!userId) {
-      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing Money data.' });
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing Wallet data.' });
       return false;
     }
     try {
@@ -804,7 +804,7 @@ export const useStore = create<AppState>((set, get) => ({
   deleteFinanceTransaction: async (id) => {
     const userId = get().session?.user?.id;
     if (!userId) {
-      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before deleting Money data.' });
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before deleting Wallet data.' });
       return false;
     }
     try {
@@ -835,7 +835,7 @@ export const useStore = create<AppState>((set, get) => ({
   createFinanceGoal: async (goal) => {
     const userId = get().session?.user?.id;
     if (!userId) {
-      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before creating a Money goal.' });
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before creating a Wallet goal.' });
       return false;
     }
     try {
@@ -858,7 +858,7 @@ export const useStore = create<AppState>((set, get) => ({
   updateFinanceGoal: async (id, updates) => {
     const userId = get().session?.user?.id;
     if (!userId) {
-      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing Money goals.' });
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before editing Wallet goals.' });
       return false;
     }
     try {
@@ -881,7 +881,7 @@ export const useStore = create<AppState>((set, get) => ({
   deleteFinanceGoal: async (id) => {
     const userId = get().session?.user?.id;
     if (!userId) {
-      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before deleting Money goals.' });
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in before deleting Wallet goals.' });
       return false;
     }
     try {
@@ -900,7 +900,7 @@ export const useStore = create<AppState>((set, get) => ({
   contributeToFinanceGoal: async (goalId, amount, title) => {
     const goal = get().financeGoals.find(g => g.id === goalId);
     if (!goal) {
-      get().addToast({ type: 'error', title: 'Goal unavailable', description: 'Refresh Money and try again.' });
+      get().addToast({ type: 'error', title: 'Goal unavailable', description: 'Refresh Wallet and try again.' });
       return false;
     }
     const transaction = await get().createFinanceTransaction({
@@ -1088,7 +1088,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchVisionFinanceSummary: async (visionId) => {
     const userId = get().session?.user?.id;
     if (!userId) {
-      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to view Money.' });
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to view Wallet.' });
       return { goals: [], transactions: [], saved: 0, expenses: 0, target: 0 };
     }
     const goals = get().financeGoals.filter(goal => goal.linkedVisionId === visionId);

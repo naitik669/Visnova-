@@ -1168,7 +1168,7 @@ function Screen7({ avatar, setAvatar, name, setName, username, setUsername, bio,
 }
 
 const ROLE_CATEGORIES = [
-  'Growth', 'Lifestyle', 'Career', 'Money', 'Creativity', 'Coding', 'Study', 'Business', 'Fitness', 'Mindset', 'Productivity'
+  'Growth', 'Lifestyle', 'Career', 'Wallet', 'Creativity', 'Coding', 'Study', 'Business', 'Fitness', 'Mindset', 'Productivity'
 ];
 
 function ScreenInterests({ selectedInterests, setSelectedInterests, nextStep }: any) {
