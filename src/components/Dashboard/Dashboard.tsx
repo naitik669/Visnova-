@@ -291,16 +291,6 @@ export default function Dashboard() {
         </div>
         </div>
       </div>
-      <div className="mx-1 sm:mx-2 rounded-2xl border border-card-border/60 bg-card/50 px-4 py-3">
-        <div className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest text-text-secondary">
-          <span>Level {levelProgress.level}</span>
-          <span>{totalXp} / {levelProgress.nextThreshold} XP - {levelProgress.xpToNext} XP to next</span>
-        </div>
-        <div className="mt-2 h-2 rounded-full bg-surface-muted overflow-hidden">
-          <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${levelProgress.progress}%` }} />
-        </div>
-      </div>
-
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col gap-6">
@@ -426,6 +416,16 @@ export default function Dashboard() {
                 <p className="text-[11px] font-semibold text-text-secondary text-center">
                   {completedTasks} / {totalTasks} Milestones Secured
                 </p>
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-6 rounded-2xl border border-card-border/60 bg-card-dark/80 px-4 py-3">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                <span>Level {levelProgress.level}</span>
+                <span>{totalXp} / {levelProgress.nextThreshold} XP - {levelProgress.xpToNext} XP to next</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-surface-muted overflow-hidden">
+                <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${levelProgress.progress}%` }} />
               </div>
             </div>
           </div>
