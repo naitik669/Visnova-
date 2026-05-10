@@ -9,6 +9,7 @@ import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { format } from 'date-fns';
+import { safeFormat, safeTime } from '../lib/dateUtils';
 import { getLevelFromXp, normalizeLegacyXp } from '../lib/progression';
 import {
   checkClientRateLimit,
@@ -154,7 +155,15 @@ function lastSevenDateKeys() {
   });
 }
 
+function normalizeNoteType(type?: string | null): Note['note_type'] {
+  if (type === 'audio') return 'audio';
+  if (type === 'journal') return 'journal';
+  return 'normal';
+}
+
 function formatFinanceTransaction(row: any): FinanceTransaction {
+  const createdAt = safeTime(row.created_at);
+  const updatedAt = safeTime(row.updated_at, createdAt);
   return {
     id: row.id,
     userId: row.user_id,
@@ -171,13 +180,15 @@ function formatFinanceTransaction(row: any): FinanceTransaction {
     receiptUrl: row.receipt_url,
     receiptPath: row.receipt_path,
     isRecurring: !!row.is_recurring,
-    createdAt: new Date(row.created_at || Date.now()).getTime(),
-    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+    createdAt,
+    updatedAt,
     deletedAt: row.deleted_at || null
   };
 }
 
 function formatFinanceGoal(row: any): FinanceGoal {
+  const createdAt = safeTime(row.created_at);
+  const updatedAt = safeTime(row.updated_at, createdAt);
   return {
     id: row.id,
     userId: row.user_id,
@@ -189,12 +200,14 @@ function formatFinanceGoal(row: any): FinanceGoal {
     linkedVisionId: row.linked_vision_id,
     priority: row.priority || 'medium',
     status: row.status || 'active',
-    createdAt: new Date(row.created_at || Date.now()).getTime(),
-    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+    createdAt,
+    updatedAt,
   };
 }
 
 function formatFinanceBudget(row: any): FinanceBudget {
+  const createdAt = safeTime(row.created_at);
+  const updatedAt = safeTime(row.updated_at, createdAt);
   return {
     id: row.id,
     userId: row.user_id,
@@ -204,12 +217,14 @@ function formatFinanceBudget(row: any): FinanceBudget {
     limitAmount: Number(row.limit_amount || 0),
     spentAmount: Number(row.spent_amount || 0),
     currency: row.currency || 'INR',
-    createdAt: new Date(row.created_at || Date.now()).getTime(),
-    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+    createdAt,
+    updatedAt,
   };
 }
 
 function formatFinanceSubscription(row: any): FinanceSubscription {
+  const createdAt = safeTime(row.created_at);
+  const updatedAt = safeTime(row.updated_at, createdAt);
   return {
     id: row.id,
     userId: row.user_id,
@@ -221,8 +236,8 @@ function formatFinanceSubscription(row: any): FinanceSubscription {
     category: row.category,
     linkedVisionId: row.linked_vision_id,
     active: row.active !== false,
-    createdAt: new Date(row.created_at || Date.now()).getTime(),
-    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -378,7 +393,7 @@ const scheduleCircleRefresh = (get: () => AppState) => {
 };
 
 function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
-  const createdAt = row.created_at ? new Date(row.created_at).getTime() : Date.now();
+  const createdAt = safeTime(row.created_at);
   return {
     id: row.id,
     userId: row.user_id,
@@ -391,7 +406,7 @@ function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
     },
     caption: row.caption ?? draft.caption,
     content: row.content ?? draft.content ?? '',
-    timestamp: format(new Date(createdAt), 'MMM d, yyyy'),
+    timestamp: safeFormat(createdAt, 'MMM d, yyyy'),
     createdAt,
     likes: 0,
     comments: 0,
@@ -1149,7 +1164,7 @@ export const useStore = create<AppState>((set, get) => ({
           tags: v.tags || [],
           category: v.category,
           elements: v.elements || [],
-          createdAt: new Date(v.created_at).getTime(),
+          createdAt: safeTime(v.created_at),
           visibility: v.visibility,
           deadline: v.deadline,
         };
@@ -1744,7 +1759,7 @@ export const useStore = create<AppState>((set, get) => ({
         note_type: 'journal',
         mood: entry.mood,
         journal_date: entry.date,
-        createdAt: new Date(entry.date).getTime()
+        createdAt: safeTime(entry.date)
       });
       get().addXp(25);
     } catch (error) {
@@ -1790,16 +1805,20 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (error) throw error;
       
-      const entries: JournalEntry[] = data.map((n: any) => ({
-        id: n.id,
-        userId: n.user_id,
-        date: n.journal_date || format(new Date(n.created_at), 'yyyy-MM-dd'),
-        note: n.content,
-        visionIds: [],
-        mood: n.mood,
-        createdAt: new Date(n.created_at).getTime(),
-        updatedAt: new Date(n.updated_at).getTime()
-      }));
+      const entries: JournalEntry[] = (data || []).map((n: any) => {
+        const createdAt = safeTime(n.created_at);
+        const updatedAt = safeTime(n.updated_at, createdAt);
+        return {
+          id: n.id,
+          userId: n.user_id,
+          date: n.journal_date || safeFormat(createdAt, 'yyyy-MM-dd'),
+          note: n.content || '',
+          visionIds: [],
+          mood: n.mood || undefined,
+          createdAt,
+          updatedAt
+        };
+      });
 
       set({ journalEntries: entries });
     } catch (error) {
@@ -2090,33 +2109,35 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (error) throw error;
 
-      const formattedNotes: Note[] = data.map((n: any) => {
+      const formattedNotes: Note[] = (data || []).map((n: any) => {
+        const createdAt = safeTime(n.created_at);
+        const updatedAt = safeTime(n.updated_at, createdAt);
         const audioPath = n.audio_path || extractStoragePathFromUrl(n.audio_url, 'note-audio');
         return {
           id: n.id,
-          title: n.title,
-          content: n.content,
-          note_type: n.note_type === 'library' || n.note_type === 'vault' ? 'normal' : n.note_type,
-          folderId: n.folder_id,
-          tags: n.tags || [],
+          title: n.title || 'Untitled Note',
+          content: n.content || '',
+          note_type: normalizeNoteType(n.note_type),
+          folderId: n.folder_id || null,
+          tags: Array.isArray(n.tags) ? n.tags : [],
           linkedVisionId: n.linked_vision_id || null,
           visibility: n.visibility || 'private',
-          isPinned: n.is_pinned,
-          isFavorite: n.is_favorite,
-          isDeleted: n.is_deleted || false,
-          mood: n.mood,
-          journal_date: n.journal_date,
-          location: n.location,
-          image_url: n.image_url,
+          isPinned: Boolean(n.is_pinned),
+          isFavorite: Boolean(n.is_favorite),
+          isDeleted: Boolean(n.is_deleted),
+          mood: n.mood || undefined,
+          journal_date: n.journal_date || undefined,
+          location: n.location || undefined,
+          image_url: n.image_url || undefined,
           audio_url: n.audio_url || '',
           audio_path: audioPath,
-          audio_duration: n.audio_duration,
-          audio_mime_type: n.audio_mime_type,
+          audio_duration: typeof n.audio_duration === 'number' ? n.audio_duration : undefined,
+          audio_mime_type: n.audio_mime_type || undefined,
           transcript: n.transcript || '',
           transcript_status: n.transcript_status || 'none',
           transcribed_at: n.transcribed_at || null,
-          createdAt: new Date(n.created_at).getTime(),
-          updatedAt: new Date(n.updated_at).getTime()
+          createdAt,
+          updatedAt
         };
       });
 
@@ -2693,7 +2714,9 @@ export const useStore = create<AppState>((set, get) => ({
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []).map((p: any) => ({
+      return (data || []).map((p: any) => {
+        const createdAt = safeTime(p.created_at);
+        return {
         id: p.id,
         userId: p.user_id,
         author: {
@@ -2705,8 +2728,8 @@ export const useStore = create<AppState>((set, get) => ({
         },
         caption: p.caption,
         content: p.content || '',
-        timestamp: format(new Date(p.created_at), 'MMM d, yyyy'),
-        createdAt: new Date(p.created_at).getTime(),
+        timestamp: safeFormat(createdAt, 'MMM d, yyyy'),
+        createdAt,
         likes: p.likes?.[0]?.count || 0,
         comments: p.comment_count?.[0]?.count || 0,
         saves: p.saves?.[0]?.count || 0,
@@ -2722,7 +2745,8 @@ export const useStore = create<AppState>((set, get) => ({
         mentions: p.mentions?.map((m: any) => ({ userId: m.mentioned_user_id, username: m.user?.username || 'user' })) || [],
         stats: p.stats,
         metadata: p.metadata
-      }));
+      };
+      });
     } catch (err) {
       console.error('Failed to fetch archived posts:', err);
       get().addToast({ type: 'error', title: 'Archive failed', description: 'Could not load archived posts.' });
@@ -2996,7 +3020,9 @@ export const useStore = create<AppState>((set, get) => ({
           .map((row: any) => row.post)
           .filter((p: any) => p && !p.archived && !p.deleted_at);
 
-        const formattedSavedPosts: Post[] = savedPosts.map((p: any) => ({
+        const formattedSavedPosts: Post[] = savedPosts.map((p: any) => {
+          const createdAt = safeTime(p.created_at);
+          return {
           id: p.id,
           userId: p.user_id,
           author: {
@@ -3008,8 +3034,8 @@ export const useStore = create<AppState>((set, get) => ({
           },
           caption: p.caption,
           content: p.content || '',
-          timestamp: format(new Date(p.created_at), 'MMM d, yyyy'),
-          createdAt: new Date(p.created_at).getTime(),
+          timestamp: safeFormat(createdAt, 'MMM d, yyyy'),
+          createdAt,
           likes: p.likes?.[0]?.count || 0,
           comments: p.comment_count?.[0]?.count || 0,
           saves: p.saves?.[0]?.count || 0,
@@ -3032,7 +3058,8 @@ export const useStore = create<AppState>((set, get) => ({
           })) || [],
           stats: p.stats,
           metadata: p.metadata
-        }));
+        };
+        });
 
         if (formattedSavedPosts.length > 0) {
           const postIds = formattedSavedPosts.map(p => p.id);
@@ -3128,7 +3155,9 @@ export const useStore = create<AppState>((set, get) => ({
         mySaves = savesRes.data?.map(s => s.post_id) || [];
       }
 
-      const formattedPosts: Post[] = data.map((p: any) => ({
+      const formattedPosts: Post[] = (data || []).map((p: any) => {
+        const createdAt = safeTime(p.created_at);
+        return {
         id: p.id,
         userId: p.user_id,
         author: {
@@ -3140,8 +3169,8 @@ export const useStore = create<AppState>((set, get) => ({
         },
         caption: p.caption,
         content: p.content || '',
-        timestamp: format(new Date(p.created_at), 'MMM d, yyyy'),
-        createdAt: new Date(p.created_at).getTime(),
+        timestamp: safeFormat(createdAt, 'MMM d, yyyy'),
+        createdAt,
         likes: p.likes?.[0]?.count || 0,
         comments: p.comment_count?.[0]?.count || 0,
         saves: p.saves?.[0]?.count || 0,
@@ -3164,7 +3193,8 @@ export const useStore = create<AppState>((set, get) => ({
         })) || [],
         stats: p.stats,
         metadata: p.metadata
-      }));
+      };
+      });
 
       let finalPosts = formattedPosts;
       if (tab === 'recommended' || !tab) {

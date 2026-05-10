@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
+import { safeDate, safeFormat } from '../../lib/dateUtils';
 import { JournalEntry, Vision } from '../../types';
 import { SelectMenu } from '../ui/SelectMenu';
 
@@ -104,8 +105,8 @@ export default function DailyJournal() {
   };
 
   const filteredEntries = useMemo(() => {
-    return journalEntries.filter(entry => {
-      const matchesSearch = entry.note.toLowerCase().includes(searchQuery.toLowerCase());
+    return (journalEntries || []).filter(entry => {
+      const matchesSearch = (entry.note || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesVision = filterVisionId === 'all' || entry.visionIds?.includes(filterVisionId);
       return matchesSearch && matchesVision;
     });
@@ -354,7 +355,7 @@ export default function DailyJournal() {
                                     <Edit3 size={16} /> Update Entry
                                   </button>
                                   <span className="text-[10px] font-bold text-text-secondary/30 uppercase tracking-[0.2em]">
-                                    Synchronized: {format(currentEntry.updatedAt || Date.now(), 'HH:mm:ss')}
+                                    Synchronized: {safeFormat(currentEntry.updatedAt || Date.now(), 'HH:mm:ss')}
                                   </span>
                                 </div>
                               </div>
@@ -398,14 +399,14 @@ export default function DailyJournal() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: i * 0.05 } }}
                       onClick={() => {
-                        setSelectedDate(new Date(entry.date));
+                        setSelectedDate(safeDate(entry.date));
                         setViewMode('daily');
                       }}
                       className="system-card bg-card p-8 group hover:border-accent/40 transition-all text-left flex flex-col h-full"
                     >
                       <div className="flex items-center justify-between mb-6">
                         <div className="text-[10px] font-black uppercase tracking-widest text-accent/60">
-                          {format(new Date(entry.date), 'MMM d, yyyy')}
+                          {safeFormat(entry.date, 'MMM d, yyyy')}
                         </div>
                         {entry.mood && moods.find(m => m.id === entry.mood) && (
                           <div className={cn("p-2 rounded-xl bg-surface-muted", moods.find(m => m.id === entry.mood)?.color)}>
@@ -418,7 +419,7 @@ export default function DailyJournal() {
                       </div>
                       
                       <p className="text-lg font-medium text-text-main leading-relaxed line-clamp-4 flex-1">
-                        {entry.note}
+                        {entry.note || 'No content yet.'}
                       </p>
 
                       <div className="mt-8 pt-6 border-t border-card-border flex flex-wrap gap-2">

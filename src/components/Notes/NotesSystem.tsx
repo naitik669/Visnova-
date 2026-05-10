@@ -42,6 +42,7 @@ import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOf
 import { motion, AnimatePresence } from 'motion/react';
 import { Note, Folder as FolderType } from '../../types';
 import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
+import { safeDate, safeFormat } from '../../lib/dateUtils';
 import { SelectMenu } from '../ui/SelectMenu';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 
@@ -118,7 +119,7 @@ export default function NotesSystem() {
     return notes.find(n => 
       !n.isDeleted && 
       n.note_type === 'journal' && 
-      (n.journal_date === dateStr || (n.journal_date === undefined && isSameDay(n.createdAt, selectedDate)))
+      (n.journal_date === dateStr || (n.journal_date === undefined && isSameDay(safeDate(n.createdAt), selectedDate)))
     );
   }, [notes, selectedDate]);
 
@@ -126,7 +127,7 @@ export default function NotesSystem() {
     const journalNotes = notes.filter(n => n.note_type === 'journal' && !n.isDeleted && n.content.trim());
     if (journalNotes.length === 0) return 0;
     
-    const entryDates = new Set(journalNotes.map(n => n.journal_date || format(n.createdAt, 'yyyy-MM-dd')));
+    const entryDates = new Set(journalNotes.map(n => n.journal_date || safeFormat(n.createdAt, 'yyyy-MM-dd')));
     let count = 0;
     let curr = new Date();
     
@@ -1660,6 +1661,7 @@ function NoteCard({
   onDragEnd: () => void;
   viewMode?: 'grid' | 'list';
 }) {
+  if (!note?.id) return null;
   const isAudioNote = note.note_type === 'audio' || !!note.audio_path;
   const isJournalNote = note.note_type === 'journal';
   const NoteIcon = isAudioNote ? Volume2 : isJournalNote ? BookOpen : FileText;
@@ -1682,7 +1684,7 @@ function NoteCard({
     };
   }, [note.audio_path, note.audio_url]);
 
-  const createdOrUpdated = format(note.updatedAt || note.createdAt, 'MMM dd');
+  const createdOrUpdated = safeFormat(note.updatedAt || note.createdAt, 'MMM dd');
   const preview = cleanPreview(note.content);
   const sourceBadge = /youtube|youtu\.be/i.test(note.content || '') || /youtube|youtu\.be/i.test(note.title || '') ? 'YouTube' : null;
   const currentFolderValue = note.folderId || '';
@@ -1727,7 +1729,7 @@ function NoteCard({
           <h4 className="text-sm font-black text-text-main group-hover:text-accent transition-colors truncate tracking-tight">{note.title || 'Untitled Note'}</h4>
           <p className="mt-1 text-[11px] text-text-secondary/65 line-clamp-1">{preview}</p>
           <p className="mt-2 text-[10px] text-text-secondary font-bold uppercase tracking-wider opacity-60">
-            Updated {format(note.updatedAt, 'MMM dd, h:mm a')} - {folderName || 'Unfiled'}
+            Updated {safeFormat(note.updatedAt || note.createdAt, 'MMM dd, h:mm a')} - {folderName || 'Unfiled'}
           </p>
           {isAudioNote && cardAudioUrl && (
             <audio
@@ -1999,7 +2001,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
       <div className="flex-1 overflow-y-auto custom-scrollbar pt-12 pb-24 px-8 md:px-16">
         <div className="max-w-6xl mx-auto space-y-12">
           {note.note_type === 'journal' && (
-            <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{format(note.createdAt, 'EEEE, MMM dd')}</h4>
+            <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{safeFormat(note.createdAt, 'EEEE, MMM dd')}</h4>
           )}
 
           <input
@@ -2087,7 +2089,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
 
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
               <div className="flex items-center gap-6">
-                <span>Created {format(note.createdAt, 'MMM dd, yyyy')}</span>
+                <span>Created {safeFormat(note.createdAt, 'MMM dd, yyyy')}</span>
                 <span>Type: {note.note_type === 'normal' ? 'normal note' : note.note_type === 'audio' ? 'audio note' : note.note_type}</span>
               </div>
               <button 
@@ -2149,14 +2151,14 @@ function JournalTimeline({ entries, onSelect }: { entries: Note[], onSelect: (id
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center justify-between">
                        <h3 className="text-sm font-black text-text-main group-hover:text-accent transition-colors uppercase tracking-tight truncate">{entry.title}</h3>
-                       <span className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest">{format(entry.createdAt, 'h:mm a')}</span>
+                       <span className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest">{safeFormat(entry.createdAt, 'h:mm a')}</span>
                     </div>
                     <p className="text-[11px] text-text-secondary/70 font-medium line-clamp-1">
                       {entry.content || "No entry content yet."}
                     </p>
                   </div>
                   <div className="hidden sm:flex flex-col items-end shrink-0 pl-10 border-l border-card-border/50">
-                    <span className="text-[10px] font-black text-text-main uppercase tracking-widest">{format(entry.createdAt, 'MMM dd')}</span>
+                    <span className="text-[10px] font-black text-text-main uppercase tracking-widest">{safeFormat(entry.createdAt, 'MMM dd')}</span>
                     <span className="text-[8px] font-bold text-accent uppercase tracking-widest opacity-60">Snapshot</span>
                   </div>
                 </div>
