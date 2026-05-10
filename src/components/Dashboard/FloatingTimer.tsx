@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 import { useEffect, useState } from 'react';
 
 export default function FloatingTimer() {
-  const { focusSession, updateFocusTime, toggleFocusMode, endFocusSession, user, toggleGrinding, toggleFocusSession } = useStore();
+  const { focusSession, updateFocusTime, toggleFocusMode, endFocusSession, user, toggleGrinding, toggleFocusSession, isFocusMode } = useStore();
 
   useEffect(() => {
     let interval: any = null;
@@ -22,7 +22,7 @@ export default function FloatingTimer() {
     return () => clearInterval(interval);
   }, [focusSession.isActive, focusSession.isRunning, focusSession.timeLeft, updateFocusTime, user.isGrinding, toggleGrinding]);
 
-  if (!focusSession.isActive) return null;
+  if (!focusSession.isActive || isFocusMode) return null;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -40,7 +40,7 @@ export default function FloatingTimer() {
         exit={{ opacity: 0, scale: 0.8 }}
         drag
         dragConstraints={{ left: -1000, right: 1000, top: -1000, bottom: 1000 }}
-        className="fixed bottom-24 right-8 z-[150] group cursor-move"
+        className="fixed bottom-24 right-4 sm:right-8 z-[150] group cursor-move max-w-[calc(100vw-2rem)]"
       >
         <div className="relative">
            {/* Glow Effect */}
@@ -49,7 +49,7 @@ export default function FloatingTimer() {
              focusSession.isRunning ? "opacity-100" : "opacity-0"
            )} />
 
-           <div className="relative bg-text-main border border-card-border rounded-2xl p-4 shadow-2xl flex items-center gap-4 min-w-[180px]">
+           <div className="relative bg-text-main border border-card-border rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center gap-3 sm:gap-4 min-w-[160px] max-w-[calc(100vw-2rem)]">
               <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
                  <svg className="absolute inset-0 w-full h-full -rotate-90">
                     <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="3" />

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { Users, Search, UserPlus, Link as LinkIcon, Mail, Shield, Check, X, ChevronRight, User } from 'lucide-react';
 import { Vision } from '../../types';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
+import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 interface CollaborateModalProps {
   isOpen: boolean;
@@ -43,20 +43,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-hidden">
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        exit={{ opacity: 0 }}
-        onClick={onClose} 
-        className="absolute inset-0 bg-overlay backdrop-blur-2xl" 
-      />
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0, x: 50 }} 
-        animate={{ scale: 1, opacity: 1, x: 0 }} 
-        exit={{ scale: 0.9, opacity: 0, x: 50 }}
-        className="relative w-full max-w-lg max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] bg-card border border-card-border rounded-t-[2rem] sm:rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden"
-      >
+    <ResponsiveModal open={isOpen} onClose={onClose} size="md" className="bg-card" contentClassName="bg-card" zIndexClassName="z-[230]">
         <div className="p-8 border-b border-card-border bg-gradient-to-br from-accent/5 to-transparent">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -175,7 +162,6 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
               Managers can modify core vision items. Editors can contribute to layers and goals.
            </p>
         </div>
-      </motion.div>
-    </div>
+    </ResponsiveModal>
   );
 }

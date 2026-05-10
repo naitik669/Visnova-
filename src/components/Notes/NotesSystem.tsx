@@ -43,6 +43,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Note, Folder as FolderType } from '../../types';
 import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
 import { SelectMenu } from '../ui/SelectMenu';
+import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 const UNFILED_FOLDER_ID = '__unfiled__';
 
@@ -1227,29 +1228,16 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
   };
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-overlay/70 backdrop-blur-md"
-      />
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.96 }}
-        className="relative w-full max-w-md max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] rounded-t-[2rem] sm:rounded-[2rem] bg-card border border-card-border shadow-2xl overflow-y-auto custom-scrollbar"
-      >
-        <div className="p-8 border-b border-card-border/40 flex items-center justify-between">
-          <div>
-            <h3 className="text-xl font-black uppercase tracking-tight text-text-main">New Folder</h3>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent/60 mt-1">Library collection</p>
-          </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-text-main transition-all flex items-center justify-center">
-            <X size={18} />
-          </button>
-        </div>
+    <ResponsiveModal
+      open={isOpen}
+      onClose={onClose}
+      size="sm"
+      title="New Folder"
+      subtitle="Library collection"
+      className="bg-card"
+      contentClassName="bg-card"
+      zIndexClassName="z-[230]"
+    >
         <div className="p-8 space-y-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Name</label>
@@ -1289,8 +1277,7 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
             Create Folder
           </button>
         </div>
-      </motion.div>
-    </div>
+    </ResponsiveModal>
   );
 }
 
@@ -1344,10 +1331,22 @@ function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }:
   };
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[170] flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/70 backdrop-blur-md" />
-        <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-3xl max-h-[86vh] overflow-hidden rounded-[2rem] border border-card-border bg-app-container shadow-2xl flex flex-col">
+    <ResponsiveModal
+      open={!!folder}
+      onClose={onClose}
+      size="lg"
+      zIndexClassName="z-[240]"
+      footer={(
+        <>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/45 sm:mr-auto">
+            {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select notes or share the whole folder'}
+          </p>
+          <button onClick={shareFolder} disabled={isSharing || notes.length === 0} className="h-11 px-5 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+            {isSharing ? 'Sharing...' : 'Make Public Link'}
+          </button>
+        </>
+      )}
+    >
           <div className="p-5 border-b border-card-border flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <Folder size={34} fill={folder.color || 'var(--accent)'} className="text-accent shrink-0" />
@@ -1360,7 +1359,7 @@ function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }:
               <X size={18} />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar">
+          <div className="p-5 space-y-3">
             {notes.length === 0 ? (
               <div className="h-52 rounded-2xl border border-dashed border-card-border flex items-center justify-center text-center">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">No notes in this folder yet.</p>
@@ -1382,17 +1381,7 @@ function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }:
               </div>
             ))}
           </div>
-          <div className="p-5 border-t border-card-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
-              {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select notes or share the whole folder'}
-            </p>
-            <button onClick={shareFolder} disabled={isSharing || notes.length === 0} className="h-11 px-5 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
-              {isSharing ? 'Sharing...' : 'Make Public Link'}
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+    </ResponsiveModal>
   );
 }
 
@@ -1585,23 +1574,24 @@ function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-overlay backdrop-blur-sm overflow-hidden">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 10 }}
-          className="w-full max-w-xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl bg-card border border-card-border shadow-2xl overflow-y-auto custom-scrollbar"
-        >
-          <div className="p-6 border-b border-card-border flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-black text-text-main">New Audio Note</h3>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">Recording and playback</p>
-            </div>
-            <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-accent transition-colors">
-              <X size={16} className="mx-auto" />
-            </button>
-          </div>
+    <ResponsiveModal
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      title="New Audio Note"
+      subtitle="Recording and playback"
+      className="bg-card"
+      contentClassName="bg-card"
+      zIndexClassName="z-[230]"
+      footer={(
+        <>
+          <button onClick={onClose} className="h-11 px-5 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest">Cancel</button>
+          <button onClick={saveAudioNote} disabled={!audioBlob || status === 'uploading'} className="h-11 px-6 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+            {status === 'uploading' ? 'Saving...' : 'Save'}
+          </button>
+        </>
+      )}
+    >
           <div className="p-6 space-y-5">
             <input
               value={title}
@@ -1647,15 +1637,7 @@ function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
               </div>
             </div>
           </div>
-          <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] border-t border-card-border flex flex-col sm:flex-row sm:justify-end gap-3">
-            <button onClick={onClose} className="h-11 px-5 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest">Cancel</button>
-            <button onClick={saveAudioNote} disabled={!audioBlob || status === 'uploading'} className="h-11 px-6 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
-              {status === 'uploading' ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+    </ResponsiveModal>
   );
 }
 

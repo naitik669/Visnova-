@@ -82,11 +82,11 @@ export default function VisionSetupOverlay({ vision, onComplete, onCancel }: Vis
   const tagSuggestions = ['Mind', 'Body', 'Spirit', 'Career', 'Finance', 'Social', 'Leisure', 'Tech'];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-app-container/40 backdrop-blur-3xl">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-app-container/40 backdrop-blur-3xl overflow-hidden">
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-2xl bg-card border border-card-border rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] p-12 relative overflow-hidden"
+        className="w-screen h-[100dvh] sm:h-auto sm:w-[min(calc(100vw-2rem),42rem)] sm:max-h-[calc(100dvh-2rem)] bg-card border border-card-border rounded-none sm:rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] p-5 sm:p-8 lg:p-12 relative overflow-y-auto overflow-x-hidden custom-scrollbar"
       >
         <div className="absolute top-0 left-0 w-full h-1 bg-surface-muted">
            <motion.div 
@@ -98,12 +98,12 @@ export default function VisionSetupOverlay({ vision, onComplete, onCancel }: Vis
 
         <button 
           onClick={onCancel}
-          className="absolute top-8 right-8 text-text-secondary/30 hover:text-danger transition-colors"
+          className="absolute top-4 right-4 sm:top-8 sm:right-8 w-10 h-10 rounded-xl bg-surface-muted text-text-secondary/50 hover:text-danger transition-colors flex items-center justify-center"
         >
           <X size={24} />
         </button>
 
-        <div className="space-y-12">
+        <div className="space-y-8 sm:space-y-12">
           <div className="flex items-center gap-4">
              <div className="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
                 {React.createElement(steps[step].icon, { size: 24 })}
@@ -120,7 +120,7 @@ export default function VisionSetupOverlay({ vision, onComplete, onCancel }: Vis
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="min-h-[300px]"
+              className="min-h-[240px] sm:min-h-[300px]"
             >
               {step === 0 && (
                 <div className="space-y-6">

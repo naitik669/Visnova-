@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Globe, Lock, Share2, Sparkles, X, Check, ChevronRight } from 'lucide-react';
+import { Globe, Lock, Share2, Sparkles, Check } from 'lucide-react';
 import { Vision } from '../../types';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
+import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 interface PublishModalProps {
   isOpen: boolean;
@@ -38,20 +38,7 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-hidden">
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        exit={{ opacity: 0 }}
-        onClick={onClose} 
-        className="absolute inset-0 bg-overlay backdrop-blur-2xl" 
-      />
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0, y: 20 }} 
-        animate={{ scale: 1, opacity: 1, y: 0 }} 
-        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative w-full max-w-2xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] bg-card border border-card-border rounded-t-[2rem] sm:rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.5)] overflow-y-auto custom-scrollbar"
-      >
+    <ResponsiveModal open={isOpen} onClose={onClose} size="md" className="bg-card" contentClassName="bg-card" zIndexClassName="z-[230]">
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Left Preview */}
           <div className="bg-bg-base/50 p-10 flex flex-col justify-between border-r border-card-border relative overflow-hidden">
@@ -145,8 +132,7 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
             </div>
           </div>
         </div>
-      </motion.div>
-    </div>
+    </ResponsiveModal>
   );
 }
 

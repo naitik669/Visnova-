@@ -644,7 +644,7 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
   return (
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/70 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, y: 24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.96 }} className="relative w-full max-w-6xl h-[calc(100dvh-0.75rem)] sm:h-auto sm:max-h-[92vh] overflow-hidden bg-app-container border border-card-border rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl flex flex-col">
+      <motion.div initial={{ opacity: 0, y: 24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 24, scale: 0.96 }} className="relative w-full max-w-6xl h-[100dvh] sm:h-auto sm:max-h-[calc(100dvh-2rem)] overflow-hidden bg-app-container border border-card-border rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl flex flex-col">
         <div className="p-6 border-b border-card-border flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black text-text-main tracking-tight">{mode === 'edit' ? 'Draft NovaCapsule' : 'New NovaCapsule'}</h2>
@@ -814,7 +814,7 @@ function NovaCapsuleDetail({ capsule, onClose }: { capsule: NovaCapsule; onClose
   return (
     <div className="fixed inset-0 z-[160] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/75 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="relative w-full max-w-4xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar bg-app-container border border-card-border rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl p-5 sm:p-8 pb-[calc(1.25rem+env(safe-area-inset-bottom))] space-y-6">
+      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="relative w-full max-w-4xl max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto custom-scrollbar bg-app-container border border-card-border rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl p-5 sm:p-8 pb-[calc(1.25rem+env(safe-area-inset-bottom))] space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-3xl font-black text-text-main">{capsule.title}</h2>

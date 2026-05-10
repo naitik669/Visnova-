@@ -748,7 +748,7 @@ function SimpleModal({ title, children, onClose }: { title: string; children: Re
   return (
     <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/80 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl p-4 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-xl max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl p-4 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="sticky -top-4 sm:-top-6 z-10 bg-app-container/95 backdrop-blur flex items-center justify-between gap-4 mb-6 py-2">
           <h2 className="text-lg font-black uppercase tracking-tight text-text-main">{title}</h2>
           <button onClick={onClose} className="w-11 h-11 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary hover:text-text-main"><X size={18} /></button>
@@ -1138,7 +1138,7 @@ function LearningSessionModal({ resource, visions, visionTitle, userId, onClose,
   return (
     <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} className="absolute inset-0 bg-overlay/75 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.98, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 12 }} className="relative w-full max-w-[1380px] h-[calc(100dvh-0.75rem)] sm:h-[min(92vh,900px)] overflow-hidden bg-app-container rounded-t-[1.75rem] sm:rounded-xl border border-card-border shadow-2xl flex flex-col">
+      <motion.div initial={{ opacity: 0, scale: 0.98, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 12 }} className="relative w-full max-w-[1380px] h-[100dvh] sm:h-[min(calc(100dvh-2rem),900px)] overflow-hidden bg-app-container rounded-t-[1.75rem] sm:rounded-xl border border-card-border shadow-2xl flex flex-col">
         <header className="shrink-0 bg-app-container/95 backdrop-blur border-b border-card-border px-4 lg:px-5 py-3 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[9px] font-black uppercase tracking-[0.28em] text-accent">Learning Session</p>
@@ -1443,7 +1443,7 @@ function ResourceDetailModal({ resource, visions, visionTitle, onClose, onUpdate
   return (
     <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-5 overflow-hidden">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/80 backdrop-blur-md" />
-      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-6xl max-h-[calc(100dvh-0.75rem)] sm:max-h-[92vh] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl">
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-6xl max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl">
         <div className="sticky top-0 z-10 bg-app-container/95 backdrop-blur border-b border-card-border p-5 flex items-center justify-between gap-4">
           <div>
             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent">Growth Resource</p>

@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import VerifiedBadge from '../VerifiedBadge';
+import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 export default function UserProfileModal() {
   const { selectedProfileId, setSelectedProfileId, user: currentUser, session, userCircles, addToCircle, removeFromCircle, toggleFollow, followingIds, fetchProfileStats } = useStore();
@@ -78,22 +79,14 @@ export default function UserProfileModal() {
   if (!selectedProfileId) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setSelectedProfileId(null)}
-          className="absolute inset-0 bg-overlay/80 backdrop-blur-md"
-        />
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-xl h-[100dvh] sm:h-auto sm:max-h-[92vh] bg-app-container rounded-none sm:rounded-[2.5rem] shadow-2xl overflow-y-auto custom-scrollbar border border-card-border z-[101]"
-        >
+    <ResponsiveModal
+      open={!!selectedProfileId}
+      onClose={() => setSelectedProfileId(null)}
+      size="md"
+      className="bg-app-container"
+      contentClassName="bg-app-container"
+      zIndexClassName="z-[220]"
+    >
           {isLoading ? (
             <div className="h-96 flex flex-col items-center justify-center gap-4">
                <div className="w-10 h-10 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
@@ -282,8 +275,6 @@ export default function UserProfileModal() {
               </div>
             </>
           )}
-        </motion.div>
-      </div>
-    </AnimatePresence>
+    </ResponsiveModal>
   );
 }

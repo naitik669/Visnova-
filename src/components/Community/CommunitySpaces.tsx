@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Award, Compass, Hash, Loader2, MessageCircle, Plus, Search, Send, Sparkles, Target, Users, X } from 'lucide-react';
+import { Award, Compass, Hash, Loader2, MessageCircle, Plus, Search, Send, Sparkles, Target, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
+import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 type Community = {
   id: string;
@@ -577,21 +577,16 @@ export default function CommunitySpaces() {
         </section>
       </div>
 
-      <AnimatePresence>
-        {isCreateOpen && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsCreateOpen(false)} className="absolute inset-0 bg-overlay/80 backdrop-blur-md" />
-            <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-xl bg-app-container rounded-[2rem] shadow-2xl border border-card-border p-6 sm:p-8">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-accent mb-2">Level 5 Creator</p>
-                  <h3 className="text-xl font-black text-text-main uppercase">Create Community</h3>
-                </div>
-                <button onClick={() => setIsCreateOpen(false)} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/50 hover:text-text-main">
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="space-y-4">
+      {isCreateOpen && (
+          <ResponsiveModal
+            open={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            size="md"
+            title="Create Community"
+            subtitle="Level 5 Creator"
+            zIndexClassName="z-[220]"
+          >
+              <div className="p-5 sm:p-8 space-y-4">
                 <input value={newCommunity.name} onChange={event => setNewCommunity(prev => ({ ...prev, name: event.target.value }))} placeholder="Community name" className="w-full h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-bold outline-none focus:border-accent" />
                 <input value={newCommunity.category} onChange={event => setNewCommunity(prev => ({ ...prev, category: event.target.value }))} placeholder="Category" className="w-full h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-bold outline-none focus:border-accent" />
                 <textarea value={newCommunity.description} onChange={event => setNewCommunity(prev => ({ ...prev, description: event.target.value }))} placeholder="What should people build or discuss here?" className="w-full h-32 rounded-2xl bg-card border border-card-border p-4 text-sm font-medium outline-none focus:border-accent resize-none" />
@@ -599,10 +594,8 @@ export default function CommunitySpaces() {
                   Create Space
                 </button>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+          </ResponsiveModal>
+      )}
     </div>
   );
 }

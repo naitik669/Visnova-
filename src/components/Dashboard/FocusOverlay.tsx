@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Play, Pause, RotateCcw, Brain, Save, Wind, Zap, Target, Plus, Trash2, Clock, Check } from 'lucide-react';
+import { Play, Pause, RotateCcw, Brain, Save, Target, Plus, Trash2, Check } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
+import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 export default function FocusOverlay() {
   const {
@@ -82,30 +83,18 @@ export default function FocusOverlay() {
   const primaryTask = activeVision?.tasks.find(t => !t.completed);
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-overlay backdrop-blur-md flex items-center justify-center p-4 md:p-8"
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="bg-card border border-card-border w-full max-w-2xl rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col"
-        >
-          {/* Close Button */}
-          <button
-            onClick={handleClose}
-            className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center hover:bg-surface-muted rounded-full transition-colors text-text-secondary hover:text-text-main z-20"
-          >
-            <X size={20} />
-          </button>
-
-          <div className="p-8 md:p-12 space-y-8">
+    <ResponsiveModal
+      open
+      onClose={handleClose}
+      size="lg"
+      title={sessionState === 'reflection' ? 'Focus Reflection' : focusSession.label || 'Focus Timer'}
+      subtitle={sessionState === 'reflection' ? 'Log what you finished before ending the sprint.' : primaryTask ? primaryTask.text : 'Choose a preset and run a focused sprint.'}
+      contentClassName="bg-card"
+      zIndexClassName="z-[210]"
+    >
+          <div className="p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
             {sessionState === 'active' && (
-              <div className="space-y-8">
+              <div className="space-y-5 sm:space-y-6">
                 {/* Social Pulse in Focus */}
                 <div className="flex justify-center">
                   <div className="inline-flex items-center gap-4 px-4 py-2 rounded-full bg-accent/[0.03] border border-accent/10">
@@ -125,7 +114,7 @@ export default function FocusOverlay() {
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[9px] font-bold uppercase tracking-widest leading-none">
                     <Target size={12} /> execution in progress
                   </div>
-                  <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-text-main  line-clamp-2">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-text-main line-clamp-2">
                     "{primaryTask ? primaryTask.text : 'Calibrating Focus State...'}"
                   </h1>
                 </div>
@@ -182,7 +171,7 @@ export default function FocusOverlay() {
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="flex flex-wrap gap-2"
+                        className="flex gap-2 overflow-x-auto sm:flex-wrap custom-scrollbar pb-1"
                       >
                         {focusPresets.map((preset) => (
                           <div key={preset.id} className="group relative">
@@ -213,7 +202,7 @@ export default function FocusOverlay() {
                 </div>
 
                 {/* Main Timer Area */}
-                <div className="flex flex-col items-center justify-center py-6">
+                <div className="flex flex-col items-center justify-center py-2 sm:py-4">
                   <div className="relative group">
                     <motion.div
                       animate={{
@@ -221,7 +210,8 @@ export default function FocusOverlay() {
                         rotate: focusSession.isRunning ? [0, 1, -1, 0] : 0
                       }}
                       transition={{ duration: 4, repeat: Infinity }}
-                      className="text-[6rem] md:text-[8rem] font-medium tracking-tighter leading-none select-none text-text-main tabular-nums relative z-10"
+                      className="font-medium tracking-tighter leading-none select-none text-text-main tabular-nums relative z-10"
+                      style={{ fontSize: 'clamp(3.5rem, 12vw, 8rem)' }}
                     >
                       {formatTime(focusSession.timeLeft)}
                     </motion.div>
@@ -232,10 +222,10 @@ export default function FocusOverlay() {
                   </div>
 
                   {/* Controls */}
-                  <div className="flex items-center gap-6 mt-8">
+                  <div className="flex items-center justify-center gap-4 sm:gap-6 mt-5 sm:mt-7">
                     <button
                       onClick={handleToggleActive}
-                      className="w-16 h-16 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-accent/20"
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-accent/20"
                     >
                       {focusSession.isRunning ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" className="ml-1" />}
                     </button>
@@ -257,7 +247,7 @@ export default function FocusOverlay() {
                 </div>
 
                 {/* Cognitive Anchor */}
-                <div className="bg-bg-base/50 p-6 rounded-3xl border border-card-border flex items-start gap-4">
+                <div className="bg-bg-base/50 p-4 sm:p-5 rounded-3xl border border-card-border flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-accent/5 flex items-center justify-center text-accent shrink-0">
                     <Brain size={20} />
                   </div>
@@ -272,12 +262,12 @@ export default function FocusOverlay() {
             )}
 
             {sessionState === 'reflection' && (
-              <div className="space-y-10">
+              <div className="space-y-6 sm:space-y-8">
                 <div className="space-y-4 text-center">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[9px] font-bold uppercase tracking-widest leading-none">
                     <Check size={12} /> protocol concluded
                   </div>
-                  <h2 className="text-3xl font-semibold tracking-tight text-text-main leading-tight">Evidence of Alignment</h2>
+                  <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-main leading-tight">Evidence of Alignment</h2>
                   <p className="text-sm text-text-secondary font-medium leading-relaxed opacity-80 max-w-sm mx-auto">
                     Passive timers don't build discipline. Honest reflection does. Log your physical output.
                   </p>
@@ -288,7 +278,7 @@ export default function FocusOverlay() {
                     value={reflectionText}
                     onChange={(e) => setReflectionText(e.target.value)}
                     placeholder="I executed..."
-                    className="w-full h-40 bg-bg-base/30 rounded-3xl border border-card-border focus:border-accent/40 focus:outline-none transition-colors text-lg p-6 text-text-main font-medium placeholder:text-text-main/10 resize-none"
+                    className="w-full min-h-36 max-h-64 bg-bg-base/30 rounded-3xl border border-card-border focus:border-accent/40 focus:outline-none transition-colors text-base sm:text-lg p-5 sm:p-6 text-text-main font-medium placeholder:text-text-main/10 resize-y"
                     autoFocus
                   />
 
@@ -305,8 +295,6 @@ export default function FocusOverlay() {
               </div>
             )}
           </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </ResponsiveModal>
   );
 }
