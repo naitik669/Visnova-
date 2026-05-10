@@ -18,6 +18,7 @@ import { cn } from '../../lib/utils';
 import { getCapsuleImageUrl, supabase, uploadCapsuleImage } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { NovaCapsule, NovaCapsuleItem, NovaCapsuleItemType } from '../../types';
+import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
 
 type CapsuleTab = 'upcoming' | 'unlocked' | 'opened' | 'draft';
 type BuilderMode = 'create' | 'edit';
@@ -44,28 +45,28 @@ const defaultUnlockValues = () => {
 };
 
 const toLocalCapsule = (row: any): NovaCapsule => ({
-  id: row.id,
-  userId: row.user_id,
-  title: row.title,
-  message: row.message || '',
-  status: row.status || 'draft',
-  unlockAt: row.unlock_at,
-  notify: row.notify ?? true,
-  openedAt: row.opened_at,
-  createdAt: new Date(row.created_at).getTime(),
-  updatedAt: new Date(row.updated_at || row.created_at).getTime(),
-  items: (row.items || []).map((item: any) => ({
-    id: item.id,
-    capsuleId: item.capsule_id,
-    userId: item.user_id,
-    itemType: item.item_type,
-    sourceId: item.source_id,
-    title: item.title,
-    content: item.content,
-    mediaUrl: item.media_url,
-    storagePath: item.storage_path,
-    metadata: item.metadata || {},
-    createdAt: new Date(item.created_at).getTime()
+  id: safeString(row?.id),
+  userId: safeString(row?.user_id),
+  title: safeString(row?.title, 'Untitled Capsule'),
+  message: safeString(row?.message),
+  status: safeString(row?.status, 'draft') as NovaCapsule['status'],
+  unlockAt: row?.unlock_at,
+  notify: row?.notify ?? true,
+  openedAt: row?.opened_at,
+  createdAt: safeTime(row?.created_at),
+  updatedAt: safeTime(row?.updated_at, safeTime(row?.created_at)),
+  items: safeArray<any>(row?.items).map((item: any) => ({
+    id: safeString(item?.id),
+    capsuleId: safeString(item?.capsule_id),
+    userId: safeString(item?.user_id),
+    itemType: safeString(item?.item_type, 'text') as NovaCapsuleItemType,
+    sourceId: item?.source_id,
+    title: safeString(item?.title),
+    content: safeString(item?.content),
+    mediaUrl: item?.media_url,
+    storagePath: item?.storage_path,
+    metadata: item?.metadata || {},
+    createdAt: safeTime(item?.created_at)
   }))
 });
 
@@ -340,7 +341,7 @@ function NovaCapsuleCard({ capsule, onContinue, onOpen, onDelete }: {
         <div className="space-y-2 min-w-0">
           <h3 className="text-lg font-black text-text-main tracking-tight truncate">{capsule.title}</h3>
           <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50 flex items-center gap-2">
-            <Calendar size={12} /> Opens on {new Date(capsule.unlockAt).toLocaleString()}
+            <Calendar size={12} /> Opens on {safeFormat(capsule.unlockAt, 'MMM d, yyyy h:mm a')}
           </p>
         </div>
         <span className={cn(
@@ -818,7 +819,7 @@ function NovaCapsuleDetail({ capsule, onClose }: { capsule: NovaCapsule; onClose
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-3xl font-black text-text-main">{capsule.title}</h2>
-            <p className="text-xs font-bold text-text-secondary mt-2">Opens on {new Date(capsule.unlockAt).toLocaleString()}</p>
+            <p className="text-xs font-bold text-text-secondary mt-2">Opens on {safeFormat(capsule.unlockAt, 'MMM d, yyyy h:mm a')}</p>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-text-main flex items-center justify-center"><X size={18} /></button>
         </div>
@@ -826,7 +827,7 @@ function NovaCapsuleDetail({ capsule, onClose }: { capsule: NovaCapsule; onClose
         {locked ? (
           <div className="py-24 rounded-[2rem] bg-card border border-dashed border-card-border text-center space-y-4">
             <Lock className="mx-auto text-accent" size={42} />
-            <p className="text-sm font-bold text-text-main">This NovaCapsule opens on {new Date(capsule.unlockAt).toLocaleString()}.</p>
+            <p className="text-sm font-bold text-text-main">This NovaCapsule opens on {safeFormat(capsule.unlockAt, 'MMM d, yyyy h:mm a')}.</p>
           </div>
         ) : (
           <>

@@ -34,6 +34,7 @@ import { Post, Comment } from '../../types';
 import { uploadMedia, supabase } from '../../lib/supabase';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
+import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
 
 import { TrendingTopicsSection } from './TrendingTopicsSection';
 import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';
@@ -243,36 +244,36 @@ export default function CommunityFeed() {
   }, [searchQuery, activeTab]);
 
   const mapPostRow = (p: any): Post => ({
-    id: p.id,
-    userId: p.user_id,
+    id: safeString(p?.id),
+    userId: safeString(p?.user_id),
     author: {
-      id: p.author?.id || p.user_id,
-      name: p.author?.display_name || p.author?.full_name || 'Explorer',
-      avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
-      handle: `@${p.author?.username || 'user'}`,
-      verified: !!p.author?.verified
+      id: safeString(p?.author?.id || p?.user_id),
+      name: safeString(p?.author?.display_name || p?.author?.full_name, 'Explorer'),
+      avatar: safeString(p?.author?.avatar_url, `https://api.dicebear.com/7.x/shapes/svg?seed=${safeString(p?.user_id, 'user')}`),
+      handle: `@${safeString(p?.author?.username, 'user')}`,
+      verified: !!p?.author?.verified
     },
-    caption: p.caption,
-    content: p.content || '',
-    timestamp: new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-    createdAt: new Date(p.created_at).getTime(),
-    likes: p.likes?.[0]?.count || 0,
-    comments: p.comment_count?.[0]?.count || 0,
-    saves: p.saves?.[0]?.count || 0,
+    caption: safeString(p?.caption),
+    content: safeString(p?.content),
+    timestamp: safeFormat(p?.created_at, 'MMM d, yyyy'),
+    createdAt: safeTime(p?.created_at),
+    likes: p?.likes?.[0]?.count || 0,
+    comments: p?.comment_count?.[0]?.count || 0,
+    saves: p?.saves?.[0]?.count || 0,
     isLiked: false,
     isSaved: false,
-    type: p.type || 'update',
-    visibility: p.visibility || 'public',
-    archived: !!p.archived,
-    archivedAt: p.archived_at || null,
-    deletedAt: p.deleted_at || null,
-    media: p.media?.map((m: any) => ({
+    type: p?.type || 'update',
+    visibility: p?.visibility || 'public',
+    archived: !!p?.archived,
+    archivedAt: p?.archived_at || null,
+    deletedAt: p?.deleted_at || null,
+    media: safeArray<any>(p?.media).map((m: any) => ({
       id: m.id,
       url: m.media_url,
       type: m.media_type
-    })) || [],
-    tags: p.post_tags?.map((t: any) => t.tag) || [],
-    mentions: p.mentions?.map((m: any) => ({
+    })),
+    tags: safeArray<any>(p?.post_tags).map((t: any) => t.tag).filter(Boolean),
+    mentions: safeArray<any>(p?.mentions).map((m: any) => ({
       userId: m.mentioned_user_id,
       username: m.user?.username || 'user'
     })) || [],
@@ -1840,8 +1841,8 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
           handle: `@${c.author?.username || 'user'}`,
           verified: !!c.author?.verified
         },
-        content: c.content,
-        timestamp: new Date(c.created_at).toLocaleDateString()
+        content: safeString(c.content),
+        timestamp: safeFormat(c.created_at, 'MMM d, yyyy')
       }));
       
       setComments(formatted);

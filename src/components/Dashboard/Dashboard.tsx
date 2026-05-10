@@ -32,6 +32,7 @@ import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
 import { getLevelProgress, normalizeLegacyXp } from "../../lib/progression";
 import React from "react";
+import { safeArray, safeFormat } from "../../lib/safeData";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -768,7 +769,7 @@ export default function Dashboard() {
                     {currentJournalEntry?.visionIds &&
                     currentJournalEntry.visionIds.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {currentJournalEntry.visionIds.map((vid) => {
+                        {safeArray<string>(currentJournalEntry.visionIds).map((vid) => {
                           const vision = visions.find((v) => v.id === vid);
                           return vision ? (
                             <span
@@ -1077,7 +1078,7 @@ export default function Dashboard() {
                     <div className="min-w-0 flex-1">
                       <p className="text-[12px] font-semibold text-text-main line-through opacity-75 truncate">{todo.text}</p>
                       <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">
-                        {todo.completedAt ? new Date(todo.completedAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Completed'} - {todo.source} - +25 XP
+                        {todo.completedAt ? safeFormat(todo.completedAt, 'MMM d') : 'Completed'} - {todo.source} - +25 XP
                       </p>
                     </div>
                   </div>

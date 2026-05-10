@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import { safeDate, safeFormat } from '../../lib/dateUtils';
+import { safeArray, safeString } from '../../lib/safeData';
 import { JournalEntry, Vision } from '../../types';
 import { SelectMenu } from '../ui/SelectMenu';
 
@@ -47,13 +48,13 @@ export default function DailyJournal() {
 
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
   const currentEntry = useMemo(() => 
-    journalEntries.find(e => e.date === dateKey),
+    safeArray<JournalEntry>(journalEntries).find(e => e.date === dateKey),
   [journalEntries, dateKey]);
 
   useEffect(() => {
     if (currentEntry) {
-      setEntryText(currentEntry.note);
-      setSelectedVisions(currentEntry.visionIds || []);
+      setEntryText(safeString(currentEntry.note));
+      setSelectedVisions(safeArray<string>(currentEntry.visionIds));
       setSelectedMood(currentEntry.mood);
     } else {
       setEntryText('');
@@ -100,14 +101,14 @@ export default function DailyJournal() {
 
   const toggleVisionTag = (id: string) => {
     setSelectedVisions(prev => 
-      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
+      safeArray<string>(prev).includes(id) ? safeArray<string>(prev).filter(v => v !== id) : [...safeArray<string>(prev), id]
     );
   };
 
   const filteredEntries = useMemo(() => {
-    return (journalEntries || []).filter(entry => {
-      const matchesSearch = (entry.note || '').toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesVision = filterVisionId === 'all' || entry.visionIds?.includes(filterVisionId);
+    return safeArray<JournalEntry>(journalEntries).filter(entry => {
+      const matchesSearch = safeString(entry.note).toLowerCase().includes(safeString(searchQuery).toLowerCase());
+      const matchesVision = filterVisionId === 'all' || safeArray<string>(entry.visionIds).includes(filterVisionId);
       return matchesSearch && matchesVision;
     });
   }, [journalEntries, searchQuery, filterVisionId]);
@@ -170,7 +171,7 @@ export default function DailyJournal() {
                    <h3 className="text-[10px] font-black uppercase tracking-widest text-accent mb-6">Recent History</h3>
                    <div className="space-y-2">
                      {recentDays.map((day) => {
-                       const hasEntry = journalEntries.some(e => e.date === format(day, 'yyyy-MM-dd'));
+                       const hasEntry = safeArray<JournalEntry>(journalEntries).some(e => e.date === format(day, 'yyyy-MM-dd'));
                        return (
                          <button
                            key={day.toISOString()}
@@ -214,7 +215,7 @@ export default function DailyJournal() {
                       <SelectMenu
                         value={filterVisionId}
                         onChange={setFilterVisionId}
-                        options={[{ value: 'all', label: 'All Visions' }, ...visions.map(v => ({ value: v.id, label: v.title }))]}
+                        options={[{ value: 'all', label: 'All Visions' }, ...safeArray<Vision>(visions).map(v => ({ value: v.id, label: safeString(v.title, 'Untitled Vision') }))]}
                         triggerClassName="h-11 rounded-xl bg-card text-xs"
                       />
                    </div>
@@ -268,21 +269,21 @@ export default function DailyJournal() {
                             <div className="space-y-4">
                                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Associated Visions</p>
                                <div className="flex flex-wrap gap-2">
-                                  {visions.map(vision => (
+                                  {safeArray<Vision>(visions).map(vision => (
                                     <button
                                       key={vision.id}
                                       onClick={() => toggleVisionTag(vision.id)}
                                       className={cn(
                                         "px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all",
-                                        selectedVisions.includes(vision.id)
+                                        safeArray<string>(selectedVisions).includes(vision.id)
                                           ? "bg-accent border-accent text-accent-contrast shadow-md"
                                           : "bg-card border-card-border text-text-secondary hover:border-accent/40"
                                       )}
                                     >
-                                      {vision.title}
+                                      {safeString(vision.title, 'Untitled Vision')}
                                     </button>
                                   ))}
-                                  {visions.length === 0 && (
+                                  {safeArray<Vision>(visions).length === 0 && (
                                     <p className="text-xs text-text-secondary">No visions active. Create some in the Vision Board.</p>
                                   )}
                                </div>
@@ -331,8 +332,8 @@ export default function DailyJournal() {
                             {currentEntry ? (
                               <div className="space-y-12">
                                 <div className="flex flex-wrap gap-3">
-                                  {currentEntry.visionIds?.map(vid => {
-                                    const v = visions.find(vis => vis.id === vid);
+                                  {safeArray<string>(currentEntry.visionIds).map(vid => {
+                                    const v = safeArray<Vision>(visions).find(vis => vis.id === vid);
                                     return (
                                       <div key={vid} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/5 border border-accent/10 text-accent text-[10px] font-black uppercase tracking-widest">
                                         <Target size={12} /> {v?.title || 'Unknown Vision'}
@@ -343,7 +344,7 @@ export default function DailyJournal() {
 
                                 <div className="prose prose-xl prose-accent max-w-none">
                                   <p className="text-2xl text-text-main leading-[1.6] font-medium whitespace-pre-wrap tracking-tight">
-                                    {currentEntry.note}
+                                    {safeString(currentEntry.note, 'No content yet.')}
                                   </p>
                                 </div>
 
@@ -391,9 +392,9 @@ export default function DailyJournal() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="space-y-12"
             >
-              {filteredEntries.length > 0 ? (
+              {safeArray<JournalEntry>(filteredEntries).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {filteredEntries.map((entry, i) => (
+                  {safeArray<JournalEntry>(filteredEntries).map((entry, i) => (
                     <motion.button
                       key={entry.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -419,17 +420,17 @@ export default function DailyJournal() {
                       </div>
                       
                       <p className="text-lg font-medium text-text-main leading-relaxed line-clamp-4 flex-1">
-                        {entry.note || 'No content yet.'}
+                        {safeString(entry.note, 'No content yet.')}
                       </p>
 
                       <div className="mt-8 pt-6 border-t border-card-border flex flex-wrap gap-2">
-                         {entry.visionIds?.slice(0, 3).map(vid => (
+                         {safeArray<string>(entry.visionIds).slice(0, 3).map(vid => (
                            <span key={vid} className="text-[8px] font-black uppercase tracking-widest text-accent bg-accent/5 px-2 py-1 rounded-md">
-                             {visions.find(v => v.id === vid)?.title || 'Vision'}
+                             {safeArray<Vision>(visions).find(v => v.id === vid)?.title || 'Vision'}
                            </span>
                          ))}
-                         {entry.visionIds && entry.visionIds.length > 3 && (
-                           <span className="text-[8px] font-black text-text-secondary/40">+{entry.visionIds.length - 3}</span>
+                         {safeArray<string>(entry.visionIds).length > 3 && (
+                           <span className="text-[8px] font-black text-text-secondary/40">+{safeArray<string>(entry.visionIds).length - 3}</span>
                          )}
                       </div>
                     </motion.button>

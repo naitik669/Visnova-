@@ -8,47 +8,48 @@ import { useStore } from '../../store/useStore';
 import { Comment, Post } from '../../types';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
+import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
 
 const COMMENTS_PAGE_SIZE = 50;
 
 const mapPostRow = (p: any): Post => ({
-  id: p.id,
-  userId: p.user_id,
+  id: safeString(p?.id),
+  userId: safeString(p?.user_id),
   author: {
-    id: p.author?.id || p.user_id,
-    name: p.author?.display_name || p.author?.full_name || 'Explorer',
-    avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
-    handle: `@${p.author?.username || 'user'}`,
-    verified: !!p.author?.verified
+    id: safeString(p?.author?.id || p?.user_id),
+    name: safeString(p?.author?.display_name || p?.author?.full_name, 'Explorer'),
+    avatar: safeString(p?.author?.avatar_url, `https://api.dicebear.com/7.x/shapes/svg?seed=${safeString(p?.user_id, 'user')}`),
+    handle: `@${safeString(p?.author?.username, 'user')}`,
+    verified: !!p?.author?.verified
   },
-  caption: p.caption,
-  content: p.content || '',
-  timestamp: new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-  createdAt: new Date(p.created_at).getTime(),
-  likes: p.likes?.[0]?.count || 0,
-  comments: p.comment_count?.[0]?.count || 0,
-  saves: p.saves?.[0]?.count || 0,
-  type: (p.type || 'update') as Post['type'],
-  visibility: (p.visibility || 'public') as Post['visibility'],
-  archived: !!p.archived,
-  archivedAt: p.archived_at || null,
-  deletedAt: p.deleted_at || null,
-  media: p.media?.map((m: any) => ({ id: m.id, url: m.media_url, type: (m.media_type || 'image') as 'image' | 'video' })) || [],
-  tags: p.post_tags?.map((t: any) => t.tag) || []
+  caption: safeString(p?.caption),
+  content: safeString(p?.content),
+  timestamp: safeFormat(p?.created_at, 'MMM d, yyyy'),
+  createdAt: safeTime(p?.created_at),
+  likes: p?.likes?.[0]?.count || 0,
+  comments: p?.comment_count?.[0]?.count || 0,
+  saves: p?.saves?.[0]?.count || 0,
+  type: (p?.type || 'update') as Post['type'],
+  visibility: (p?.visibility || 'public') as Post['visibility'],
+  archived: !!p?.archived,
+  archivedAt: p?.archived_at || null,
+  deletedAt: p?.deleted_at || null,
+  media: safeArray<any>(p?.media).map((m: any) => ({ id: m.id, url: m.media_url, type: (m.media_type || 'image') as 'image' | 'video' })),
+  tags: safeArray<any>(p?.post_tags).map((t: any) => t.tag).filter(Boolean)
 });
 
 const mapCommentRow = (comment: any): Comment => ({
-  id: comment.id,
-  postId: comment.post_id,
-  userId: comment.user_id,
+  id: safeString(comment?.id),
+  postId: safeString(comment?.post_id),
+  userId: safeString(comment?.user_id),
   author: {
-    name: comment.author?.display_name || comment.author?.full_name || 'Explorer',
-    avatar: comment.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${comment.user_id}`,
-    handle: `@${comment.author?.username || 'user'}`,
-    verified: !!comment.author?.verified
+    name: safeString(comment?.author?.display_name || comment?.author?.full_name, 'Explorer'),
+    avatar: safeString(comment?.author?.avatar_url, `https://api.dicebear.com/7.x/shapes/svg?seed=${safeString(comment?.user_id, 'user')}`),
+    handle: `@${safeString(comment?.author?.username, 'user')}`,
+    verified: !!comment?.author?.verified
   },
-  content: comment.content,
-  timestamp: new Date(comment.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  content: safeString(comment?.content),
+  timestamp: safeFormat(comment?.created_at, 'MMM d, h:mm a')
 });
 
 export default function PostThreadPage() {
@@ -268,7 +269,7 @@ export default function PostThreadPage() {
 
             {post.tags && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {post.tags.map(tag => <span key={tag} className="px-3 py-1 rounded-full bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest">#{tag}</span>)}
+                {safeArray<string>(post.tags).map(tag => <span key={tag} className="px-3 py-1 rounded-full bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest">#{tag}</span>)}
               </div>
             )}
 

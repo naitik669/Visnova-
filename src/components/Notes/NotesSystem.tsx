@@ -43,6 +43,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Note, Folder as FolderType } from '../../types';
 import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
 import { safeDate, safeFormat } from '../../lib/dateUtils';
+import { safeArray, safeString } from '../../lib/safeData';
 import { SelectMenu } from '../ui/SelectMenu';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 
@@ -56,7 +57,7 @@ function formatDuration(seconds?: number) {
 }
 
 function cleanPreview(content?: string) {
-  const cleaned = (content || '')
+  const cleaned = safeString(content)
     .replace(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/\S+/gi, 'YouTube')
     .replace(/https?:\/\/\S+/gi, 'Link')
     .replace(/[#*_`>[\]()]/g, '')
@@ -116,7 +117,7 @@ export default function NotesSystem() {
 
   const journalEntry = useMemo(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    return notes.find(n => 
+    return safeArray<Note>(notes).find(n =>
       !n.isDeleted && 
       n.note_type === 'journal' && 
       (n.journal_date === dateStr || (n.journal_date === undefined && isSameDay(safeDate(n.createdAt), selectedDate)))
@@ -124,7 +125,7 @@ export default function NotesSystem() {
   }, [notes, selectedDate]);
 
   const streak = useMemo(() => {
-    const journalNotes = notes.filter(n => n.note_type === 'journal' && !n.isDeleted && n.content.trim());
+    const journalNotes = safeArray<Note>(notes).filter(n => n.note_type === 'journal' && !n.isDeleted && safeString(n.content).trim());
     if (journalNotes.length === 0) return 0;
     
     const entryDates = new Set(journalNotes.map(n => n.journal_date || safeFormat(n.createdAt, 'yyyy-MM-dd')));
@@ -143,8 +144,8 @@ export default function NotesSystem() {
   }, [notes]);
 
   const handleNewFolder = async (folder: { name: string; color?: string }) => {
-    const trimmedName = folder.name.trim();
-    const isDuplicate = folders.some(f => f.name.toLowerCase() === trimmedName.toLowerCase());
+    const trimmedName = safeString(folder.name).trim();
+    const isDuplicate = safeArray<FolderType>(folders).some(f => safeString(f.name).toLowerCase() === trimmedName.toLowerCase());
     if (!trimmedName || isDuplicate) return false;
 
     addFolder({ name: trimmedName, color: folder.color });
@@ -153,7 +154,7 @@ export default function NotesSystem() {
   };
 
   const filteredNotes = useMemo(() => {
-    let result = notes;
+    let result = safeArray<Note>(notes);
 
     // Handle Trash filter separately as it ignores note_type/folders
     if (sidebarFilter === 'trash') {
@@ -191,11 +192,11 @@ export default function NotesSystem() {
 
     // Search (applies to both trash and normal views)
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+      const q = safeString(searchQuery).toLowerCase();
       result = result.filter(n => 
-        n.title.toLowerCase().includes(q) || 
-        n.content.toLowerCase().includes(q) ||
-        n.tags.some(t => t.toLowerCase().includes(q))
+        safeString(n.title).toLowerCase().includes(q) ||
+        safeString(n.content).toLowerCase().includes(q) ||
+        safeArray<string>(n.tags).some(t => safeString(t).toLowerCase().includes(q))
       );
     }
 
@@ -203,7 +204,7 @@ export default function NotesSystem() {
   }, [notes, activeTab, sidebarFilter, searchQuery, selectedFolder, timeFilter]);
 
   const noteCounts = useMemo(() => {
-    const visibleLibraryNotes = notes.filter(n => !n.isDeleted && libraryNoteTypes.includes(n.note_type));
+    const visibleLibraryNotes = safeArray<Note>(notes).filter(n => !n.isDeleted && libraryNoteTypes.includes(n.note_type));
     const byFolder = new Map<string, number>();
     visibleLibraryNotes.forEach(note => {
       if (!note.folderId) return;
@@ -218,9 +219,9 @@ export default function NotesSystem() {
   }, [notes]);
 
   const filteredFolders = useMemo(() => {
-    if (timeFilter === 'all') return folders;
-    return folders.filter(folder => {
-      const folderNotes = notes.filter(n => n.folderId === folder.id && !n.isDeleted && libraryNoteTypes.includes(n.note_type));
+    if (timeFilter === 'all') return safeArray<FolderType>(folders);
+    return safeArray<FolderType>(folders).filter(folder => {
+      const folderNotes = safeArray<Note>(notes).filter(n => n.folderId === folder.id && !n.isDeleted && libraryNoteTypes.includes(n.note_type));
       return folderNotes.some(note => timeFilter === 'today' ? isToday(note.updatedAt) : isThisWeek(note.updatedAt));
     });
   }, [folders, notes, timeFilter]);
@@ -339,7 +340,7 @@ export default function NotesSystem() {
                     </button>
                   </div>
                   <div className="space-y-1 px-1">
-                    {folders.slice(0, 5).map(f => (
+                    {safeArray<FolderType>(folders).slice(0, 5).map(f => (
                       <button 
                         key={f.id} 
                         onClick={() => {
@@ -641,7 +642,7 @@ export default function NotesSystem() {
                         streak={streak}
                         fullView={isJournalFullView}
                         toggleFullView={() => setIsJournalFullView(!isJournalFullView)}
-                        recentLibraryNotes={notes.filter(n => libraryNoteTypes.includes(n.note_type) && !n.isDeleted).slice(0, 5)}
+                        recentLibraryNotes={safeArray<Note>(notes).filter(n => libraryNoteTypes.includes(n.note_type) && !n.isDeleted).slice(0, 5)}
                         onSave={(content: string, updates: any) => {
                           if (journalEntry) {
                             updateNote(journalEntry.id, { content, ...updates });
@@ -677,21 +678,22 @@ export default function NotesSystem() {
                         "grid",
                         viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "grid-cols-1"
                       )}>
-                        {filteredNotes.map((note, idx) => (
-                          <NoteCard
-                            key={note.id || `note-${idx}`}
-                            note={note}
-                            folders={folders}
-                            folderName={note.folderId ? folders.find(folder => folder.id === note.folderId)?.name : 'Unfiled'}
-                            onClick={() => setSelectedNoteId(note.id)}
-                            onMove={handleMoveNote}
-                            onDragStart={() => setDraggingNoteId(note.id)}
-                            onDragEnd={() => {
-                              setDraggingNoteId(null);
-                              setDragOverFolderId(null);
-                            }}
-                            viewMode={viewMode}
-                          />
+                        {safeArray<Note>(filteredNotes).map((note, idx) => (
+                          <SafeItemBoundary key={note.id || `note-${idx}`}>
+                            <NoteCard
+                              note={note}
+                              folders={safeArray<FolderType>(folders)}
+                              folderName={note.folderId ? safeArray<FolderType>(folders).find(folder => folder.id === note.folderId)?.name : 'Unfiled'}
+                              onClick={() => setSelectedNoteId(note.id)}
+                              onMove={handleMoveNote}
+                              onDragStart={() => setDraggingNoteId(note.id)}
+                              onDragEnd={() => {
+                                setDraggingNoteId(null);
+                                setDragOverFolderId(null);
+                              }}
+                              viewMode={viewMode}
+                            />
+                          </SafeItemBoundary>
                         ))}
                         {viewMode === 'grid' && (
                           <button 
@@ -734,14 +736,14 @@ export default function NotesSystem() {
       />
       <FolderViewerModal
         folder={folderViewer}
-        notes={notes.filter(note => note.folderId === folderViewer?.id && !note.isDeleted)}
+        notes={safeArray<Note>(notes).filter(note => note.folderId === folderViewer?.id && !note.isDeleted)}
         onClose={() => setFolderViewer(null)}
         onOpenNote={(noteId) => {
           setFolderViewer(null);
           setSelectedNoteId(noteId);
         }}
         onMakePublic={async (noteIds) => {
-          const ids = noteIds.length > 0 ? noteIds : notes.filter(note => note.folderId === folderViewer?.id && !note.isDeleted).map(note => note.id);
+          const ids = safeArray<string>(noteIds).length > 0 ? noteIds : safeArray<Note>(notes).filter(note => note.folderId === folderViewer?.id && !note.isDeleted).map(note => note.id);
           await Promise.all(ids.map(id => updateNote(id, { visibility: 'public' })));
           const link = `${window.location.origin}/library?folder=${folderViewer?.id || ''}`;
           await navigator.clipboard.writeText(link);
@@ -776,7 +778,7 @@ function getDailyPrompt(date: Date) {
 }
 
 function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, fullView, toggleFullView, recentLibraryNotes }: any) {
-  const [pages, setPages] = useState<string[]>((entry?.content || '').split(JOURNAL_PAGE_BREAK));
+  const [pages, setPages] = useState<string[]>(safeString(entry?.content).split(JOURNAL_PAGE_BREAK));
   const [currentPage, setCurrentPage] = useState(0);
   const [title, setTitle] = useState(entry?.title || '');
   const [mood, setMood] = useState(entry?.mood || '');
@@ -785,12 +787,12 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   const [lastSaved, setLastSaved] = useState<number | null>(entry?.updatedAt || null);
   const [isEditingLockedEntry, setIsEditingLockedEntry] = useState(false);
   const stickerInputRef = useRef<HTMLInputElement>(null);
-  const content = pages[currentPage] || '';
+  const content = safeArray<string>(pages)[currentPage] || '';
   const isPastEntry = isBefore(startOfDay(selectedDate), startOfDay(new Date()));
   const isLocked = isPastEntry && !isEditingLockedEntry;
 
   useEffect(() => {
-    const nextPages = (entry?.content || '').split(JOURNAL_PAGE_BREAK);
+    const nextPages = safeString(entry?.content).split(JOURNAL_PAGE_BREAK);
     setPages(nextPages.length > 0 ? nextPages : ['']);
     setCurrentPage(0);
     setTitle(entry?.title || '');
@@ -804,7 +806,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
     if (isLocked) return;
     setIsSaving(true);
     try {
-      await onSave(pages.join(JOURNAL_PAGE_BREAK), { title: title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`, mood, location });
+      await onSave(safeArray<string>(pages).join(JOURNAL_PAGE_BREAK), { title: title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`, mood, location });
       setLastSaved(Date.now());
     } finally {
       setIsSaving(false);
@@ -816,7 +818,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   };
 
   const updateCurrentPage = (updater: string | ((value: string) => string)) => {
-    setPages(prev => prev.map((page, index) => {
+    setPages(prev => safeArray<string>(prev).map((page, index) => {
       if (index !== currentPage) return page;
       return typeof updater === 'function' ? updater(page) : updater;
     }));
@@ -825,14 +827,14 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
 
   const addNotebookPage = () => {
     if (isLocked) return;
-    setPages(prev => [...prev, '']);
+    setPages(prev => [...safeArray<string>(prev), '']);
     setCurrentPage(pages.length);
   };
 
   const deleteNotebookPage = async () => {
     if (isLocked) return;
     if (!confirm(`Delete page ${currentPage + 1}?`)) return;
-    const nextPages = pages.length <= 1 ? [''] : pages.filter((_, index) => index !== currentPage);
+    const nextPages = safeArray<string>(pages).length <= 1 ? [''] : safeArray<string>(pages).filter((_, index) => index !== currentPage);
     const nextPageIndex = Math.min(Math.max(0, currentPage - 1), nextPages.length - 1);
     setPages(nextPages);
     setCurrentPage(nextPageIndex);
@@ -898,7 +900,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               </button>
               <button
                 onClick={deleteNotebookPage}
-                disabled={isLocked || (pages.length <= 1 && !content.trim())}
+                disabled={isLocked || (safeArray<string>(pages).length <= 1 && !safeString(content).trim())}
                 className="w-10 h-10 rounded-xl bg-surface-muted border border-card-border flex items-center justify-center text-danger hover:bg-danger hover:text-white transition-all disabled:opacity-40"
                 title="Delete current page"
               >
@@ -929,17 +931,17 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                <p className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-40">Drag to Journal</p>
              </div>
              <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
-                {recentLibraryNotes.map((note: any) => (
+                {safeArray<Note>(recentLibraryNotes).map((note: any) => (
                   <motion.div
                     key={note.id}
                     draggable
-                    onDragStart={(e: any) => e.dataTransfer.setData('text/plain', note.content)}
+                    onDragStart={(e: any) => e.dataTransfer.setData('text/plain', safeString(note.content))}
                     whileHover={{ scale: 1.02 }}
                     className="p-4 rounded-2xl bg-yellow-50 border border-yellow-200 shadow-sm cursor-grab active:cursor-grabbing group relative overflow-hidden"
                   >
                     <div className="absolute top-0 left-0 w-full h-1 bg-yellow-200 group-hover:bg-yellow-400 transition-colors" />
-                    <h4 className="text-[10px] font-black text-yellow-800 uppercase tracking-tight truncate">{note.title}</h4>
-                    <p className="text-[9px] text-yellow-700/60 line-clamp-3 mt-1 leading-relaxed">{note.content || "Empty sticky..."}</p>
+                    <h4 className="text-[10px] font-black text-yellow-800 uppercase tracking-tight truncate">{safeString(note.title, 'Untitled Note')}</h4>
+                    <p className="text-[9px] text-yellow-700/60 line-clamp-3 mt-1 leading-relaxed">{safeString(note.content, "Empty sticky...")}</p>
                   </motion.div>
                 ))}
              </div>
@@ -985,7 +987,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                     <BookOpen size={32} />
                   </motion.div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">
-                    Page {currentPage + 1} of {pages.length}
+                    Page {currentPage + 1} of {safeArray<string>(pages).length}
                   </p>
                 </>
               )}
@@ -1020,7 +1022,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               </div>
             </div>
             <div className="w-full grid grid-cols-2 gap-3">
-              {pages.map((_, index) => (
+              {safeArray<string>(pages).map((_, index) => (
                 <button
                   key={`journal-page-tab-${index}`}
                   onClick={() => setCurrentPage(index)}
@@ -1042,7 +1044,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               </button>
               <button
                 onClick={deleteNotebookPage}
-                disabled={isLocked || (pages.length <= 1 && !content.trim())}
+                disabled={isLocked || (safeArray<string>(pages).length <= 1 && !safeString(content).trim())}
                 className="h-10 rounded-xl border border-dashed border-danger/30 text-danger flex items-center justify-center hover:bg-danger/5 transition-all disabled:opacity-40"
                 title="Delete current page"
               >
@@ -1215,12 +1217,12 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
-    const trimmed = name.trim();
+    const trimmed = safeString(name).trim();
     if (!trimmed) {
       setError('Folder name is required.');
       return;
     }
-    if (folders.some(folder => folder.name.toLowerCase() === trimmed.toLowerCase())) {
+    if (safeArray<FolderType>(folders).some(folder => safeString(folder.name).toLowerCase() === trimmed.toLowerCase())) {
       setError('A folder with this name already exists.');
       return;
     }
@@ -1302,6 +1304,30 @@ function SidebarIconBtn({ icon, active, onClick, label, expanded }: any) {
   );
 }
 
+class SafeItemBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('VisNova item render failed:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-24 rounded-2xl border border-card-border bg-card p-4 flex items-center justify-center text-center">
+          <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">Could not display this item.</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }: {
   folder: FolderType | null;
   notes: Note[];
@@ -1342,7 +1368,7 @@ function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }:
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/45 sm:mr-auto">
             {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select notes or share the whole folder'}
           </p>
-          <button onClick={shareFolder} disabled={isSharing || notes.length === 0} className="h-11 px-5 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
+          <button onClick={shareFolder} disabled={isSharing || safeArray<Note>(notes).length === 0} className="h-11 px-5 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-50">
             {isSharing ? 'Sharing...' : 'Make Public Link'}
           </button>
         </>
@@ -1352,8 +1378,8 @@ function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }:
             <div className="flex items-center gap-3 min-w-0">
               <Folder size={34} fill={folder.color || 'var(--accent)'} className="text-accent shrink-0" />
               <div className="min-w-0">
-                <h3 className="text-lg font-black text-text-main truncate">{folder.name}</h3>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{notes.length} notes inside</p>
+                <h3 className="text-lg font-black text-text-main truncate">{safeString(folder.name, 'Folder')}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{safeArray<Note>(notes).length} notes inside</p>
               </div>
             </div>
             <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary hover:text-text-main flex items-center justify-center">
@@ -1361,22 +1387,22 @@ function FolderViewerModal({ folder, notes, onClose, onOpenNote, onMakePublic }:
             </button>
           </div>
           <div className="p-5 space-y-3">
-            {notes.length === 0 ? (
+            {safeArray<Note>(notes).length === 0 ? (
               <div className="h-52 rounded-2xl border border-dashed border-card-border flex items-center justify-center text-center">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">No notes in this folder yet.</p>
               </div>
-            ) : notes.map(note => (
+            ) : safeArray<Note>(notes).map(note => (
               <div key={note.id} className="rounded-2xl border border-card-border bg-card p-4 flex items-center gap-4">
                 <button
                   onClick={() => toggleSelected(note.id)}
                   className={cn('w-6 h-6 rounded-lg border flex items-center justify-center shrink-0', selectedIds.includes(note.id) ? 'bg-accent border-accent text-accent-contrast' : 'border-card-border text-transparent')}
-                  aria-label={`Select ${note.title}`}
+                  aria-label={`Select ${safeString(note.title, 'Untitled note')}`}
                 >
                   <CheckCircle2 size={15} />
                 </button>
                 <button onClick={() => onOpenNote(note.id)} className="min-w-0 flex-1 text-left">
-                  <p className="text-sm font-black text-text-main truncate">{note.title || 'Untitled note'}</p>
-                  <p className="text-[10px] text-text-secondary/50 truncate">{note.content || 'No content yet.'}</p>
+                  <p className="text-sm font-black text-text-main truncate">{safeString(note.title, 'Untitled note')}</p>
+                  <p className="text-[10px] text-text-secondary/50 truncate">{safeString(note.content, 'No content yet.')}</p>
                 </button>
                 <span className="text-[8px] font-black uppercase tracking-widest text-text-secondary/40">{note.visibility === 'public' ? 'Public' : 'Private'}</span>
               </div>
@@ -1550,7 +1576,7 @@ function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
       const file = new File([audioBlob], `audio-note-${Date.now()}.webm`, { type: audioBlob.type || 'audio/webm' });
       const { signedUrl, filePath } = await uploadAudioNote(file, session?.user?.id);
       const created = await addNote({
-        title: title.trim() || 'Audio Note',
+        title: safeString(title).trim() || 'Audio Note',
         content,
         note_type: 'audio',
         folderId: selectedFolder,
@@ -1686,7 +1712,9 @@ function NoteCard({
 
   const createdOrUpdated = safeFormat(note.updatedAt || note.createdAt, 'MMM dd');
   const preview = cleanPreview(note.content);
-  const sourceBadge = /youtube|youtu\.be/i.test(note.content || '') || /youtube|youtu\.be/i.test(note.title || '') ? 'YouTube' : null;
+  const noteTags = safeArray<string>(note.tags);
+  const safeFolders = safeArray<FolderType>(folders);
+  const sourceBadge = /youtube|youtu\.be/i.test(safeString(note.content)) || /youtube|youtu\.be/i.test(safeString(note.title)) ? 'YouTube' : null;
   const currentFolderValue = note.folderId || '';
 
   const handleCardClick = () => {
@@ -1726,7 +1754,7 @@ function NoteCard({
           <NoteIcon size={20} />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-black text-text-main group-hover:text-accent transition-colors truncate tracking-tight">{note.title || 'Untitled Note'}</h4>
+          <h4 className="text-sm font-black text-text-main group-hover:text-accent transition-colors truncate tracking-tight">{safeString(note.title, 'Untitled Note')}</h4>
           <p className="mt-1 text-[11px] text-text-secondary/65 line-clamp-1">{preview}</p>
           <p className="mt-2 text-[10px] text-text-secondary font-bold uppercase tracking-wider opacity-60">
             Updated {safeFormat(note.updatedAt || note.createdAt, 'MMM dd, h:mm a')} - {folderName || 'Unfiled'}
@@ -1741,7 +1769,7 @@ function NoteCard({
           )}
         </div>
         <div className="flex items-center gap-3 sm:px-4">
-           {note.tags.slice(0, 2).map((t, i) => (
+           {noteTags.slice(0, 2).map((t, i) => (
              <span key={i} className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent uppercase tracking-widest">#{t}</span>
            ))}
            <select
@@ -1752,7 +1780,7 @@ function NoteCard({
              aria-label="Move note to folder"
            >
              <option value="">Unfiled</option>
-             {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+             {safeFolders.map(folder => <option key={folder.id} value={folder.id}>{safeString(folder.name, 'Folder')}</option>)}
            </select>
         </div>
         <ChevronRight size={16} className="text-text-secondary/20 group-hover:text-accent group-hover:translate-x-1 transition-all" />
@@ -1771,7 +1799,7 @@ function NoteCard({
             <NoteIcon size={19} />
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="text-[15px] font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight line-clamp-1">{note.title || 'Untitled Note'}</h4>
+            <h4 className="text-[15px] font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight line-clamp-1">{safeString(note.title, 'Untitled Note')}</h4>
             <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45 truncate">
               {createdOrUpdated} - {folderName || 'Unfiled'}{isAudioNote && note.audio_duration ? ` - ${formatDuration(note.audio_duration)}` : ''}
             </p>
@@ -1805,7 +1833,7 @@ function NoteCard({
                 {sourceBadge}
               </span>
             )}
-            {note.tags.slice(0, 3).map((t, i) => (
+            {noteTags.slice(0, 3).map((t, i) => (
               <span key={i} className="rounded-full bg-surface-muted px-2 py-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60 truncate max-w-20">#{t}</span>
             ))}
           </div>
@@ -1818,7 +1846,7 @@ function NoteCard({
               aria-label="Move note to folder"
             >
               <option value="">Unfiled</option>
-              {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+              {safeFolders.map(folder => <option key={folder.id} value={folder.id}>{safeString(folder.name, 'Folder')}</option>)}
             </select>
             <div className="flex items-center gap-1 text-[9px] font-black text-accent uppercase tracking-widest group-hover:translate-x-1 transition-transform">
               Open <ChevronRight size={12} />
@@ -2051,7 +2079,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 <SelectMenu
                   value={note.folderId || ''}
                   onChange={(value) => updateNote(note.id, { folderId: value || null })}
-                  options={[{ value: '', label: 'No folder' }, ...folders.map(folder => ({ value: folder.id, label: folder.name }))]}
+                  options={[{ value: '', label: 'No folder' }, ...safeArray<FolderType>(folders).map(folder => ({ value: folder.id, label: safeString(folder.name, 'Folder') }))]}
                   className="w-full max-w-xs"
                   triggerClassName="h-11 rounded-xl bg-card text-xs"
                 />
@@ -2066,19 +2094,20 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
                       const val = (e.target as HTMLInputElement).value.trim();
-                      if (val && !note.tags.includes(val)) {
-                        updateNote(note.id, { tags: [...note.tags, val] });
+                      const currentTags = safeArray<string>(note.tags);
+                      if (val && !currentTags.includes(val)) {
+                        updateNote(note.id, { tags: [...currentTags, val] });
                         (e.target as HTMLInputElement).value = '';
                       }
                     }
                   }}
                 />
               </div>
-              {note.tags.map((t, i) => (
+              {safeArray<string>(note.tags).map((t, i) => (
                 <div key={i} className="px-4 h-10 rounded-xl bg-accent/5 border border-accent/10 flex items-center gap-2 text-[10px] font-bold text-accent uppercase tracking-widest group">
                   # {t}
                   <button 
-                    onClick={() => updateNote(note.id, { tags: note.tags.filter(tag => tag !== t) })}
+                    onClick={() => updateNote(note.id, { tags: safeArray<string>(note.tags).filter(tag => tag !== t) })}
                     className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all ml-1"
                   >
                     <X size={10} />
@@ -2112,9 +2141,9 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
 }
 
 function JournalTimeline({ entries, onSelect }: { entries: Note[], onSelect: (id: string) => void }) {
-  const groups = entries.reduce((acc: any, entry) => {
+  const groups = safeArray<Note>(entries).reduce((acc: any, entry) => {
     let dateStr = 'History';
-    const date = new Date(entry.createdAt);
+    const date = safeDate(entry.createdAt);
     if (isToday(date)) dateStr = 'Today';
     else if (isYesterday(date)) dateStr = 'Yesterday';
     else if (isThisWeek(date)) dateStr = 'This Week';
@@ -2138,7 +2167,7 @@ function JournalTimeline({ entries, onSelect }: { entries: Note[], onSelect: (id
                <div className="h-[1px] flex-1 bg-card-border/30" />
             </div>
             <div className="grid gap-4">
-              {group.map((entry: Note, entryIdx: number) => (
+              {safeArray<Note>(group).map((entry: Note, entryIdx: number) => (
                 <div
                   key={entry.id || `journal-${idx}-${entryIdx}`}
                   onClick={() => onSelect(entry.id)}
@@ -2150,11 +2179,11 @@ function JournalTimeline({ entries, onSelect }: { entries: Note[], onSelect: (id
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center justify-between">
-                       <h3 className="text-sm font-black text-text-main group-hover:text-accent transition-colors uppercase tracking-tight truncate">{entry.title}</h3>
+                       <h3 className="text-sm font-black text-text-main group-hover:text-accent transition-colors uppercase tracking-tight truncate">{safeString(entry.title, 'Untitled Note')}</h3>
                        <span className="text-[9px] font-bold text-text-secondary/40 uppercase tracking-widest">{safeFormat(entry.createdAt, 'h:mm a')}</span>
                     </div>
                     <p className="text-[11px] text-text-secondary/70 font-medium line-clamp-1">
-                      {entry.content || "No entry content yet."}
+                      {safeString(entry.content, 'No entry content yet.')}
                     </p>
                   </div>
                   <div className="hidden sm:flex flex-col items-end shrink-0 pl-10 border-l border-card-border/50">

@@ -4,6 +4,7 @@ import { BookOpen, CheckSquare, HelpCircle, ListChecks, Maximize2, MessageCircle
 import { useStore } from '../../store/useStore';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
+import { safeFormat, safeString } from '../../lib/safeData';
 
 type HelpQuestion = {
   id: string;
@@ -78,7 +79,7 @@ export default function VisionAssistant() {
           .limit(5);
         if (error) throw error;
         setAnswerLines((data || []).length
-          ? data.map((note: any) => `${note.title || 'Untitled note'} - ${note.note_type || 'vault'} - ${new Date(note.created_at).toLocaleDateString()}`)
+          ? data.map((note: any) => `${safeString(note.title, 'Untitled note')} - ${safeString(note.note_type, 'vault')} - ${safeFormat(note.created_at, 'MMM d, yyyy')}`)
           : ['No recent notes yet.']);
         return;
       }

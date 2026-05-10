@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { safeTime } from '../lib/safeData';
 
 export interface TrendingTopic {
   tag: string;
@@ -177,7 +178,7 @@ export async function getSuggestedUsers(currentUserId: string | null): Promise<S
       
       let activityScore = 0;
       if (lastPost) {
-        const daysSincePost = (Date.now() - new Date(lastPost.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        const daysSincePost = (Date.now() - safeTime(lastPost.created_at)) / (1000 * 60 * 60 * 24);
         activityScore = Math.max(0, 1 - (daysSincePost / 30)); // 0 if no post in 30 days
       }
 

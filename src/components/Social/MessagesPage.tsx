@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
+import { safeDate, safeFormat, safeString } from '../../lib/safeData';
 
 type ProfileLite = {
   id: string;
@@ -43,19 +44,19 @@ type SharedPostEmbed = {
 
 const displayName = (profile?: ProfileLite) => profile?.display_name || profile?.full_name || profile?.username || 'Explorer';
 const avatarFor = (profile?: ProfileLite) => profile?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${profile?.id || 'visnova'}`;
-const cleanProfileSearch = (query: string) => query.trim().replace(/^@/, '');
-const dateKeyFor = (value: string) => new Date(value).toDateString();
-const formatMessageTime = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const cleanProfileSearch = (query: string) => safeString(query).trim().replace(/^@/, '');
+const dateKeyFor = (value: string) => safeDate(value).toDateString();
+const formatMessageTime = (value: string) => safeFormat(value, 'h:mm a');
 const formatMessageDate = (value: string) => {
-  const date = new Date(value);
+  const date = safeDate(value);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
 
-  const shortDate = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const shortDate = safeFormat(date, 'MMM d');
   if (date.toDateString() === today.toDateString()) return `Today, ${shortDate}`;
   if (date.toDateString() === yesterday.toDateString()) return `Yesterday, ${shortDate}`;
-  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  return safeFormat(date, 'EEEE, MMM d, yyyy');
 };
 const parsePostEmbed = (content?: string): SharedPostEmbed | null => {
   if (!content?.startsWith('VISNOVA_POST_EMBED\n')) return null;

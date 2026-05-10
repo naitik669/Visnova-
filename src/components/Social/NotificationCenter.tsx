@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
 import { Bell, Heart, MessageCircle, UserPlus, Reply, Clock, Check, Trash2, Zap } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { safeFormat } from '../../lib/safeData';
 
 export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const { notifications, markNotificationRead, markAllNotificationsRead, unreadNotificationCount } = useStore();
@@ -89,7 +90,7 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
                         <div className="flex items-center gap-2 mt-1.5 opacity-40">
                            <Clock size={10} />
                            <span className="text-[9px] font-bold uppercase tracking-widest">
-                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {safeFormat(n.created_at, 'h:mm a')}
                            </span>
                         </div>
                      </div>

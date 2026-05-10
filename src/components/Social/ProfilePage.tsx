@@ -46,6 +46,7 @@ import { uploadAvatar } from '../../lib/supabase';
 import { ImageLightbox, PostEditModal } from '../Feed/CommunityFeed';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
+import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
 
 type SocialProfile = {
   id: string;
@@ -96,41 +97,41 @@ export default function ProfilePage() {
   const isOwnProfile = !!targetId && targetId === session?.user?.id;
 
   const mapProfilePost = (p: any): Post => ({
-    id: p.id,
-    userId: p.user_id,
+    id: safeString(p?.id),
+    userId: safeString(p?.user_id),
     author: {
-      id: p.author?.id || p.user_id,
-      name: p.author?.display_name || p.author?.full_name || 'Explorer',
-      avatar: p.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${p.user_id}`,
-      handle: `@${p.author?.username || 'user'}`,
-      verified: !!p.author?.verified
+      id: safeString(p?.author?.id || p?.user_id),
+      name: safeString(p?.author?.display_name || p?.author?.full_name, 'Explorer'),
+      avatar: safeString(p?.author?.avatar_url, `https://api.dicebear.com/7.x/shapes/svg?seed=${safeString(p?.user_id, 'user')}`),
+      handle: `@${safeString(p?.author?.username, 'user')}`,
+      verified: !!p?.author?.verified
     },
-    caption: p.caption,
-    content: p.content || '',
-    timestamp: new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-    createdAt: new Date(p.created_at).getTime(),
-    likes: p.likes?.[0]?.count || 0,
-    comments: p.comment_count?.[0]?.count || 0,
-    saves: p.saves?.[0]?.count || 0,
+    caption: safeString(p?.caption),
+    content: safeString(p?.content),
+    timestamp: safeFormat(p?.created_at, 'MMM d, yyyy'),
+    createdAt: safeTime(p?.created_at),
+    likes: p?.likes?.[0]?.count || 0,
+    comments: p?.comment_count?.[0]?.count || 0,
+    saves: p?.saves?.[0]?.count || 0,
     isLiked: false,
     isSaved: false,
-    type: p.type || 'update',
-    visibility: p.visibility || 'public',
-    archived: !!p.archived,
-    archivedAt: p.archived_at || null,
-    deletedAt: p.deleted_at || null,
-    media: p.media?.map((m: any) => ({
+    type: p?.type || 'update',
+    visibility: p?.visibility || 'public',
+    archived: !!p?.archived,
+    archivedAt: p?.archived_at || null,
+    deletedAt: p?.deleted_at || null,
+    media: safeArray<any>(p?.media).map((m: any) => ({
       id: m.id,
       url: m.media_url,
       type: m.media_type
-    })) || [],
-    tags: p.post_tags?.map((t: any) => t.tag) || [],
-    mentions: p.mentions?.map((m: any) => ({
+    })),
+    tags: safeArray<any>(p?.post_tags).map((t: any) => t.tag).filter(Boolean),
+    mentions: safeArray<any>(p?.mentions).map((m: any) => ({
       userId: m.mentioned_user_id,
       username: m.user?.username || 'user'
-    })) || [],
-    metadata: p.metadata,
-    stats: p.stats
+    })),
+    metadata: p?.metadata,
+    stats: p?.stats
   });
 
   const fetchProfileData = async () => {
@@ -623,7 +624,7 @@ export default function ProfilePage() {
                   <div className="mt-8 pt-8 border-t border-card-border space-y-6">
                     <div className="flex items-center gap-3 text-[10px] font-black text-text-secondary uppercase tracking-widest">
                       <Calendar size={16} className="text-accent" />
-                      <span>Joined {new Date(profile?.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+                      <span>Joined {safeFormat(profile?.created_at, 'MMMM yyyy')}</span>
                     </div>
                     {profile?.interests && profile.interests.length > 0 && (
                       <div className="flex flex-wrap gap-2">
@@ -784,7 +785,7 @@ export default function ProfilePage() {
                        <p className="text-sm text-text-secondary font-medium leading-relaxed opacity-70 mb-6">{ach.description}</p>
                        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/40">
                           <Calendar size={12} />
-                          {new Date(ach.achievedAt).toLocaleDateString()}
+                          {safeFormat(ach.achievedAt, 'MMM d, yyyy')}
                        </div>
                     </div>
                   ))}
@@ -814,7 +815,7 @@ export default function ProfilePage() {
                             />
                          </div>
                          <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-text-secondary/40">
-                            <span>Target: {ms.targetDate ? new Date(ms.targetDate).toLocaleDateString() : 'N/A'}</span>
+                            <span>Target: {ms.targetDate ? safeFormat(ms.targetDate, 'MMM d, yyyy') : 'N/A'}</span>
                             {ms.completedAt && <span className="text-success flex items-center gap-1"><Check size={10} /> Completed</span>}
                          </div>
                       </div>
@@ -1219,7 +1220,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
 
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {post.tags.map(tag => (
+            {safeArray<string>(post.tags).map(tag => (
               <button
                 key={tag}
                 onClick={() => handleHashtagClick(tag)}

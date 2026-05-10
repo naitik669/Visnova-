@@ -8,6 +8,7 @@ import { getSuggestedUsers, SuggestedUser } from '../../services/discoveryServic
 import { supabase } from '../../lib/supabase';
 import { Post } from '../../types';
 import MessagesPage from '../Social/MessagesPage';
+import { safeFormat, safeString, safeTime } from '../../lib/safeData';
 
 const relationLabels: Record<string, string> = {
   following: 'Following',
@@ -72,19 +73,19 @@ export default function Circle() {
       }
 
       setActivity((data || []).map((post: any) => ({
-        id: post.id,
-        userId: post.user_id,
+        id: safeString(post?.id),
+        userId: safeString(post?.user_id),
         author: {
-          id: post.author?.id || post.user_id,
-          name: post.author?.display_name || post.author?.full_name || 'Explorer',
-          avatar: post.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${post.user_id}`,
-          handle: `@${post.author?.username || 'user'}`,
-          verified: !!post.author?.verified
+          id: safeString(post?.author?.id || post?.user_id),
+          name: safeString(post?.author?.display_name || post?.author?.full_name, 'Explorer'),
+          avatar: post?.author?.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${safeString(post?.user_id, 'user')}`,
+          handle: `@${safeString(post?.author?.username, 'user')}`,
+          verified: !!post?.author?.verified
         },
-        caption: post.caption,
-        content: post.content || '',
-        timestamp: new Date(post.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        createdAt: new Date(post.created_at).getTime(),
+        caption: safeString(post?.caption),
+        content: safeString(post?.content),
+        timestamp: safeFormat(post?.created_at, 'MMM d'),
+        createdAt: safeTime(post?.created_at),
         likes: 0,
         comments: 0,
         saves: 0,

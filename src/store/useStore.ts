@@ -10,6 +10,7 @@ import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { format } from 'date-fns';
 import { safeFormat, safeTime } from '../lib/dateUtils';
+import { safeArray, safeBoolean, safeNumber, safeString } from '../lib/safeData';
 import { getLevelFromXp, normalizeLegacyXp } from '../lib/progression';
 import {
   checkClientRateLimit,
@@ -161,6 +162,39 @@ function normalizeNoteType(type?: string | null): Note['note_type'] {
   return 'normal';
 }
 
+function normalizeNote(row: any): Note {
+  const createdAt = safeTime(row?.created_at);
+  const updatedAt = safeTime(row?.updated_at, createdAt);
+  const audioPath = row?.audio_path || extractStoragePathFromUrl(row?.audio_url, 'note-audio');
+
+  return {
+    id: safeString(row?.id),
+    title: safeString(row?.title, 'Untitled Note'),
+    content: safeString(row?.content),
+    note_type: normalizeNoteType(row?.note_type),
+    folderId: row?.folder_id || null,
+    tags: safeArray<string>(row?.tags),
+    linkedVisionId: row?.linked_vision_id || null,
+    visibility: safeString(row?.visibility, 'private') as Note['visibility'],
+    isPinned: safeBoolean(row?.is_pinned),
+    isFavorite: safeBoolean(row?.is_favorite),
+    isDeleted: safeBoolean(row?.is_deleted),
+    mood: row?.mood || undefined,
+    journal_date: row?.journal_date || undefined,
+    location: row?.location || undefined,
+    image_url: row?.image_url || undefined,
+    audio_url: safeString(row?.audio_url),
+    audio_path: audioPath || undefined,
+    audio_duration: safeNumber(row?.audio_duration, 0) || undefined,
+    audio_mime_type: row?.audio_mime_type || undefined,
+    transcript: safeString(row?.transcript),
+    transcript_status: safeString(row?.transcript_status, 'none') as Note['transcript_status'],
+    transcribed_at: row?.transcribed_at || null,
+    createdAt,
+    updatedAt
+  };
+}
+
 function formatFinanceTransaction(row: any): FinanceTransaction {
   const createdAt = safeTime(row.created_at);
   const updatedAt = safeTime(row.updated_at, createdAt);
@@ -242,19 +276,21 @@ function formatFinanceSubscription(row: any): FinanceSubscription {
 }
 
 function formatFinanceReview(row: any): FinanceReview {
+  const createdAt = safeTime(row?.created_at);
+  const updatedAt = safeTime(row?.updated_at, createdAt);
   return {
-    id: row.id,
-    userId: row.user_id,
-    periodType: row.period_type || 'weekly',
-    periodStart: row.period_start,
-    periodEnd: row.period_end,
-    incomeTotal: Number(row.income_total || 0),
-    expenseTotal: Number(row.expense_total || 0),
-    savingsTotal: Number(row.savings_total || 0),
-    reflection: row.reflection,
-    improvement: row.improvement,
-    createdAt: new Date(row.created_at || Date.now()).getTime(),
-    updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+    id: safeString(row?.id),
+    userId: safeString(row?.user_id),
+    periodType: safeString(row?.period_type, 'weekly') as FinanceReview['periodType'],
+    periodStart: safeString(row?.period_start),
+    periodEnd: safeString(row?.period_end),
+    incomeTotal: safeNumber(row?.income_total),
+    expenseTotal: safeNumber(row?.expense_total),
+    savingsTotal: safeNumber(row?.savings_total),
+    reflection: safeString(row?.reflection),
+    improvement: safeString(row?.improvement),
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -326,22 +362,22 @@ function runBackground(label: string, action: () => Promise<any>) {
 function toProfileUser(profile: any, fallbackEmail = ''): AppState['user'] {
   return {
     ...defaultUser,
-    id: profile.id,
-    name: profile.display_name || profile.full_name || 'Explorer',
-    email: profile.email || fallbackEmail,
-    username: profile.username || undefined,
-    avatar: profile.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${profile.id}`,
-    rank: profile.role || 'Explorer',
-    level: profile.level || 1,
-    xp: profile.xp || 0,
-    streak: profile.streak || 0,
-    isGrinding: profile.is_grinding || false,
-    bio: profile.bio || '',
-    statusNote: profile.status_note || '',
-    role: profile.role || 'Explorer',
-    mainGoal: profile.main_goal || '',
-    interests: profile.interests || [],
-    verified: !!profile.verified,
+    id: safeString(profile?.id) || undefined,
+    name: safeString(profile?.display_name || profile?.full_name, 'Explorer'),
+    email: safeString(profile?.email, fallbackEmail),
+    username: profile?.username || undefined,
+    avatar: safeString(profile?.avatar_url, `https://api.dicebear.com/7.x/shapes/svg?seed=${safeString(profile?.id, 'Explorer')}`),
+    rank: safeString(profile?.role, 'Explorer'),
+    level: safeNumber(profile?.level, 1),
+    xp: safeNumber(profile?.xp),
+    streak: safeNumber(profile?.streak),
+    isGrinding: safeBoolean(profile?.is_grinding),
+    bio: safeString(profile?.bio),
+    statusNote: safeString(profile?.status_note),
+    role: safeString(profile?.role, 'Explorer'),
+    mainGoal: safeString(profile?.main_goal),
+    interests: safeArray<string>(profile?.interests),
+    verified: safeBoolean(profile?.verified),
   };
 }
 
@@ -393,19 +429,21 @@ const scheduleCircleRefresh = (get: () => AppState) => {
 };
 
 function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
-  const createdAt = safeTime(row.created_at);
+  const createdAt = safeTime(row?.created_at);
+  const safeMedia = safeArray<any>(draft?.media);
+  const safeAuthor = author || defaultUser;
   return {
-    id: row.id,
-    userId: row.user_id,
+    id: safeString(row?.id),
+    userId: safeString(row?.user_id),
     author: {
-      id: row.user_id,
-      name: author.name || 'Explorer',
-      avatar: author.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${row.user_id}`,
-      handle: `@${author.username || 'user'}`,
-      verified: author.verified
+      id: safeString(row?.user_id),
+      name: safeString(safeAuthor.name, 'Explorer'),
+      avatar: safeString(safeAuthor.avatar, `https://api.dicebear.com/7.x/shapes/svg?seed=${safeString(row?.user_id, 'user')}`),
+      handle: `@${safeString(safeAuthor.username, 'user')}`,
+      verified: safeBoolean(safeAuthor.verified)
     },
-    caption: row.caption ?? draft.caption,
-    content: row.content ?? draft.content ?? '',
+    caption: safeString(row?.caption ?? draft?.caption),
+    content: safeString(row?.content ?? draft?.content),
     timestamp: safeFormat(createdAt, 'MMM d, yyyy'),
     createdAt,
     likes: 0,
@@ -413,20 +451,20 @@ function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
     saves: 0,
     isLiked: false,
     isSaved: false,
-    type: row.type || draft.type || 'update',
-    visibility: row.visibility || draft.visibility || 'public',
-    archived: !!row.archived,
-    archivedAt: row.archived_at || null,
-    deletedAt: row.deleted_at || null,
-    media: draft.media?.map((m: any) => ({
+    type: safeString(row?.type || draft?.type, 'update') as Post['type'],
+    visibility: safeString(row?.visibility || draft?.visibility, 'public') as Post['visibility'],
+    archived: safeBoolean(row?.archived),
+    archivedAt: row?.archived_at || null,
+    deletedAt: row?.deleted_at || null,
+    media: safeMedia.map((m: any) => ({
       id: m.id || m.storagePath || m.url,
       url: m.url,
       type: m.type
-    })) || [],
-    tags: draft.tags || [],
-    mentions: draft.mentions || [],
-    stats: row.stats || {},
-    metadata: row.metadata || draft.metadata || {}
+    })),
+    tags: safeArray<string>(draft?.tags),
+    mentions: safeArray<any>(draft?.mentions),
+    stats: row?.stats || {},
+    metadata: row?.metadata || draft?.metadata || {}
   };
 }
 
@@ -2109,37 +2147,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (error) throw error;
 
-      const formattedNotes: Note[] = (data || []).map((n: any) => {
-        const createdAt = safeTime(n.created_at);
-        const updatedAt = safeTime(n.updated_at, createdAt);
-        const audioPath = n.audio_path || extractStoragePathFromUrl(n.audio_url, 'note-audio');
-        return {
-          id: n.id,
-          title: n.title || 'Untitled Note',
-          content: n.content || '',
-          note_type: normalizeNoteType(n.note_type),
-          folderId: n.folder_id || null,
-          tags: Array.isArray(n.tags) ? n.tags : [],
-          linkedVisionId: n.linked_vision_id || null,
-          visibility: n.visibility || 'private',
-          isPinned: Boolean(n.is_pinned),
-          isFavorite: Boolean(n.is_favorite),
-          isDeleted: Boolean(n.is_deleted),
-          mood: n.mood || undefined,
-          journal_date: n.journal_date || undefined,
-          location: n.location || undefined,
-          image_url: n.image_url || undefined,
-          audio_url: n.audio_url || '',
-          audio_path: audioPath,
-          audio_duration: typeof n.audio_duration === 'number' ? n.audio_duration : undefined,
-          audio_mime_type: n.audio_mime_type || undefined,
-          transcript: n.transcript || '',
-          transcript_status: n.transcript_status || 'none',
-          transcribed_at: n.transcribed_at || null,
-          createdAt,
-          updatedAt
-        };
-      });
+      const formattedNotes: Note[] = (data || []).map(normalizeNote).filter(note => note.id);
 
       set({ notes: formattedNotes });
     } catch (error) {

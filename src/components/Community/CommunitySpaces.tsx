@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
+import { safeFormat } from '../../lib/safeData';
 
 type Community = {
   id: string;
@@ -506,7 +507,7 @@ export default function CommunitySpaces() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-sm font-black text-text-main leading-tight line-clamp-2">{thread.title}</p>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 mt-2">@{thread.author?.username || 'user'} - {new Date(thread.created_at).toLocaleDateString()}</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 mt-2">@{thread.author?.username || 'user'} - {safeFormat(thread.created_at, 'MMM d, yyyy')}</p>
                               </div>
                             </div>
                           </button>
