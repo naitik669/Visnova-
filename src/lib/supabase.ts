@@ -1,13 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { validateFile } from './security';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const configuredAppUrl = import.meta.env.VITE_APP_URL || import.meta.env.VITE_SITE_URL;
+const fallbackSupabaseUrl = 'https://mmzlgntkhkeextqjaagi.supabase.co';
+const fallbackSupabasePublishableKey = 'sb_publishable_XbMaxhW9WRBzkDMZADlYhQ_TxfNQo9o';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.');
-}
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || fallbackSupabaseUrl;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || fallbackSupabasePublishableKey;
+const configuredAppUrl = import.meta.env.VITE_APP_URL || import.meta.env.VITE_SITE_URL;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
