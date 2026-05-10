@@ -3,6 +3,7 @@
 !.env.example
 dist
 node_modules
+.tools
 *.pem
 *.key
 *.p12

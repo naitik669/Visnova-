@@ -13,7 +13,7 @@ import {
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
-import { FinanceBudget, FinanceGoal, FinanceSubscription, FinanceTransaction } from '../../types';
+import { FinanceBillingCycle, FinanceBudget, FinanceGoal, FinanceGoalPriority, FinanceGoalStatus, FinanceSubscription, FinanceTransaction, FinanceTransactionType } from '../../types';
 
 type MoneyTab = 'overview' | 'transactions' | 'goals' | 'subscriptions' | 'budgets' | 'review';
 type MoneyModal = 'income' | 'expense' | 'goal' | 'subscription' | 'budget' | 'review' | null;
@@ -29,6 +29,16 @@ const tabs: { id: MoneyTab; label: string }[] = [
 
 const incomeCategories = ['Freelance', 'Salary', 'Allowance', 'Business', 'Client Work', 'Gift', 'Refund', 'Other'];
 const expenseCategories = ['Food', 'Travel', 'Software', 'Education', 'Subscriptions', 'Equipment', 'Business', 'Entertainment', 'Shopping', 'Health', 'Other'];
+
+const formString = (form: FormData, key: string, fallback = '') => {
+  const value = form.get(key);
+  return typeof value === 'string' ? value : fallback;
+};
+
+const formNullableString = (form: FormData, key: string) => {
+  const value = formString(form, key);
+  return value || null;
+};
 
 const formatMoney = (amount: number, currency = 'INR') => {
   try {
@@ -118,15 +128,15 @@ export default function MoneyPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const payload = {
-      type: form.get('type'),
-      title: form.get('title'),
-      amount: form.get('amount'),
-      category: form.get('category'),
-      transactionDate: form.get('transactionDate'),
-      paymentMethod: form.get('paymentMethod'),
-      note: form.get('note'),
-      linkedVisionId: form.get('linkedVisionId') || null,
-      linkedGoalId: form.get('linkedGoalId') || null
+      type: formString(form, 'type') as FinanceTransactionType,
+      title: formString(form, 'title'),
+      amount: Number(formString(form, 'amount', '0')),
+      category: formNullableString(form, 'category'),
+      transactionDate: formString(form, 'transactionDate'),
+      paymentMethod: formNullableString(form, 'paymentMethod'),
+      note: formNullableString(form, 'note'),
+      linkedVisionId: formNullableString(form, 'linkedVisionId'),
+      linkedGoalId: formNullableString(form, 'linkedGoalId')
     };
     const ok = editingTransaction
       ? await updateFinanceTransaction(editingTransaction.id, payload)
@@ -138,13 +148,13 @@ export default function MoneyPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const payload = {
-      title: form.get('title'),
-      targetAmount: form.get('targetAmount'),
-      currentAmount: form.get('currentAmount') || 0,
-      deadline: form.get('deadline') || null,
-      linkedVisionId: form.get('linkedVisionId') || null,
-      priority: form.get('priority') || 'medium',
-      status: form.get('status') || 'active'
+      title: formString(form, 'title'),
+      targetAmount: Number(formString(form, 'targetAmount', '0')),
+      currentAmount: Number(formString(form, 'currentAmount', '0')),
+      deadline: formNullableString(form, 'deadline'),
+      linkedVisionId: formNullableString(form, 'linkedVisionId'),
+      priority: (formString(form, 'priority', 'medium') as FinanceGoalPriority),
+      status: (formString(form, 'status', 'active') as FinanceGoalStatus)
     };
     const ok = editingGoal
       ? await updateFinanceGoal(editingGoal.id, payload)
@@ -164,12 +174,12 @@ export default function MoneyPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const payload = {
-      name: form.get('name'),
-      amount: form.get('amount'),
-      billingCycle: form.get('billingCycle'),
-      nextBillingDate: form.get('nextBillingDate') || null,
-      category: form.get('category'),
-      linkedVisionId: form.get('linkedVisionId') || null,
+      name: formString(form, 'name'),
+      amount: Number(formString(form, 'amount', '0')),
+      billingCycle: formString(form, 'billingCycle', 'monthly') as FinanceBillingCycle,
+      nextBillingDate: formNullableString(form, 'nextBillingDate'),
+      category: formNullableString(form, 'category'),
+      linkedVisionId: formNullableString(form, 'linkedVisionId'),
       active: form.get('active') !== 'false'
     };
     const ok = editingSubscription
@@ -184,8 +194,8 @@ export default function MoneyPage() {
     const ok = await createFinanceBudget({
       month: Number(form.get('month')),
       year: Number(form.get('year')),
-      category: form.get('category'),
-      limitAmount: form.get('limitAmount')
+      category: formString(form, 'category'),
+      limitAmount: Number(formString(form, 'limitAmount', '0'))
     });
     if (ok) closeModal();
   };
@@ -195,13 +205,13 @@ export default function MoneyPage() {
     const form = new FormData(event.currentTarget);
     const ok = await createFinanceReview({
       periodType: 'weekly',
-      periodStart: form.get('periodStart'),
-      periodEnd: form.get('periodEnd'),
+      periodStart: formString(form, 'periodStart'),
+      periodEnd: formString(form, 'periodEnd'),
       incomeTotal: moneyOverview?.monthIncome || 0,
       expenseTotal: moneyOverview?.monthExpenses || 0,
       savingsTotal: moneyOverview?.monthSavings || 0,
-      reflection: form.get('reflection'),
-      improvement: form.get('improvement')
+      reflection: formNullableString(form, 'reflection'),
+      improvement: formNullableString(form, 'improvement')
     });
     if (ok) closeModal();
   };

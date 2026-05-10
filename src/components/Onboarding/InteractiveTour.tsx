@@ -43,14 +43,14 @@ const TOUR_STEPS: TourStep[] = [
     title: 'Goal Ecosystem',
     content: 'Manage your high-impact vision boards and map out long-term strategic milestones.',
     icon: Target,
-    route: '/vision'
+    route: '/visions'
   },
   {
     target: '#add-vision-btn',
     title: 'Manifest New Vision',
     content: 'Create your first vision here. Define milestones and activate tracking for this sector.',
     icon: Rocket,
-    route: '/vision'
+    route: '/visions'
   },
   {
     target: '#nav-focus',

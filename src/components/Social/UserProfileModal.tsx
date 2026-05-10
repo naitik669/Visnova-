@@ -255,7 +255,7 @@ export default function UserProfileModal() {
                       onClick={() => {
                         const messageTarget = selectedProfileId === 'me' ? session?.user?.id : selectedProfileId;
                         setSelectedProfileId(null);
-                        navigate(messageTarget ? `/messages?user=${messageTarget}` : '/messages');
+                        navigate(messageTarget ? `/circle?tab=messages&user=${messageTarget}` : '/circle?tab=messages');
                       }}
                        className="flex-1 h-14 rounded-2xl bg-surface-muted border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main hover:bg-card-dark transition-all flex items-center justify-center gap-3"
                     >

@@ -32,7 +32,7 @@ export default function CollaborateModal({ isOpen, onClose, vision }: Collaborat
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://visnova.app/vision/${vision.id}/invite`);
+    navigator.clipboard.writeText(`https://visnova.app/visions/${vision.id}/invite`);
     addToast({
       type: 'success',
       title: 'Link Copied',

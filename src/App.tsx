@@ -4,8 +4,8 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, User, MessageCircle, LibraryBig, MoreHorizontal, GraduationCap, Settings as SettingsIcon, LogOut, Wallet } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, LibraryBig, MoreHorizontal, GraduationCap, Settings as SettingsIcon, LogOut, Wallet, HelpCircle, MessageCircleWarning } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -24,7 +24,6 @@ import FloatingTimer from './components/Dashboard/FloatingTimer';
 import UserProfileModal from './components/Social/UserProfileModal';
 import NotificationCenter from './components/Social/NotificationCenter';
 import ProfilePage from './components/Social/ProfilePage';
-import MessagesPage from './components/Social/MessagesPage';
 import CommunitySpaces from './components/Community/CommunitySpaces';
 import ProfileDropdown from './components/ProfileDropdown';
 import ToastViewport from './components/ToastViewport';
@@ -37,6 +36,7 @@ import CookieNotice from './components/CookieNotice';
 import FeedbackPage from './components/Support/FeedbackPage';
 import { CookiePolicyPage, PrivacyPolicyPage, SupportPage, TermsPage } from './components/Legal/LegalPages';
 import MoneyPage from './components/Money/MoneyPage';
+import { supabase } from './lib/supabase';
 
 function AccountabilityNudge() {
   const [visible, setVisible] = useState(false);
@@ -106,13 +106,109 @@ function AccountabilityNudge() {
   );
 }
 
+type NavItem = {
+  icon: typeof Home;
+  label: string;
+  path: string;
+  id?: string;
+  badge?: number;
+};
+
+const mainNavBase: NavItem[] = [
+  { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
+  { icon: Compass, label: 'Feed', path: '/feed' },
+  { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
+  { icon: LibraryBig, label: 'Library', path: '/library' },
+  { icon: GraduationCap, label: 'Growth', path: '/growth' },
+  { icon: Wallet, label: 'Money', path: '/money' },
+  { icon: Users, label: 'Circle', path: '/circle' },
+  { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
+];
+
+const moreItems: NavItem[] = [
+  { icon: Globe, label: 'Communities', path: '/communities' },
+  { icon: SettingsIcon, label: 'Settings', path: '/settings' },
+  { icon: MessageCircleWarning, label: 'Feedback', path: '/feedback' },
+  { icon: HelpCircle, label: 'Help', path: '/support' },
+];
+
+const isRouteActive = (pathname: string, path: string) => (
+  path === '/' ? pathname === '/' : pathname === path || pathname.startsWith(`${path}/`)
+);
+
+function useUnreadMessageCount() {
+  const session = useStore(state => state.session);
+  const [count, setCount] = useState(0);
+  const currentUserId = session?.user?.id;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCount = async () => {
+      if (!currentUserId) {
+        setCount(0);
+        return;
+      }
+
+      const { data: participantRows, error: participantError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', currentUserId);
+
+      if (cancelled || participantError) {
+        if (participantError) console.error('Failed to load message badge:', participantError);
+        setCount(0);
+        return;
+      }
+
+      const conversationIds = Array.from(new Set((participantRows || []).map((row: any) => row.conversation_id)));
+      if (conversationIds.length === 0) {
+        setCount(0);
+        return;
+      }
+
+      const { count: unreadCount, error: unreadError } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .in('conversation_id', conversationIds)
+        .neq('user_id', currentUserId)
+        .is('read_at', null);
+
+      if (cancelled) return;
+      if (unreadError) {
+        console.error('Failed to load unread messages:', unreadError);
+        setCount(0);
+        return;
+      }
+
+      setCount(unreadCount || 0);
+    };
+
+    loadCount();
+    const channel = supabase
+      .channel(`nav-message-badge:${currentUserId || 'guest'}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, loadCount)
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
+  return count;
+}
+
 function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toggleFocusMode, user, unreadNotificationCount } = useStore();
+  const unreadMessageCount = useUnreadMessageCount();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const openNotifications = () => setIsNotificationsOpen(true);
@@ -120,18 +216,29 @@ function Sidebar() {
     return () => window.removeEventListener('open-visnova-notifications', openNotifications);
   }, []);
 
-  const navItems = [
-    { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
-    { icon: Compass, label: 'Feed', path: '/feed' },
-    { icon: Target, label: 'Visions', path: '/vision', id: 'nav-vision' },
-    { icon: LibraryBig, label: 'Library', path: '/notes' },
-    { icon: GraduationCap, label: 'Growth', path: '/growth' },
-    { icon: Wallet, label: 'Money', path: '/money' },
-    { icon: Users, label: 'Circle', path: '/circle' },
-    { icon: Globe, label: 'Communities', path: '/communities' },
-    { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
-    { icon: MessageCircle, label: 'Messages', path: '/messages' },
-  ];
+  useEffect(() => {
+    const closeMore = (event: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
+        setIsMoreOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMoreOpen(false);
+    };
+    if (isMoreOpen) {
+      document.addEventListener('mousedown', closeMore);
+      document.addEventListener('keydown', closeOnEscape);
+    }
+    return () => {
+      document.removeEventListener('mousedown', closeMore);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isMoreOpen]);
+
+  const navItems = mainNavBase.map(item => (
+    item.path === '/circle' ? { ...item, badge: unreadMessageCount } : item
+  ));
+  const moreActive = moreItems.some(item => isRouteActive(location.pathname, item.path));
 
   return (
     <aside
@@ -160,7 +267,7 @@ function Sidebar() {
       <nav className="flex-1 px-3 space-y-1 mt-6 overflow-y-auto scrollbar-hide min-h-0">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path;
+          const isActive = isRouteActive(location.pathname, item.path);
           return (
             <Link
               key={item.label}
@@ -176,6 +283,11 @@ function Sidebar() {
               )}
             >
               <Icon size={18} className={cn('shrink-0 transition-all duration-500', isActive ? 'text-accent' : '[data-theme=sage]:text-white/70 text-text-secondary/60 group-hover:text-text-main group-hover:[data-theme=sage]:text-white')} />
+              {!!item.badge && (
+                <span className={cn("absolute top-1.5 min-w-4 h-4 px-1 bg-accent text-accent-contrast text-[8px] font-black rounded-full flex items-center justify-center border-2 border-sidebar", isExpanded ? "right-3" : "right-1.5")}>
+                  {item.badge > 9 ? '9+' : item.badge}
+                </span>
+              )}
               <span className={cn(
                 "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap overflow-hidden",
                 isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2",
@@ -192,6 +304,66 @@ function Sidebar() {
             </Link>
           );
         })}
+        <div ref={moreRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setIsMoreOpen(open => !open)}
+            title={!isExpanded ? 'More' : undefined}
+            aria-haspopup="menu"
+            aria-expanded={isMoreOpen}
+            className={cn(
+              'w-full flex items-center h-11 rounded-xl transition-all duration-300 group relative',
+              isExpanded ? 'justify-start gap-4 px-3' : 'justify-center px-0',
+              moreActive || isMoreOpen
+                ? 'bg-accent/5 text-accent font-semibold'
+                : 'text-text-secondary hover:text-text-main hover:bg-surface-muted'
+            )}
+          >
+            <MoreHorizontal size={18} className={cn('shrink-0 transition-all duration-500', moreActive || isMoreOpen ? 'text-accent' : '[data-theme=sage]:text-white/70 text-text-secondary/60 group-hover:text-text-main')} />
+            <span className={cn(
+              "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap overflow-hidden",
+              isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2",
+              moreActive || isMoreOpen ? "text-accent" : "[data-theme=sage]:text-white/80 text-text-secondary"
+            )}>
+              More
+            </span>
+            {moreActive && <motion.div layoutId="sidebar-active" className="absolute left-0 w-1 h-8 bg-accent rounded-r-full" />}
+          </button>
+          <AnimatePresence>
+            {isMoreOpen && (
+              <motion.div
+                initial={{ opacity: 0, x: -8, scale: 0.98 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -8, scale: 0.98 }}
+                role="menu"
+                className={cn(
+                  "visnova-menu absolute top-0 max-h-[min(22rem,calc(100vh-8rem))] overflow-y-auto custom-scrollbar p-2 z-[120]",
+                  isExpanded ? "left-full ml-2 w-64" : "left-[calc(100%+0.5rem)] w-60"
+                )}
+              >
+                {moreItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isRouteActive(location.pathname, item.path);
+                  return (
+                    <button
+                      key={item.path}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsMoreOpen(false);
+                        navigate(item.path);
+                      }}
+                      className={cn("visnova-menu-item group", active && "visnova-menu-item-active")}
+                    >
+                      <Icon size={16} className="text-text-secondary/60 group-hover:text-accent transition-colors" />
+                      <span className="text-sm font-semibold">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </nav>
 
       {/* User Section */}
@@ -293,23 +465,25 @@ function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useStore();
+  const unreadMessageCount = useUnreadMessageCount();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const primaryItems = [
-    { icon: Home, label: 'Home', path: '/' },
+    { icon: Home, label: 'Dashboard', path: '/' },
     { icon: Compass, label: 'Feed', path: '/feed' },
-    { icon: Target, label: 'Visions', path: '/vision' },
-    { icon: LibraryBig, label: 'Library', path: '/notes' },
+    { icon: Target, label: 'Visions', path: '/visions' },
+    { icon: LibraryBig, label: 'Library', path: '/library' },
   ];
 
-  const moreItems = [
-    { icon: Wallet, label: 'Money', path: '/money' },
+  const mobileMoreItems = [
     { icon: GraduationCap, label: 'Growth', path: '/growth' },
-    { icon: Users, label: 'Circle', path: '/circle' },
-    { icon: Globe, label: 'Communities', path: '/communities' },
+    { icon: Wallet, label: 'Money', path: '/money' },
+    { icon: Users, label: 'Circle', path: '/circle', badge: unreadMessageCount },
     { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
-    { icon: MessageCircle, label: 'Messages', path: '/messages' },
+    { icon: Globe, label: 'Communities', path: '/communities' },
     { icon: SettingsIcon, label: 'Settings', path: '/settings' },
+    { icon: MessageCircleWarning, label: 'Feedback', path: '/feedback' },
+    { icon: HelpCircle, label: 'Help', path: '/support' },
   ];
 
   const goTo = (path: string) => {
@@ -361,24 +535,43 @@ function MobileNav() {
                   Profile
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2 py-4">
-                {moreItems.map((item) => {
+              <div className="grid grid-cols-2 gap-2 py-4 max-h-[45dvh] overflow-y-auto custom-scrollbar">
+                {mobileMoreItems.map((item) => {
                   const Icon = item.icon;
-                  const active = location.pathname === item.path;
+                  const active = isRouteActive(location.pathname, item.path);
                   return (
                     <button
                       key={item.path}
                       onClick={() => goTo(item.path)}
                       className={cn(
-                        "h-12 rounded-2xl border flex items-center gap-3 px-3 text-left transition-all",
+                        "h-12 rounded-2xl border flex items-center gap-3 px-3 text-left transition-all relative",
                         active ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface-muted border-card-border/50 text-text-secondary"
                       )}
                     >
                       <Icon size={18} />
                       <span className="text-[11px] font-black uppercase tracking-wider truncate">{item.label}</span>
+                      {!!item.badge && (
+                        <span className="ml-auto min-w-5 h-5 px-1 rounded-full bg-accent text-accent-contrast text-[9px] font-black flex items-center justify-center">
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
+                <button
+                  onClick={() => goTo('/profile')}
+                  className={cn(
+                    "h-12 rounded-2xl border flex items-center gap-3 px-3 text-left transition-all",
+                    isRouteActive(location.pathname, '/profile') ? "bg-accent/10 border-accent/20 text-accent" : "bg-surface-muted border-card-border/50 text-text-secondary"
+                  )}
+                >
+                  <img
+                    src={user?.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${user?.id || 'visnova'}`}
+                    alt=""
+                    className="h-6 w-6 rounded-lg object-cover border border-card-border"
+                  />
+                  <span className="text-[11px] font-black uppercase tracking-wider truncate">Profile</span>
+                </button>
               </div>
               <div className="grid grid-cols-2 gap-2 border-t border-card-border/60 pt-3">
                 <button
@@ -404,7 +597,7 @@ function MobileNav() {
       <nav className="fixed bottom-0 left-0 right-0 min-h-[4.75rem] bg-sidebar/95 backdrop-blur-xl border-t border-card-border lg:hidden grid grid-cols-5 gap-1 px-2 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] z-[80] transition-colors duration-500">
         {primaryItems.map((item) => {
           const Icon = item.icon;
-          const active = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path);
+          const active = isRouteActive(location.pathname, item.path);
           return (
             <Link
               key={item.path}
@@ -423,7 +616,7 @@ function MobileNav() {
           onClick={() => setIsMoreOpen(true)}
           className={cn(
             "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all",
-            isMoreOpen || moreItems.some(item => location.pathname === item.path) ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
+            isMoreOpen || mobileMoreItems.some(item => isRouteActive(location.pathname, item.path)) || isRouteActive(location.pathname, '/profile') ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
           )}
         >
           <MoreHorizontal size={22} />
@@ -437,9 +630,12 @@ function MobileNav() {
 const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Dashboard', subtitle: 'Your daily progress space' },
   '/feed': { title: 'Feed', subtitle: 'Share progress and support others' },
+  '/visions': { title: 'Visions', subtitle: 'Plan goals and move tasks forward' },
   '/vision': { title: 'Visions', subtitle: 'Plan goals and move tasks forward' },
+  '/library': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/notes': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/journal': { title: 'Library', subtitle: 'Notes, audio, and journal' },
+  '/circle': { title: 'Circle', subtitle: 'Connections, messages, requests, and activity' },
   '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
   '/growth': { title: 'Growth', subtitle: 'Learn with purpose and turn resources into action' },
   '/money': { title: 'Money', subtitle: 'Track spending and fund your Visions' },
@@ -468,6 +664,18 @@ function PageContextHeader() {
   );
 }
 
+
+function MessagesRedirect() {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  searchParams.set('tab', 'messages');
+  return <Navigate to={`/circle?${searchParams.toString()}`} replace />;
+}
+
+function NotesRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/library${location.search || ''}`} replace />;
+}
 
 function AppContent() {
   const { 
@@ -590,14 +798,17 @@ function AppContent() {
                 <div className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Navigate to="/" replace />} />
                     <Route path="/feed" element={<CommunityFeed />} />
                     <Route path="/post/:postId" element={<PostThreadPage />} />
-                    <Route path="/vision" element={<VisionBoard />} />
+                    <Route path="/visions" element={<VisionBoard />} />
+                    <Route path="/vision" element={<Navigate to="/visions" replace />} />
                     <Route path="/circle" element={<Circle />} />
                     <Route path="/communities" element={<CommunitySpaces />} />
-                    <Route path="/messages" element={<MessagesPage />} />
-                    <Route path="/notes" element={<NotesSystem />} />
-                    <Route path="/journal" element={<Navigate to="/notes?tab=journal" replace />} />
+                    <Route path="/messages" element={<MessagesRedirect />} />
+                    <Route path="/library" element={<NotesSystem />} />
+                    <Route path="/notes" element={<NotesRedirect />} />
+                    <Route path="/journal" element={<Navigate to="/library?tab=journal" replace />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/profile/:profileId" element={<ProfilePage />} />
                     <Route path="/settings" element={<Settings />} />

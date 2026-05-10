@@ -707,7 +707,7 @@ export default function Dashboard() {
                   </h3>
                 </div>
                 <button
-                  onClick={() => navigate("/notes?tab=journal")}
+                  onClick={() => navigate("/library?tab=journal")}
                   className="text-[10px] font-bold tracking-widest uppercase text-accent bg-accent/10 px-3 py-1 rounded-full hover:bg-accent/20 transition-colors"
                 >
                   Open Journal
@@ -716,7 +716,7 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-full flex-1 items-start">
                 <div
-                  onClick={() => navigate("/notes?tab=journal")}
+                  onClick={() => navigate("/library?tab=journal")}
                   className="bg-app-container rounded-[2rem] p-6 w-full flex flex-col gap-4 relative overflow-hidden group border border-transparent hover:border-accent/20 transition-all min-h-[180px] cursor-pointer"
                 >
                   {currentJournalEntry ? (
@@ -789,7 +789,7 @@ export default function Dashboard() {
                   </div>
 
                   <button
-                    onClick={() => navigate("/vision")}
+                    onClick={() => navigate("/visions")}
                     className="text-[10px] font-black text-accent uppercase tracking-[0.2em] mt-6 border border-accent/20 rounded-xl py-3 hover:bg-accent/5 transition-all text-center w-full"
                   >
                     Align Visions
@@ -876,7 +876,7 @@ export default function Dashboard() {
                   <div
                     key={`${vision.id || 'vision'}-${i}`}
                     className="relative h-[180px] rounded-[2rem] overflow-hidden group cursor-pointer"
-                    onClick={() => navigate('/vision')}
+                    onClick={() => navigate('/visions')}
                   >
                     <img
                       src={`https://images.unsplash.com/photo-${i % 2 === 0 ? "1542626990-ce4cb81bcf76?q=80&w=600" : "1519389953810-c5eaa819266a?q=80&w=600"}`}
@@ -915,7 +915,7 @@ export default function Dashboard() {
                 </h3>
               </div>
               <button 
-                onClick={() => navigate('/notes')}
+                onClick={() => navigate('/library')}
                 className="text-[10px] font-black text-accent uppercase tracking-widest hover:underline"
               >
                 View Notes
@@ -925,7 +925,7 @@ export default function Dashboard() {
               {notes.slice(0, 3).map((note) => (
                 <div 
                   key={note.id}
-                  onClick={() => navigate('/notes')}
+                  onClick={() => navigate('/library')}
                   className="bg-app-container rounded-2xl p-4 border border-transparent hover:border-accent/10 transition-all cursor-pointer group"
                 >
                   <h4 className="text-[13px] font-bold text-text-main mb-2 truncate group-hover:text-accent transition-colors">

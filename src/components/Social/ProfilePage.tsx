@@ -557,7 +557,7 @@ export default function ProfilePage() {
                         {isFollowing ? <Check size={18} /> : <Plus size={18} />}
                         {isFollowing ? 'Following' : 'Follow'}
                      </button>
-                     <button onClick={() => navigate(targetId ? `/messages?user=${targetId}` : '/messages')} className="h-12 w-12 rounded-2xl bg-surface-muted border border-card-border text-text-secondary flex items-center justify-center hover:text-accent transition-all">
+                     <button onClick={() => navigate(targetId ? `/circle?tab=messages&user=${targetId}` : '/circle?tab=messages')} className="h-12 w-12 rounded-2xl bg-surface-muted border border-card-border text-text-secondary flex items-center justify-center hover:text-accent transition-all">
                         <MessageCircle size={20} />
                      </button>
                    </>

@@ -742,7 +742,7 @@ export default function NotesSystem() {
         onMakePublic={async (noteIds) => {
           const ids = noteIds.length > 0 ? noteIds : notes.filter(note => note.folderId === folderViewer?.id && !note.isDeleted).map(note => note.id);
           await Promise.all(ids.map(id => updateNote(id, { visibility: 'public' })));
-          const link = `${window.location.origin}/notes?folder=${folderViewer?.id || ''}`;
+          const link = `${window.location.origin}/library?folder=${folderViewer?.id || ''}`;
           await navigator.clipboard.writeText(link);
           addToast({ type: 'success', title: 'Folder link ready', description: 'Selected folder notes are public and the link was copied.' });
         }}
