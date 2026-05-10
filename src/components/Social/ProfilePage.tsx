@@ -37,7 +37,8 @@ import {
   Users,
   UserMinus,
   Trash2,
-  Archive
+  Archive,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Post, Achievement, Milestone } from '../../types';
@@ -47,6 +48,7 @@ import { ImageLightbox, PostEditModal, PostReportModal } from '../Feed/Community
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
+import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 type SocialProfile = {
   id: string;
@@ -58,8 +60,22 @@ type SocialProfile = {
   verified?: boolean;
 };
 
+const profileReportReasons = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'harassment', label: 'Harassment' },
+  { value: 'hate', label: 'Hate or abusive content' },
+  { value: 'sexual_content', label: 'Sexual content' },
+  { value: 'violence', label: 'Violence' },
+  { value: 'self_harm', label: 'Self-harm concern' },
+  { value: 'scam', label: 'Scam or fraud' },
+  { value: 'impersonation', label: 'Impersonation' },
+  { value: 'privacy', label: 'Privacy violation' },
+  { value: 'illegal_content', label: 'Illegal content' },
+  { value: 'other', label: 'Other' }
+];
+
 export default function ProfilePage() {
-  const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow, fetchProfileStats } = useStore();
+  const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow, fetchProfileStats, reportUser } = useStore();
   const navigate = useNavigate();
   const { profileId } = useParams<{ profileId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -81,6 +97,10 @@ export default function ProfilePage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [editData, setEditData] = useState({
     name: currentUser.name,
@@ -95,6 +115,18 @@ export default function ProfilePage() {
     [profileId, selectedProfileId, session?.user?.id, currentUser.id]
   );
   const isOwnProfile = !!targetId && targetId === session?.user?.id;
+
+  const submitProfileReport = async () => {
+    if (!targetId || isReporting) return;
+    setIsReporting(true);
+    const ok = await reportUser(targetId, reportReason, reportDetails);
+    setIsReporting(false);
+    if (ok) {
+      setIsReportOpen(false);
+      setReportReason('spam');
+      setReportDetails('');
+    }
+  };
 
   const mapProfilePost = (p: any): Post => ({
     id: safeString(p?.id),
@@ -561,6 +593,13 @@ export default function ProfilePage() {
                      </button>
                      <button onClick={() => navigate(targetId ? `/circle?tab=messages&user=${targetId}` : '/circle?tab=messages')} className="h-12 w-12 rounded-2xl bg-surface-muted border border-card-border text-text-secondary flex items-center justify-center hover:text-accent transition-all">
                         <MessageCircle size={20} />
+                     </button>
+                     <button
+                       onClick={() => setIsReportOpen(true)}
+                       className="h-12 w-12 rounded-2xl bg-danger/10 border border-danger/15 text-danger flex items-center justify-center hover:bg-danger/15 transition-all"
+                       aria-label="Report profile"
+                     >
+                        <Flag size={18} />
                      </button>
                    </>
                  )}
@@ -1056,6 +1095,43 @@ export default function ProfilePage() {
           )}
         </motion.div>
       </AnimatePresence>
+      <ResponsiveModal
+        open={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        title="Report profile"
+        subtitle="Reports are private and help keep VisNova safe."
+        size="sm"
+      >
+        <div className="p-5 space-y-4">
+          <label className="space-y-2 block">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Reason</span>
+            <select
+              value={reportReason}
+              onChange={(event) => setReportReason(event.target.value)}
+              className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent"
+            >
+              {profileReportReasons.map(reason => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
+            </select>
+          </label>
+          <label className="space-y-2 block">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details optional</span>
+            <textarea
+              value={reportDetails}
+              onChange={(event) => setReportDetails(event.target.value.slice(0, 1000))}
+              className="w-full min-h-28 rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-semibold text-text-main outline-none resize-none focus:border-accent"
+              placeholder="Add context for moderators..."
+            />
+          </label>
+          <button
+            onClick={submitProfileReport}
+            disabled={isReporting}
+            className="w-full h-12 rounded-2xl bg-danger text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isReporting && <Loader2 size={16} className="animate-spin" />}
+            Submit Report
+          </button>
+        </div>
+      </ResponsiveModal>
     </div>
   );
 }

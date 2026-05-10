@@ -115,7 +115,7 @@ const previewMessage = (message?: Pick<ChatMessage, 'content' | 'deleted_at'> | 
 };
 
 export default function MessagesPage() {
-  const { session, addToast } = useStore();
+  const { session, addToast, reportUser } = useStore();
   const [searchParams] = useSearchParams();
   const currentUserId = session?.user?.id;
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -133,6 +133,10 @@ export default function MessagesPage() {
   const [reportReason, setReportReason] = useState('spam');
   const [reportDetails, setReportDetails] = useState('');
   const [isReporting, setIsReporting] = useState(false);
+  const [isProfileReportOpen, setIsProfileReportOpen] = useState(false);
+  const [profileReportReason, setProfileReportReason] = useState('spam');
+  const [profileReportDetails, setProfileReportDetails] = useState('');
+  const [isProfileReporting, setIsProfileReporting] = useState(false);
 
   const selectedId = selected?.id;
   const requestedUserId = searchParams.get('user');
@@ -457,6 +461,18 @@ export default function MessagesPage() {
     setReportReason('spam');
   };
 
+  const submitProfileReport = async () => {
+    if (!selected?.profile.id || isProfileReporting) return;
+    setIsProfileReporting(true);
+    const ok = await reportUser(selected.profile.id, profileReportReason, profileReportDetails);
+    setIsProfileReporting(false);
+    if (ok) {
+      setIsProfileReportOpen(false);
+      setProfileReportReason('spam');
+      setProfileReportDetails('');
+    }
+  };
+
   const selectedTitle = useMemo(() => displayName(selected?.profile), [selected]);
 
   if (!currentUserId) {
@@ -544,10 +560,18 @@ export default function MessagesPage() {
             <>
               <header className="h-20 border-b border-card-border px-6 flex items-center gap-4">
                 <img src={avatarFor(selected.profile)} className="w-11 h-11 rounded-xl border border-card-border" alt={selectedTitle} />
-                <div>
+                <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-black uppercase tracking-widest text-text-main">{selectedTitle}</h3>
                   <p className="text-[9px] font-bold uppercase tracking-widest text-accent">@{selected.profile.username || 'user'}</p>
                 </div>
+                <button
+                  onClick={() => setIsProfileReportOpen(true)}
+                  className="h-10 w-10 rounded-xl bg-danger/10 border border-danger/15 text-danger flex items-center justify-center hover:bg-danger/15 transition-all"
+                  aria-label="Report profile"
+                  title="Report profile"
+                >
+                  <Flag size={16} />
+                </button>
               </header>
 
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-app-container/40">
@@ -700,6 +724,25 @@ export default function MessagesPage() {
           </button>
         </div>
       </ResponsiveModal>
+
+      <ResponsiveModal open={isProfileReportOpen} onClose={() => setIsProfileReportOpen(false)} title="Report profile" subtitle="Reports are private and help keep VisNova safe." size="sm">
+        <div className="p-5 space-y-4">
+          <label className="space-y-2 block">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Reason</span>
+            <select value={profileReportReason} onChange={(event) => setProfileReportReason(event.target.value)} className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent">
+              {reportReasons.map(reason => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
+            </select>
+          </label>
+          <label className="space-y-2 block">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details optional</span>
+            <textarea value={profileReportDetails} onChange={(event) => setProfileReportDetails(event.target.value.slice(0, 1000))} className="w-full min-h-28 rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-semibold text-text-main outline-none resize-none focus:border-accent" placeholder="Add context for moderators..." />
+          </label>
+          <button onClick={submitProfileReport} disabled={isProfileReporting} className="w-full h-12 rounded-2xl bg-danger text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50">
+            {isProfileReporting && <Loader2 size={16} className="animate-spin" />}
+            Submit Report
+          </button>
+        </div>
+      </ResponsiveModal>
     </div>
   );
 }
@@ -748,7 +791,7 @@ function MessageActions({ message, isMine, openMenuId, setOpenMenuId, setReplyTo
           )}
           {isMine ? (
             <button onClick={() => deleteMessage(message)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold text-danger hover:bg-danger/10">
-              <Trash2 size={14} /> Delete
+              <Trash2 size={14} /> Unsend
             </button>
           ) : (
             !deleted && (

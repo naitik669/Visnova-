@@ -1,15 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
-import { X, MessageCircle, Plus, Zap, Users, Heart } from 'lucide-react';
+import { X, MessageCircle, Plus, Zap, Users, Heart, Flag, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import VerifiedBadge from '../VerifiedBadge';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 
+const reportReasons = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'harassment', label: 'Harassment' },
+  { value: 'hate', label: 'Hate or abusive content' },
+  { value: 'sexual_content', label: 'Sexual content' },
+  { value: 'violence', label: 'Violence' },
+  { value: 'self_harm', label: 'Self-harm concern' },
+  { value: 'scam', label: 'Scam or fraud' },
+  { value: 'impersonation', label: 'Impersonation' },
+  { value: 'privacy', label: 'Privacy violation' },
+  { value: 'illegal_content', label: 'Illegal content' },
+  { value: 'other', label: 'Other' }
+];
+
 export default function UserProfileModal() {
-  const { selectedProfileId, setSelectedProfileId, user: currentUser, session, userCircles, addToCircle, removeFromCircle, toggleFollow, followingIds, fetchProfileStats } = useStore();
+  const { selectedProfileId, setSelectedProfileId, user: currentUser, session, userCircles, addToCircle, removeFromCircle, toggleFollow, followingIds, fetchProfileStats, reportUser } = useStore();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -17,6 +31,10 @@ export default function UserProfileModal() {
   const [showCircleMenu, setShowCircleMenu] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
 
   const currentCircle = selectedProfileId ? userCircles[selectedProfileId] : null;
 
@@ -78,15 +96,31 @@ export default function UserProfileModal() {
 
   if (!selectedProfileId) return null;
 
+  const targetProfileId = selectedProfileId === 'me' ? session?.user?.id : selectedProfileId;
+  const isOwnProfile = !!targetProfileId && targetProfileId === session?.user?.id;
+
+  const submitProfileReport = async () => {
+    if (!targetProfileId || isReporting) return;
+    setIsReporting(true);
+    const ok = await reportUser(targetProfileId, reportReason, reportDetails);
+    setIsReporting(false);
+    if (ok) {
+      setIsReportOpen(false);
+      setReportReason('spam');
+      setReportDetails('');
+    }
+  };
+
   return (
-    <ResponsiveModal
-      open={!!selectedProfileId}
-      onClose={() => setSelectedProfileId(null)}
-      size="md"
-      className="bg-app-container"
-      contentClassName="bg-app-container"
-      zIndexClassName="z-[220]"
-    >
+    <>
+      <ResponsiveModal
+        open={!!selectedProfileId}
+        onClose={() => setSelectedProfileId(null)}
+        size="md"
+        className="bg-app-container"
+        contentClassName="bg-app-container"
+        zIndexClassName="z-[220]"
+      >
           {isLoading ? (
             <div className="h-96 flex flex-col items-center justify-center gap-4">
                <div className="w-10 h-10 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
@@ -250,7 +284,7 @@ export default function UserProfileModal() {
                     </div>
                  </div>
 
-                 <div className="flex gap-4">
+                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <button 
                       onClick={() => {
                         const messageTarget = selectedProfileId === 'me' ? session?.user?.id : selectedProfileId;
@@ -261,6 +295,14 @@ export default function UserProfileModal() {
                     >
                        <MessageCircle size={18} /> Send Message
                     </button>
+                    {!isOwnProfile && (
+                      <button
+                        onClick={() => setIsReportOpen(true)}
+                        className="h-14 px-5 rounded-2xl bg-danger/10 border border-danger/15 text-danger text-[10px] font-black uppercase tracking-widest hover:bg-danger/15 transition-all flex items-center justify-center gap-3"
+                      >
+                        <Flag size={16} /> Report
+                      </button>
+                    )}
                     <button 
                       onClick={() => {
                         const profileTarget = selectedProfileId === 'me' ? session?.user?.id : selectedProfileId;
@@ -275,6 +317,46 @@ export default function UserProfileModal() {
               </div>
             </>
           )}
-    </ResponsiveModal>
+      </ResponsiveModal>
+
+      <ResponsiveModal
+        open={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        title="Report profile"
+        subtitle="Reports are private and help keep VisNova safe."
+        size="sm"
+        zIndexClassName="z-[240]"
+      >
+        <div className="p-5 space-y-4">
+          <label className="space-y-2 block">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Reason</span>
+            <select
+              value={reportReason}
+              onChange={(event) => setReportReason(event.target.value)}
+              className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent"
+            >
+              {reportReasons.map(reason => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
+            </select>
+          </label>
+          <label className="space-y-2 block">
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details optional</span>
+            <textarea
+              value={reportDetails}
+              onChange={(event) => setReportDetails(event.target.value.slice(0, 1000))}
+              className="w-full min-h-28 rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-semibold text-text-main outline-none resize-none focus:border-accent"
+              placeholder="Add context for moderators..."
+            />
+          </label>
+          <button
+            onClick={submitProfileReport}
+            disabled={isReporting}
+            className="w-full h-12 rounded-2xl bg-danger text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isReporting && <Loader2 size={16} className="animate-spin" />}
+            Submit Report
+          </button>
+        </div>
+      </ResponsiveModal>
+    </>
   );
 }

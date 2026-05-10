@@ -489,6 +489,7 @@ export interface AppState {
   fetchArchivedPosts: () => Promise<Post[]>;
   deletePost: (id: string) => Promise<boolean>;
   reportPost: (id: string, reason: string, details?: string) => Promise<boolean>;
+  reportUser: (id: string, reason: string, details?: string) => Promise<boolean>;
   muteUserPosts: (userId: string) => Promise<boolean>;
   toggleLikePost: (id: string) => Promise<void>;
   toggleSavePost: (id: string) => Promise<void>;

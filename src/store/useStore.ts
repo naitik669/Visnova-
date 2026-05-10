@@ -2620,27 +2620,22 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ posts: state.posts.filter(post => post.id !== id) }));
 
     try {
-      let usedFallback = false;
-      const { data, error } = await supabase.rpc('visnova_archive_post', { target_post_id: id });
+      const now = new Date().toISOString();
+      const { data: rows, error: updateError } = await supabase
+        .from('posts')
+        .update({ archived: true, archived_at: now, updated_at: now })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .select('id');
 
-      if (error) {
-        if (isMissingPostActionRpc(error)) {
-          usedFallback = true;
-          const now = new Date().toISOString();
-          const { data: rows, error: fallbackError } = await supabase
-            .from('posts')
-            .update({ archived: true, archived_at: now, updated_at: now })
-            .eq('id', id)
-            .eq('user_id', userId)
-            .is('deleted_at', null)
-            .select('id');
-          if (fallbackError) throw fallbackError;
-          if (!rows?.length) throw new Error('Post was not found or you do not have permission to archive it.');
-        } else {
-          throw error;
-        }
+      if (updateError) throw updateError;
+
+      if (!rows?.length) {
+        const { data, error } = await supabase.rpc('visnova_archive_post', { target_post_id: id });
+        if (error) throw error;
+        if (data !== true) throw new Error('Post was not found or you do not have permission to archive it.');
       }
-      if (!usedFallback && data !== true) throw new Error('Post was not found or you do not have permission to archive it.');
 
       get().addToast({ type: 'success', title: 'Post archived', description: 'You can view it from your profile archive.' });
       return true;
@@ -2680,27 +2675,22 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     try {
-      let usedFallback = false;
-      const { data, error } = await supabase.rpc('visnova_restore_post', { target_post_id: id });
+      const now = new Date().toISOString();
+      const { data: rows, error: updateError } = await supabase
+        .from('posts')
+        .update({ archived: false, archived_at: null, updated_at: now })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .select('id');
 
-      if (error) {
-        if (isMissingPostActionRpc(error)) {
-          usedFallback = true;
-          const now = new Date().toISOString();
-          const { data: rows, error: fallbackError } = await supabase
-            .from('posts')
-            .update({ archived: false, archived_at: null, updated_at: now })
-            .eq('id', id)
-            .eq('user_id', userId)
-            .is('deleted_at', null)
-            .select('id');
-          if (fallbackError) throw fallbackError;
-          if (!rows?.length) throw new Error('Post was not found or you do not have permission to restore it.');
-        } else {
-          throw error;
-        }
+      if (updateError) throw updateError;
+
+      if (!rows?.length) {
+        const { data, error } = await supabase.rpc('visnova_restore_post', { target_post_id: id });
+        if (error) throw error;
+        if (data !== true) throw new Error('Post was not found or you do not have permission to restore it.');
       }
-      if (!usedFallback && data !== true) throw new Error('Post was not found or you do not have permission to restore it.');
 
       set((state) => ({
         posts: state.posts.map(post => post.id === id ? { ...post, archived: false, archivedAt: null } : post)
@@ -2816,30 +2806,25 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ posts: state.posts.filter(p => p.id !== id) }));
 
     try {
-      let usedFallback = false;
-      const { data, error: softDeleteError } = await supabase.rpc('visnova_soft_delete_post', { target_post_id: id });
+      const now = new Date().toISOString();
+      const { data: rows, error: updateError } = await supabase
+        .from('posts')
+        .update({
+          deleted_at: now,
+          updated_at: now
+        })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .select('id');
 
-      if (softDeleteError) {
-        if (isMissingPostActionRpc(softDeleteError)) {
-          usedFallback = true;
-          const now = new Date().toISOString();
-          const { data: rows, error: fallbackError } = await supabase
-            .from('posts')
-            .update({
-              deleted_at: now,
-              updated_at: now
-            })
-            .eq('id', id)
-            .eq('user_id', userId)
-            .is('deleted_at', null)
-            .select('id');
-          if (fallbackError) throw fallbackError;
-          if (!rows?.length) throw new Error('Post was not found or you do not have permission to delete it.');
-        } else {
-          throw softDeleteError;
-        }
+      if (updateError) throw updateError;
+
+      if (!rows?.length) {
+        const { data, error: softDeleteError } = await supabase.rpc('visnova_soft_delete_post', { target_post_id: id });
+        if (softDeleteError) throw softDeleteError;
+        if (data !== true) throw new Error('Post was not found or you do not have permission to delete it.');
       }
-      if (!usedFallback && data !== true) throw new Error('Post was not found or you do not have permission to delete it.');
 
       get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
       return true;
@@ -2928,6 +2913,56 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (err: any) {
       console.error('Failed to report post:', err);
       get().addToast({ type: 'error', title: 'Report failed', description: err.message || 'Could not submit report. Try again.' });
+      return false;
+    }
+  },
+
+  reportUser: async (id: string, reason: string, details?: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to report profiles.' });
+      return false;
+    }
+
+    if (!id || id === userId) {
+      get().addToast({ type: 'info', title: 'Report unavailable', description: 'You cannot report your own profile.' });
+      return false;
+    }
+
+    const safeReason = VALID_REPORT_REASONS.has(reason) ? reason : 'other';
+    const safeDetails = sanitizePlainText(details || '', 1000);
+
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', id)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      if (!profile?.id) throw new Error('Profile was not found.');
+
+      const { error } = await supabase.from('reports').insert({
+        reporter_id: userId,
+        target_type: 'user',
+        target_id: id,
+        target_owner_id: id,
+        reason: safeReason,
+        details: safeDetails || null
+      });
+
+      if (error) {
+        if (error.code === '23505') {
+          get().addToast({ type: 'info', title: 'Already reported', description: 'You already reported this profile.' });
+          return true;
+        }
+        throw error;
+      }
+
+      get().addToast({ type: 'success', title: 'Report submitted', description: 'Thanks. We saved this profile report for review.' });
+      return true;
+    } catch (err: any) {
+      console.error('Failed to report profile:', err);
+      get().addToast({ type: 'error', title: 'Report failed', description: err.message || 'Could not submit profile report. Try again.' });
       return false;
     }
   },
