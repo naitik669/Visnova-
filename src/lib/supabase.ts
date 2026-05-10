@@ -4,8 +4,25 @@ import { validateFile } from './security';
 const fallbackSupabaseUrl = 'https://mmzlgntkhkeextqjaagi.supabase.co';
 const fallbackSupabasePublishableKey = 'sb_publishable_XbMaxhW9WRBzkDMZADlYhQ_TxfNQo9o';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || fallbackSupabaseUrl;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || fallbackSupabasePublishableKey;
+const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const envSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const isUsableSupabaseUrl = (value?: string) => {
+  if (!value || /your-project-url|undefined|null/i.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname.endsWith('.supabase.co');
+  } catch {
+    return false;
+  }
+};
+
+const isUsableSupabaseKey = (value?: string) => {
+  return !!value && !/your-|undefined|null/i.test(value) && (value.startsWith('sb_publishable_') || value.startsWith('eyJ'));
+};
+
+const supabaseUrl = isUsableSupabaseUrl(envSupabaseUrl) ? envSupabaseUrl : fallbackSupabaseUrl;
+const supabaseAnonKey = isUsableSupabaseKey(envSupabaseAnonKey) ? envSupabaseAnonKey : fallbackSupabasePublishableKey;
 const configuredAppUrl = import.meta.env.VITE_APP_URL || import.meta.env.VITE_SITE_URL;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
