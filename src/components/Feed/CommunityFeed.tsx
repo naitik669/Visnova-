@@ -22,6 +22,7 @@ import {
   AtSign,
   Hash,
   Loader2,
+  Reply,
   Trash2,
   UserPlus,
   VolumeX,
@@ -1898,10 +1899,11 @@ function SharePostModal({ post, onClose }: { post: Post, onClose: () => void }) 
 }
 
 export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () => void }) {
-  const { addComment, user } = useStore();
+  const { addComment, deleteComment, reportComment, session } = useStore();
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
 
   const fetchComments = async () => {
     try {
@@ -1927,7 +1929,9 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
           verified: !!c.author?.verified
         },
         content: safeString(c.content),
-        timestamp: safeFormat(c.created_at, 'MMM d, yyyy')
+        timestamp: safeFormat(c.created_at, 'MMM d, yyyy'),
+        parentCommentId: c.parent_comment_id || null,
+        deletedAt: c.deleted_at || null
       }));
       
       setComments(formatted);
@@ -1944,12 +1948,29 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
 
   const handleAddComment = async () => {
     if (!commentText.trim()) return;
-    const result = await addComment(post.id, commentText);
+    const result = await addComment(post.id, commentText, replyTo?.deletedAt ? undefined : replyTo?.id);
     if (result) {
       setCommentText('');
+      setReplyTo(null);
       fetchComments();
     }
   };
+
+  const handleDeleteComment = async (comment: Comment) => {
+    if (!confirm('Delete this comment? Replies will stay in the thread.')) return;
+    const ok = await deleteComment(comment.id);
+    if (ok) {
+      setComments(current => current.map(item => item.id === comment.id ? { ...item, content: '', deletedAt: new Date().toISOString() } : item));
+    }
+  };
+
+  const handleReportComment = async (comment: Comment) => {
+    const details = window.prompt('Report this comment? Add optional details, or leave blank.');
+    if (details === null) return;
+    await reportComment(comment.id, 'other', details);
+  };
+
+  const threadComments = buildModalCommentTree(comments);
 
   return (
     <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -1994,26 +2015,15 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Loading comments...</p>
                 </div>
               ) : comments.length > 0 ? (
-                comments.map(comment => (
-                  <div key={comment.id} className="flex gap-4 group">
-                     <img src={comment.author.avatar} className="w-10 h-10 rounded-xl border border-card-border shrink-0" alt="avatar" />
-                     <div className="flex-1">
-                        <div className="bg-card p-5 rounded-2xl border border-card-border group-hover:border-accent/10 transition-colors">
-                           <div className="flex justify-between items-start mb-2">
-                              <h5 className="text-[10px] font-black text-text-main uppercase tracking-widest group-hover:text-accent transition-colors flex items-center gap-2">
-                                {comment.author.name}
-                                <VerifiedBadge verified={comment.author.verified} className="scale-90" />
-                              </h5>
-                              <span className="text-[9px] font-black text-text-secondary/30 uppercase">{comment.timestamp}</span>
-                           </div>
-                           <p className="text-sm text-text-secondary leading-relaxed font-medium">{comment.content}</p>
-                        </div>
-                        <div className="flex gap-4 mt-2 ml-4">
-                           <button className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 hover:text-accent transition-colors">Reply</button>
-                           <button className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 hover:text-danger transition-colors">Like</button>
-                        </div>
-                     </div>
-                  </div>
+                threadComments.map(comment => (
+                  <ModalCommentItem
+                    key={comment.id}
+                    comment={comment}
+                    currentUserId={session?.user?.id}
+                    onReply={setReplyTo}
+                    onDelete={handleDeleteComment}
+                    onReport={handleReportComment}
+                  />
                 ))
               ) : (
                 <div className="text-center py-20 opacity-30">
@@ -2024,11 +2034,20 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
         </div>
 
         <div className="p-8 border-t border-card-border bg-card">
+           {replyTo && (
+             <div className="mb-3 flex items-center gap-3 rounded-2xl border border-card-border bg-surface-muted px-4 py-3">
+               <Reply size={14} className="text-accent shrink-0" />
+               <p className="min-w-0 flex-1 truncate text-xs font-bold text-text-secondary">Replying to {replyTo.author.name}</p>
+               <button onClick={() => setReplyTo(null)} className="h-8 w-8 rounded-xl bg-card border border-card-border text-text-secondary hover:text-danger flex items-center justify-center">
+                 <X size={14} />
+               </button>
+             </div>
+           )}
            <div className="relative">
               <textarea 
                  value={commentText}
                  onChange={e => setCommentText(e.target.value)}
-                 placeholder="Write a comment..."
+                 placeholder={replyTo ? `Reply to ${replyTo.author.name}...` : 'Write a comment...'}
                  className="w-full bg-surface-muted border border-card-border rounded-2xl p-5 pr-16 text-sm font-medium focus:outline-none focus:border-accent transition-all resize-none h-24"
               />
               <button 
@@ -2041,6 +2060,95 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
            </div>
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+function buildModalCommentTree(comments: Comment[]) {
+  const byId = new Map<string, Comment>();
+  const roots: Comment[] = [];
+
+  comments.forEach(comment => {
+    byId.set(comment.id, { ...comment, replies: [] });
+  });
+
+  byId.forEach(comment => {
+    if (comment.parentCommentId && byId.has(comment.parentCommentId)) {
+      byId.get(comment.parentCommentId)!.replies!.push(comment);
+    } else {
+      roots.push(comment);
+    }
+  });
+
+  return roots;
+}
+
+function ModalCommentItem({
+  comment,
+  currentUserId,
+  onReply,
+  onDelete,
+  onReport
+}: {
+  comment: Comment;
+  currentUserId?: string;
+  onReply: (comment: Comment) => void;
+  onDelete: (comment: Comment) => void;
+  onReport: (comment: Comment) => void;
+}) {
+  const deleted = !!comment.deletedAt;
+  const isMine = !!currentUserId && comment.userId === currentUserId;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-4 group">
+        <img src={comment.author.avatar} className="w-10 h-10 rounded-xl border border-card-border shrink-0" alt="avatar" />
+        <div className="flex-1 min-w-0">
+          <div className={cn('p-5 rounded-2xl border transition-colors', deleted ? 'bg-surface-muted/50 border-card-border border-dashed' : 'bg-card border-card-border group-hover:border-accent/10')}>
+            <div className="flex justify-between items-start gap-3 mb-2">
+              <h5 className="min-w-0 text-[10px] font-black text-text-main uppercase tracking-widest group-hover:text-accent transition-colors flex items-center gap-2 truncate">
+                {comment.author.name}
+                <VerifiedBadge verified={comment.author.verified} className="scale-90 shrink-0" />
+              </h5>
+              <span className="text-[9px] font-black text-text-secondary/30 uppercase shrink-0">{comment.timestamp}</span>
+            </div>
+            <p className={cn('text-sm leading-relaxed font-medium whitespace-pre-wrap', deleted ? 'italic text-text-secondary/45' : 'text-text-secondary')}>
+              {deleted ? 'Comment deleted' : comment.content}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-4 mt-2 ml-4">
+            {!deleted && (
+              <button onClick={() => onReply(comment)} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/40 hover:text-accent transition-colors">
+                <Reply size={12} /> Reply
+              </button>
+            )}
+            {!deleted && isMine && (
+              <button onClick={() => onDelete(comment)} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/40 hover:text-danger transition-colors">
+                <Trash2 size={12} /> Delete
+              </button>
+            )}
+            {!deleted && !isMine && currentUserId && (
+              <button onClick={() => onReport(comment)} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/40 hover:text-danger transition-colors">
+                <Flag size={12} /> Report
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      {safeArray<Comment>(comment.replies).length > 0 && (
+        <div className="ml-8 sm:ml-14 pl-4 border-l border-card-border space-y-4">
+          {safeArray<Comment>(comment.replies).map(reply => (
+            <ModalCommentItem
+              key={reply.id}
+              comment={reply}
+              currentUserId={currentUserId}
+              onReply={onReply}
+              onDelete={onDelete}
+              onReport={onReport}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

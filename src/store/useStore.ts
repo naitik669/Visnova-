@@ -2645,7 +2645,18 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const { data, error } = await supabase.rpc('visnova_archive_post', { target_post_id: id });
       if (error) throw error;
-      if (data !== true) throw new Error('Post was not found or you do not have permission to archive it.');
+      if (data !== true) {
+        const now = new Date().toISOString();
+        const { data: rows, error: updateError } = await supabase
+          .from('posts')
+          .update({ archived: true, archived_at: now, updated_at: now })
+          .eq('id', id)
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .select('id');
+        if (updateError) throw updateError;
+        if (!rows?.length) throw new Error('Post was not found or you do not have permission to archive it.');
+      }
 
       get().addToast({ type: 'success', title: 'Post archived', description: 'You can view it from your profile archive.' });
       return true;
@@ -2687,7 +2698,18 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const { data, error } = await supabase.rpc('visnova_restore_post', { target_post_id: id });
       if (error) throw error;
-      if (data !== true) throw new Error('Post was not found or you do not have permission to restore it.');
+      if (data !== true) {
+        const now = new Date().toISOString();
+        const { data: rows, error: updateError } = await supabase
+          .from('posts')
+          .update({ archived: false, archived_at: null, updated_at: now })
+          .eq('id', id)
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .select('id');
+        if (updateError) throw updateError;
+        if (!rows?.length) throw new Error('Post was not found or you do not have permission to restore it.');
+      }
 
       set((state) => ({
         posts: state.posts.map(post => post.id === id ? { ...post, archived: false, archivedAt: null } : post)
@@ -2805,7 +2827,18 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const { data, error } = await supabase.rpc('visnova_soft_delete_post', { target_post_id: id });
       if (error) throw error;
-      if (data !== true) throw new Error('Post was not found or you do not have permission to delete it.');
+      if (data !== true) {
+        const now = new Date().toISOString();
+        const { data: rows, error: updateError } = await supabase
+          .from('posts')
+          .update({ archived: true, archived_at: now, deleted_at: now, updated_at: now })
+          .eq('id', id)
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .select('id');
+        if (updateError) throw updateError;
+        if (!rows?.length) throw new Error('Post was not found or you do not have permission to delete it.');
+      }
 
       get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
       return true;
@@ -2894,6 +2927,76 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (err: any) {
       console.error('Failed to report post:', err);
       get().addToast({ type: 'error', title: 'Report failed', description: err.message || 'Could not submit report. Try again.' });
+      return false;
+    }
+  },
+
+  deleteComment: async (id: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to delete comments.' });
+      return false;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('visnova_soft_delete_comment', { target_comment_id: id });
+      if (error) throw error;
+      if (data !== true) throw new Error('Comment was not found or you do not have permission to delete it.');
+
+      get().addToast({ type: 'success', title: 'Comment deleted', description: 'Your comment was removed from the thread.' });
+      return true;
+    } catch (err: any) {
+      console.error('Failed to delete comment:', err);
+      get().addToast({ type: 'error', title: 'Delete failed', description: err.message || 'Could not delete this comment.' });
+      return false;
+    }
+  },
+
+  reportComment: async (id: string, reason: string, details?: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to report comments.' });
+      return false;
+    }
+
+    const safeReason = VALID_REPORT_REASONS.has(reason) ? reason : 'other';
+    const safeDetails = sanitizePlainText(details || '', 1000);
+
+    try {
+      const { data: commentRow, error: commentError } = await supabase
+        .from('comments')
+        .select('id, user_id')
+        .eq('id', id)
+        .maybeSingle();
+      if (commentError) throw commentError;
+      if (!commentRow?.id) throw new Error('Comment was not found.');
+      if (commentRow.user_id === userId) {
+        get().addToast({ type: 'info', title: 'Report unavailable', description: 'You cannot report your own comment.' });
+        return false;
+      }
+
+      const { error } = await supabase.from('reports').insert({
+        reporter_id: userId,
+        target_type: 'comment',
+        target_id: id,
+        target_owner_id: commentRow.user_id,
+        reason: safeReason,
+        details: safeDetails || null
+      });
+
+      if (error) {
+        if (error.code === '23505') {
+          get().addToast({ type: 'info', title: 'Already reported', description: 'You already reported this comment.' });
+          return true;
+        }
+        throw error;
+      }
+
+      get().addToast({ type: 'success', title: 'Report submitted', description: 'Thanks. We saved this comment report for review.' });
+      return true;
+    } catch (err: any) {
+      console.error('Failed to report comment:', err);
+      get().addToast({ type: 'error', title: 'Report failed', description: err.message || 'Could not submit comment report.' });
       return false;
     }
   },

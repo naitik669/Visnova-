@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Archive, ArrowLeft, Bookmark, Edit3, Flag, Heart, Image as ImageIcon, Loader2, MessageSquare, MoreHorizontal, Send, Trash2 } from 'lucide-react';
+import { Archive, ArrowLeft, Bookmark, Edit3, Flag, Heart, Image as ImageIcon, Loader2, MessageSquare, MoreHorizontal, Reply, Send, Trash2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -51,13 +51,34 @@ const mapCommentRow = (comment: any): Comment => ({
     verified: !!comment?.author?.verified
   },
   content: safeString(comment?.content),
-  timestamp: safeFormat(comment?.created_at, 'MMM d, h:mm a')
+  timestamp: safeFormat(comment?.created_at, 'MMM d, h:mm a'),
+  parentCommentId: comment?.parent_comment_id || null,
+  deletedAt: comment?.deleted_at || null
 });
+
+function buildCommentTree(comments: Comment[]) {
+  const byId = new Map<string, Comment>();
+  const roots: Comment[] = [];
+
+  comments.forEach(comment => {
+    byId.set(comment.id, { ...comment, replies: [] });
+  });
+
+  byId.forEach(comment => {
+    if (comment.parentCommentId && byId.has(comment.parentCommentId)) {
+      byId.get(comment.parentCommentId)!.replies!.push(comment);
+    } else {
+      roots.push(comment);
+    }
+  });
+
+  return roots;
+}
 
 export default function PostThreadPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { addComment, session, addToast, updatePost, archivePost, restorePost, deletePost, reportPost } = useStore();
+  const { addComment, deleteComment, reportComment, session, addToast, updatePost, archivePost, restorePost, deletePost, reportPost } = useStore();
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
@@ -70,8 +91,10 @@ export default function PostThreadPage() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('spam');
   const [reportDetails, setReportDetails] = useState('');
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
 
   const firstImage = useMemo(() => post?.media?.find(item => item.type === 'image'), [post]);
+  const threadComments = useMemo(() => buildCommentTree(comments), [comments]);
 
   const loadThread = async () => {
     if (!postId) return;
@@ -167,14 +190,30 @@ export default function PostThreadPage() {
     setIsCommenting(true);
     const draft = commentText;
     setCommentText('');
-    const saved = await addComment(postId, draft);
+    const parentId = replyTo?.deletedAt ? undefined : replyTo?.id;
+    const saved = await addComment(postId, draft, parentId);
     if (saved) {
       setComments(current => [...current, mapCommentRow(saved)]);
+      setReplyTo(null);
       setPost(current => current ? { ...current, comments: current.comments + 1 } : current);
     } else {
       setCommentText(draft);
     }
     setIsCommenting(false);
+  };
+
+  const handleDeleteComment = async (comment: Comment) => {
+    if (!confirm('Delete this comment? Replies will stay in the thread.')) return;
+    const ok = await deleteComment(comment.id);
+    if (ok) {
+      setComments(current => current.map(item => item.id === comment.id ? { ...item, content: '', deletedAt: new Date().toISOString() } : item));
+    }
+  };
+
+  const handleReportComment = async (comment: Comment) => {
+    const details = window.prompt('Report this comment? Add optional details, or leave blank.');
+    if (details === null) return;
+    await reportComment(comment.id, 'other', details);
   };
 
   const toggleThreadLike = async () => {
@@ -350,18 +389,15 @@ export default function PostThreadPage() {
               </div>
             ) : (
               <>
-                {comments.map(comment => (
-                  <motion.div key={comment.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
-                    <img src={comment.author.avatar} alt={comment.author.name} className="w-9 h-9 rounded-xl object-cover border border-card-border" />
-                    <div className="min-w-0 flex-1 rounded-2xl bg-card border border-card-border p-4">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-text-main truncate">{comment.author.name}</p>
-                        <VerifiedBadge verified={comment.author.verified} size={13} />
-                        <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-text-secondary/40">{comment.timestamp}</span>
-                      </div>
-                      <p className="mt-2 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-                    </div>
-                  </motion.div>
+                {threadComments.map(comment => (
+                  <CommentItem
+                    key={comment.id}
+                    comment={comment}
+                    currentUserId={session?.user?.id}
+                    onReply={setReplyTo}
+                    onDelete={handleDeleteComment}
+                    onReport={handleReportComment}
+                  />
                 ))}
                 {hasMoreComments && (
                   <button
@@ -377,11 +413,22 @@ export default function PostThreadPage() {
             )}
           </div>
           <div className="p-4 border-t border-card-border bg-card">
+            {replyTo && (
+              <div className="mb-3 flex items-center gap-3 rounded-2xl border border-card-border bg-surface-muted px-4 py-3">
+                <Reply size={14} className="text-accent shrink-0" />
+                <p className="min-w-0 flex-1 truncate text-xs font-bold text-text-secondary">
+                  Replying to {replyTo.author.name}
+                </p>
+                <button onClick={() => setReplyTo(null)} className="h-8 w-8 rounded-xl bg-card border border-card-border text-text-secondary hover:text-danger flex items-center justify-center">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
             <div className="flex items-end gap-3">
               <textarea
                 value={commentText}
                 onChange={(event) => setCommentText(event.target.value)}
-                placeholder="Write a comment..."
+                placeholder={replyTo ? `Reply to ${replyTo.author.name}...` : 'Write a comment...'}
                 className="flex-1 min-h-12 max-h-32 resize-none rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm outline-none focus:border-accent/50"
               />
               <button
@@ -425,5 +472,73 @@ export default function PostThreadPage() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function CommentItem({
+  comment,
+  currentUserId,
+  onReply,
+  onDelete,
+  onReport
+}: {
+  comment: Comment;
+  currentUserId?: string;
+  onReply: (comment: Comment) => void;
+  onDelete: (comment: Comment) => void;
+  onReport: (comment: Comment) => void;
+}) {
+  const deleted = !!comment.deletedAt;
+  const isMine = !!currentUserId && comment.userId === currentUserId;
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+      <div className="flex gap-3">
+        <img src={comment.author.avatar} alt={comment.author.name} className="w-9 h-9 rounded-xl object-cover border border-card-border shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className={cn('rounded-2xl border border-card-border p-4', deleted ? 'bg-surface-muted/50 border-dashed' : 'bg-card')}>
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-main truncate">{comment.author.name}</p>
+              <VerifiedBadge verified={comment.author.verified} size={13} />
+              <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-text-secondary/40">{comment.timestamp}</span>
+            </div>
+            <p className={cn('mt-2 text-sm leading-relaxed whitespace-pre-wrap', deleted ? 'italic text-text-secondary/45' : 'text-text-secondary')}>
+              {deleted ? 'Comment deleted' : comment.content}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-4 mt-2 ml-2">
+            {!deleted && (
+              <button onClick={() => onReply(comment)} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/45 hover:text-accent transition-colors">
+                <Reply size={12} /> Reply
+              </button>
+            )}
+            {!deleted && isMine && (
+              <button onClick={() => onDelete(comment)} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/45 hover:text-danger transition-colors">
+                <Trash2 size={12} /> Delete
+              </button>
+            )}
+            {!deleted && !isMine && currentUserId && (
+              <button onClick={() => onReport(comment)} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/45 hover:text-danger transition-colors">
+                <Flag size={12} /> Report
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      {safeArray<Comment>(comment.replies).length > 0 && (
+        <div className="ml-8 sm:ml-12 pl-4 border-l border-card-border space-y-3">
+          {safeArray<Comment>(comment.replies).map(reply => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              currentUserId={currentUserId}
+              onReply={onReply}
+              onDelete={onDelete}
+              onReport={onReport}
+            />
+          ))}
+        </div>
+      )}
+    </motion.div>
   );
 }
