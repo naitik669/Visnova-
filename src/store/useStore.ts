@@ -8,6 +8,7 @@ import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, Jou
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { trackBetaEvent } from '../lib/betaAnalytics';
 import { format } from 'date-fns';
 import { safeFormat, safeTime } from '../lib/dateUtils';
 import { safeArray, safeBoolean, safeNumber, safeString } from '../lib/safeData';
@@ -799,6 +800,11 @@ export const useStore = create<AppState>((set, get) => ({
       set((state) => ({ financeTransactions: [saved, ...state.financeTransactions] }));
       await get().fetchMoneyOverview();
       get().addToast({ type: 'success', title: 'Wallet saved', description: `${saved.title} was added.` });
+      trackBetaEvent(userId, 'wallet_transaction_created', {
+        type: saved.type,
+        category: saved.category,
+        linked_to_vision: Boolean(saved.linkedVisionId)
+      }, saved.id);
       return saved;
     } catch (error: any) {
       console.error('Failed to create finance transaction:', error);
@@ -1361,6 +1367,7 @@ export const useStore = create<AppState>((set, get) => ({
           description: `Completed task: ${task.text} in ${vision.title}`,
           visionId
         });
+        trackBetaEvent(userId, 'task_completed', { source: 'vision_task' }, taskId);
       } else {
         get().addToast({ type: 'info', title: 'Task completed', description: 'XP was already awarded for this task.' });
       }
@@ -1451,6 +1458,7 @@ export const useStore = create<AppState>((set, get) => ({
       
       get().addToast({ type: 'success', title: 'Vision created', description: `"${newVision.title}" is ready.` });
       get().recordDailyActivity('vision');
+      trackBetaEvent(userId, 'vision_created', { source: 'vision_create' }, data.id);
       return { ...newVision, id: data.id };
     } catch (error: any) {
       console.error('Failed to create vision:', error);
@@ -2079,6 +2087,10 @@ export const useStore = create<AppState>((set, get) => ({
         notes: state.notes.map(n => n.id === tempId ? { ...n, id: data.id } : n)
       }));
       get().recordDailyActivity(noteData.note_type === 'journal' ? 'journal' : 'note');
+      trackBetaEvent(userId, noteData.note_type === 'journal' ? 'journal_written' : 'note_created', {
+        note_type: noteData.note_type,
+        has_audio: Boolean(noteData.audio_path || noteData.audio_url)
+      }, data.id);
       return { ...newNote, id: data.id };
     } catch (error: any) {
       console.error('Failed to add note:', error);
@@ -2298,6 +2310,7 @@ export const useStore = create<AppState>((set, get) => ({
         get().addXp(TODO_XP);
         get().recordDailyActivity('todo');
         get().addToast({ type: 'success', title: `Task completed +${TODO_XP} XP`, description: todo.text });
+        trackBetaEvent(userId, 'task_completed', { source: 'dashboard_todo' }, id);
       } else {
         get().addToast({ type: 'info', title: 'Task completed', description: 'XP was already awarded for this task.' });
       }
@@ -2499,6 +2512,10 @@ export const useStore = create<AppState>((set, get) => ({
         title: 'Post shared',
         description: 'Your post is live.'
       });
+      trackBetaEvent(userId, 'post_created', {
+        type: safePost.type,
+        has_media: safePost.media.length > 0
+      }, postId);
       return true;
     } catch (err: any) {
       console.error('Failed to create post (full trace):', err);
@@ -4007,6 +4024,7 @@ export const useStore = create<AppState>((set, get) => ({
       set((state) => ({
         posts: state.posts.map(p => p.id === postId ? { ...p, comments: p.comments + 1 } : p)
       }));
+      trackBetaEvent(userId, 'comment_created', { has_parent: Boolean(parentId) }, data.id);
       return data;
     } catch (err) {
       console.error('Failed to add comment:', err);
@@ -4053,6 +4071,7 @@ export const useStore = create<AppState>((set, get) => ({
         get().fetchProfileStats(followingId).catch(error => console.error('Failed to refresh follow stats:', error));
         get().fetchProfileStats(userId).catch(error => console.error('Failed to refresh own follow stats:', error));
         scheduleCircleRefresh(get);
+        trackBetaEvent(userId, 'follow_removed', {}, followingId);
         return false;
       } else {
         const { error } = await supabase.from('follows').insert({ follower_id: userId, following_id: followingId });
@@ -4074,6 +4093,7 @@ export const useStore = create<AppState>((set, get) => ({
         get().fetchProfileStats(followingId).catch(error => console.error('Failed to refresh follow stats:', error));
         get().fetchProfileStats(userId).catch(error => console.error('Failed to refresh own follow stats:', error));
         scheduleCircleRefresh(get);
+        trackBetaEvent(userId, 'follow_created', {}, followingId);
         return true;
       }
     } catch (err) {
@@ -4198,6 +4218,10 @@ export const useStore = create<AppState>((set, get) => ({
       await get().loadUserProfile(userId);
       await get().fetchDashboardData();
       get().addToast({ type: 'success', title: 'Onboarding complete', description: 'Welcome to VisNova.' });
+      trackBetaEvent(userId, 'onboarding_completed', {
+        interests_count: Array.isArray(interests) ? interests.length : 0,
+        created_initial_vision: Boolean(intent?.trim())
+      });
     } catch (err: any) {
       console.error('Onboarding finalization failed:', err);
       get().addToast({ type: 'error', title: 'Onboarding failed', description: err.message || 'Could not finish onboarding.' });

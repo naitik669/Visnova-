@@ -20,6 +20,7 @@ import { motion } from 'motion/react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { supabase } from '../../lib/supabase';
+import { trackBetaEvent } from '../../lib/betaAnalytics';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
 import { safeDate, safeFormat, safeString } from '../../lib/safeData';
@@ -370,6 +371,10 @@ export default function MessagesPage() {
         return withoutTemp.some((m) => m.id === data.id) ? withoutTemp : [...withoutTemp, data];
       });
       setReplyTo(null);
+      trackBetaEvent(currentUserId, 'message_sent', {
+        has_reply: Boolean(replyTo?.id),
+        is_resend: Boolean(override?.tempId)
+      }, data.id);
       loadConversations();
     } catch (error: any) {
       if (!override) {
