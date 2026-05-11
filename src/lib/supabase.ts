@@ -25,6 +25,16 @@ const supabaseUrl = isUsableSupabaseUrl(envSupabaseUrl) ? envSupabaseUrl : fallb
 const supabaseAnonKey = isUsableSupabaseKey(envSupabaseAnonKey) ? envSupabaseAnonKey : fallbackSupabasePublishableKey;
 const configuredAppUrl = import.meta.env.VITE_APP_URL || import.meta.env.VITE_SITE_URL;
 
+const isUsableAppUrl = (value?: string) => {
+  if (!value || /your-|undefined|null/i.test(value)) return false;
+  try {
+    const url = new URL(value);
+    return /^https?:$/.test(url.protocol) && !url.hostname.endsWith('.supabase.co') && !url.pathname.includes('/auth/v1');
+  } catch {
+    return false;
+  }
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -39,9 +49,10 @@ export const isSupabaseConfigured = () => {
 };
 
 export const getAuthRedirectUrl = (path = '/auth/callback') => {
-  const fallbackUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const baseUrl = (configuredAppUrl || fallbackUrl).replace(/\/$/, '');
-  return `${baseUrl}${path}`;
+  const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const baseUrl = (browserOrigin || (isUsableAppUrl(configuredAppUrl) ? configuredAppUrl : '')).replace(/\/$/, '');
+  const nextPath = path.startsWith('/') ? path : `/${path}`;
+  return `${baseUrl}${nextPath}`;
 };
 
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
