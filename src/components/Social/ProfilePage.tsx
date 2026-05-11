@@ -1242,6 +1242,8 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                   initial={{ opacity: 0, scale: 0.96, y: -4 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                  onClick={(event) => event.stopPropagation()}
+                  onMouseDown={(event) => event.stopPropagation()}
                   className="visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-52 max-h-[70dvh] overflow-y-auto custom-scrollbar p-1.5 z-50"
                 >
                   {isOwnPost ? (

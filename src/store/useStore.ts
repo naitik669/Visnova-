@@ -2643,22 +2643,9 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ posts: state.posts.filter(post => post.id !== id) }));
 
     try {
-      const now = new Date().toISOString();
-      const { data: rows, error: updateError } = await supabase
-        .from('posts')
-        .update({ archived: true, archived_at: now, updated_at: now })
-        .eq('id', id)
-        .eq('user_id', userId)
-        .is('deleted_at', null)
-        .select('id');
-
-      if (updateError) throw updateError;
-
-      if (!rows?.length) {
-        const { data, error } = await supabase.rpc('visnova_archive_post', { target_post_id: id });
-        if (error) throw error;
-        if (data !== true) throw new Error('Post was not found or you do not have permission to archive it.');
-      }
+      const { data, error } = await supabase.rpc('visnova_archive_post', { target_post_id: id });
+      if (error) throw error;
+      if (data !== true) throw new Error('Post was not found or you do not have permission to archive it.');
 
       get().addToast({ type: 'success', title: 'Post archived', description: 'You can view it from your profile archive.' });
       return true;
@@ -2698,22 +2685,9 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     try {
-      const now = new Date().toISOString();
-      const { data: rows, error: updateError } = await supabase
-        .from('posts')
-        .update({ archived: false, archived_at: null, updated_at: now })
-        .eq('id', id)
-        .eq('user_id', userId)
-        .is('deleted_at', null)
-        .select('id');
-
-      if (updateError) throw updateError;
-
-      if (!rows?.length) {
-        const { data, error } = await supabase.rpc('visnova_restore_post', { target_post_id: id });
-        if (error) throw error;
-        if (data !== true) throw new Error('Post was not found or you do not have permission to restore it.');
-      }
+      const { data, error } = await supabase.rpc('visnova_restore_post', { target_post_id: id });
+      if (error) throw error;
+      if (data !== true) throw new Error('Post was not found or you do not have permission to restore it.');
 
       set((state) => ({
         posts: state.posts.map(post => post.id === id ? { ...post, archived: false, archivedAt: null } : post)
@@ -2829,25 +2803,9 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ posts: state.posts.filter(p => p.id !== id) }));
 
     try {
-      const now = new Date().toISOString();
-      const { data: rows, error: updateError } = await supabase
-        .from('posts')
-        .update({
-          deleted_at: now,
-          updated_at: now
-        })
-        .eq('id', id)
-        .eq('user_id', userId)
-        .is('deleted_at', null)
-        .select('id');
-
-      if (updateError) throw updateError;
-
-      if (!rows?.length) {
-        const { data, error: softDeleteError } = await supabase.rpc('visnova_soft_delete_post', { target_post_id: id });
-        if (softDeleteError) throw softDeleteError;
-        if (data !== true) throw new Error('Post was not found or you do not have permission to delete it.');
-      }
+      const { data, error } = await supabase.rpc('visnova_soft_delete_post', { target_post_id: id });
+      if (error) throw error;
+      if (data !== true) throw new Error('Post was not found or you do not have permission to delete it.');
 
       get().addToast({ type: 'success', title: 'Post deleted', description: 'Your post was removed from the feed.' });
       return true;

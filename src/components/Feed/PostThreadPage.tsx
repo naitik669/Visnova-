@@ -284,7 +284,7 @@ export default function PostThreadPage() {
                   </button>
                   <AnimatePresence>
                     {isMenuOpen && (
-                      <motion.div initial={{ opacity: 0, scale: 0.96, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: -4 }} className="visnova-menu absolute right-0 top-full mt-2 w-56 p-1.5 z-30">
+                      <motion.div initial={{ opacity: 0, scale: 0.96, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: -4 }} onClick={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} className="visnova-menu absolute right-0 top-full mt-2 w-56 p-1.5 z-30">
                         {post.userId === session.user.id ? (
                           <>
                             <button onClick={() => { setIsMenuOpen(false); setIsEditOpen(true); }} className="visnova-menu-item"><Edit3 size={14} /> Edit Post</button>
