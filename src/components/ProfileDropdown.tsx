@@ -3,13 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Bug, HelpCircle, LogOut, MessageCircleWarning, Palette, Settings, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
+import { cn } from '../lib/utils';
 
 interface ProfileDropdownProps {
   isOpen: boolean;
   onClose: () => void;
+  placement?: 'sidebar' | 'header';
 }
 
-export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProps) {
+export default function ProfileDropdown({ isOpen, onClose, placement = 'sidebar' }: ProfileDropdownProps) {
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, setSelectedProfileId, signOut } = useStore();
@@ -62,7 +64,12 @@ export default function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProp
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          className="visnova-menu fixed left-3 right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:left-20 sm:right-auto sm:bottom-6 w-auto sm:w-72 max-h-[calc(100dvh-6rem)] overflow-y-auto custom-scrollbar p-2 z-[100]"
+          className={cn(
+            'visnova-menu fixed left-3 right-3 w-auto sm:w-72 max-h-[calc(100dvh-6rem)] overflow-y-auto custom-scrollbar p-2 z-[240]',
+            placement === 'header'
+              ? 'top-[calc(4.25rem+env(safe-area-inset-top))] bottom-auto sm:left-auto sm:right-4 sm:top-16'
+              : 'bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:left-20 sm:right-auto sm:bottom-6'
+          )}
         >
           <div className="px-4 py-3 border-b border-card-border/70 mb-1">
             <p className="text-sm font-bold text-text-main truncate">{user.name}</p>

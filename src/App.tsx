@@ -484,7 +484,7 @@ function PageContextHeader() {
         >
           <MoreHorizontal size={18} />
         </button>
-        <ProfileDropdown isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+        <ProfileDropdown isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} placement="header" />
       </div>
     </div>
   );

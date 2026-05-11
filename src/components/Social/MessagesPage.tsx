@@ -778,29 +778,36 @@ function MessageActions({ message, isMine, openMenuId, setOpenMenuId, setReplyTo
         <MoreHorizontal size={15} />
       </button>
       {isOpen && (
-        <div className={cn('visnova-menu absolute top-10 w-44 p-1 z-20', isMine ? 'right-0' : 'left-0')}>
+        <div
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          className={cn(
+            'visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] w-auto p-1.5 z-[240] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-10 sm:w-48',
+            isMine ? 'sm:right-0' : 'sm:left-0'
+          )}
+        >
           {!deleted && (
-            <button onClick={() => { setReplyTo(message); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold hover:bg-surface-muted">
+            <button onClick={() => { setReplyTo(message); setOpenMenuId(null); }} className="visnova-menu-item">
               <Reply size={14} /> Reply
             </button>
           )}
           {message.failed && isMine && !deleted && (
-            <button onClick={() => { setOpenMenuId(null); resendMessage({ content: message.content, tempId: message.id }); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold hover:bg-surface-muted">
+            <button onClick={() => { setOpenMenuId(null); resendMessage({ content: message.content, tempId: message.id }); }} className="visnova-menu-item">
               <RotateCcw size={14} /> Resend
             </button>
           )}
           {!deleted && (
-            <button onClick={() => copyMessage(message)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold hover:bg-surface-muted">
+            <button onClick={() => copyMessage(message)} className="visnova-menu-item">
               <Copy size={14} /> Copy
             </button>
           )}
           {isMine ? (
-            <button onClick={() => deleteMessage(message)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold text-danger hover:bg-danger/10">
+            <button onClick={() => deleteMessage(message)} className="visnova-menu-item visnova-menu-item-danger">
               <Trash2 size={14} /> Unsend
             </button>
           ) : (
             !deleted && (
-              <button onClick={() => { setReportMessage(message); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-bold text-danger hover:bg-danger/10">
+              <button onClick={() => { setReportMessage(message); setOpenMenuId(null); }} className="visnova-menu-item visnova-menu-item-danger">
                 <Flag size={14} /> Report
               </button>
             )

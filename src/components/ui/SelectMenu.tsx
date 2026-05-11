@@ -83,7 +83,12 @@ export function SelectMenu({
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.14 }}
             role="listbox"
-            className={cn('visnova-menu absolute left-0 right-0 top-full mt-2 max-h-72 overflow-y-auto p-1.5', menuClassName)}
+            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
+            className={cn(
+              'visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] max-h-[55dvh] overflow-y-auto p-1.5 sm:absolute sm:inset-x-0 sm:bottom-auto sm:top-full sm:mt-2 sm:max-h-72',
+              menuClassName
+            )}
           >
             {options.map(option => {
               const active = option.value === value;

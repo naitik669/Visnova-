@@ -251,7 +251,9 @@ export default function UserProfileModal() {
                                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                                className="visnova-menu absolute top-full right-0 mt-2 w-56 p-1.5 z-50"
+                                onClick={(event) => event.stopPropagation()}
+                                onMouseDown={(event) => event.stopPropagation()}
+                                className="visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-56 max-h-[70dvh] overflow-y-auto custom-scrollbar p-1.5 z-[240]"
                               >
                                 <div className="px-3 py-2 border-b border-card-border/50 mb-1">
                                   <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40">Circle</p>
