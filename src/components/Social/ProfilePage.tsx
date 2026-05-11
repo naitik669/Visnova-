@@ -514,38 +514,42 @@ export default function ProfilePage() {
     <div className="w-full max-w-5xl mx-auto pb-24 animate-in fade-in duration-700 overflow-x-hidden">
       {/* Profile Header */}
       <div className="relative mb-8">
-        <div className="h-40 sm:h-64 rounded-[1.5rem] sm:rounded-[2.5rem] bg-gradient-to-r from-accent/20 via-card-dark to-accent/10 border border-card-border overflow-hidden relative">
+        <div className="h-40 sm:h-56 rounded-[1.5rem] sm:rounded-[2.5rem] bg-gradient-to-r from-accent/20 via-card-dark to-accent/10 border border-card-border overflow-hidden relative">
            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1620121692029-d088224ddc74?auto=format&fit=crop&q=80&w=2000')] bg-cover bg-center mix-blend-overlay opacity-20" />
            <div className="absolute inset-0 bg-gradient-to-t from-app-container to-transparent" />
         </div>
 
-        <div className="px-3 sm:px-8 -mt-20 sm:-mt-32 relative flex flex-col md:flex-row items-start md:items-end gap-4 sm:gap-6">
-          <div className="relative group">
-            <div className="w-28 h-28 sm:w-48 sm:h-48 rounded-[1.75rem] sm:rounded-[2.5rem] p-1.5 bg-app-container shadow-2xl relative z-10 transition-transform group-hover:scale-[1.02]">
+        <div className="px-3 sm:px-8 relative flex flex-col md:flex-row items-start gap-5 sm:gap-7">
+          <div className="relative group -mt-14 sm:-mt-24 shrink-0">
+            <div className="w-28 h-28 sm:w-40 sm:h-40 rounded-[1.75rem] sm:rounded-[2.25rem] p-1.5 bg-app-container shadow-2xl relative z-10 transition-transform group-hover:scale-[1.02]">
               <img
                 src={profile?.avatar_url || 'https://api.dicebear.com/7.x/shapes/svg?seed=' + profile?.id}
-                className="w-full h-full rounded-[1.45rem] sm:rounded-[2.2rem] object-cover border-2 border-card-border shadow-inner"
+                className="w-full h-full rounded-[1.45rem] sm:rounded-[1.95rem] object-cover border-2 border-card-border shadow-inner"
                 alt={profile?.full_name}
               />
             </div>
             {profile?.verified && (
-              <div className="absolute -bottom-2 -right-2 w-11 h-11 sm:w-14 sm:h-14 bg-card rounded-2xl flex items-center justify-center text-accent shadow-xl border-4 border-app-container z-20">
+              <div className="absolute -bottom-2 -right-2 w-11 h-11 sm:w-12 sm:h-12 bg-card rounded-2xl flex items-center justify-center text-accent shadow-xl border-4 border-app-container z-20">
                  <VerifiedBadge verified={true} className="scale-110 sm:scale-125" />
               </div>
             )}
           </div>
 
-          <div className="flex-1 pb-4 min-w-0">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex-1 min-w-0 pt-1 sm:pt-5 md:pt-6">
+            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
               <div className="min-w-0">
-                <h1 className="text-2xl sm:text-4xl font-black text-text-main tracking-tight uppercase flex flex-wrap items-center gap-3 sm:gap-4 break-words">
-                  {profile?.display_name || profile?.full_name || 'Explorer'}
-                  <VerifiedBadge verified={!!profile?.verified} className="shrink-0" />
-                  <span className="text-[11px] bg-accent/10 border border-accent/20 text-accent px-4 py-1.5 rounded-full uppercase tracking-[0.2em] font-black">
-                    LVL {profile?.level || 1} {profile?.role || 'Explorer'}
-                  </span>
-                </h1>
-                <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-2">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 lg:gap-4 min-w-0">
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-text-main tracking-tight uppercase leading-[0.95] break-words min-w-0">
+                    {profile?.display_name || profile?.full_name || 'Explorer'}
+                  </h1>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <VerifiedBadge verified={!!profile?.verified} className="shrink-0" />
+                    <span className="text-[10px] sm:text-[11px] bg-accent/10 border border-accent/20 text-accent px-4 py-1.5 rounded-full uppercase tracking-[0.2em] font-black whitespace-nowrap">
+                      LVL {profile?.level || 1} {profile?.role || 'Explorer'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-3">
                   <p className="text-sm font-bold text-text-secondary opacity-60 tracking-widest uppercase">
                     @{profile?.username || 'user'}
                   </p>
@@ -561,22 +565,14 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 xl:justify-end shrink-0">
                  {isOwnProfile ? (
-                   <>
                     <button
                       onClick={startEditingProfile}
-                      className="h-12 px-5 sm:px-8 rounded-2xl bg-surface-muted border border-card-border text-text-secondary text-[11px] font-black uppercase tracking-widest hover:bg-card-dark hover:text-text-main transition-all flex items-center gap-3"
+                      className="h-12 px-5 sm:px-8 rounded-2xl bg-surface-muted border border-card-border text-text-secondary text-[11px] font-black uppercase tracking-widest hover:bg-card-dark hover:text-text-main transition-all flex items-center justify-center gap-3"
                     >
                         <Edit3 size={18} /> Edit Profile
                     </button>
-                    <button
-                        onClick={() => setSelectedProfileId(null)}
-                        className="h-12 w-12 rounded-2xl bg-surface-muted border border-card-border text-text-secondary flex items-center justify-center hover:text-danger transition-all"
-                      >
-                        <X size={18} />
-                    </button>
-                   </>
                  ) : (
                    <>
                      <button
