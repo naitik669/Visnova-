@@ -12,6 +12,10 @@ export default function AuthCallback() {
     const handleAuthCallback = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
+        const oauthError = params.get('error') || params.get('error_code');
+        if (oauthError) {
+          throw new Error(params.get('error_description') || oauthError);
+        }
         const hasOAuthCode = params.has('code');
         const result = hasOAuthCode
           ? await supabase.auth.exchangeCodeForSession(window.location.href)

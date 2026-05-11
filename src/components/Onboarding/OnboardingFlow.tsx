@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as Ima
 import { useStore } from '../../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
-import { supabase } from '../../lib/supabase';
+import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
@@ -32,7 +32,18 @@ const AVATAR_LIBRARY = [
 
 const DEFAULT_AVATAR_VALUES = Object.values(DEFAULT_PROFILE_AVATARS);
 
-function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any) {
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-.8 2.3-1.7 3-1 .8-2.2 1.3-3.8 1.3-2.9 0-5.4-2.4-5.4-5.4S9.1 7.6 12 7.6c1.6 0 2.8.6 3.7 1.4l2.7-2.7C16.8 4.8 14.7 4 12 4 6.9 4 2.8 8.1 2.8 13.2s4.1 9.2 9.2 9.2c2.7 0 4.9-.9 6.5-2.5 1.7-1.7 2.2-4 2.2-5.9 0-.6-.1-1.2-.1-1.6H12Z" />
+      <path fill="#34A853" d="M3.9 8.7 7.1 11c.9-2 2.7-3.4 4.9-3.4 1.6 0 2.8.6 3.7 1.4l2.7-2.7C16.8 4.8 14.7 4 12 4 8.4 4 5.3 5.9 3.9 8.7Z" />
+      <path fill="#FBBC05" d="M12 22.4c2.5 0 4.7-.8 6.3-2.3l-3-2.5c-.8.5-1.9.9-3.3.9-2.2 0-4.1-1.5-4.8-3.5l-3.2 2.5c1.5 2.9 4.5 4.9 8 4.9Z" />
+      <path fill="#4285F4" d="M20.7 14c0-.6-.1-1.2-.1-1.6H12v3.9h5.5c-.2 1.3-.8 2.3-1.7 3l3 2.5c1.7-1.6 1.9-4 1.9-7.8Z" />
+    </svg>
+  );
+}
+
+function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handleGoogleLogin }: any) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -157,6 +168,19 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep }: any
       </div>
 
       <div className="space-y-3">
+        <button
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
+          className="w-full h-12 rounded-2xl border border-card-border bg-card text-text-main font-black uppercase tracking-widest text-[11px] transition-all hover:border-accent/40 hover:bg-surface-muted active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+        >
+          <GoogleIcon />
+          Continue with Google
+        </button>
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-card-border" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40">or</span>
+          <span className="h-px flex-1 bg-card-border" />
+        </div>
         <button
           onClick={handleLogin}
           disabled={isLoading}
@@ -562,6 +586,19 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
 
       <div className="space-y-3 pt-1">
         <button
+          onClick={handleGoogleLogin}
+          disabled={isSubmitting}
+          className="w-full h-12 rounded-2xl border border-card-border bg-card text-text-main font-black uppercase tracking-widest text-[11px] transition-all hover:border-accent/40 hover:bg-surface-muted active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+        >
+          <GoogleIcon />
+          Continue with Google
+        </button>
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-card-border" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40">or</span>
+          <span className="h-px flex-1 bg-card-border" />
+        </div>
+        <button
           onClick={handleManualNext}
           disabled={isSubmitting}
           className="w-full h-12 bg-accent text-accent-contrast font-bold rounded-2xl transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-95"
@@ -630,7 +667,7 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
         await supabase.auth.resend({
           type: 'signup',
           email: normalizedEmail,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+          options: { emailRedirectTo: getAuthRedirectUrl() }
         });
         setError('A new verification link has been dispatched to your inbox.');
       }
@@ -1579,6 +1616,7 @@ export default function OnboardingFlow() {
           nextStep={nextStep}
           switchToSignup={() => nextStep(1)}
           setStep={setStep}
+          handleGoogleLogin={handleGoogleLogin}
         />;
       case 12:
         return <ScreenForgotPassword
