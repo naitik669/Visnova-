@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Archive, ArrowLeft, Bookmark, Edit3, Flag, Heart, Image as ImageIcon, Loader2, MessageSquare, MoreHorizontal, Send, Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';

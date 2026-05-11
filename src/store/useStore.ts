@@ -686,7 +686,13 @@ export const useStore = create<AppState>((set, get) => ({
     runBackground('Dashboard feed context refresh', () => get().fetchFeedContext());
     runBackground('Dashboard circle refresh', () => get().fetchCircleData());
     runBackground('Dashboard notifications refresh', () => get().fetchNotifications());
-    runBackground('Dashboard money refresh', () => get().fetchMoneyOverview());
+    runBackground('Dashboard money refresh', async () => {
+      try {
+        await get().fetchMoneyOverview();
+      } catch (error) {
+        console.warn('Money overview unavailable:', error);
+      }
+    });
   },
 
   fetchMoneyOverview: async () => {
@@ -2516,7 +2522,7 @@ export const useStore = create<AppState>((set, get) => ({
       get().addToast({ type: 'error', title: 'Update blocked', description: err.message || 'This post update is invalid.' });
       return false;
     }
-    const nextTags = Array.from(new Set((safeUpdates.tags || []).map(normalizePostTag).filter(Boolean)));
+    const nextTags: string[] = Array.from(new Set<string>((safeUpdates.tags || []).map(normalizePostTag).filter(Boolean)));
     const nextMentions = Array.from(
       new Map<string, any>((safeUpdates.mentions || []).filter((m: any) => m.userId).map((m: any) => [m.userId, m])).values()
     );
