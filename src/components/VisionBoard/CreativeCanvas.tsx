@@ -6,6 +6,7 @@ import {
   Circle as CircleIcon,
   FileText,
   Image as ImageIcon,
+  ListChecks,
   Loader2,
   Maximize2,
   Minus,
@@ -17,9 +18,10 @@ import {
   Target,
   Trash2,
   Type,
+  Upload,
   X
 } from 'lucide-react';
-import { Vision, VisionElement } from '../../types';
+import { Note, Task, Vision, VisionElement } from '../../types';
 import { cn } from '../../lib/utils';
 import { uploadVisionBoardImage } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
@@ -115,12 +117,13 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [isUploading, setIsUploading] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [importPanelOpen, setImportPanelOpen] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const transformWrapperRef = useRef<any>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingElementsRef = useRef<VisionElement[]>(normalizeBoardElements(vision.elements));
-  const { session, addToast } = useStore();
+  const { session, addToast, notes, fetchNotes } = useStore();
 
   const selectedElement = useMemo(
     () => elements.find(element => element.id === selectedId) || null,
@@ -140,6 +143,12 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (importPanelOpen) {
+      fetchNotes().catch(error => console.error('Failed to load notes for Vision Board import:', error));
+    }
+  }, [fetchNotes, importPanelOpen]);
 
   const persistNow = useCallback(async (nextElements?: VisionElement[]) => {
     const payload = nextElements || pendingElementsRef.current;
@@ -219,7 +228,61 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     applyElements(current => [...current, element]);
     setSelectedId(element.id);
     setMobileToolsOpen(false);
+    setImportPanelOpen(false);
   }, [applyElements]);
+
+  const insertImportedElements = useCallback((items: Array<Pick<VisionElement, 'type' | 'content' | 'metadata' | 'width' | 'height'>>) => {
+    if (items.length === 0) return;
+    const now = Date.now();
+    const imported = items.map((item, index): VisionElement => {
+      const size = { ...defaultSize(item.type), width: item.width || defaultSize(item.type).width, height: item.height || defaultSize(item.type).height };
+      return {
+        id: newId('import'),
+        type: item.type,
+        content: safeString(item.content),
+        x: CANVAS_CENTER + (index % 3) * 340 - 340,
+        y: CANVAS_CENTER + Math.floor(index / 3) * 250 - 120,
+        width: size.width,
+        height: size.height,
+        rotation: 0,
+        zIndex: now + index,
+        createdAt: now,
+        updatedAt: now,
+        metadata: safeObject(item.metadata)
+      };
+    });
+
+    applyElements(current => [...current, ...imported]);
+    setSelectedId(imported[0]?.id || null);
+    setImportPanelOpen(false);
+    setMobileToolsOpen(false);
+    addToast({ type: 'success', title: 'Imported to board', description: `${imported.length} item${imported.length === 1 ? '' : 's'} added.` });
+  }, [addToast, applyElements]);
+
+  const importNote = useCallback((note: Note) => {
+    insertImportedElements([{
+      type: 'sticky',
+      content: `${safeString(note.title, 'Untitled Note')}\n\n${safeString(note.content, 'No content yet.')}`.slice(0, 1200),
+      width: 300,
+      height: 240,
+      metadata: { noteId: note.id, title: safeString(note.title, 'Untitled Note'), color: '#fef08a' }
+    }]);
+  }, [insertImportedElements]);
+
+  const importVisionTasks = useCallback(() => {
+    const taskItems = safeArray<Task>(vision.tasks).slice(0, 12).map(task => ({
+      id: task.id,
+      text: safeString(task.text, 'Untitled task'),
+      completed: Boolean(task.completed)
+    }));
+    insertImportedElements([{
+      type: 'checklist',
+      content: 'Vision Tasks',
+      width: 340,
+      height: 280,
+      metadata: { checklist: taskItems }
+    }]);
+  }, [insertImportedElements, vision.tasks]);
 
   const updateElement = useCallback((id: string, updates: Partial<VisionElement>, save = true) => {
     applyElements(current => current.map(element => (
@@ -330,6 +393,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       <CanvasToolButton icon={<Target size={18} />} label="Goal" onClick={() => createElement('text', 'New goal', { fontSize: '46px', color: 'var(--text-main)', fontWeight: '900' })} />
       <CanvasToolButton icon={<StickyNote size={18} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
       <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} />
+      <CanvasToolButton icon={<Upload size={18} />} label="Import" onClick={() => setImportPanelOpen(true)} />
       <CanvasToolButton icon={<Square size={18} />} label="Rectangle" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#3b82f622', strokeColor: '#3b82f6' })} />
       <CanvasToolButton icon={<CircleIcon size={18} />} label="Circle" onClick={() => createElement('shape', '', { shapeType: 'circle', fillColor: '#10b98122', strokeColor: '#10b981' })} />
       <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
@@ -486,6 +550,17 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             </motion.div>
           </motion.div>
         )}
+        {importPanelOpen && (
+          <ImportPanel
+            notes={notes}
+            tasks={safeArray(vision.tasks)}
+            isUploading={isUploading}
+            onClose={() => setImportPanelOpen(false)}
+            onUploadImage={() => imageInputRef.current?.click()}
+            onImportNote={importNote}
+            onImportTasks={importVisionTasks}
+          />
+        )}
       </AnimatePresence>
 
       {elements.length === 0 && (
@@ -511,6 +586,111 @@ function QuickStartAction({ label, onClick }: { label: string; onClick: () => vo
     <button onClick={onClick} className="h-11 px-4 rounded-xl bg-card border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/30 shadow-lg">
       {label}
     </button>
+  );
+}
+
+function ImportPanel({
+  notes,
+  tasks,
+  isUploading,
+  onClose,
+  onUploadImage,
+  onImportNote,
+  onImportTasks
+}: {
+  notes: Note[];
+  tasks: Task[];
+  isUploading: boolean;
+  onClose: () => void;
+  onUploadImage: () => void;
+  onImportNote: (note: Note) => void;
+  onImportTasks: () => void;
+}) {
+  const recentNotes = safeArray<Note>(notes)
+    .filter(note => !note.isDeleted)
+    .slice(0, 8);
+  const taskCount = safeArray<Task>(tasks).length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[190]"
+    >
+      <button className="absolute inset-0 bg-overlay/45" onClick={onClose} aria-label="Close import panel" />
+      <motion.aside
+        initial={{ opacity: 0, x: 24 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 24 }}
+        className="absolute inset-x-3 bottom-3 md:inset-x-auto md:right-5 md:top-5 md:bottom-5 md:w-[380px] max-h-[calc(100dvh-24px)] overflow-hidden rounded-[2rem] border border-card-border bg-card shadow-2xl flex flex-col"
+      >
+        <div className="shrink-0 flex items-center justify-between gap-3 border-b border-card-border p-4">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-accent">Vision Board</p>
+            <h3 className="text-base font-black text-text-main">Import</h3>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary flex items-center justify-center" aria-label="Close import panel">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+          <button
+            onClick={onUploadImage}
+            disabled={isUploading}
+            className="w-full min-h-14 rounded-2xl border border-card-border bg-surface-muted px-4 text-left flex items-center gap-3 hover:border-accent/40 disabled:opacity-60"
+          >
+            <span className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+              {isUploading ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-black text-text-main">Upload image</span>
+              <span className="block text-xs font-semibold text-text-secondary">PNG, JPG, or WebP under 10MB</span>
+            </span>
+          </button>
+
+          <button
+            onClick={onImportTasks}
+            disabled={taskCount === 0}
+            className="w-full min-h-14 rounded-2xl border border-card-border bg-surface-muted px-4 text-left flex items-center gap-3 hover:border-accent/40 disabled:opacity-50"
+          >
+            <span className="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center shrink-0">
+              <ListChecks size={18} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-black text-text-main">Import vision tasks</span>
+              <span className="block text-xs font-semibold text-text-secondary">{taskCount ? `${taskCount} task${taskCount === 1 ? '' : 's'} as checklist` : 'No tasks in this vision yet'}</span>
+            </span>
+          </button>
+
+          <div className="space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Recent notes</p>
+            {recentNotes.length > 0 ? recentNotes.map(note => (
+              <button
+                key={note.id}
+                onClick={() => onImportNote(note)}
+                className="w-full rounded-2xl border border-card-border bg-bg-base/35 p-3 text-left hover:border-accent/40"
+              >
+                <span className="flex items-start gap-3">
+                  <span className="mt-0.5 w-9 h-9 rounded-xl bg-warning/10 text-warning flex items-center justify-center shrink-0">
+                    <FileText size={16} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-text-main truncate">{safeString(note.title, 'Untitled Note')}</span>
+                    <span className="block text-xs font-semibold text-text-secondary line-clamp-2">{safeString(note.content, 'No content yet.')}</span>
+                  </span>
+                </span>
+              </button>
+            )) : (
+              <div className="rounded-2xl border border-dashed border-card-border p-4 text-sm font-semibold text-text-secondary">
+                No notes to import yet.
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.aside>
+    </motion.div>
   );
 }
 
