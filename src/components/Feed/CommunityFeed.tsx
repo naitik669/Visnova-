@@ -59,6 +59,12 @@ const reportReasons = [
   { value: 'illegal_content', label: 'Illegal content' },
   { value: 'other', label: 'Other' }
 ];
+const isCommentEnhancementMissing = (error: any) => (
+  error?.code === '42703' ||
+  error?.code === '42P01' ||
+  error?.code === 'PGRST200' ||
+  /comment_likes|is_pinned|pinned_at|pinned_by/i.test(error?.message || '')
+);
 
 const editedLabel = (editedAt?: string | null) => editedAt ? `Edited ${safeFormat(editedAt, 'MMM d, h:mm a')}` : '';
 
@@ -1908,7 +1914,7 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
 
   const fetchComments = async () => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('comments')
         .select(`
           *,
@@ -1918,6 +1924,20 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
         .eq('post_id', post.id)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: true });
+
+      if (error && isCommentEnhancementMissing(error)) {
+        console.warn('Comment like/pin schema is not fully applied yet; using legacy comments query.', error);
+        const fallback = await supabase
+          .from('comments')
+          .select(`
+            *,
+            author:profiles(*)
+          `)
+          .eq('post_id', post.id)
+          .order('created_at', { ascending: true });
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error) throw error;
       

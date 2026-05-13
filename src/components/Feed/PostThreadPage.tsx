@@ -12,6 +12,12 @@ import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData'
 import { PostEditModal, PostReportModal } from './CommunityFeed';
 
 const COMMENTS_PAGE_SIZE = 50;
+const isCommentEnhancementMissing = (error: any) => (
+  error?.code === '42703' ||
+  error?.code === '42P01' ||
+  error?.code === 'PGRST200' ||
+  /comment_likes|is_pinned|pinned_at|pinned_by/i.test(error?.message || '')
+);
 
 const mapPostRow = (p: any): Post => ({
   id: safeString(p?.id),
@@ -104,6 +110,26 @@ export default function PostThreadPage() {
   const firstImage = useMemo(() => post?.media?.find(item => item.type === 'image'), [post]);
   const threadComments = useMemo(() => buildCommentTree(comments), [comments]);
 
+  const fetchCommentRows = async (from: number, to: number) => {
+    const enhanced = await supabase
+      .from('comments')
+      .select('*, author:profiles!comments_user_id_fkey(*), likes:comment_likes(count)')
+      .eq('post_id', postId)
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: true })
+      .range(from, to);
+
+    if (!enhanced.error || !isCommentEnhancementMissing(enhanced.error)) return enhanced;
+
+    console.warn('Comment like/pin schema is not fully applied yet; using legacy comments query.', enhanced.error);
+    return supabase
+      .from('comments')
+      .select('*, author:profiles!comments_user_id_fkey(*)')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true })
+      .range(from, to);
+  };
+
   const loadThread = async () => {
     if (!postId) return;
     setIsLoading(true);
@@ -122,13 +148,7 @@ export default function PostThreadPage() {
           `)
           .eq('id', postId)
           .maybeSingle(),
-        supabase
-          .from('comments')
-          .select('*, author:profiles!comments_user_id_fkey(*), likes:comment_likes(count)')
-          .eq('post_id', postId)
-          .order('is_pinned', { ascending: false })
-          .order('created_at', { ascending: true })
-          .range(0, COMMENTS_PAGE_SIZE)
+        fetchCommentRows(0, COMMENTS_PAGE_SIZE)
       ]);
 
       if (postError) throw postError;
@@ -181,13 +201,7 @@ export default function PostThreadPage() {
     try {
       const from = comments.length;
       const to = from + COMMENTS_PAGE_SIZE;
-      const { data, error } = await supabase
-        .from('comments')
-        .select('*, author:profiles!comments_user_id_fkey(*), likes:comment_likes(count)')
-        .eq('post_id', postId)
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: true })
-        .range(from, to);
+      const { data, error } = await fetchCommentRows(from, to);
 
       if (error) throw error;
 
