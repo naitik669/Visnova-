@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -32,8 +32,15 @@ export default function VisionBoard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid');
 
-  // Filter for spotlight grid (e.g., top progress or in-progress)
-  const spotlightVisions = visions.filter(v => v.status === 'in-progress').slice(0, 3);
+  // Keep the spotlight small, but never hide older active boards from the repository.
+  const spotlightVisions = useMemo(
+    () => visions.filter(v => v.status === 'in-progress').slice(0, 3),
+    [visions]
+  );
+  const repositoryVisions = useMemo(() => {
+    const spotlightIds = new Set(spotlightVisions.map(vision => vision.id));
+    return visions.filter(vision => !spotlightIds.has(vision.id));
+  }, [spotlightVisions, visions]);
 
   const handleCardClick = (vision: Vision) => {
     setSelectedVision(vision);
@@ -220,7 +227,7 @@ export default function VisionBoard() {
                </div>
                
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-                  {visions.filter(v => v.status !== 'in-progress').map(v => (
+                  {repositoryVisions.map(v => (
                     <VisionCard
                       key={v.id}
                       vision={v}
@@ -231,6 +238,11 @@ export default function VisionBoard() {
                     />
                   ))}
                </div>
+               {repositoryVisions.length === 0 && (
+                 <div className="rounded-[2rem] border border-dashed border-card-border p-10 text-center">
+                   <p className="text-sm font-bold text-text-secondary">No saved vision boards yet.</p>
+                 </div>
+               )}
             </section>
 
             {/* Daily Journal Section */}
