@@ -576,6 +576,11 @@ export interface Comment {
   timestamp: string;
   parentCommentId?: string | null;
   deletedAt?: string | null;
+  likes?: number;
+  isLiked?: boolean;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  pinnedBy?: string | null;
   replies?: Comment[];
 }
 

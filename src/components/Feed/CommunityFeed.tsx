@@ -27,7 +27,8 @@ import {
   UserPlus,
   VolumeX,
   Edit3,
-  Archive
+  Archive,
+  Pin
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
@@ -1899,7 +1900,7 @@ function SharePostModal({ post, onClose }: { post: Post, onClose: () => void }) 
 }
 
 export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () => void }) {
-  const { addComment, deleteComment, reportComment, session } = useStore();
+  const { addComment, deleteComment, reportComment, session, addToast } = useStore();
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1911,14 +1912,16 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
         .from('comments')
         .select(`
           *,
-          author:profiles(*)
+          author:profiles(*),
+          likes:comment_likes(count)
         `)
         .eq('post_id', post.id)
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       
-      const formatted: Comment[] = data.map((c: any) => ({
+      let formatted: Comment[] = data.map((c: any) => ({
         id: c.id,
         postId: c.post_id,
         userId: c.user_id,
@@ -1931,8 +1934,22 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
         content: safeString(c.content),
         timestamp: safeFormat(c.created_at, 'MMM d, yyyy'),
         parentCommentId: c.parent_comment_id || null,
-        deletedAt: c.deleted_at || null
+        deletedAt: c.deleted_at || null,
+        likes: c.likes?.[0]?.count || 0,
+        isPinned: !!c.is_pinned,
+        pinnedAt: c.pinned_at || null,
+        pinnedBy: c.pinned_by || null
       }));
+
+      if (session?.user?.id && formatted.length > 0) {
+        const { data: likedRows } = await supabase
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', session.user.id)
+          .in('comment_id', formatted.map(comment => comment.id));
+        const likedIds = new Set((likedRows || []).map(row => row.comment_id));
+        formatted = formatted.map(comment => ({ ...comment, isLiked: likedIds.has(comment.id) }));
+      }
       
       setComments(formatted);
     } catch (err) {
@@ -1968,6 +1985,57 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
     const details = window.prompt('Report this comment? Add optional details, or leave blank.');
     if (details === null) return;
     await reportComment(comment.id, 'other', details);
+  };
+
+  const handleToggleCommentLike = async (comment: Comment) => {
+    if (!session?.user?.id) {
+      addToast({ type: 'error', title: 'Login required', description: 'Sign in to like comments.' });
+      return;
+    }
+    if (comment.deletedAt) return;
+    const wasLiked = !!comment.isLiked;
+    setComments(current => current.map(item => item.id === comment.id
+      ? { ...item, isLiked: !wasLiked, likes: Math.max(0, (item.likes || 0) + (wasLiked ? -1 : 1)) }
+      : item
+    ));
+    try {
+      if (wasLiked) {
+        const { error } = await supabase.from('comment_likes').delete().match({ comment_id: comment.id, user_id: session.user.id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('comment_likes').insert({ comment_id: comment.id, user_id: session.user.id });
+        if (error) throw error;
+      }
+    } catch (error: any) {
+      console.error('Failed to toggle comment like:', error);
+      setComments(current => current.map(item => item.id === comment.id
+        ? { ...item, isLiked: wasLiked, likes: Math.max(0, (item.likes || 0) + (wasLiked ? 1 : -1)) }
+        : item
+      ));
+      addToast({ type: 'error', title: 'Comment like failed', description: error.message || 'Could not update this like.' });
+    }
+  };
+
+  const handleToggleCommentPin = async (comment: Comment) => {
+    if (!session?.user?.id || post.userId !== session.user.id || comment.deletedAt) return;
+    const nextPinned = !comment.isPinned;
+    setComments(current => current.map(item => item.id === comment.id
+      ? { ...item, isPinned: nextPinned, pinnedAt: nextPinned ? new Date().toISOString() : null, pinnedBy: nextPinned ? session.user.id : null }
+      : item
+    ));
+    try {
+      const { data, error } = await supabase.rpc('visnova_toggle_comment_pin', { target_comment_id: comment.id, target_pinned: nextPinned });
+      if (error) throw error;
+      if (data !== true) throw new Error('Only the post owner can pin comments.');
+      addToast({ type: 'success', title: nextPinned ? 'Comment pinned' : 'Comment unpinned' });
+    } catch (error: any) {
+      console.error('Failed to toggle comment pin:', error);
+      setComments(current => current.map(item => item.id === comment.id
+        ? { ...item, isPinned: !!comment.isPinned, pinnedAt: comment.pinnedAt || null, pinnedBy: comment.pinnedBy || null }
+        : item
+      ));
+      addToast({ type: 'error', title: 'Pin failed', description: error.message || 'Could not update pinned comment.' });
+    }
   };
 
   const threadComments = buildModalCommentTree(comments);
@@ -2023,6 +2091,9 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
                     onReply={setReplyTo}
                     onDelete={handleDeleteComment}
                     onReport={handleReportComment}
+                    onLike={handleToggleCommentLike}
+                    onPin={handleToggleCommentPin}
+                    canPin={post.userId === session?.user?.id}
                   />
                 ))
               ) : (
@@ -2080,6 +2151,9 @@ function buildModalCommentTree(comments: Comment[]) {
     }
   });
 
+  roots.sort((a, b) => Number(!!b.isPinned) - Number(!!a.isPinned));
+  byId.forEach(comment => comment.replies?.sort((a, b) => Number(!!b.isPinned) - Number(!!a.isPinned)));
+
   return roots;
 }
 
@@ -2088,13 +2162,19 @@ function ModalCommentItem({
   currentUserId,
   onReply,
   onDelete,
-  onReport
+  onReport,
+  onLike,
+  onPin,
+  canPin
 }: {
   comment: Comment;
   currentUserId?: string;
   onReply: (comment: Comment) => void;
   onDelete: (comment: Comment) => void;
   onReport: (comment: Comment) => void;
+  onLike: (comment: Comment) => void;
+  onPin: (comment: Comment) => void;
+  canPin: boolean;
 }) {
   const deleted = !!comment.deletedAt;
   const isMine = !!currentUserId && comment.userId === currentUserId;
@@ -2109,6 +2189,11 @@ function ModalCommentItem({
               <h5 className="min-w-0 text-[10px] font-black text-text-main uppercase tracking-widest group-hover:text-accent transition-colors flex items-center gap-2 truncate">
                 {comment.author.name}
                 <VerifiedBadge verified={comment.author.verified} className="scale-90 shrink-0" />
+                {comment.isPinned && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-accent">
+                    <Pin size={10} /> Pinned
+                  </span>
+                )}
               </h5>
               <span className="text-[9px] font-black text-text-secondary/30 uppercase shrink-0">{comment.timestamp}</span>
             </div>
@@ -2117,6 +2202,16 @@ function ModalCommentItem({
             </p>
           </div>
           <div className="flex flex-wrap gap-4 mt-2 ml-4">
+            {!deleted && (
+              <button onClick={() => onLike(comment)} className={cn("inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest transition-colors", comment.isLiked ? "text-red-500" : "text-text-secondary/40 hover:text-red-500")}>
+                <Heart size={12} fill={comment.isLiked ? 'currentColor' : 'none'} /> {comment.likes || 0}
+              </button>
+            )}
+            {!deleted && canPin && (
+              <button onClick={() => onPin(comment)} className={cn("inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest transition-colors", comment.isPinned ? "text-accent" : "text-text-secondary/40 hover:text-accent")}>
+                <Pin size={12} /> {comment.isPinned ? 'Unpin' : 'Pin'}
+              </button>
+            )}
             {!deleted && (
               <button onClick={() => onReply(comment)} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/40 hover:text-accent transition-colors">
                 <Reply size={12} /> Reply
@@ -2145,6 +2240,9 @@ function ModalCommentItem({
               onReply={onReply}
               onDelete={onDelete}
               onReport={onReport}
+              onLike={onLike}
+              onPin={onPin}
+              canPin={canPin}
             />
           ))}
         </div>

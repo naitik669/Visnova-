@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Archive, ArrowLeft, Bookmark, Edit3, Flag, Heart, Image as ImageIcon, Loader2, MessageSquare, MoreHorizontal, Reply, Send, Trash2, X } from 'lucide-react';
+import { Archive, ArrowLeft, Bookmark, Edit3, Flag, Heart, Image as ImageIcon, Loader2, MessageSquare, MoreHorizontal, Pin, Reply, Send, Trash2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
@@ -53,7 +53,12 @@ const mapCommentRow = (comment: any): Comment => ({
   content: safeString(comment?.content),
   timestamp: safeFormat(comment?.created_at, 'MMM d, h:mm a'),
   parentCommentId: comment?.parent_comment_id || null,
-  deletedAt: comment?.deleted_at || null
+  deletedAt: comment?.deleted_at || null,
+  likes: comment?.likes?.[0]?.count || 0,
+  isLiked: !!comment?.isLiked,
+  isPinned: !!comment?.is_pinned,
+  pinnedAt: comment?.pinned_at || null,
+  pinnedBy: comment?.pinned_by || null
 });
 
 function buildCommentTree(comments: Comment[]) {
@@ -71,6 +76,9 @@ function buildCommentTree(comments: Comment[]) {
       roots.push(comment);
     }
   });
+
+  roots.sort((a, b) => Number(!!b.isPinned) - Number(!!a.isPinned));
+  byId.forEach(comment => comment.replies?.sort((a, b) => Number(!!b.isPinned) - Number(!!a.isPinned)));
 
   return roots;
 }
@@ -116,14 +124,27 @@ export default function PostThreadPage() {
           .maybeSingle(),
         supabase
           .from('comments')
-          .select('*, author:profiles!comments_user_id_fkey(*)')
+          .select('*, author:profiles!comments_user_id_fkey(*), likes:comment_likes(count)')
           .eq('post_id', postId)
+          .order('is_pinned', { ascending: false })
           .order('created_at', { ascending: true })
           .range(0, COMMENTS_PAGE_SIZE)
       ]);
 
       if (postError) throw postError;
       if (commentError) throw commentError;
+      let mappedComments = (commentRows || []).map(mapCommentRow);
+      if (session?.user?.id && mappedComments.length > 0) {
+        const { data: likedRows, error: likesError } = await supabase
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', session.user.id)
+          .in('comment_id', mappedComments.map(comment => comment.id));
+        if (!likesError) {
+          const likedIds = new Set((likedRows || []).map(row => row.comment_id));
+          mappedComments = mappedComments.map(comment => ({ ...comment, isLiked: likedIds.has(comment.id) }));
+        }
+      }
       if (postRow) {
         const nextPost = mapPostRow(postRow);
         if (nextPost.deletedAt || (nextPost.archived && nextPost.userId !== session?.user?.id)) {
@@ -144,7 +165,6 @@ export default function PostThreadPage() {
       } else {
         setPost(null);
       }
-      const mappedComments = (commentRows || []).map(mapCommentRow);
       setComments(mappedComments.slice(0, COMMENTS_PAGE_SIZE));
       setHasMoreComments(mappedComments.length > COMMENTS_PAGE_SIZE);
     } catch (error: any) {
@@ -163,14 +183,24 @@ export default function PostThreadPage() {
       const to = from + COMMENTS_PAGE_SIZE;
       const { data, error } = await supabase
         .from('comments')
-        .select('*, author:profiles!comments_user_id_fkey(*)')
+        .select('*, author:profiles!comments_user_id_fkey(*), likes:comment_likes(count)')
         .eq('post_id', postId)
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: true })
         .range(from, to);
 
       if (error) throw error;
 
-      const mappedComments = (data || []).map(mapCommentRow);
+      let mappedComments = (data || []).map(mapCommentRow);
+      if (session?.user?.id && mappedComments.length > 0) {
+        const { data: likedRows } = await supabase
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', session.user.id)
+          .in('comment_id', mappedComments.map(comment => comment.id));
+        const likedIds = new Set((likedRows || []).map(row => row.comment_id));
+        mappedComments = mappedComments.map(comment => ({ ...comment, isLiked: likedIds.has(comment.id) }));
+      }
       setComments(current => [...current, ...mappedComments.slice(0, COMMENTS_PAGE_SIZE)]);
       setHasMoreComments(mappedComments.length > COMMENTS_PAGE_SIZE);
     } catch (error: any) {
@@ -214,6 +244,57 @@ export default function PostThreadPage() {
     const details = window.prompt('Report this comment? Add optional details, or leave blank.');
     if (details === null) return;
     await reportComment(comment.id, 'other', details);
+  };
+
+  const handleToggleCommentLike = async (comment: Comment) => {
+    if (!session?.user?.id) {
+      addToast({ type: 'error', title: 'Login required', description: 'Sign in to like comments.' });
+      return;
+    }
+    if (comment.deletedAt) return;
+    const wasLiked = !!comment.isLiked;
+    setComments(current => current.map(item => item.id === comment.id
+      ? { ...item, isLiked: !wasLiked, likes: Math.max(0, (item.likes || 0) + (wasLiked ? -1 : 1)) }
+      : item
+    ));
+    try {
+      if (wasLiked) {
+        const { error } = await supabase.from('comment_likes').delete().match({ comment_id: comment.id, user_id: session.user.id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('comment_likes').insert({ comment_id: comment.id, user_id: session.user.id });
+        if (error) throw error;
+      }
+    } catch (error: any) {
+      console.error('Failed to toggle comment like:', error);
+      setComments(current => current.map(item => item.id === comment.id
+        ? { ...item, isLiked: wasLiked, likes: Math.max(0, (item.likes || 0) + (wasLiked ? 1 : -1)) }
+        : item
+      ));
+      addToast({ type: 'error', title: 'Comment like failed', description: error.message || 'Could not update this like.' });
+    }
+  };
+
+  const handleToggleCommentPin = async (comment: Comment) => {
+    if (!post || !session?.user?.id || post.userId !== session.user.id || comment.deletedAt) return;
+    const nextPinned = !comment.isPinned;
+    setComments(current => current.map(item => item.id === comment.id
+      ? { ...item, isPinned: nextPinned, pinnedAt: nextPinned ? new Date().toISOString() : null, pinnedBy: nextPinned ? session.user.id : null }
+      : item
+    ));
+    try {
+      const { data, error } = await supabase.rpc('visnova_toggle_comment_pin', { target_comment_id: comment.id, target_pinned: nextPinned });
+      if (error) throw error;
+      if (data !== true) throw new Error('Only the post owner can pin comments.');
+      addToast({ type: 'success', title: nextPinned ? 'Comment pinned' : 'Comment unpinned' });
+    } catch (error: any) {
+      console.error('Failed to toggle comment pin:', error);
+      setComments(current => current.map(item => item.id === comment.id
+        ? { ...item, isPinned: !!comment.isPinned, pinnedAt: comment.pinnedAt || null, pinnedBy: comment.pinnedBy || null }
+        : item
+      ));
+      addToast({ type: 'error', title: 'Pin failed', description: error.message || 'Could not update pinned comment.' });
+    }
   };
 
   const toggleThreadLike = async () => {
@@ -397,6 +478,9 @@ export default function PostThreadPage() {
                     onReply={setReplyTo}
                     onDelete={handleDeleteComment}
                     onReport={handleReportComment}
+                    onLike={handleToggleCommentLike}
+                    onPin={handleToggleCommentPin}
+                    canPin={post.userId === session?.user?.id}
                   />
                 ))}
                 {hasMoreComments && (
@@ -480,13 +564,19 @@ function CommentItem({
   currentUserId,
   onReply,
   onDelete,
-  onReport
+  onReport,
+  onLike,
+  onPin,
+  canPin
 }: {
   comment: Comment;
   currentUserId?: string;
   onReply: (comment: Comment) => void;
   onDelete: (comment: Comment) => void;
   onReport: (comment: Comment) => void;
+  onLike: (comment: Comment) => void;
+  onPin: (comment: Comment) => void;
+  canPin: boolean;
 }) {
   const deleted = !!comment.deletedAt;
   const isMine = !!currentUserId && comment.userId === currentUserId;
@@ -500,6 +590,11 @@ function CommentItem({
             <div className="flex items-center gap-2">
               <p className="text-[10px] font-black uppercase tracking-widest text-text-main truncate">{comment.author.name}</p>
               <VerifiedBadge verified={comment.author.verified} size={13} />
+              {comment.isPinned && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-accent">
+                  <Pin size={10} /> Pinned
+                </span>
+              )}
               <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-text-secondary/40">{comment.timestamp}</span>
             </div>
             <p className={cn('mt-2 text-sm leading-relaxed whitespace-pre-wrap', deleted ? 'italic text-text-secondary/45' : 'text-text-secondary')}>
@@ -507,6 +602,16 @@ function CommentItem({
             </p>
           </div>
           <div className="flex flex-wrap gap-4 mt-2 ml-2">
+            {!deleted && (
+              <button onClick={() => onLike(comment)} className={cn("inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest transition-colors", comment.isLiked ? "text-red-500" : "text-text-secondary/45 hover:text-red-500")}>
+                <Heart size={12} fill={comment.isLiked ? 'currentColor' : 'none'} /> {comment.likes || 0}
+              </button>
+            )}
+            {!deleted && canPin && (
+              <button onClick={() => onPin(comment)} className={cn("inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest transition-colors", comment.isPinned ? "text-accent" : "text-text-secondary/45 hover:text-accent")}>
+                <Pin size={12} /> {comment.isPinned ? 'Unpin' : 'Pin'}
+              </button>
+            )}
             {!deleted && (
               <button onClick={() => onReply(comment)} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/45 hover:text-accent transition-colors">
                 <Reply size={12} /> Reply
@@ -535,6 +640,9 @@ function CommentItem({
               onReply={onReply}
               onDelete={onDelete}
               onReport={onReport}
+              onLike={onLike}
+              onPin={onPin}
+              canPin={canPin}
             />
           ))}
         </div>
