@@ -6,6 +6,7 @@ import {
   Circle as CircleIcon,
   FileText,
   Image as ImageIcon,
+  Link as LinkIcon,
   ListChecks,
   Loader2,
   Maximize2,
@@ -42,7 +43,7 @@ const CANVAS_CENTER = CANVAS_SIZE / 2;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const STABLE_BOARD_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'connector']);
+const STABLE_BOARD_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'connector', 'link']);
 
 const newId = (prefix = 'el') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -86,6 +87,7 @@ const normalizeBoardElement = (raw: unknown, index: number): VisionElement => {
     ...metadata,
     checklist: type === 'checklist' ? normalizeChecklist(metadata.checklist) : metadata.checklist,
     imageUrl: type === 'image' ? safeString(metadata.imageUrl || row.content) : metadata.imageUrl,
+    url: type === 'link' ? safeString(metadata.url || row.content, 'https://example.com') : metadata.url,
     shapeType: type === 'shape' ? (metadata.shapeType || 'rectangle') : metadata.shapeType
   };
 
@@ -394,6 +396,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       <CanvasToolButton icon={<StickyNote size={18} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
       <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} />
       <CanvasToolButton icon={<Upload size={18} />} label="Import" onClick={() => setImportPanelOpen(true)} />
+      <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => createElement('link', 'https://example.com', { url: 'https://example.com', title: 'Resource' })} />
       <CanvasToolButton icon={<Square size={18} />} label="Rectangle" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#3b82f622', strokeColor: '#3b82f6' })} />
       <CanvasToolButton icon={<CircleIcon size={18} />} label="Circle" onClick={() => createElement('shape', '', { shapeType: 'circle', fillColor: '#10b98122', strokeColor: '#10b981' })} />
       <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
@@ -412,7 +415,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
       <button
         onClick={() => setMobileToolsOpen(true)}
-        className="md:hidden absolute left-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 w-14 h-14 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center shadow-2xl"
+        className="absolute left-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-10 z-50 w-14 h-14 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center shadow-2xl hover:scale-105 transition-transform"
         aria-label="Add board item"
       >
         <Plus size={24} />
@@ -533,14 +536,14 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[180] md:hidden"
+            className="fixed inset-0 z-[180]"
           >
             <button className="absolute inset-0 bg-overlay/60" onClick={() => setMobileToolsOpen(false)} aria-label="Close tools" />
             <motion.div
               initial={{ y: 80 }}
               animate={{ y: 0 }}
               exit={{ y: 80 }}
-              className="absolute inset-x-0 bottom-0 rounded-t-[2rem] border border-card-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"
+              className="absolute inset-x-0 bottom-0 md:left-24 md:right-auto md:bottom-8 md:w-[360px] rounded-t-[2rem] md:rounded-[2rem] border border-card-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-4 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-4">
                 <p className="text-xs font-black uppercase tracking-widest text-text-secondary">Add to board</p>

@@ -76,14 +76,23 @@ type Tab = 'board' | 'milestones';
 // Add save status type
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
-function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriority }: {
+function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriority, onUpdateText, onDeleteTask, onUpdateSubTaskText, onDeleteSubTask }: {
   task: Task,
   onToggle: (id: string) => void,
   onAddSubTask: (parentId: string, text: string) => void,
   isLast: boolean,
-  onUpdatePriority: (id: string, priority: 'low' | 'medium' | 'high') => void
+  onUpdatePriority: (id: string, priority: 'low' | 'medium' | 'high') => void,
+  onUpdateText: (id: string, text: string) => void,
+  onDeleteTask: (id: string) => void,
+  onUpdateSubTaskText: (parentId: string, subTaskId: string, text: string) => void,
+  onDeleteSubTask: (parentId: string, subTaskId: string) => void
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [draftText, setDraftText] = useState(task.text);
+
+  useEffect(() => {
+    setDraftText(task.text);
+  }, [task.text]);
   const {
     attributes,
     listeners,
@@ -154,12 +163,22 @@ function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriori
             {task.completed && <CheckCircle2 size={16} className="text-accent-contrast" />}
         </div>
         
-        <div className="flex-1 flex flex-col min-w-0" onClick={() => onToggle(task.id)}>
-          <span
-            className={cn("text-lg font-bold tracking-tight transition-all", task.completed && "line-through opacity-40")}
-          >
-            {task.text}
-          </span>
+        <div className="flex-1 flex flex-col min-w-0">
+          <input
+            value={draftText}
+            onChange={(event) => setDraftText(event.target.value)}
+            onBlur={() => {
+              const next = draftText.trim();
+              if (next && next !== task.text) onUpdateText(task.id, next);
+              if (!next) setDraftText(task.text);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur();
+              event.stopPropagation();
+            }}
+            onClick={(event) => event.stopPropagation()}
+            className={cn("w-full bg-transparent outline-none text-lg font-bold tracking-tight transition-all", task.completed && "line-through opacity-40")}
+          />
           <div className="flex items-center gap-4 mt-1.5">
             <button
                onClick={(e) => {
@@ -190,8 +209,19 @@ function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriori
         <button
           onClick={handleAddSubTask}
           className="w-12 h-12 rounded-2xl bg-accent/5 text-accent opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-accent hover:text-accent-contrast hover:rotate-90"
+          aria-label="Add checklist item"
         >
           <Plus size={20} />
+        </button>
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            onDeleteTask(task.id);
+          }}
+          className="w-12 h-12 rounded-2xl bg-danger/5 text-danger opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-danger hover:text-white"
+          aria-label="Delete roadmap item"
+        >
+          <Trash2 size={18} />
         </button>
       </div>
 
@@ -207,21 +237,35 @@ function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriori
             {task.subTasks.map((subTask, sIdx) => (
               <div
                 key={subTask.id || sIdx}
-                onClick={() => onToggle(subTask.id)}
                 className={cn(
-                  "flex items-center gap-4 p-4 rounded-xl border border-card-border/50 bg-card/30 hover:bg-card/50 transition-all cursor-pointer group",
+                  "flex items-center gap-4 p-4 rounded-xl border border-card-border/50 bg-card/30 hover:bg-card/50 transition-all group",
                   subTask.completed && "opacity-50"
                 )}
               >
-                <div className={cn(
+                <button
+                  onClick={() => onToggle(subTask.id)}
+                  className={cn(
                   "w-4 h-4 rounded border flex items-center justify-center transition-all",
                   subTask.completed ? "bg-success border-success" : "border-card-border group-hover:border-accent"
                 )}>
                   {subTask.completed && <CheckCircle2 size={10} className="text-accent-contrast" />}
-                </div>
-                <span className={cn("text-xs font-medium tracking-tight", subTask.completed && "line-through")}>
-                  {subTask.text}
-                </span>
+                </button>
+                <input
+                  value={subTask.text}
+                  onChange={(event) => onUpdateSubTaskText(task.id, subTask.id, event.target.value)}
+                  onKeyDown={(event) => event.stopPropagation()}
+                  className={cn("min-w-0 flex-1 bg-transparent outline-none text-xs font-medium tracking-tight", subTask.completed && "line-through")}
+                />
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDeleteSubTask(task.id, subTask.id);
+                  }}
+                  className="w-8 h-8 rounded-lg text-text-secondary/40 hover:text-danger hover:bg-danger/10 flex items-center justify-center"
+                  aria-label="Delete checklist item"
+                >
+                  <X size={13} />
+                </button>
               </div>
             ))}
           </motion.div>
@@ -679,6 +723,74 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
       });
   };
 
+  const handleUpdateTaskText = (taskId: string, text: string) => {
+    const updatedTasks = vision.tasks.map(t => t.id === taskId ? { ...t, text } : t);
+    updateVision(vision.id, { tasks: updatedTasks });
+    if (taskId.startsWith('temp-')) return;
+    supabase
+      .from('tasks')
+      .update({ text, updated_at: new Date().toISOString() })
+      .eq('id', taskId)
+      .then(({ error }) => {
+        if (error) {
+          console.error('Failed to rename blueprint task:', error);
+          addToast({ type: 'error', title: 'Rename failed', description: 'Could not save this roadmap item.' });
+          updateVision(vision.id, { tasks: vision.tasks });
+        }
+      });
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    const updatedTasks = vision.tasks.filter(t => t.id !== taskId);
+    updateVision(vision.id, { tasks: updatedTasks });
+    if (taskId.startsWith('temp-')) return;
+    supabase
+      .from('tasks')
+      .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', taskId)
+      .then(({ error }) => {
+        if (error) {
+          console.error('Failed to delete blueprint task:', error);
+          addToast({ type: 'error', title: 'Delete failed', description: 'Could not delete this roadmap item.' });
+          updateVision(vision.id, { tasks: vision.tasks });
+        }
+      });
+  };
+
+  const persistSubTasks = (parentId: string, nextTasks: Task[], failureTitle: string) => {
+    const parent = nextTasks.find(t => t.id === parentId);
+    if (!parent || parentId.startsWith('temp-')) return;
+    supabase
+      .from('tasks')
+      .update({ sub_tasks: parent.subTasks || [], updated_at: new Date().toISOString() })
+      .eq('id', parentId)
+      .then(({ error }) => {
+        if (error) {
+          console.error(failureTitle, error);
+          addToast({ type: 'error', title: 'Checklist failed', description: 'Could not save this checklist change.' });
+          updateVision(vision.id, { tasks: vision.tasks });
+        }
+      });
+  };
+
+  const handleUpdateSubTaskText = (parentId: string, subTaskId: string, text: string) => {
+    const updatedTasks = vision.tasks.map(t => t.id === parentId ? {
+      ...t,
+      subTasks: (t.subTasks || []).map(st => st.id === subTaskId ? { ...st, text } : st)
+    } : t);
+    updateVision(vision.id, { tasks: updatedTasks });
+    persistSubTasks(parentId, updatedTasks, 'Failed to rename blueprint checklist item:');
+  };
+
+  const handleDeleteSubTask = (parentId: string, subTaskId: string) => {
+    const updatedTasks = vision.tasks.map(t => t.id === parentId ? {
+      ...t,
+      subTasks: (t.subTasks || []).filter(st => st.id !== subTaskId)
+    } : t);
+    updateVision(vision.id, { tasks: updatedTasks });
+    persistSubTasks(parentId, updatedTasks, 'Failed to delete blueprint checklist item:');
+  };
+
   const handleAddTask = async (event?: FormEvent) => {
     event?.preventDefault();
     const text = taskText.trim();
@@ -806,6 +918,47 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
               </div>
             </div>
           </div>
+
+          <div className="rounded-[2rem] border border-card-border bg-card p-6 space-y-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-accent">Roadmap</p>
+                <h3 className="text-lg font-black text-text-main">Editable blueprint</h3>
+              </div>
+              <p className="text-xs font-bold text-text-secondary">{vision.tasks.filter(task => task.completed).length}/{vision.tasks.length} complete</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {([
+                { key: 'high', label: 'Now', helper: 'Critical next moves' },
+                { key: 'medium', label: 'Next', helper: 'Priority work' },
+                { key: 'low', label: 'Later', helper: 'Standard tasks' }
+              ] as const).map(column => {
+                const items = vision.tasks.filter(task => (task.priority || 'low') === column.key);
+                return (
+                  <div key={column.key} className="rounded-2xl bg-app-container border border-card-border p-4 min-h-32">
+                    <div className="mb-3">
+                      <p className="text-sm font-black text-text-main">{column.label}</p>
+                      <p className="text-[10px] font-bold text-text-secondary">{column.helper}</p>
+                    </div>
+                    <div className="space-y-2">
+                      {items.length > 0 ? items.slice(0, 5).map(task => (
+                        <button
+                          key={task.id}
+                          onClick={() => handleUpdatePriority(task.id, column.key === 'high' ? 'medium' : column.key === 'medium' ? 'low' : 'high')}
+                          className={cn('w-full text-left rounded-xl border border-card-border bg-card px-3 py-2 text-xs font-bold text-text-secondary hover:border-accent/40', task.completed && 'line-through opacity-50')}
+                          title="Click to move to the next roadmap stage"
+                        >
+                          {task.text}
+                        </button>
+                      )) : (
+                        <p className="rounded-xl border border-dashed border-card-border p-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Empty</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
              <div className="space-y-8">
@@ -861,6 +1014,10 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
                           onAddSubTask={handleAddSubTask}
                           isLast={idx === vision.tasks.length - 1}
                           onUpdatePriority={handleUpdatePriority}
+                          onUpdateText={handleUpdateTaskText}
+                          onDeleteTask={handleDeleteTask}
+                          onUpdateSubTaskText={handleUpdateSubTaskText}
+                          onDeleteSubTask={handleDeleteSubTask}
                         />
                       ))}
                     </div>
