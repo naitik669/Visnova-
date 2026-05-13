@@ -5,9 +5,7 @@ import {
   Check,
   Circle as CircleIcon,
   FileText,
-  GitBranch,
   Image as ImageIcon,
-  Link as LinkIcon,
   Loader2,
   Maximize2,
   Minus,
@@ -25,6 +23,7 @@ import { Vision, VisionElement } from '../../types';
 import { cn } from '../../lib/utils';
 import { uploadVisionBoardImage } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
+import { safeArray, safeNumber, safeObject, safeString, safeTime } from '../../lib/safeData';
 
 interface CreativeCanvasProps {
   vision: Vision;
@@ -39,6 +38,9 @@ type ResizeCorner = 'se' | 'sw' | 'ne' | 'nw';
 const CANVAS_SIZE = 5200;
 const CANVAS_CENTER = CANVAS_SIZE / 2;
 const SAVE_DELAY_MS = 850;
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const STABLE_BOARD_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'connector']);
 
 const newId = (prefix = 'el') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -57,8 +59,56 @@ const centerOf = (element: VisionElement) => ({
   y: element.y + (element.height || defaultSize(element.type).height) / 2
 });
 
+const normalizeElementType = (type: unknown): VisionElement['type'] => {
+  if (type === 'heading') return 'text';
+  if (type === 'flowchartNode') return 'shape';
+  if (STABLE_BOARD_TYPES.has(type as VisionElement['type'])) return type as VisionElement['type'];
+  return 'text';
+};
+
+const normalizeChecklist = (value: unknown): ChecklistItem[] => safeArray<any>(value)
+  .map((item, index) => ({
+    id: safeString(item?.id, newId('item')),
+    text: safeString(item?.text, `Item ${index + 1}`),
+    completed: Boolean(item?.completed)
+  }))
+  .filter(item => item.id);
+
+const normalizeBoardElement = (raw: unknown, index: number): VisionElement => {
+  const row = safeObject<any>(raw);
+  const type = normalizeElementType(row.type);
+  const size = defaultSize(type);
+  const metadata = safeObject<NonNullable<VisionElement['metadata']>>(row.metadata);
+  const createdAt = safeTime(row.createdAt || row.created_at, Date.now());
+  const normalizedMetadata: VisionElement['metadata'] = {
+    ...metadata,
+    checklist: type === 'checklist' ? normalizeChecklist(metadata.checklist) : metadata.checklist,
+    imageUrl: type === 'image' ? safeString(metadata.imageUrl || row.content) : metadata.imageUrl,
+    shapeType: type === 'shape' ? (metadata.shapeType || 'rectangle') : metadata.shapeType
+  };
+
+  return {
+    id: safeString(row.id, newId(`board-${index}`)),
+    type,
+    content: safeString(row.content, type === 'checklist' ? 'Checklist' : type === 'sticky' ? 'Idea or reminder' : ''),
+    x: safeNumber(row.x, CANVAS_CENTER),
+    y: safeNumber(row.y, CANVAS_CENTER),
+    width: Math.max(48, safeNumber(row.width, size.width)),
+    height: Math.max(40, safeNumber(row.height, size.height)),
+    rotation: safeNumber(row.rotation, 0),
+    zIndex: safeNumber(row.zIndex, index + 1),
+    metadata: normalizedMetadata,
+    createdAt,
+    updatedAt: safeTime(row.updatedAt || row.updated_at, createdAt)
+  };
+};
+
+const normalizeBoardElements = (value: unknown): VisionElement[] => safeArray(value)
+  .slice(0, 500)
+  .map(normalizeBoardElement);
+
 export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVision, onActiveChange }) => {
-  const [elements, setElements] = useState<VisionElement[]>(vision.elements || []);
+  const [elements, setElements] = useState<VisionElement[]>(() => normalizeBoardElements(vision.elements));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [linkingFromId, setLinkingFromId] = useState<string | null>(null);
   const [tempConnectorEnd, setTempConnectorEnd] = useState<{ x: number; y: number } | null>(null);
@@ -69,7 +119,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const transformWrapperRef = useRef<any>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingElementsRef = useRef<VisionElement[]>(vision.elements || []);
+  const pendingElementsRef = useRef<VisionElement[]>(normalizeBoardElements(vision.elements));
   const { session, addToast } = useStore();
 
   const selectedElement = useMemo(
@@ -78,8 +128,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   );
 
   useEffect(() => {
-    setElements(vision.elements || []);
-    pendingElementsRef.current = vision.elements || [];
+    const normalized = normalizeBoardElements(vision.elements);
+    setElements(normalized);
+    pendingElementsRef.current = normalized;
     setSelectedId(null);
     setLinkingFromId(null);
     setTempConnectorEnd(null);
@@ -117,7 +168,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   const applyElements = useCallback((updater: VisionElement[] | ((current: VisionElement[]) => VisionElement[]), save = true) => {
     setElements(current => {
-      const next = typeof updater === 'function' ? updater(current) : updater;
+      const next = normalizeBoardElements(typeof updater === 'function' ? updater(current) : updater);
       pendingElementsRef.current = next;
       if (save) scheduleSave(next);
       return next;
@@ -150,6 +201,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     y = CANVAS_CENTER + Math.random() * 120 - 60
   ) => {
     const size = defaultSize(type);
+    const now = Date.now();
     const element: VisionElement = {
       id: newId(type),
       type,
@@ -159,7 +211,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       width: size.width,
       height: size.height,
       rotation: 0,
-      zIndex: Date.now(),
+      zIndex: now,
+      createdAt: now,
+      updatedAt: now,
       metadata
     };
     applyElements(current => [...current, element]);
@@ -170,7 +224,14 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const updateElement = useCallback((id: string, updates: Partial<VisionElement>, save = true) => {
     applyElements(current => current.map(element => (
       element.id === id
-        ? { ...element, ...updates, metadata: { ...(element.metadata || {}), ...(updates.metadata || {}) } }
+        ? {
+            ...element,
+            ...updates,
+            metadata: updates.metadata
+              ? { ...(element.metadata || {}), ...updates.metadata }
+              : element.metadata,
+            updatedAt: Date.now()
+          }
         : element
     )), save);
   }, [applyElements]);
@@ -185,6 +246,16 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [applyElements]);
 
   const importImageFile = useCallback(async (file: File, x?: number, y?: number) => {
+    const normalizedType = (file.type || '').toLowerCase();
+    if (!ALLOWED_IMAGE_TYPES.has(normalizedType)) {
+      addToast({ type: 'error', title: 'Unsupported image', description: 'Use a PNG, JPG, or WebP image.' });
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      addToast({ type: 'error', title: 'Image too large', description: 'Use an image under 10MB.' });
+      return;
+    }
+
     setIsUploading(true);
     try {
       const { publicUrl, filePath } = await uploadVisionBoardImage(file, vision.id, session?.user?.id);
@@ -201,7 +272,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const handleCanvasDrop = (event: React.DragEvent) => {
     event.preventDefault();
     const dropPoint = getCanvasPointFromEvent(event);
-    const file = Array.from(event.dataTransfer.files || []).find(item => item.type.startsWith('image/'));
+    const file = Array.from<File>(event.dataTransfer.files || []).find(item => ALLOWED_IMAGE_TYPES.has((item.type || '').toLowerCase()));
     if (file) importImageFile(file, dropPoint.x - 180, dropPoint.y - 120);
   };
 
@@ -231,7 +302,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [applyElements, elements, linkingFromId]);
 
   const addChecklistItem = (element: VisionElement, text: string) => {
-    const checklist = [...(element.metadata?.checklist || []), { id: newId('item'), text, completed: false }];
+    const checklist = [...normalizeChecklist(element.metadata?.checklist), { id: newId('item'), text, completed: false }];
     updateElement(element.id, { metadata: { checklist } });
   };
 
@@ -256,14 +327,12 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const toolGroups = (
     <>
       <CanvasToolButton icon={<Type size={18} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} />
-      <CanvasToolButton icon={<Target size={18} />} label="Heading" onClick={() => createElement('heading', 'New goal', { fontSize: '46px', color: 'var(--text-main)' })} />
+      <CanvasToolButton icon={<Target size={18} />} label="Goal" onClick={() => createElement('text', 'New goal', { fontSize: '46px', color: 'var(--text-main)', fontWeight: '900' })} />
       <CanvasToolButton icon={<StickyNote size={18} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
       <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} />
       <CanvasToolButton icon={<Square size={18} />} label="Rectangle" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#3b82f622', strokeColor: '#3b82f6' })} />
       <CanvasToolButton icon={<CircleIcon size={18} />} label="Circle" onClick={() => createElement('shape', '', { shapeType: 'circle', fillColor: '#10b98122', strokeColor: '#10b981' })} />
-      <CanvasToolButton icon={<GitBranch size={18} />} label="Flow" onClick={() => createElement('flowchartNode', 'Process step', { shapeType: 'rectangle', fillColor: 'var(--accent-soft)', strokeColor: 'var(--accent)' })} />
       <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
-      <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => createElement('link', 'https://example.com', { url: 'https://example.com', title: 'Resource' })} />
     </>
   );
 
@@ -392,10 +461,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             onUpdate={(updates) => updateElement(selectedElement.id, updates)}
             onDelete={() => deleteElement(selectedElement.id)}
             onClose={() => setSelectedId(null)}
-            onStartLink={() => {
-              setLinkingFromId(selectedElement.id);
-              setTempConnectorEnd(centerOf(selectedElement));
-            }}
             onAddChecklistItem={(text) => addChecklistItem(selectedElement, text)}
           />
         )}
@@ -430,7 +495,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             <p className="text-sm sm:text-base font-semibold text-text-secondary/50">Add text, images, shapes, or a checklist. Everything saves back to this Vision Board.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-2 pointer-events-auto">
-            <QuickStartAction label="Text" onClick={() => createElement('heading', 'Main Goal', { fontSize: '46px' })} />
+            <QuickStartAction label="Text" onClick={() => createElement('text', 'Main Goal', { fontSize: '46px', color: 'var(--text-main)', fontWeight: '900' })} />
             <QuickStartAction label="Image" onClick={() => imageInputRef.current?.click()} />
             <QuickStartAction label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
             <QuickStartAction label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
@@ -542,9 +607,7 @@ const CanvasElement: React.FC<{
       data-no-pan
     >
       <div className="relative group/content">
-        {isSelected && !isLinking && (
-          <ElementToolbar onDelete={onDelete} onStartLink={onStartLink} />
-        )}
+        {isSelected && !isLinking && <ElementToolbar onDelete={onDelete} />}
         {isLinkingFrom && (
           <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-accent text-accent-contrast rounded-full text-[8px] font-black uppercase tracking-widest">
             Pick target
@@ -559,10 +622,9 @@ const CanvasElement: React.FC<{
   );
 };
 
-function ElementToolbar({ onDelete, onStartLink }: { onDelete: () => void; onStartLink: () => void }) {
+function ElementToolbar({ onDelete }: { onDelete: () => void }) {
   return (
     <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-card border border-card-border rounded-xl shadow-2xl p-1.5 flex items-center gap-1 z-20">
-      <button onClick={(event) => { event.stopPropagation(); onStartLink(); }} className="p-2 text-accent hover:bg-accent/10 rounded-lg" title="Connect"><LinkIcon size={14} /></button>
       <button onClick={(event) => { event.stopPropagation(); onDelete(); }} className="p-2 text-danger hover:bg-danger/10 rounded-lg" title="Delete"><Trash2 size={14} /></button>
     </div>
   );
@@ -667,6 +729,7 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         contentEditable
         suppressContentEditableWarning
         onPointerDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
         onBlur={(event) => onUpdate({ content: event.currentTarget.textContent || '' })}
         className={cn('outline-none whitespace-pre-wrap break-words', element.type === 'heading' ? 'font-black tracking-tight' : 'font-bold')}
         style={{
@@ -679,7 +742,7 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
           textAlign: element.metadata?.textAlign || 'left'
         }}
       >
-        {element.content}
+        {safeString(element.content, 'Write anything')}
       </div>
     );
   }
@@ -687,7 +750,7 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
   if (element.type === 'sticky') {
     return (
       <textarea
-        value={element.content}
+        value={safeString(element.content)}
         onPointerDown={(event) => event.stopPropagation()}
         onChange={(event) => onUpdate({ content: event.target.value })}
         className="resize-none border-none outline-none shadow-2xl p-5 text-base font-bold text-black/80 leading-tight"
@@ -698,9 +761,14 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
   }
 
   if (element.type === 'image') {
+    const imageUrl = safeString(element.metadata?.imageUrl || element.content);
     return (
       <div className="bg-card rounded-2xl overflow-hidden shadow-2xl border border-card-border" style={{ width, height }}>
-        <img src={element.metadata?.imageUrl || element.content} className="w-full h-full object-cover" alt={element.metadata?.title || 'Board asset'} draggable={false} />
+        {imageUrl ? (
+          <img src={imageUrl} className="w-full h-full object-cover" alt={safeString(element.metadata?.title, 'Board asset')} draggable={false} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center p-4 text-xs font-bold text-text-secondary">Image unavailable</div>
+        )}
       </div>
     );
   }
@@ -720,7 +788,7 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         }}
       >
         <textarea
-          value={element.content}
+          value={safeString(element.content)}
           onPointerDown={(event) => event.stopPropagation()}
           onChange={(event) => onUpdate({ content: event.target.value })}
           className="w-full bg-transparent resize-none border-none outline-none text-center font-bold text-text-main px-4"
@@ -732,11 +800,11 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
   }
 
   if (element.type === 'checklist') {
-    const checklist = element.metadata?.checklist || [];
+    const checklist = normalizeChecklist(element.metadata?.checklist);
     return (
       <div className="bg-card p-5 rounded-3xl border border-card-border shadow-2xl space-y-4" style={{ width, minHeight: height }}>
         <input
-          value={element.content}
+          value={safeString(element.content, 'Checklist')}
           onPointerDown={(event) => event.stopPropagation()}
           onChange={(event) => onUpdate({ content: event.target.value })}
           className="w-full bg-transparent border-none outline-none font-black text-text-main"
@@ -752,11 +820,11 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
   }
 
   if (element.type === 'link') {
-    const url = element.metadata?.url || element.content;
+    const url = safeString(element.metadata?.url || element.content, 'https://example.com');
     return (
       <div className="bg-card-dark border border-card-border rounded-[2rem] overflow-hidden shadow-2xl p-5 space-y-3" style={{ width }}>
         <p className="text-[10px] font-black uppercase tracking-widest text-accent truncate">{url}</p>
-        <input value={element.metadata?.title || 'Resource'} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ metadata: { title: event.target.value } })} className="w-full bg-transparent outline-none font-bold text-text-main" data-no-pan />
+        <input value={safeString(element.metadata?.title, 'Resource')} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ metadata: { title: event.target.value } })} className="w-full bg-transparent outline-none font-bold text-text-main" data-no-pan />
         <a href={url} target="_blank" rel="noreferrer" onPointerDown={(event) => event.stopPropagation()} className="inline-flex h-10 px-4 rounded-xl bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest items-center">Open</a>
       </div>
     );
@@ -764,7 +832,7 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
 
   return (
     <div className="p-4 bg-card border border-card-border rounded-xl shadow-xl" style={{ width, minHeight: height }}>
-      {element.content}
+      {safeString(element.content, 'Board item')}
     </div>
   );
 };
@@ -808,14 +876,12 @@ function ElementEditor({
   onUpdate,
   onDelete,
   onClose,
-  onStartLink,
   onAddChecklistItem
 }: {
   element: VisionElement;
   onUpdate: (updates: Partial<VisionElement>) => void;
   onDelete: () => void;
   onClose: () => void;
-  onStartLink: () => void;
   onAddChecklistItem: (text: string) => void;
 }) {
   const [newChecklistText, setNewChecklistText] = useState('');
@@ -843,7 +909,7 @@ function ElementEditor({
         {element.type !== 'image' && element.type !== 'checklist' && (
           <label className="block space-y-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Content</span>
-            <textarea value={element.content} onChange={(event) => onUpdate({ content: event.target.value })} className="w-full min-h-24 rounded-2xl bg-surface-muted border border-card-border p-3 text-sm font-semibold outline-none focus:border-accent resize-y" />
+            <textarea value={safeString(element.content)} onChange={(event) => onUpdate({ content: event.target.value })} className="w-full min-h-24 rounded-2xl bg-surface-muted border border-card-border p-3 text-sm font-semibold outline-none focus:border-accent resize-y" />
           </label>
         )}
 
@@ -905,9 +971,8 @@ function ElementEditor({
           </form>
         )}
 
-        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-card-border">
-          <button onClick={onStartLink} className="h-11 rounded-xl bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest">Connect</button>
-          <button onClick={onDelete} className="h-11 rounded-xl bg-danger/10 text-danger text-[10px] font-black uppercase tracking-widest">Delete</button>
+        <div className="pt-2 border-t border-card-border">
+          <button onClick={onDelete} className="w-full h-11 rounded-xl bg-danger/10 text-danger text-[10px] font-black uppercase tracking-widest">Delete</button>
         </div>
       </div>
     </motion.aside>

@@ -26,6 +26,8 @@ export interface VisionElement {
   scale?: number;
   rotation?: number;
   zIndex?: number;
+  createdAt?: number;
+  updatedAt?: number;
   metadata?: {
     title?: string;
     description?: string;
