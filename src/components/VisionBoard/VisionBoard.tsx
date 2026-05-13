@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -26,7 +26,7 @@ import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 
 export default function VisionBoard() {
-  const { visions, addVision, updateVision, addActivity, addToast, session } = useStore();
+  const { visions, addVision, updateVision, addActivity, addToast, session, fetchVisions } = useStore();
   const [selectedVision, setSelectedVision] = useState<Vision | null>(null);
   const [setupVision, setSetupVision] = useState<Vision | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,10 +37,13 @@ export default function VisionBoard() {
     () => visions.filter(v => v.status === 'in-progress').slice(0, 3),
     [visions]
   );
-  const repositoryVisions = useMemo(() => {
-    const spotlightIds = new Set(spotlightVisions.map(vision => vision.id));
-    return visions.filter(vision => !spotlightIds.has(vision.id));
-  }, [spotlightVisions, visions]);
+  const repositoryVisions = useMemo(() => visions, [visions]);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchVisions().catch(error => console.error('Failed to load Vision Board repository:', error));
+    }
+  }, [fetchVisions, session?.user?.id]);
 
   const handleCardClick = (vision: Vision) => {
     setSelectedVision(vision);
@@ -217,6 +220,7 @@ export default function VisionBoard() {
                     <div>
                       <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/40">Knowledge Base</h2>
                       <h3 className="text-2xl font-black text-text-main tracking-tight uppercase mt-1">Idea Repository</h3>
+                      <p className="text-xs font-bold text-text-secondary/50 mt-1">{repositoryVisions.length} saved board{repositoryVisions.length === 1 ? '' : 's'}</p>
                     </div>
                   </div>
                   <div className="hidden sm:flex items-center gap-2">

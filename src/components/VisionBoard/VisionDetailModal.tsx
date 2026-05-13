@@ -498,22 +498,24 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                   </div>
                 </div>
 
-                {!isCollapsed && (
-                  <div className="flex bg-bg-base p-1 rounded-2xl border border-card-border/50 ml-6">
+                <div className={cn(
+                  "flex bg-bg-base p-1 rounded-2xl border border-card-border/50",
+                  isCollapsed ? "ml-2" : "ml-6"
+                )}>
                     {(['board', 'milestones'] as Tab[]).map(tab => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={cn(
-                          "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+                          "py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+                          isCollapsed ? "px-3" : "px-6",
                           activeTab === tab ? "bg-card text-accent shadow-premium" : "text-text-secondary/40 hover:text-text-main"
                         )}
                       >
-                        {tab === 'board' ? 'Vision Canvas' : 'Execution Blueprint'}
+                        {tab === 'board' ? 'Canvas' : isCollapsed ? 'Blueprint' : 'Execution Blueprint'}
                       </button>
                     ))}
-                  </div>
-                )}
+                </div>
               </div>
 
               <div className="flex items-center gap-3">

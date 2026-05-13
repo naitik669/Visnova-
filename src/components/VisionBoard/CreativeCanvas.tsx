@@ -415,6 +415,15 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
       <button
         onClick={() => setMobileToolsOpen(true)}
+        className="absolute left-3 top-3 z-50 h-11 px-4 rounded-2xl bg-accent text-accent-contrast shadow-2xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
+        aria-label="Add board item"
+      >
+        <Plus size={18} />
+        Add
+      </button>
+
+      <button
+        onClick={() => setMobileToolsOpen(true)}
         className="absolute left-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-10 z-50 w-14 h-14 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center shadow-2xl hover:scale-105 transition-transform"
         aria-label="Add board item"
       >
