@@ -1201,8 +1201,9 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (visionsError) throw visionsError;
 
-      // Extract vision IDs for task fetching
-      const visionIds = visionsData.map(v => v.id);
+      const safeVisionRows = Array.isArray(visionsData) ? visionsData : [];
+      // Extract vision IDs for task fetching. If task loading fails, still show the boards.
+      const visionIds = safeVisionRows.map(v => v.id).filter(Boolean);
       let tasksData: any[] = [];
       if (visionIds.length > 0) {
         const { data: fetchedTasks, error: tasksError } = await supabase
@@ -1212,11 +1213,19 @@ export const useStore = create<AppState>((set, get) => ({
           .is('deleted_at', null)
           .order('sort_order', { ascending: true })
           .order('created_at', { ascending: true });
-        if (tasksError) throw tasksError;
-        tasksData = fetchedTasks || [];
+        if (tasksError) {
+          console.error('Failed to fetch vision blueprint tasks:', tasksError);
+          get().addToast({
+            type: 'error',
+            title: 'Blueprint tasks unavailable',
+            description: 'Your boards loaded, but task blueprints could not be fetched.'
+          });
+        } else {
+          tasksData = fetchedTasks || [];
+        }
       }
 
-      const formattedVisions: Vision[] = visionsData.map((v: any) => {
+      const formattedVisions: Vision[] = safeVisionRows.map((v: any) => {
         const visionTasks = (tasksData || [])
           .filter(t => t.vision_id === v.id)
           .map(t => ({
@@ -1252,6 +1261,11 @@ export const useStore = create<AppState>((set, get) => ({
       set({ visions: formattedVisions });
     } catch (error) {
       console.error('Failed to fetch visions:', error);
+      get().addToast({
+        type: 'error',
+        title: 'Vision Boards failed to load',
+        description: 'Refresh the page or check your Supabase session.'
+      });
     }
   },
 
@@ -2644,8 +2658,8 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       const { data, error } = await supabase.rpc('visnova_archive_post', { target_post_id: id });
-      if (error) throw error;
-      if (data !== true) {
+      if (error) console.warn('Archive RPC unavailable, trying direct owner update:', error);
+      if (error || data !== true) {
         const now = new Date().toISOString();
         const { data: rows, error: updateError } = await supabase
           .from('posts')
@@ -2697,8 +2711,8 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       const { data, error } = await supabase.rpc('visnova_restore_post', { target_post_id: id });
-      if (error) throw error;
-      if (data !== true) {
+      if (error) console.warn('Restore RPC unavailable, trying direct owner update:', error);
+      if (error || data !== true) {
         const now = new Date().toISOString();
         const { data: rows, error: updateError } = await supabase
           .from('posts')
@@ -2826,8 +2840,8 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       const { data, error } = await supabase.rpc('visnova_soft_delete_post', { target_post_id: id });
-      if (error) throw error;
-      if (data !== true) {
+      if (error) console.warn('Delete RPC unavailable, trying direct owner update:', error);
+      if (error || data !== true) {
         const now = new Date().toISOString();
         const { data: rows, error: updateError } = await supabase
           .from('posts')

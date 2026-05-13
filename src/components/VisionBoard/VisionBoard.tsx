@@ -12,7 +12,9 @@ import {
   Sparkles,
   Trello,
   Compass,
-  Layers
+  Layers,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import VisionCard from './VisionCard';
@@ -31,6 +33,7 @@ export default function VisionBoard() {
   const [setupVision, setSetupVision] = useState<Vision | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Keep the spotlight small, but never hide older active boards from the repository.
   const spotlightVisions = useMemo(
@@ -44,6 +47,32 @@ export default function VisionBoard() {
       fetchVisions().catch(error => console.error('Failed to load Vision Board repository:', error));
     }
   }, [fetchVisions, session?.user?.id]);
+
+  useEffect(() => {
+    if (!selectedVision) return;
+    const latest = visions.find(vision => vision.id === selectedVision.id);
+    if (latest && latest !== selectedVision) {
+      setSelectedVision(latest);
+    }
+  }, [selectedVision, visions]);
+
+  const refreshRepository = async () => {
+    if (!session?.user?.id) {
+      addToast({
+        type: 'error',
+        title: 'Login required',
+        description: 'Sign in again to load your Vision Boards.'
+      });
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await fetchVisions();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleCardClick = (vision: Vision) => {
     setSelectedVision(vision);
@@ -224,6 +253,14 @@ export default function VisionBoard() {
                     </div>
                   </div>
                   <div className="hidden sm:flex items-center gap-2">
+                    <button
+                      onClick={refreshRepository}
+                      disabled={isRefreshing}
+                      className="h-10 px-4 rounded-xl bg-card text-text-secondary hover:text-accent text-[10px] font-black uppercase tracking-widest border border-card-border flex items-center gap-2 disabled:opacity-60"
+                    >
+                      {isRefreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                      Refresh
+                    </button>
                     <span className="h-10 px-5 rounded-xl bg-surface-muted/70 text-text-secondary/60 text-[10px] font-black uppercase tracking-widest border border-card-border flex items-center" title="Filters and sorting are intentionally hidden until the beta board flows are stable.">
                       All visions
                     </span>
@@ -245,6 +282,14 @@ export default function VisionBoard() {
                {repositoryVisions.length === 0 && (
                  <div className="rounded-[2rem] border border-dashed border-card-border p-10 text-center">
                    <p className="text-sm font-bold text-text-secondary">No saved vision boards yet.</p>
+                   <button
+                     onClick={refreshRepository}
+                     disabled={isRefreshing}
+                     className="mt-5 h-11 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2 disabled:opacity-60"
+                   >
+                     {isRefreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                     Refresh boards
+                   </button>
                  </div>
                )}
             </section>
