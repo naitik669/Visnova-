@@ -533,7 +533,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         onTransform={(ref) => onActiveChange?.(ref.state.scale > 1.05)}
         onPanningStart={() => onActiveChange?.(true)}
         doubleClick={{ disabled: true }}
-        disabled={canvasInteractionLocked}
         panning={{ disabled: canvasInteractionLocked, velocityDisabled: true }}
         wheel={{ disabled: isEditingText }}
       >
@@ -588,10 +587,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                     onDragStateChange={setIsDraggingElement}
                     onResizeStateChange={setIsResizingElement}
                     onEditingStateChange={setIsEditingText}
-                    onStartLink={() => {
-                      setLinkingFromId(element.id);
-                      setTempConnectorEnd(centerOf(element));
-                    }}
                     onHover={() => {
                       if (linkingFromId) setTempConnectorEnd(centerOf(element));
                     }}
@@ -907,7 +902,6 @@ type CanvasElementProps = {
   onDragStateChange: (active: boolean) => void;
   onResizeStateChange: (active: boolean) => void;
   onEditingStateChange: (active: boolean) => void;
-  onStartLink: () => void;
   onHover: () => void;
 };
 
@@ -925,36 +919,80 @@ const CanvasElement = React.memo(({
   onEditingStateChange,
   onHover
 }: CanvasElementProps) => {
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    lastClientX: number;
+    lastClientY: number;
+    frame: number | null;
+  } | null>(null);
+
+  const stopDrag = useCallback(() => {
+    const activeDrag = dragRef.current;
+    if (!activeDrag) return;
+    if (activeDrag.frame) cancelAnimationFrame(activeDrag.frame);
+    const scale = getScale();
+    const nextX = activeDrag.startX + (activeDrag.lastClientX - activeDrag.startClientX) / scale;
+    const nextY = activeDrag.startY + (activeDrag.lastClientY - activeDrag.startClientY) / scale;
+    dragRef.current = null;
+    onDragStateChange(false);
+    onUpdate({ x: nextX, y: nextY }, true);
+  }, [getScale, onDragStateChange, onUpdate]);
+
+  useEffect(() => () => {
+    if (dragRef.current?.frame) cancelAnimationFrame(dragRef.current.frame);
+  }, []);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (isLinking || event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    onSelect();
+    onDragStateChange(true);
+
+    const target = event.currentTarget;
+    target.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: element.x,
+      startY: element.y,
+      lastClientX: event.clientX,
+      lastClientY: event.clientY,
+      frame: null
+    };
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const activeDrag = dragRef.current;
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    activeDrag.lastClientX = event.clientX;
+    activeDrag.lastClientY = event.clientY;
+    if (activeDrag.frame) return;
+
+    activeDrag.frame = requestAnimationFrame(() => {
+      const currentDrag = dragRef.current;
+      if (!currentDrag) return;
+      currentDrag.frame = null;
+      const scale = getScale();
+      onUpdate({
+        x: currentDrag.startX + (currentDrag.lastClientX - currentDrag.startClientX) / scale,
+        y: currentDrag.startY + (currentDrag.lastClientY - currentDrag.startClientY) / scale
+      }, false);
+    });
+  };
 
   return (
     <motion.div
-      drag={!isLinking}
-      dragMomentum={false}
-      onPointerDown={(event) => {
-        event.stopPropagation();
-        if (!isLinking) onDragStateChange(true);
-      }}
-      onDragStart={(event) => {
-        event.stopPropagation();
-        onDragStateChange(true);
-        setDragStart({ x: element.x, y: element.y });
-        onSelect();
-      }}
-      onDrag={(_, info) => {
-        if (!dragStart) return;
-        const scale = getScale();
-        onUpdate({ x: dragStart.x + info.offset.x / scale, y: dragStart.y + info.offset.y / scale }, false);
-      }}
-      onDragEnd={(_, info) => {
-        const origin = dragStart || { x: element.x, y: element.y };
-        const scale = getScale();
-        setDragStart(null);
-        onDragStateChange(false);
-        onUpdate({ x: origin.x + info.offset.x / scale, y: origin.y + info.offset.y / scale }, true);
-      }}
-      onPointerUp={() => onDragStateChange(false)}
-      onPointerCancel={() => onDragStateChange(false)}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={stopDrag}
+      onPointerCancel={stopDrag}
       onMouseMove={() => {
         if (isLinking && !isLinkingFrom) onHover();
       }}
@@ -1001,7 +1039,7 @@ function ElementToolbar({ onDelete }: { onDelete: () => void }) {
 }
 
 function ResizeHandles({ element, getScale, onUpdate, onResizeStateChange }: { element: VisionElement; getScale: () => number; onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void; onResizeStateChange: (active: boolean) => void }) {
-  const startRef = useRef<{ x: number; y: number; width: number; height: number; left: number; top: number } | null>(null);
+  const startRef = useRef<{ x: number; y: number; width: number; height: number; left: number; top: number; frame: number | null; lastX: number; lastY: number; corner: ResizeCorner } | null>(null);
   const width = element.width || defaultSize(element.type).width;
   const height = element.height || defaultSize(element.type).height;
   const corners: ResizeCorner[] = ['nw', 'ne', 'sw', 'se'];
@@ -1011,28 +1049,36 @@ function ResizeHandles({ element, getScale, onUpdate, onResizeStateChange }: { e
     event.preventDefault();
     onResizeStateChange(true);
     event.currentTarget.setPointerCapture(event.pointerId);
-    startRef.current = { x: event.clientX, y: event.clientY, width, height, left: element.x, top: element.y };
+    startRef.current = { x: event.clientX, y: event.clientY, width, height, left: element.x, top: element.y, frame: null, lastX: event.clientX, lastY: event.clientY, corner };
 
     const move = (moveEvent: PointerEvent) => {
       if (!startRef.current) return;
-      const scale = getScale();
-      const dx = (moveEvent.clientX - startRef.current.x) / scale;
-      const dy = (moveEvent.clientY - startRef.current.y) / scale;
-      const leftEdge = corner.includes('w');
-      const topEdge = corner.includes('n');
-      const minimum = minSize(element.type);
-      const nextWidth = Math.max(minimum.width, startRef.current.width + (leftEdge ? -dx : dx));
-      const nextHeight = Math.max(minimum.height, startRef.current.height + (topEdge ? -dy : dy));
-      onUpdate({
-        width: nextWidth,
-        height: nextHeight,
-        x: leftEdge ? startRef.current.left + (startRef.current.width - nextWidth) : startRef.current.left,
-        y: topEdge ? startRef.current.top + (startRef.current.height - nextHeight) : startRef.current.top
-      }, false);
+      startRef.current.lastX = moveEvent.clientX;
+      startRef.current.lastY = moveEvent.clientY;
+      if (startRef.current.frame) return;
+      startRef.current.frame = requestAnimationFrame(() => {
+        if (!startRef.current) return;
+        startRef.current.frame = null;
+        const scale = getScale();
+        const dx = (startRef.current.lastX - startRef.current.x) / scale;
+        const dy = (startRef.current.lastY - startRef.current.y) / scale;
+        const leftEdge = startRef.current.corner.includes('w');
+        const topEdge = startRef.current.corner.includes('n');
+        const minimum = minSize(element.type);
+        const nextWidth = Math.max(minimum.width, startRef.current.width + (leftEdge ? -dx : dx));
+        const nextHeight = Math.max(minimum.height, startRef.current.height + (topEdge ? -dy : dy));
+        onUpdate({
+          width: nextWidth,
+          height: nextHeight,
+          x: leftEdge ? startRef.current.left + (startRef.current.width - nextWidth) : startRef.current.left,
+          y: topEdge ? startRef.current.top + (startRef.current.height - nextHeight) : startRef.current.top
+        }, false);
+      });
     };
 
     const up = () => {
       if (startRef.current) {
+        if (startRef.current.frame) cancelAnimationFrame(startRef.current.frame);
         startRef.current = null;
         onUpdate({}, true);
       }
