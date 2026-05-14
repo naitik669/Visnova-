@@ -1199,32 +1199,72 @@ export const useStore = create<AppState>((set, get) => ({
     if (!userId) return;
 
     try {
-      let visionsData: any[] | null = null;
-      let visionsError: any = null;
+      const formatRows = (rows: any[], tasksData: any[] = []): Vision[] => rows.map((v: any) => {
+        const visionTasks = tasksData
+          .filter(t => t.vision_id === v.id)
+          .map(t => ({
+            id: t.id,
+            text: t.text,
+            completed: t.completed,
+            priority: t.priority || 'low',
+            subTasks: t.sub_tasks || [],
+            completedAt: t.completed_at || null,
+            xpAwarded: !!t.xp_awarded,
+            xpAwardedAt: t.xp_awarded_at || null,
+            deletedAt: t.deleted_at || null
+          }));
+
+        return {
+          id: v.id,
+          title: v.title,
+          description: v.description,
+          progress: v.progress || 0,
+          status: v.status || 'idea',
+          tasks: visionTasks as Task[],
+          notes: v.notes || '',
+          proof: v.proof || [],
+          tags: v.tags || [],
+          category: v.category,
+          elements: v.elements || [],
+          createdAt: safeTime(v.created_at),
+          visibility: v.visibility,
+          deadline: v.deadline,
+        };
+      });
+
+      const { data: ownedVisions, error: ownedError } = await supabase
+        .from('visions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (ownedError) throw ownedError;
+
+      let safeVisionRows = Array.isArray(ownedVisions) ? ownedVisions : [];
+      set({ visions: formatRows(safeVisionRows, []) });
 
       if (userEmail) {
-        const legacyResult = await supabase
-          .from('visions')
-          .select('*')
-          .or(`user_id.eq.${userId},user_email.ilike.${userEmail}`)
-          .order('created_at', { ascending: false });
-        visionsData = legacyResult.data;
-        visionsError = legacyResult.error;
+        try {
+          const { data: legacyRows, error: legacyError } = await supabase
+            .from('visions')
+            .select('*')
+            .eq('user_email', userEmail)
+            .order('created_at', { ascending: false });
+
+          if (legacyError && !isMissingVisionLegacyEmailSchema(legacyError)) throw legacyError;
+          if (Array.isArray(legacyRows) && legacyRows.length > 0) {
+            const merged = new Map<string, any>();
+            [...safeVisionRows, ...legacyRows].forEach(row => {
+              if (row?.id) merged.set(row.id, row);
+            });
+            safeVisionRows = Array.from(merged.values()).sort((a, b) => safeTime(b.created_at, 0) - safeTime(a.created_at, 0));
+            set({ visions: formatRows(safeVisionRows, []) });
+          }
+        } catch (legacyError) {
+          console.warn('Legacy vision ownership lookup skipped:', legacyError);
+        }
       }
 
-      if (!userEmail || (visionsError && isMissingVisionLegacyEmailSchema(visionsError))) {
-        const ownedResult = await supabase
-          .from('visions')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-        visionsData = ownedResult.data;
-        visionsError = ownedResult.error;
-      }
-
-      if (visionsError) throw visionsError;
-
-      const safeVisionRows = Array.isArray(visionsData) ? visionsData : [];
       // Extract vision IDs for task fetching. If task loading fails, still show the boards.
       const visionIds = safeVisionRows.map(v => v.id).filter(Boolean);
       let tasksData: any[] = [];
@@ -1248,40 +1288,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
       }
 
-      const formattedVisions: Vision[] = safeVisionRows.map((v: any) => {
-        const visionTasks = (tasksData || [])
-          .filter(t => t.vision_id === v.id)
-          .map(t => ({
-            id: t.id,
-            text: t.text,
-            completed: t.completed,
-            priority: t.priority || 'low',
-            subTasks: t.sub_tasks || [],
-            completedAt: t.completed_at || null,
-            xpAwarded: !!t.xp_awarded,
-            xpAwardedAt: t.xp_awarded_at || null,
-            deletedAt: t.deleted_at || null
-          }));
-          
-        return {
-          id: v.id,
-          title: v.title,
-          description: v.description,
-          progress: v.progress || 0,
-          status: v.status || 'idea',
-          tasks: visionTasks as Task[],
-          notes: v.notes || '',
-          proof: v.proof || [],
-          tags: v.tags || [],
-          category: v.category,
-          elements: v.elements || [],
-          createdAt: safeTime(v.created_at),
-          visibility: v.visibility,
-          deadline: v.deadline,
-        };
-      });
-
-      set({ visions: formattedVisions });
+      set({ visions: formatRows(safeVisionRows, tasksData) });
     } catch (error) {
       console.error('Failed to fetch visions:', error);
       get().addToast({
