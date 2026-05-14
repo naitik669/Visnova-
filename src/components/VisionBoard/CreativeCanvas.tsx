@@ -238,7 +238,8 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   const applyElements = useCallback((updater: VisionElement[] | ((current: VisionElement[]) => VisionElement[]), save = true) => {
     setElements(current => {
-      const next = normalizeBoardElements(typeof updater === 'function' ? updater(current) : updater);
+      const rawNext = typeof updater === 'function' ? updater(current) : updater;
+      const next = save ? normalizeBoardElements(rawNext) : rawNext;
       pendingElementsRef.current = next;
       if (save) scheduleSave(next);
       return next;
@@ -894,7 +895,7 @@ function CanvasToolButton({ icon, label, onClick, loading = false }: { icon: Rea
   );
 }
 
-const CanvasElement: React.FC<{
+type CanvasElementProps = {
   element: VisionElement;
   isSelected: boolean;
   isLinking: boolean;
@@ -908,7 +909,22 @@ const CanvasElement: React.FC<{
   onEditingStateChange: (active: boolean) => void;
   onStartLink: () => void;
   onHover: () => void;
-}> = ({ element, isSelected, isLinking, isLinkingFrom, getScale, onSelect, onUpdate, onDelete, onDragStateChange, onResizeStateChange, onEditingStateChange, onStartLink, onHover }) => {
+};
+
+const CanvasElement = React.memo(({
+  element,
+  isSelected,
+  isLinking,
+  isLinkingFrom,
+  getScale,
+  onSelect,
+  onUpdate,
+  onDelete,
+  onDragStateChange,
+  onResizeStateChange,
+  onEditingStateChange,
+  onHover
+}: CanvasElementProps) => {
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
 
   return (
@@ -945,7 +961,7 @@ const CanvasElement: React.FC<{
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, x: element.x, y: element.y, zIndex: isSelected ? 120 : (element.zIndex || 1) }}
       className={cn(
-        'absolute cursor-grab active:cursor-grabbing touch-none',
+        'absolute cursor-grab active:cursor-grabbing touch-none will-change-transform',
         isSelected && !isLinking && 'ring-2 ring-accent ring-offset-4 ring-offset-bg-base/50 rounded-xl',
         isLinking && !isLinkingFrom && 'hover:ring-2 hover:ring-accent/50 hover:ring-offset-2 rounded-xl transition-all'
       )}
@@ -969,7 +985,12 @@ const CanvasElement: React.FC<{
       </div>
     </motion.div>
   );
-};
+}, (prev, next) => (
+  prev.element === next.element &&
+  prev.isSelected === next.isSelected &&
+  prev.isLinking === next.isLinking &&
+  prev.isLinkingFrom === next.isLinkingFrom
+));
 
 function ElementToolbar({ onDelete }: { onDelete: () => void }) {
   return (
