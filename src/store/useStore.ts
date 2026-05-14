@@ -82,6 +82,11 @@ function isMissingPostActionRpc(error: any) {
     text.includes('schema cache');
 }
 
+function isMissingVisionLegacyEmailSchema(error: any) {
+  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return text.includes('user_email') || (text.includes('visions') && text.includes('schema cache'));
+}
+
 const VALID_REPORT_REASONS = new Set([
   'spam',
   'harassment',
@@ -1190,14 +1195,32 @@ export const useStore = create<AppState>((set, get) => ({
 
   fetchVisions: async () => {
     const userId = get().session?.user?.id;
+    const userEmail = get().session?.user?.email?.toLowerCase();
     if (!userId) return;
 
     try {
-      const { data: visionsData, error: visionsError } = await supabase
-        .from('visions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      let visionsData: any[] | null = null;
+      let visionsError: any = null;
+
+      if (userEmail) {
+        const legacyResult = await supabase
+          .from('visions')
+          .select('*')
+          .or(`user_id.eq.${userId},user_email.ilike.${userEmail}`)
+          .order('created_at', { ascending: false });
+        visionsData = legacyResult.data;
+        visionsError = legacyResult.error;
+      }
+
+      if (!userEmail || (visionsError && isMissingVisionLegacyEmailSchema(visionsError))) {
+        const ownedResult = await supabase
+          .from('visions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+        visionsData = ownedResult.data;
+        visionsError = ownedResult.error;
+      }
 
       if (visionsError) throw visionsError;
 
@@ -1446,10 +1469,9 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({ visions: [...state.visions, newVision] }));
 
     try {
-      const { data, error } = await supabase
-        .from('visions')
-        .insert({
+      const insertPayload: any = {
           user_id: userId,
+          user_email: get().session?.user?.email || null,
           title: newVision.title,
           description: newVision.description,
           status: newVision.status,
@@ -1460,9 +1482,23 @@ export const useStore = create<AppState>((set, get) => ({
           elements: newVision.elements || [],
           visibility: newVision.visibility || 'private',
           deadline: newVision.deadline || null
-        })
+        };
+      let { data, error } = await supabase
+        .from('visions')
+        .insert(insertPayload)
         .select()
         .single();
+
+      if (error && isMissingVisionLegacyEmailSchema(error)) {
+        delete insertPayload.user_email;
+        const retry = await supabase
+          .from('visions')
+          .insert(insertPayload)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) throw error;
       
@@ -1510,9 +1546,27 @@ export const useStore = create<AppState>((set, get) => ({
       if (safeUpdates.deadline !== undefined) dbUpdates.deadline = safeUpdates.deadline;
       dbUpdates.updated_at = new Date().toISOString();
       const userId = get().session?.user?.id;
-      const query = supabase.from('visions').update(dbUpdates).eq('id', id);
-      const { error } = userId ? await query.eq('user_id', userId) : await query;
+      const userEmail = get().session?.user?.email?.toLowerCase();
+      if (userId) dbUpdates.user_id = userId;
+      if (userEmail) dbUpdates.user_email = userEmail;
+      const baseQuery = supabase.from('visions').update(dbUpdates).eq('id', id).select('id');
+      let result = userId && userEmail
+        ? await baseQuery.or(`user_id.eq.${userId},user_email.ilike.${userEmail}`)
+        : userId
+          ? await baseQuery.eq('user_id', userId)
+          : await baseQuery;
+
+      if (result.error && isMissingVisionLegacyEmailSchema(result.error)) {
+        const fallbackUpdates = { ...dbUpdates };
+        delete fallbackUpdates.user_email;
+        result = userId
+          ? await supabase.from('visions').update(fallbackUpdates).eq('id', id).eq('user_id', userId).select('id')
+          : await supabase.from('visions').update(fallbackUpdates).eq('id', id).select('id');
+      }
+
+      const { data, error } = result;
       if (error) throw error;
+      if (!data?.length) throw new Error('Vision board was not found for this account.');
       return true;
     } catch (error: any) {
       console.error('Failed to update vision:', error);
@@ -4252,10 +4306,9 @@ export const useStore = create<AppState>((set, get) => ({
       if (profileError) throw profileError;
 
       if (intent?.trim()) {
-        const { data: vision, error: visionError } = await supabase
-          .from('visions')
-          .insert({
+        const visionPayload: any = {
             user_id: userId,
+            user_email: email || session.user.email || null,
             title: intent.trim(),
             description: commitment ? `Commitment level: ${commitment}` : '',
             status: 'idea',
@@ -4265,9 +4318,23 @@ export const useStore = create<AppState>((set, get) => ({
             proof: [],
             elements: [],
             visibility: 'private'
-          })
+          };
+        let { data: vision, error: visionError } = await supabase
+          .from('visions')
+          .insert(visionPayload)
           .select()
           .single();
+
+        if (visionError && isMissingVisionLegacyEmailSchema(visionError)) {
+          delete visionPayload.user_email;
+          const retry = await supabase
+            .from('visions')
+            .insert(visionPayload)
+            .select()
+            .single();
+          vision = retry.data;
+          visionError = retry.error;
+        }
 
         if (visionError) throw visionError;
 
