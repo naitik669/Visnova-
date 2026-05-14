@@ -44,6 +44,9 @@ export interface VisionElement {
     checklist?: { id: string, text: string, completed: boolean }[];
     url?: string;
     favicon?: string;
+    image?: string;
+    provider?: string;
+    previewStatus?: 'ready' | 'fallback' | 'unavailable';
     fontSize?: string;
     fontFamily?: string;
     fontWeight?: string;

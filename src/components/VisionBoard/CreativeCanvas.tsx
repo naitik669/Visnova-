@@ -3,8 +3,8 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Check,
-  Circle as CircleIcon,
   FileText,
+  ExternalLink,
   Image as ImageIcon,
   Link as LinkIcon,
   ListChecks,
@@ -16,7 +16,6 @@ import {
   Save,
   Square,
   StickyNote,
-  Target,
   Trash2,
   Type,
   Upload,
@@ -44,6 +43,7 @@ const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const STABLE_BOARD_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'connector', 'link']);
+const RESIZABLE_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'link']);
 
 const newId = (prefix = 'el') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -51,6 +51,7 @@ const defaultSize = (type: VisionElement['type']) => {
   if (type === 'image') return { width: 360, height: 240 };
   if (type === 'sticky') return { width: 260, height: 220 };
   if (type === 'checklist') return { width: 300, height: 250 };
+  if (type === 'link') return { width: 320, height: 210 };
   if (type === 'flowchartNode') return { width: 190, height: 96 };
   if (type === 'shape') return { width: 150, height: 110 };
   if (type === 'heading') return { width: 360, height: 90 };
@@ -67,6 +68,55 @@ const normalizeElementType = (type: unknown): VisionElement['type'] => {
   if (type === 'flowchartNode') return 'shape';
   if (STABLE_BOARD_TYPES.has(type as VisionElement['type'])) return type as VisionElement['type'];
   return 'text';
+};
+
+const minSize = (type: VisionElement['type']) => {
+  if (type === 'image') return { width: 120, height: 90 };
+  if (type === 'sticky') return { width: 160, height: 120 };
+  if (type === 'checklist') return { width: 180, height: 140 };
+  if (type === 'link') return { width: 220, height: 140 };
+  if (type === 'shape') return { width: 80, height: 80 };
+  return { width: 120, height: 60 };
+};
+
+const getDomain = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return 'Resource';
+  }
+};
+
+const getYoutubeId = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('youtu.be')) return parsed.pathname.replace('/', '');
+    if (parsed.hostname.includes('youtube.com')) return parsed.searchParams.get('v') || parsed.pathname.split('/').pop() || '';
+  } catch {
+    return '';
+  }
+  return '';
+};
+
+const normalizeResourceUrl = (rawUrl: string) => {
+  const trimmed = safeString(rawUrl).trim();
+  const parsed = new URL(trimmed);
+  if (parsed.protocol !== 'https:') throw new Error('Use a valid https:// link.');
+  return parsed.toString();
+};
+
+const createResourceMetadata = (url: string): VisionElement['metadata'] => {
+  const domain = getDomain(url);
+  const youtubeId = getYoutubeId(url);
+  return {
+    url,
+    title: youtubeId ? 'YouTube video' : domain,
+    description: youtubeId ? 'Open this video resource on YouTube.' : url,
+    source: domain,
+    provider: youtubeId ? 'YouTube' : domain,
+    image: youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : undefined,
+    previewStatus: youtubeId ? 'ready' : 'fallback'
+  };
 };
 
 const normalizeChecklist = (value: unknown): ChecklistItem[] => safeArray<any>(value)
@@ -120,6 +170,11 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [isUploading, setIsUploading] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [importPanelOpen, setImportPanelOpen] = useState(false);
+  const [linkPanelOpen, setLinkPanelOpen] = useState(false);
+  const [linkDraft, setLinkDraft] = useState('');
+  const [isDraggingElement, setIsDraggingElement] = useState(false);
+  const [isResizingElement, setIsResizingElement] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const transformWrapperRef = useRef<any>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -131,6 +186,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     () => elements.find(element => element.id === selectedId) || null,
     [elements, selectedId]
   );
+  const canvasInteractionLocked = isDraggingElement || isResizingElement || isEditingText;
 
   useEffect(() => {
     const normalized = normalizeBoardElements(vision.elements);
@@ -139,6 +195,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setSelectedId(null);
     setLinkingFromId(null);
     setTempConnectorEnd(null);
+    setMobileToolsOpen(false);
+    setImportPanelOpen(false);
+    setLinkPanelOpen(false);
     setSaveStatus('saved');
   }, [vision.id, vision.elements]);
 
@@ -231,7 +290,20 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setSelectedId(element.id);
     setMobileToolsOpen(false);
     setImportPanelOpen(false);
+    setLinkPanelOpen(false);
   }, [applyElements]);
+
+  const addResourceLink = useCallback(() => {
+    try {
+      const url = normalizeResourceUrl(linkDraft);
+      createElement('link', url, createResourceMetadata(url));
+      setLinkDraft('');
+      setLinkPanelOpen(false);
+      addToast({ type: 'success', title: 'Resource added', description: 'Link preview added to the board.' });
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Invalid link', description: error.message || 'Use a valid https:// URL.' });
+    }
+  }, [addToast, createElement, linkDraft]);
 
   const insertImportedElements = useCallback((items: Array<Pick<VisionElement, 'type' | 'content' | 'metadata' | 'width' | 'height'>>) => {
     if (items.length === 0) return;
@@ -384,22 +456,28 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         event.preventDefault();
         persistNow();
       }
+      if (event.key === 'Escape') {
+        setSelectedId(null);
+        setMobileToolsOpen(false);
+        setImportPanelOpen(false);
+        setLinkPanelOpen(false);
+        setLinkingFromId(null);
+        setTempConnectorEnd(null);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [deleteElement, persistNow, selectedId]);
 
-  const toolGroups = (
+  const addMenuOptions = (
     <>
       <CanvasToolButton icon={<Type size={18} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} />
-      <CanvasToolButton icon={<Target size={18} />} label="Goal" onClick={() => createElement('text', 'New goal', { fontSize: '46px', color: 'var(--text-main)', fontWeight: '900' })} />
       <CanvasToolButton icon={<StickyNote size={18} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
-      <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} />
-      <CanvasToolButton icon={<Upload size={18} />} label="Import" onClick={() => setImportPanelOpen(true)} />
-      <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => createElement('link', 'https://example.com', { url: 'https://example.com', title: 'Resource' })} />
-      <CanvasToolButton icon={<Square size={18} />} label="Rectangle" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#3b82f622', strokeColor: '#3b82f6' })} />
-      <CanvasToolButton icon={<CircleIcon size={18} />} label="Circle" onClick={() => createElement('shape', '', { shapeType: 'circle', fillColor: '#10b98122', strokeColor: '#10b981' })} />
       <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
+      <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} />
+      <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#3b82f622', strokeColor: '#3b82f6' })} />
+      <CanvasToolButton icon={<LinkIcon size={18} />} label="Resource Link" onClick={() => { setMobileToolsOpen(false); setLinkPanelOpen(true); }} />
+      <CanvasToolButton icon={<Upload size={18} />} label="Import" onClick={() => setImportPanelOpen(true)} />
     </>
   );
 
@@ -409,26 +487,26 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleCanvasDrop}
     >
-      <div className="hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 z-40 bg-card/90 backdrop-blur-xl border border-card-border rounded-2xl p-2 shadow-2xl flex-col gap-1">
-        {toolGroups}
-      </div>
-
       <button
-        onClick={() => setMobileToolsOpen(true)}
-        className="absolute left-3 top-3 z-50 h-11 px-4 rounded-2xl bg-accent text-accent-contrast shadow-2xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
-        aria-label="Add board item"
+        onClick={() => setMobileToolsOpen(open => !open)}
+        className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 w-14 h-14 rounded-full bg-accent text-accent-contrast flex items-center justify-center shadow-2xl shadow-accent/25 hover:scale-105 active:scale-95 transition-transform"
+        aria-label="Add to board"
       >
-        <Plus size={18} />
-        Add
+        <Plus size={28} className={cn('transition-transform', mobileToolsOpen && 'rotate-45')} />
       </button>
 
-      <button
-        onClick={() => setMobileToolsOpen(true)}
-        className="absolute left-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-10 z-50 w-14 h-14 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center shadow-2xl hover:scale-105 transition-transform"
-        aria-label="Add board item"
-      >
-        <Plus size={24} />
-      </button>
+      <AnimatePresence>
+        {mobileToolsOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 14, scale: 0.96 }}
+            className="hidden md:grid absolute bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 grid-cols-4 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl"
+          >
+            {addMenuOptions}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <input
         ref={imageInputRef}
@@ -454,7 +532,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         onTransform={(ref) => onActiveChange?.(ref.state.scale > 1.05)}
         onPanningStart={() => onActiveChange?.(true)}
         doubleClick={{ disabled: true }}
-        panning={{ velocityDisabled: true }}
+        disabled={canvasInteractionLocked}
+        panning={{ disabled: canvasInteractionLocked, velocityDisabled: true }}
+        wheel={{ disabled: isEditingText }}
       >
         {({ zoomIn, zoomOut, resetTransform, centerView }) => (
           <>
@@ -468,6 +548,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                   setSelectedId(null);
                   setLinkingFromId(null);
                   setTempConnectorEnd(null);
+                  setMobileToolsOpen(false);
                 }}
                 onDoubleClick={(event) => {
                   event.stopPropagation();
@@ -503,6 +584,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                     onSelect={() => linkingFromId ? finishLinking(element.id) : setSelectedId(element.id)}
                     onUpdate={(updates, save) => updateElement(element.id, updates, save)}
                     onDelete={() => deleteElement(element.id)}
+                    onDragStateChange={setIsDraggingElement}
+                    onResizeStateChange={setIsResizingElement}
+                    onEditingStateChange={setIsEditingText}
                     onStartLink={() => {
                       setLinkingFromId(element.id);
                       setTempConnectorEnd(centerOf(element));
@@ -545,7 +629,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[180]"
+            className="fixed inset-0 z-[180] md:hidden"
           >
             <button className="absolute inset-0 bg-overlay/60" onClick={() => setMobileToolsOpen(false)} aria-label="Close tools" />
             <motion.div
@@ -558,7 +642,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                 <p className="text-xs font-black uppercase tracking-widest text-text-secondary">Add to board</p>
                 <button onClick={() => setMobileToolsOpen(false)} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary"><X size={16} /></button>
               </div>
-              <div className="grid grid-cols-3 gap-2">{toolGroups}</div>
+              <div className="grid grid-cols-3 gap-2">{addMenuOptions}</div>
             </motion.div>
           </motion.div>
         )}
@@ -571,6 +655,14 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             onUploadImage={() => imageInputRef.current?.click()}
             onImportNote={importNote}
             onImportTasks={importVisionTasks}
+          />
+        )}
+        {linkPanelOpen && (
+          <ResourceLinkPanel
+            value={linkDraft}
+            onChange={setLinkDraft}
+            onClose={() => setLinkPanelOpen(false)}
+            onSubmit={addResourceLink}
           />
         )}
       </AnimatePresence>
@@ -598,6 +690,62 @@ function QuickStartAction({ label, onClick }: { label: string; onClick: () => vo
     <button onClick={onClick} className="h-11 px-4 rounded-xl bg-card border border-card-border text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/30 shadow-lg">
       {label}
     </button>
+  );
+}
+
+function ResourceLinkPanel({
+  value,
+  onChange,
+  onClose,
+  onSubmit
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[190]"
+    >
+      <button className="absolute inset-0 bg-overlay/45" onClick={onClose} aria-label="Close resource link" />
+      <motion.aside
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        className="absolute inset-x-3 bottom-3 md:left-1/2 md:right-auto md:bottom-24 md:w-[420px] md:-translate-x-1/2 rounded-[2rem] border border-card-border bg-card p-5 shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-accent">Resource Link</p>
+            <h3 className="text-base font-black text-text-main">Embed a preview card</h3>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted text-text-secondary flex items-center justify-center" aria-label="Close resource link">
+            <X size={16} />
+          </button>
+        </div>
+        <label className="block space-y-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">HTTPS URL</span>
+          <input
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') onSubmit();
+            }}
+            placeholder="https://youtube.com/watch?v=..."
+            className="w-full h-12 rounded-2xl border border-card-border bg-surface-muted px-4 text-sm font-semibold text-text-main outline-none focus:border-accent/50"
+            autoFocus
+          />
+        </label>
+        <p className="mt-3 text-xs font-semibold text-text-secondary/60">YouTube links show thumbnails automatically. Other links use a clean domain fallback.</p>
+        <button onClick={onSubmit} className="mt-5 w-full h-12 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest">
+          Add Resource
+        </button>
+      </motion.aside>
+    </motion.div>
   );
 }
 
@@ -736,15 +884,12 @@ function CanvasToolButton({ icon, label, onClick, loading = false }: { icon: Rea
     <button
       onClick={onClick}
       disabled={loading}
-      className="min-w-11 h-11 rounded-xl flex flex-col md:flex-row items-center justify-center gap-1 text-text-secondary hover:text-accent hover:bg-accent/10 transition-all group relative disabled:opacity-50"
+      className="min-w-20 h-16 rounded-2xl flex flex-col items-center justify-center gap-1 text-text-secondary hover:text-accent hover:bg-accent/10 transition-all group relative disabled:opacity-50"
       title={label}
       aria-label={label}
     >
       {loading ? <Loader2 size={18} className="animate-spin" /> : icon}
-      <span className="md:hidden text-[8px] font-black uppercase tracking-widest">{label}</span>
-      <span className="hidden md:block absolute left-full ml-3 px-2 py-1 rounded-lg bg-text-main text-bg-base text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap">
-        {label}
-      </span>
+      <span className="text-[8px] font-black uppercase tracking-widest text-center leading-tight">{label}</span>
     </button>
   );
 }
@@ -758,16 +903,25 @@ const CanvasElement: React.FC<{
   onSelect: () => void;
   onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void;
   onDelete: () => void;
+  onDragStateChange: (active: boolean) => void;
+  onResizeStateChange: (active: boolean) => void;
+  onEditingStateChange: (active: boolean) => void;
   onStartLink: () => void;
   onHover: () => void;
-}> = ({ element, isSelected, isLinking, isLinkingFrom, getScale, onSelect, onUpdate, onDelete, onStartLink, onHover }) => {
+}> = ({ element, isSelected, isLinking, isLinkingFrom, getScale, onSelect, onUpdate, onDelete, onDragStateChange, onResizeStateChange, onEditingStateChange, onStartLink, onHover }) => {
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
 
   return (
     <motion.div
       drag={!isLinking}
       dragMomentum={false}
-      onDragStart={() => {
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        if (!isLinking) onDragStateChange(true);
+      }}
+      onDragStart={(event) => {
+        event.stopPropagation();
+        onDragStateChange(true);
         setDragStart({ x: element.x, y: element.y });
         onSelect();
       }}
@@ -780,8 +934,11 @@ const CanvasElement: React.FC<{
         const origin = dragStart || { x: element.x, y: element.y };
         const scale = getScale();
         setDragStart(null);
+        onDragStateChange(false);
         onUpdate({ x: origin.x + info.offset.x / scale, y: origin.y + info.offset.y / scale }, true);
       }}
+      onPointerUp={() => onDragStateChange(false)}
+      onPointerCancel={() => onDragStateChange(false)}
       onMouseMove={() => {
         if (isLinking && !isLinkingFrom) onHover();
       }}
@@ -805,9 +962,9 @@ const CanvasElement: React.FC<{
             Pick target
           </div>
         )}
-        <ElementContent element={element} onUpdate={(updates) => onUpdate(updates, true)} />
-        {isSelected && ['image', 'shape', 'sticky', 'checklist', 'flowchartNode'].includes(element.type) && (
-          <ResizeHandles element={element} getScale={getScale} onUpdate={onUpdate} />
+        <ElementContent element={element} onUpdate={(updates) => onUpdate(updates, true)} onEditingStateChange={onEditingStateChange} />
+        {isSelected && RESIZABLE_TYPES.has(element.type) && (
+          <ResizeHandles element={element} getScale={getScale} onUpdate={onUpdate} onResizeStateChange={onResizeStateChange} />
         )}
       </div>
     </motion.div>
@@ -822,7 +979,7 @@ function ElementToolbar({ onDelete }: { onDelete: () => void }) {
   );
 }
 
-function ResizeHandles({ element, getScale, onUpdate }: { element: VisionElement; getScale: () => number; onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void }) {
+function ResizeHandles({ element, getScale, onUpdate, onResizeStateChange }: { element: VisionElement; getScale: () => number; onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void; onResizeStateChange: (active: boolean) => void }) {
   const startRef = useRef<{ x: number; y: number; width: number; height: number; left: number; top: number } | null>(null);
   const width = element.width || defaultSize(element.type).width;
   const height = element.height || defaultSize(element.type).height;
@@ -830,6 +987,8 @@ function ResizeHandles({ element, getScale, onUpdate }: { element: VisionElement
 
   const onPointerDown = (corner: ResizeCorner, event: React.PointerEvent) => {
     event.stopPropagation();
+    event.preventDefault();
+    onResizeStateChange(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     startRef.current = { x: event.clientX, y: event.clientY, width, height, left: element.x, top: element.y };
 
@@ -840,8 +999,9 @@ function ResizeHandles({ element, getScale, onUpdate }: { element: VisionElement
       const dy = (moveEvent.clientY - startRef.current.y) / scale;
       const leftEdge = corner.includes('w');
       const topEdge = corner.includes('n');
-      const nextWidth = Math.max(64, startRef.current.width + (leftEdge ? -dx : dx));
-      const nextHeight = Math.max(48, startRef.current.height + (topEdge ? -dy : dy));
+      const minimum = minSize(element.type);
+      const nextWidth = Math.max(minimum.width, startRef.current.width + (leftEdge ? -dx : dx));
+      const nextHeight = Math.max(minimum.height, startRef.current.height + (topEdge ? -dy : dy));
       onUpdate({
         width: nextWidth,
         height: nextHeight,
@@ -855,6 +1015,7 @@ function ResizeHandles({ element, getScale, onUpdate }: { element: VisionElement
         startRef.current = null;
         onUpdate({}, true);
       }
+      onResizeStateChange(false);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
@@ -911,7 +1072,7 @@ function TempConnectorLine({ fromId, toPos, elements }: { fromId: string; toPos:
   return <path d={`M ${from.x} ${from.y} L ${toPos.x} ${toPos.y}`} fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="text-accent animate-pulse" />;
 }
 
-const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Partial<VisionElement>) => void }> = ({ element, onUpdate }) => {
+const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Partial<VisionElement>) => void; onEditingStateChange: (active: boolean) => void }> = ({ element, onUpdate, onEditingStateChange }) => {
   const width = element.width || defaultSize(element.type).width;
   const height = element.height || defaultSize(element.type).height;
 
@@ -922,7 +1083,11 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         suppressContentEditableWarning
         onPointerDown={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
-        onBlur={(event) => onUpdate({ content: event.currentTarget.textContent || '' })}
+        onFocus={() => onEditingStateChange(true)}
+        onBlur={(event) => {
+          onEditingStateChange(false);
+          onUpdate({ content: event.currentTarget.textContent || '' });
+        }}
         className={cn('outline-none whitespace-pre-wrap break-words', element.type === 'heading' ? 'font-black tracking-tight' : 'font-bold')}
         style={{
           width,
@@ -944,6 +1109,8 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
       <textarea
         value={safeString(element.content)}
         onPointerDown={(event) => event.stopPropagation()}
+        onFocus={() => onEditingStateChange(true)}
+        onBlur={() => onEditingStateChange(false)}
         onChange={(event) => onUpdate({ content: event.target.value })}
         className="resize-none border-none outline-none shadow-2xl p-5 text-base font-bold text-black/80 leading-tight"
         style={{ width, height, backgroundColor: element.metadata?.color || '#fef08a' }}
@@ -982,6 +1149,8 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         <textarea
           value={safeString(element.content)}
           onPointerDown={(event) => event.stopPropagation()}
+          onFocus={() => onEditingStateChange(true)}
+          onBlur={() => onEditingStateChange(false)}
           onChange={(event) => onUpdate({ content: event.target.value })}
           className="w-full bg-transparent resize-none border-none outline-none text-center font-bold text-text-main px-4"
           style={{ transform: shapeType === 'diamond' ? 'rotate(-45deg)' : undefined }}
@@ -998,6 +1167,8 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         <input
           value={safeString(element.content, 'Checklist')}
           onPointerDown={(event) => event.stopPropagation()}
+          onFocus={() => onEditingStateChange(true)}
+          onBlur={() => onEditingStateChange(false)}
           onChange={(event) => onUpdate({ content: event.target.value })}
           className="w-full bg-transparent border-none outline-none font-black text-text-main"
           data-no-pan
@@ -1013,11 +1184,39 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
 
   if (element.type === 'link') {
     const url = safeString(element.metadata?.url || element.content, 'https://example.com');
+    const domain = safeString(element.metadata?.source || getDomain(url), 'Resource');
+    const title = safeString(element.metadata?.title, domain);
+    const description = safeString(element.metadata?.description, url);
+    const image = safeString(element.metadata?.image);
+    const provider = safeString(element.metadata?.provider, domain);
     return (
-      <div className="bg-card-dark border border-card-border rounded-[2rem] overflow-hidden shadow-2xl p-5 space-y-3" style={{ width }}>
-        <p className="text-[10px] font-black uppercase tracking-widest text-accent truncate">{url}</p>
-        <input value={safeString(element.metadata?.title, 'Resource')} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ metadata: { title: event.target.value } })} className="w-full bg-transparent outline-none font-bold text-text-main" data-no-pan />
-        <a href={url} target="_blank" rel="noreferrer" onPointerDown={(event) => event.stopPropagation()} className="inline-flex h-10 px-4 rounded-xl bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest items-center">Open</a>
+      <div className="bg-card border border-card-border rounded-[2rem] overflow-hidden shadow-2xl" style={{ width, minHeight: height }}>
+        {image ? (
+          <img src={image} alt="" className="w-full h-28 object-cover bg-surface-muted" draggable={false} />
+        ) : (
+          <div className="w-full h-20 bg-accent/10 text-accent flex items-center justify-center">
+            <LinkIcon size={24} />
+          </div>
+        )}
+        <div className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 text-[9px] font-black uppercase tracking-widest text-accent truncate">{provider}</span>
+            <a href={url} target="_blank" rel="noreferrer" onPointerDown={(event) => event.stopPropagation()} className="shrink-0 w-8 h-8 rounded-xl bg-accent/10 text-accent flex items-center justify-center" aria-label="Open resource">
+              <ExternalLink size={14} />
+            </a>
+          </div>
+          <input
+            value={title}
+            onPointerDown={(event) => event.stopPropagation()}
+            onFocus={() => onEditingStateChange(true)}
+            onBlur={() => onEditingStateChange(false)}
+            onChange={(event) => onUpdate({ metadata: { title: event.target.value } })}
+            className="w-full bg-transparent outline-none font-black text-text-main text-sm"
+            data-no-pan
+          />
+          <p className="text-xs font-semibold text-text-secondary line-clamp-2">{description}</p>
+          <p className="text-[9px] font-bold text-text-secondary/45 truncate">{domain}</p>
+        </div>
       </div>
     );
   }
