@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
-import { Bell, Heart, MessageCircle, UserPlus, Reply, Clock, Check, Trash2, Zap } from 'lucide-react';
+import { Bell, Heart, MessageCircle, UserPlus, Reply, Clock, Check, Zap } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { safeFormat } from '../../lib/safeData';
 
@@ -26,6 +26,13 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
       case 'reply': return <Reply size={14} className="text-warning" />;
       default: return <Bell size={14} className="text-text-secondary" />;
     }
+  };
+
+  const formatNotificationDate = (value: string | null | undefined) => {
+    const today = safeFormat(value, 'MMM d, yyyy');
+    const time = safeFormat(value, 'h:mm a');
+    if (today === 'Unknown date' || time === 'Unknown date') return 'Unknown date';
+    return `${today} at ${time}`;
   };
 
   return (
@@ -90,7 +97,7 @@ export default function NotificationCenter({ isOpen, onClose }: { isOpen: boolea
                         <div className="flex items-center gap-2 mt-1.5 opacity-40">
                            <Clock size={10} />
                            <span className="text-[9px] font-bold uppercase tracking-widest">
-                              {safeFormat(n.created_at, 'h:mm a')}
+                              {formatNotificationDate(n.created_at)}
                            </span>
                         </div>
                      </div>
