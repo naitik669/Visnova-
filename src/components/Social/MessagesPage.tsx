@@ -85,6 +85,8 @@ const avatarFor = (profile?: ProfileLite) => profile?.avatar_url || `https://api
 const cleanProfileSearch = (query: string) => safeString(query).trim().replace(/^@/, '');
 const dateKeyFor = (value: string) => safeDate(value).toDateString();
 const formatMessageTime = (value: string) => safeFormat(value, 'h:mm a');
+const TYPING_IDLE_MS = 2400;
+const TYPING_THROTTLE_MS = 1200;
 const formatMessageDate = (value: string) => {
   const date = safeDate(value);
   const today = new Date();
@@ -138,7 +140,12 @@ export default function MessagesPage() {
   const [profileReportReason, setProfileReportReason] = useState('spam');
   const [profileReportDetails, setProfileReportDetails] = useState('');
   const [isProfileReporting, setIsProfileReporting] = useState(false);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const typingChannelRef = useRef<any>(null);
+  const typingStopTimerRef = useRef<number | null>(null);
+  const remoteTypingTimerRef = useRef<number | null>(null);
+  const lastTypingSentRef = useRef(0);
 
   const selectedId = selected?.id;
   const requestedUserId = searchParams.get('user');
@@ -148,6 +155,47 @@ export default function MessagesPage() {
     requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
     });
+  };
+
+  const sendTypingSignal = (typing: boolean) => {
+    if (!selectedId || !currentUserId || !typingChannelRef.current) return;
+    typingChannelRef.current.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: {
+        conversationId: selectedId,
+        userId: currentUserId,
+        typing
+      }
+    });
+  };
+
+  const stopTyping = () => {
+    if (typingStopTimerRef.current) {
+      window.clearTimeout(typingStopTimerRef.current);
+      typingStopTimerRef.current = null;
+    }
+    lastTypingSentRef.current = 0;
+    sendTypingSignal(false);
+  };
+
+  const handleMessageTextChange = (value: string) => {
+    setMessageText(value);
+    if (!value.trim()) {
+      stopTyping();
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTypingSentRef.current > TYPING_THROTTLE_MS) {
+      lastTypingSentRef.current = now;
+      sendTypingSignal(true);
+    }
+
+    if (typingStopTimerRef.current) window.clearTimeout(typingStopTimerRef.current);
+    typingStopTimerRef.current = window.setTimeout(() => {
+      stopTyping();
+    }, TYPING_IDLE_MS);
   };
 
   const markConversationRead = async (conversationId: string) => {
@@ -295,12 +343,29 @@ export default function MessagesPage() {
     }
 
     loadMessages(selectedId);
-    const channelId = `messages:${selectedId}-${Math.random().toString(36).substring(7)}`;
+    setIsOtherTyping(false);
+    const channelId = `messages:${selectedId}`;
     const channel = supabase
-      .channel(channelId)
+      .channel(channelId, {
+        config: {
+          broadcast: { self: false }
+        }
+      })
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload?.conversationId !== selectedId || payload?.userId === currentUserId) return;
+        if (remoteTypingTimerRef.current) window.clearTimeout(remoteTypingTimerRef.current);
+        setIsOtherTyping(!!payload?.typing);
+        if (payload?.typing) {
+          remoteTypingTimerRef.current = window.setTimeout(() => {
+            setIsOtherTyping(false);
+            remoteTypingTimerRef.current = null;
+          }, TYPING_IDLE_MS + 900);
+        }
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedId}` }, (payload) => {
         const next = payload.new as ChatMessage;
         setMessages((current) => current.some((m) => m.id === next.id) ? current : [...current, next]);
+        if (next.user_id !== currentUserId) setIsOtherTyping(false);
         if (next.user_id !== currentUserId) markConversationRead(selectedId);
         loadConversations();
       })
@@ -310,8 +375,16 @@ export default function MessagesPage() {
         loadConversations();
       })
       .subscribe();
+    typingChannelRef.current = channel;
 
     return () => {
+      stopTyping();
+      if (remoteTypingTimerRef.current) {
+        window.clearTimeout(remoteTypingTimerRef.current);
+        remoteTypingTimerRef.current = null;
+      }
+      setIsOtherTyping(false);
+      typingChannelRef.current = null;
       supabase.removeChannel(channel);
     };
   }, [selectedId, currentUserId]);
@@ -319,7 +392,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!selectedId || isLoadingMessages) return;
     scrollMessagesToBottom('auto');
-  }, [selectedId, isLoadingMessages, messages.length]);
+  }, [selectedId, isLoadingMessages, messages.length, isOtherTyping]);
 
   const startConversation = async (profile: ProfileLite) => {
     try {
@@ -365,6 +438,7 @@ export default function MessagesPage() {
     const tempId = override?.tempId || `temp-${Date.now()}`;
     setIsSending(true);
     if (!override) setMessageText('');
+    stopTyping();
     try {
       const { data, error } = await supabase
         .from('messages')
@@ -673,6 +747,18 @@ export default function MessagesPage() {
                     </div>
                   );
                 })}
+                {isOtherTyping && (
+                  <div className="flex justify-start">
+                    <div className="inline-flex items-center gap-2 rounded-2xl bg-card border border-card-border px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary shadow-sm">
+                      <span className="flex items-center gap-1" aria-hidden="true">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse [animation-delay:120ms]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse [animation-delay:240ms]" />
+                      </span>
+                      {selectedTitle} is typing
+                    </div>
+                  </div>
+                )}
                 <div ref={messagesEndRef} className="h-1" aria-hidden="true" />
               </div>
 
@@ -692,7 +778,8 @@ export default function MessagesPage() {
                 <div className="flex items-end gap-3">
                   <textarea
                     value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
+                    onChange={(e) => handleMessageTextChange(e.target.value)}
+                    onBlur={stopTyping}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
