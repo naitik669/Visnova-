@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AtSign,
   Copy,
@@ -138,10 +138,17 @@ export default function MessagesPage() {
   const [profileReportReason, setProfileReportReason] = useState('spam');
   const [profileReportDetails, setProfileReportDetails] = useState('');
   const [isProfileReporting, setIsProfileReporting] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const selectedId = selected?.id;
   const requestedUserId = searchParams.get('user');
   const messageById = useMemo(() => new Map(messages.map(message => [message.id, message])), [messages]);
+
+  const scrollMessagesToBottom = (behavior: ScrollBehavior = 'auto') => {
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+    });
+  };
 
   const markConversationRead = async (conversationId: string) => {
     if (!currentUserId) return;
@@ -308,6 +315,11 @@ export default function MessagesPage() {
       supabase.removeChannel(channel);
     };
   }, [selectedId, currentUserId]);
+
+  useEffect(() => {
+    if (!selectedId || isLoadingMessages) return;
+    scrollMessagesToBottom('auto');
+  }, [selectedId, isLoadingMessages, messages.length]);
 
   const startConversation = async (profile: ProfileLite) => {
     try {
@@ -489,10 +501,10 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-full min-h-[72vh] animate-in fade-in duration-700">
-      <div className="h-full grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
-        <aside className="bg-card border border-card-border rounded-[2rem] overflow-hidden flex flex-col min-h-[620px]">
-          <div className="p-5 border-b border-card-border">
+    <div className="w-full max-w-7xl mx-auto h-[calc(100dvh-8.5rem)] min-h-[540px] max-h-[calc(100dvh-6.5rem)] overflow-hidden animate-in fade-in duration-700">
+      <div className="h-full min-h-0 grid grid-cols-1 grid-rows-[minmax(190px,32%)_minmax(0,1fr)] lg:grid-cols-[360px_1fr] lg:grid-rows-1 gap-4 lg:gap-6">
+        <aside className="bg-card border border-card-border rounded-[2rem] overflow-hidden flex flex-col h-full min-h-0">
+          <div className="shrink-0 p-5 border-b border-card-border">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
                 <MessageCircle size={20} />
@@ -529,7 +541,7 @@ export default function MessagesPage() {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 space-y-2">
             {isLoadingConversations ? (
               <div className="py-16 flex justify-center"><Loader2 className="animate-spin text-accent" size={24} /></div>
             ) : conversations.length === 0 ? (
@@ -560,10 +572,10 @@ export default function MessagesPage() {
           </div>
         </aside>
 
-        <section className="bg-card border border-card-border rounded-[2rem] overflow-hidden flex flex-col min-h-[620px]">
+        <section className="bg-card border border-card-border rounded-[2rem] overflow-hidden flex flex-col h-full min-h-0">
           {selected ? (
             <>
-              <header className="h-20 border-b border-card-border px-6 flex items-center gap-4">
+              <header className="h-20 shrink-0 border-b border-card-border px-6 flex items-center gap-4">
                 <img src={avatarFor(selected.profile)} className="w-11 h-11 rounded-xl border border-card-border" alt={selectedTitle} />
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-black uppercase tracking-widest text-text-main">{selectedTitle}</h3>
@@ -579,7 +591,7 @@ export default function MessagesPage() {
                 </button>
               </header>
 
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-app-container/40">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 bg-app-container/40">
                 {isLoadingMessages ? (
                   <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-accent" size={24} /></div>
                 ) : messages.length === 0 ? (
@@ -661,9 +673,10 @@ export default function MessagesPage() {
                     </div>
                   );
                 })}
+                <div ref={messagesEndRef} className="h-1" aria-hidden="true" />
               </div>
 
-              <footer className="p-4 sm:p-5 border-t border-card-border bg-card">
+              <footer className="shrink-0 p-4 sm:p-5 border-t border-card-border bg-card">
                 {replyTo && (
                   <div className="mb-3 flex items-center gap-3 rounded-2xl bg-surface-muted border border-card-border px-4 py-3">
                     <Reply size={14} className="text-accent shrink-0" />
@@ -687,7 +700,7 @@ export default function MessagesPage() {
                       }
                     }}
                     placeholder={`Message @${selected.profile.username || 'user'}...`}
-                    className="flex-1 min-h-12 max-h-32 rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-medium outline-none resize-none focus:border-accent/50"
+                    className="flex-1 h-12 max-h-24 overflow-y-auto rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-medium outline-none resize-none focus:border-accent/50"
                   />
                   <button
                     onClick={() => sendMessage()}
