@@ -40,8 +40,8 @@ import {
 import { cn } from '../../lib/utils';
 import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
-import { Note, Folder as FolderType } from '../../types';
-import { getAudioNoteUrl, uploadAudioNote } from '../../lib/supabase';
+import { Note, Folder as FolderType, JournalCanvasElement, Vision } from '../../types';
+import { getAudioNoteUrl, uploadAudioNote, uploadJournalImage } from '../../lib/supabase';
 import { safeDate, safeFormat } from '../../lib/dateUtils';
 import { safeArray, safeString } from '../../lib/safeData';
 import { SelectMenu } from '../ui/SelectMenu';
@@ -75,7 +75,7 @@ function getTranscriptLabel(note: Note) {
 }
 
 export default function NotesSystem() {
-  const { notes, folders, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, moveNoteToFolder, user, addToast } = useStore();
+  const { notes, folders, visions, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, moveNoteToFolder, user, session, addToast } = useStore();
   const location = useLocation();
   const initialTabParam = new URLSearchParams(location.search).get('tab');
   const initialTab = initialTabParam === 'journal' || location.pathname.includes('journal') ? 'journal' : initialTabParam === 'audio' ? 'audio' : 'vault';
@@ -643,11 +643,15 @@ export default function NotesSystem() {
                         fullView={isJournalFullView}
                         toggleFullView={() => setIsJournalFullView(!isJournalFullView)}
                         recentLibraryNotes={safeArray<Note>(notes).filter(n => libraryNoteTypes.includes(n.note_type) && !n.isDeleted).slice(0, 5)}
+                        journalEntries={safeArray<Note>(notes).filter(n => n.note_type === 'journal' && !n.isDeleted)}
+                        visions={safeArray<Vision>(visions)}
+                        session={session}
+                        addToast={addToast}
                         onSave={(content: string, updates: any) => {
                           if (journalEntry) {
-                            updateNote(journalEntry.id, { content, ...updates });
+                            return updateNote(journalEntry.id, { content, ...updates });
                           } else {
-                            addNote({
+                            return addNote({
                               title: updates?.title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`,
                               content,
                               note_type: 'journal',
@@ -777,7 +781,48 @@ function getDailyPrompt(date: Date) {
   return JOURNAL_PROMPTS[dayOfYear % JOURNAL_PROMPTS.length];
 }
 
-function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, fullView, toggleFullView, recentLibraryNotes }: any) {
+const JOURNAL_PROMPT_OPTIONS = [
+  'What did I learn today?',
+  'What moved my Vision forward?',
+  'What slowed me down?',
+  'What am I grateful for?',
+  'What will I improve tomorrow?',
+  'What small action can I take next?'
+];
+
+const JOURNAL_STICKY_COLORS = ['#fef3c7', '#dcfce7', '#fce7f3', '#dbeafe', '#f5f5f4'];
+
+const newJournalElementId = () => `journal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+const defaultJournalElementSize = (type: JournalCanvasElement['type']) => {
+  if (type === 'image') return { width: 240, height: 180 };
+  if (type === 'checklist') return { width: 260, height: 190 };
+  if (type === 'promptCard') return { width: 280, height: 180 };
+  if (type === 'visionLink') return { width: 260, height: 150 };
+  if (type === 'text') return { width: 220, height: 100 };
+  return { width: 190, height: 150 };
+};
+
+const normalizeJournalCanvas = (value: unknown): JournalCanvasElement[] => {
+  const allowed = new Set(['image', 'sticky', 'text', 'promptCard', 'checklist', 'visionLink']);
+  return safeArray<any>(value).filter(element => allowed.has(element?.type)).slice(0, 80).map((element, index) => {
+    const size = defaultJournalElementSize(element.type);
+    return {
+      id: safeString(element.id, newJournalElementId()),
+      type: element.type,
+      x: Number.isFinite(Number(element.x)) ? Number(element.x) : 80 + index * 18,
+      y: Number.isFinite(Number(element.y)) ? Number(element.y) : 80 + index * 18,
+      width: Math.max(80, Number(element.width) || size.width),
+      height: Math.max(60, Number(element.height) || size.height),
+      rotation: Number.isFinite(Number(element.rotation)) ? Number(element.rotation) : 0,
+      content: safeString(element.content, element.type === 'sticky' ? 'New note' : ''),
+      zIndex: Number.isFinite(Number(element.zIndex)) ? Number(element.zIndex) : index + 1,
+      metadata: typeof element.metadata === 'object' && element.metadata ? element.metadata : {}
+    };
+  });
+};
+
+function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, fullView, toggleFullView, recentLibraryNotes, journalEntries, visions, session, addToast }: any) {
   const [pages, setPages] = useState<string[]>(safeString(entry?.content).split(JOURNAL_PAGE_BREAK));
   const [currentPage, setCurrentPage] = useState(0);
   const [title, setTitle] = useState(entry?.title || '');
@@ -786,10 +831,25 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(entry?.updatedAt || null);
   const [isEditingLockedEntry, setIsEditingLockedEntry] = useState(false);
+  const [journalMode, setJournalMode] = useState<'entry' | 'canvas' | 'history'>('entry');
+  const [canvasElements, setCanvasElements] = useState<JournalCanvasElement[]>(normalizeJournalCanvas(entry?.journal_canvas));
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
+  const [isResizingElement, setIsResizingElement] = useState(false);
   const stickerInputRef = useRef<HTMLInputElement>(null);
+  const journalImageInputRef = useRef<HTMLInputElement>(null);
+  const dragStateRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const resizeStateRef = useRef<{ id: string; startX: number; startY: number; width: number; height: number } | null>(null);
+  const canvasElementsRef = useRef<JournalCanvasElement[]>(canvasElements);
   const content = safeArray<string>(pages)[currentPage] || '';
   const isPastEntry = isBefore(startOfDay(selectedDate), startOfDay(new Date()));
   const isLocked = isPastEntry && !isEditingLockedEntry;
+  const selectedElement = canvasElements.find(element => element.id === selectedElementId) || null;
+
+  useEffect(() => {
+    canvasElementsRef.current = canvasElements;
+  }, [canvasElements]);
 
   useEffect(() => {
     const nextPages = safeString(entry?.content).split(JOURNAL_PAGE_BREAK);
@@ -798,6 +858,8 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
     setTitle(entry?.title || '');
     setMood(entry?.mood || '');
     setLocation(entry?.location || '');
+    setCanvasElements(normalizeJournalCanvas(entry?.journal_canvas));
+    setSelectedElementId(null);
     setLastSaved(entry?.updatedAt || null);
     setIsEditingLockedEntry(false);
   }, [entry, selectedDate]);
@@ -811,6 +873,145 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const persistCanvas = async (nextElements: JournalCanvasElement[], extraUpdates: Record<string, any> = {}) => {
+    if (isLocked) return;
+    setCanvasElements(nextElements);
+    setIsSaving(true);
+    try {
+      await onSave(safeArray<string>(pages).join(JOURNAL_PAGE_BREAK), {
+        title: title || `Journal - ${format(selectedDate, 'yyyy-MM-dd')}`,
+        mood,
+        location,
+        journal_canvas: nextElements,
+        ...extraUpdates
+      });
+      setLastSaved(Date.now());
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const updateElement = (id: string, updates: Partial<JournalCanvasElement>) => {
+    const nextElements = canvasElements.map(element => {
+      if (element.id !== id) return element;
+      return {
+        ...element,
+        ...updates,
+        metadata: updates.metadata ? { ...element.metadata, ...updates.metadata } : element.metadata
+      };
+    });
+    persistCanvas(nextElements);
+  };
+
+  const addCanvasElement = (type: JournalCanvasElement['type'], metadata: JournalCanvasElement['metadata'] = {}) => {
+    if (isLocked) return;
+    const size = defaultJournalElementSize(type);
+    const element: JournalCanvasElement = {
+      id: newJournalElementId(),
+      type,
+      x: 90 + canvasElements.length * 22,
+      y: 90 + canvasElements.length * 18,
+      width: size.width,
+      height: size.height,
+      rotation: type === 'sticky' ? -2 + (canvasElements.length % 4) : 0,
+      zIndex: canvasElements.length + 1,
+      content: type === 'sticky' ? 'Write a thought...' : type === 'text' ? 'Text block' : type === 'promptCard' ? JOURNAL_PROMPT_OPTIONS[canvasElements.length % JOURNAL_PROMPT_OPTIONS.length] : type === 'checklist' ? 'Action points' : '',
+      metadata
+    };
+    persistCanvas([...canvasElements, element]);
+    setSelectedElementId(element.id);
+    setIsAddMenuOpen(false);
+  };
+
+  const addVisionElement = (visionId: string) => {
+    const vision = safeArray<Vision>(visions).find(v => v.id === visionId);
+    if (!vision) return;
+    addCanvasElement('visionLink', { visionId: vision.id, visionTitle: vision.title, progress: vision.progress });
+  };
+
+  const handleJournalImageUpload = async (file: File) => {
+    if (isLocked) return;
+    try {
+      const noteKey = entry?.id || `journal-${format(selectedDate, 'yyyy-MM-dd')}`;
+      const { signedUrl, filePath } = await uploadJournalImage(file, noteKey, session?.user?.id);
+      const imageElement: JournalCanvasElement = {
+        id: newJournalElementId(),
+        type: 'image',
+        x: 80,
+        y: 90,
+        width: 260,
+        height: 210,
+        rotation: -1,
+        content: '',
+        zIndex: canvasElements.length + 1,
+        metadata: { imageUrl: signedUrl, storagePath: filePath, caption: file.name }
+      };
+      await persistCanvas([...canvasElements, imageElement], { image_url: entry?.image_url || signedUrl });
+      setSelectedElementId(imageElement.id);
+      setIsAddMenuOpen(false);
+    } catch (error: any) {
+      console.error('Journal image upload failed:', error);
+      addToast?.({ type: 'error', title: 'Image failed', description: error.message || 'Could not add this journal image.' });
+    }
+  };
+
+  const deleteSelectedElement = () => {
+    if (!selectedElementId || isLocked) return;
+    persistCanvas(canvasElements.filter(element => element.id !== selectedElementId));
+    setSelectedElementId(null);
+  };
+
+  const startElementDrag = (event: React.PointerEvent, element: JournalCanvasElement) => {
+    if (isLocked) return;
+    event.stopPropagation();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    dragStateRef.current = { id: element.id, startX: event.clientX, startY: event.clientY, originX: element.x, originY: element.y };
+    setDraggingElementId(element.id);
+    setSelectedElementId(element.id);
+  };
+
+  const moveElementDrag = (event: React.PointerEvent) => {
+    const state = dragStateRef.current;
+    if (!state) return;
+    setCanvasElements(prev => prev.map(element => element.id === state.id ? {
+      ...element,
+      x: Math.max(0, state.originX + event.clientX - state.startX),
+      y: Math.max(0, state.originY + event.clientY - state.startY)
+    } : element));
+  };
+
+  const endElementDrag = () => {
+    if (!dragStateRef.current) return;
+    dragStateRef.current = null;
+    setDraggingElementId(null);
+    persistCanvas(canvasElementsRef.current);
+  };
+
+  const startElementResize = (event: React.PointerEvent, element: JournalCanvasElement) => {
+    if (isLocked) return;
+    event.stopPropagation();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    resizeStateRef.current = { id: element.id, startX: event.clientX, startY: event.clientY, width: element.width, height: element.height };
+    setIsResizingElement(true);
+  };
+
+  const moveElementResize = (event: React.PointerEvent) => {
+    const state = resizeStateRef.current;
+    if (!state) return;
+    setCanvasElements(prev => prev.map(element => element.id === state.id ? {
+      ...element,
+      width: Math.max(100, state.width + event.clientX - state.startX),
+      height: Math.max(70, state.height + event.clientY - state.startY)
+    } : element));
+  };
+
+  const endElementResize = () => {
+    if (!resizeStateRef.current) return;
+    resizeStateRef.current = null;
+    setIsResizingElement(false);
+    persistCanvas(canvasElementsRef.current);
   };
 
   const handleDropNote = (noteContent: string) => {
@@ -919,10 +1120,108 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
         </div>
       )}
 
+      <div className={cn("mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-between gap-3 px-2 pb-3", fullView && "px-6 pt-5")}>
+        <div className="flex rounded-2xl border border-card-border bg-surface-muted p-1">
+          {([
+            { id: 'entry', label: 'Entry' },
+            { id: 'canvas', label: 'Canvas' },
+            { id: 'history', label: 'History' }
+          ] as const).map(mode => (
+            <button
+              key={mode.id}
+              onClick={() => setJournalMode(mode.id)}
+              className={cn(
+                "h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                journalMode === mode.id ? "bg-card text-accent shadow-sm" : "text-text-secondary/45 hover:text-text-main"
+              )}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-secondary/40">
+            {isSaving ? 'Saving...' : lastSaved ? `Saved ${safeFormat(lastSaved, 'h:mm a')}` : 'Unsaved'}
+          </span>
+          {journalMode === 'canvas' && (
+            <div className="relative">
+              <button
+                onClick={() => setIsAddMenuOpen(open => !open)}
+                disabled={isLocked}
+                className="h-11 w-11 rounded-full bg-accent text-accent-contrast flex items-center justify-center shadow-lg shadow-accent/20 disabled:opacity-50"
+                aria-label="Add to journal canvas"
+              >
+                <Plus size={20} />
+              </button>
+              {isAddMenuOpen && (
+                <div className="absolute right-0 top-13 z-50 w-56 rounded-2xl border border-card-border bg-card p-2 shadow-2xl">
+                  <JournalAddButton label="Image" onClick={() => journalImageInputRef.current?.click()} />
+                  <JournalAddButton label="Sticky Note" onClick={() => addCanvasElement('sticky', { color: JOURNAL_STICKY_COLORS[canvasElements.length % JOURNAL_STICKY_COLORS.length] })} />
+                  <JournalAddButton label="Text" onClick={() => addCanvasElement('text')} />
+                  <JournalAddButton label="Prompt Card" onClick={() => addCanvasElement('promptCard', { prompt: JOURNAL_PROMPT_OPTIONS[canvasElements.length % JOURNAL_PROMPT_OPTIONS.length], response: '' })} />
+                  <JournalAddButton label="Checklist" onClick={() => addCanvasElement('checklist', { items: [{ id: newJournalElementId(), text: 'First action', completed: false }] })} />
+                  {safeArray<Vision>(visions).length > 0 && (
+                    <select
+                      onChange={(event) => {
+                        if (event.target.value) addVisionElement(event.target.value);
+                        event.target.value = '';
+                      }}
+                      className="mt-1 h-10 w-full rounded-xl border border-card-border bg-app-container px-3 text-[10px] font-bold text-text-secondary outline-none"
+                    >
+                      <option value="">Link Vision...</option>
+                      {safeArray<Vision>(visions).map(vision => <option key={vision.id} value={vision.id}>{vision.title}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          <input
+            ref={journalImageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) handleJournalImageUpload(file);
+              event.target.value = '';
+            }}
+          />
+        </div>
+      </div>
+
       <div className={cn(
         "flex transition-all duration-1000",
         fullView ? "h-[calc(100vh-4rem)] p-3 sm:p-6 lg:p-10 gap-4 lg:gap-10" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[720px] justify-center"
       )}>
+        {journalMode === 'history' ? (
+          <JournalHistoryView entries={safeArray<Note>(journalEntries)} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        ) : journalMode === 'canvas' ? (
+          <JournalCanvasWorkspace
+            selectedDate={selectedDate}
+            prompt={prompt}
+            mood={mood}
+            setMood={setMood}
+            location={location}
+            setLocation={setLocation}
+            elements={canvasElements}
+            selectedElementId={selectedElementId}
+            selectedElement={selectedElement}
+            setSelectedElementId={setSelectedElementId}
+            onUpdateElement={updateElement}
+            onDeleteSelected={deleteSelectedElement}
+            onStartDrag={startElementDrag}
+            onMoveDrag={moveElementDrag}
+            onEndDrag={endElementDrag}
+            onStartResize={startElementResize}
+            onMoveResize={moveElementResize}
+            onEndResize={endElementResize}
+            isLocked={isLocked}
+            draggingElementId={draggingElementId}
+            isResizingElement={isResizingElement}
+          />
+        ) : (
+          <>
         {/* Sticky Notes Sidebar in Full View */}
         {fullView && (
           <div className="w-64 shrink-0 flex flex-col gap-6 animate-in slide-in-from-left duration-700">
@@ -1191,7 +1490,302 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             </div>
           </motion.div>
         </motion.div>
+          </>
+        )}
       </div>
+    </div>
+  );
+}
+
+function JournalAddButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex h-10 w-full items-center justify-between rounded-xl px-3 text-left text-[10px] font-black uppercase tracking-widest text-text-secondary transition-all hover:bg-accent/5 hover:text-accent"
+    >
+      {label}
+      <Plus size={13} />
+    </button>
+  );
+}
+
+function JournalHistoryView({ entries, selectedDate, onSelectDate }: { entries: Note[]; selectedDate: Date; onSelectDate: (date: Date) => void }) {
+  const sortedEntries = [...safeArray<Note>(entries)].sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
+
+  return (
+    <div className="mx-auto w-full max-w-5xl rounded-[2rem] border border-card-border bg-card p-5 sm:p-8 shadow-xl">
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-accent">Journal History</p>
+          <h3 className="text-2xl font-black tracking-tight text-text-main">Past pages</h3>
+        </div>
+        <p className="text-xs font-bold uppercase tracking-widest text-text-secondary/45">{safeArray<Note>(entries).length} entries</p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {sortedEntries.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-card-border p-8 text-center text-xs font-black uppercase tracking-widest text-text-secondary/40">
+            No journal entries yet.
+          </div>
+        ) : sortedEntries.map(entry => {
+          const entryDate = safeDate(entry.journal_date || entry.createdAt);
+          const hasCanvas = safeArray(entry.journal_canvas).length > 0;
+          return (
+            <button
+              key={entry.id}
+              onClick={() => onSelectDate(entryDate)}
+              className={cn(
+                "rounded-2xl border p-4 text-left transition-all hover:border-accent/40 hover:-translate-y-0.5",
+                isSameDay(entryDate, selectedDate) ? "border-accent/40 bg-accent/5" : "border-card-border bg-app-container"
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-accent">{safeFormat(entryDate, 'MMM dd, yyyy')}</p>
+                  <h4 className="mt-1 truncate text-sm font-black text-text-main">{safeString(entry.title, 'Journal Entry')}</h4>
+                </div>
+                <span className="rounded-full bg-card px-2 py-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{entry.mood || 'Note'}</span>
+              </div>
+              <p className="mt-3 line-clamp-2 text-xs font-semibold leading-relaxed text-text-secondary/70">{cleanPreview(entry.content)}</p>
+              {hasCanvas && <p className="mt-3 text-[9px] font-black uppercase tracking-widest text-accent">{safeArray(entry.journal_canvas).length} canvas items</p>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function JournalCanvasWorkspace({
+  selectedDate,
+  prompt,
+  mood,
+  setMood,
+  location,
+  setLocation,
+  elements,
+  selectedElementId,
+  selectedElement,
+  setSelectedElementId,
+  onUpdateElement,
+  onDeleteSelected,
+  onStartDrag,
+  onMoveDrag,
+  onEndDrag,
+  onStartResize,
+  onMoveResize,
+  onEndResize,
+  isLocked,
+  draggingElementId,
+  isResizingElement
+}: {
+  selectedDate: Date;
+  prompt: string;
+  mood: string;
+  setMood: (value: string) => void;
+  location: string;
+  setLocation: (value: string) => void;
+  elements: JournalCanvasElement[];
+  selectedElementId: string | null;
+  selectedElement: JournalCanvasElement | null;
+  setSelectedElementId: (id: string | null) => void;
+  onUpdateElement: (id: string, updates: Partial<JournalCanvasElement>) => void;
+  onDeleteSelected: () => void;
+  onStartDrag: (event: React.PointerEvent, element: JournalCanvasElement) => void;
+  onMoveDrag: (event: React.PointerEvent) => void;
+  onEndDrag: () => void;
+  onStartResize: (event: React.PointerEvent, element: JournalCanvasElement) => void;
+  onMoveResize: (event: React.PointerEvent) => void;
+  onEndResize: () => void;
+  isLocked: boolean;
+  draggingElementId: string | null;
+  isResizingElement: boolean;
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 rounded-[2rem] bg-surface-muted/40 p-3 sm:p-5">
+        <div
+          className="relative min-h-[620px] overflow-hidden rounded-[1.75rem] border border-card-border bg-card p-6 shadow-xl"
+          onPointerDown={() => setSelectedElementId(null)}
+          onPointerMove={(event) => {
+            onMoveDrag(event);
+            onMoveResize(event);
+          }}
+          onPointerUp={() => {
+            onEndDrag();
+            onEndResize();
+          }}
+        >
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-2 bg-surface-muted/50" />
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-accent">{safeFormat(selectedDate, 'EEEE')}</p>
+              <h3 className="text-2xl font-black tracking-tight text-text-main">{safeFormat(selectedDate, 'MMMM dd')}</h3>
+            </div>
+            <div className="rounded-2xl bg-accent/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-accent">Visual Page</div>
+          </div>
+          <div className="rounded-[1.5rem] border border-dashed border-card-border bg-app-container/60 p-5">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">Daily prompt</p>
+            <p className="mt-2 text-base font-bold leading-snug text-text-main">{prompt}</p>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {['focused', 'soft', 'proud', 'tired'].map(option => (
+              <button
+                key={option}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (!isLocked) setMood(option);
+                }}
+                className={cn("h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest", mood === option ? "border-accent bg-accent/10 text-accent" : "border-card-border text-text-secondary/50")}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <div className="mt-5 flex items-center gap-2 rounded-2xl border border-card-border bg-app-container px-4 py-3">
+            <MapPin size={14} className="text-text-secondary/40" />
+            <input value={location} onChange={(event) => !isLocked && setLocation(event.target.value)} placeholder="Where are you right now?" className="min-w-0 flex-1 bg-transparent text-xs font-bold text-text-secondary outline-none" />
+          </div>
+        </div>
+
+        <div
+          className="relative min-h-[620px] overflow-hidden rounded-[1.75rem] border border-card-border bg-card p-6 shadow-xl"
+          style={{ backgroundImage: 'linear-gradient(transparent, transparent 31px, rgba(120,120,120,0.12) 31px)', backgroundSize: '100% 32px' }}
+          onPointerDown={() => setSelectedElementId(null)}
+          onPointerMove={(event) => {
+            onMoveDrag(event);
+            onMoveResize(event);
+          }}
+          onPointerUp={() => {
+            onEndDrag();
+            onEndResize();
+          }}
+        >
+          <div className="pointer-events-none absolute left-0 top-0 h-full w-2 bg-surface-muted/50" />
+          {elements.length === 0 && (
+            <div className="absolute inset-10 flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-card-border text-center">
+              <BookOpen size={34} className="text-text-secondary/20" />
+              <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Use the + button to add images, sticky notes, prompts, checklist, or a Vision card.</p>
+            </div>
+          )}
+          {elements.map(element => (
+            <JournalCanvasItem
+              key={element.id}
+              element={element}
+              selected={selectedElementId === element.id}
+              dragging={draggingElementId === element.id}
+              onSelect={() => setSelectedElementId(element.id)}
+              onUpdate={(updates) => onUpdateElement(element.id, updates)}
+              onStartDrag={(event) => onStartDrag(event, element)}
+              onStartResize={(event) => onStartResize(event, element)}
+              locked={isLocked}
+            />
+          ))}
+          {selectedElement && (
+            <div className="absolute bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-card-border bg-card/95 p-2 shadow-2xl">
+              <span className="px-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/45">{selectedElement.type}</span>
+              <button onClick={(event) => { event.stopPropagation(); onDeleteSelected(); }} className="h-9 px-3 rounded-xl bg-danger/10 text-[9px] font-black uppercase tracking-widest text-danger">Delete</button>
+            </div>
+          )}
+          {isResizingElement && <div className="pointer-events-none absolute left-5 top-5 rounded-xl bg-accent px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent-contrast">Resizing</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JournalCanvasItem({
+  element,
+  selected,
+  dragging,
+  onSelect,
+  onUpdate,
+  onStartDrag,
+  onStartResize,
+  locked
+}: {
+  element: JournalCanvasElement;
+  selected: boolean;
+  dragging: boolean;
+  onSelect: () => void;
+  onUpdate: (updates: Partial<JournalCanvasElement>) => void;
+  onStartDrag: (event: React.PointerEvent) => void;
+  onStartResize: (event: React.PointerEvent) => void;
+  locked: boolean;
+}) {
+  const items = safeArray<{ id: string; text: string; completed: boolean }>(element.metadata?.items);
+  const style = {
+    left: element.x,
+    top: element.y,
+    width: element.width,
+    minHeight: element.height,
+    transform: `rotate(${element.rotation || 0}deg)`,
+    zIndex: element.zIndex || 1
+  };
+
+  return (
+    <div
+      onPointerDown={(event) => {
+        onSelect();
+        onStartDrag(event);
+      }}
+      className={cn("absolute touch-none select-none rounded-2xl transition-shadow", selected && "ring-2 ring-accent ring-offset-2 ring-offset-card", dragging && "shadow-2xl")}
+      style={style}
+    >
+      {element.type === 'image' && (
+        <div className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-lg">
+          {element.metadata?.imageUrl ? <img src={element.metadata.imageUrl} alt={safeString(element.metadata.caption, 'Journal image')} className="h-full w-full object-cover" draggable={false} /> : <div className="flex h-full items-center justify-center p-4 text-xs font-bold text-text-secondary">Image unavailable</div>}
+        </div>
+      )}
+      {element.type === 'sticky' && (
+        <textarea
+          value={element.content}
+          onPointerDown={(event) => event.stopPropagation()}
+          onChange={(event) => onUpdate({ content: event.target.value.slice(0, 500) })}
+          readOnly={locked}
+          className="h-full w-full resize-none rounded-2xl border border-yellow-200 p-4 text-sm font-bold leading-relaxed text-black/75 shadow-xl outline-none"
+          style={{ backgroundColor: element.metadata?.color || '#fef3c7' }}
+        />
+      )}
+      {element.type === 'text' && (
+        <textarea value={element.content} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ content: event.target.value })} readOnly={locked} className="h-full w-full resize-none rounded-2xl border border-card-border bg-card/90 p-4 text-base font-bold text-text-main shadow-xl outline-none" />
+      )}
+      {element.type === 'promptCard' && (
+        <div className="h-full rounded-2xl border border-card-border bg-card p-4 shadow-xl">
+          <p className="text-[9px] font-black uppercase tracking-widest text-accent">{safeString(element.metadata?.prompt || element.content, 'Prompt')}</p>
+          <textarea value={safeString(element.metadata?.response)} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ metadata: { response: event.target.value } })} readOnly={locked} placeholder="Write a response..." className="mt-3 h-[calc(100%-2rem)] w-full resize-none bg-transparent text-sm font-semibold text-text-secondary outline-none placeholder:text-text-secondary/30" />
+        </div>
+      )}
+      {element.type === 'checklist' && (
+        <div className="h-full rounded-2xl border border-card-border bg-card p-4 shadow-xl">
+          <input value={element.content || 'Action points'} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ content: event.target.value })} className="mb-3 w-full bg-transparent text-sm font-black text-text-main outline-none" />
+          <div className="space-y-2">
+            {items.map(item => (
+              <label key={item.id} className="flex items-center gap-2 text-xs font-bold text-text-secondary">
+                <input type="checkbox" checked={item.completed} onPointerDown={(event) => event.stopPropagation()} onChange={() => onUpdate({ metadata: { items: items.map(entry => entry.id === item.id ? { ...entry, completed: !entry.completed } : entry) } })} />
+                <input value={item.text} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ metadata: { items: items.map(entry => entry.id === item.id ? { ...entry, text: event.target.value } : entry) } })} className="min-w-0 flex-1 bg-transparent outline-none" />
+              </label>
+            ))}
+            <button onPointerDown={(event) => event.stopPropagation()} onClick={() => onUpdate({ metadata: { items: [...items, { id: newJournalElementId(), text: 'New action', completed: false }] } })} className="text-[9px] font-black uppercase tracking-widest text-accent">Add item</button>
+          </div>
+        </div>
+      )}
+      {element.type === 'visionLink' && (
+        <div className="h-full rounded-2xl border border-accent/20 bg-accent/5 p-4 shadow-xl">
+          <p className="text-[9px] font-black uppercase tracking-widest text-accent">Linked Vision</p>
+          <h4 className="mt-2 text-base font-black text-text-main">{safeString(element.metadata?.visionTitle, 'Vision unavailable')}</h4>
+          <div className="mt-4 h-2 rounded-full bg-card-border overflow-hidden">
+            <div className="h-full bg-accent" style={{ width: `${element.metadata?.progress || 0}%` }} />
+          </div>
+          <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{element.metadata?.progress || 0}% progress</p>
+        </div>
+      )}
+      {selected && !locked && (
+        <button
+          onPointerDown={onStartResize}
+          className="absolute -bottom-2 -right-2 h-5 w-5 rounded-full border-2 border-card bg-accent shadow-lg"
+          aria-label="Resize journal element"
+        />
+      )}
     </div>
   );
 }

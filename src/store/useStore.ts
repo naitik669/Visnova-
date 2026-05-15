@@ -217,6 +217,7 @@ function normalizeNote(row: any): Note {
     journal_date: row?.journal_date || undefined,
     location: row?.location || undefined,
     image_url: row?.image_url || undefined,
+    journal_canvas: safeArray(row?.journal_canvas),
     audio_url: safeString(row?.audio_url),
     audio_path: audioPath || undefined,
     audio_duration: safeNumber(row?.audio_duration, 0) || undefined,
@@ -2120,6 +2121,7 @@ export const useStore = create<AppState>((set, get) => ({
       journal_date: safeNote.journal_date,
       location: safeNote.location,
       image_url: safeNote.image_url,
+      journal_canvas: safeArray(safeNote.journal_canvas),
       audio_url: safeNote.audio_url,
       audio_path: safeNote.audio_path,
       audio_duration: safeNote.audio_duration,
@@ -2151,6 +2153,7 @@ export const useStore = create<AppState>((set, get) => ({
         journal_date: noteData.journal_date,
         location: noteData.location,
         image_url: noteData.image_url,
+        journal_canvas: noteData.journal_canvas,
         audio_url: noteData.audio_url,
         audio_path: noteData.audio_path,
         audio_duration: noteData.audio_duration,
@@ -2198,6 +2201,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.journal_date !== undefined) dbUpdates.journal_date = updates.journal_date;
       if (updates.location !== undefined) dbUpdates.location = updates.location;
       if (updates.image_url !== undefined) dbUpdates.image_url = updates.image_url;
+      if (updates.journal_canvas !== undefined) dbUpdates.journal_canvas = safeArray(updates.journal_canvas);
       if (updates.audio_url !== undefined) dbUpdates.audio_url = updates.audio_url;
       if (updates.audio_path !== undefined) dbUpdates.audio_path = updates.audio_path;
       if (updates.audio_duration !== undefined) dbUpdates.audio_duration = updates.audio_duration;

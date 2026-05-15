@@ -325,6 +325,49 @@ export const uploadVisionBoardImage = async (file: File, visionId: string, curre
   return { publicUrl, filePath };
 };
 
+export const uploadJournalImage = async (file: File, journalNoteId: string, currentUserId?: string) => {
+  const userId = await getCurrentUserId(currentUserId);
+  const { normalizedType, safeExt } = validateFile(file, ['image/png', 'image/jpeg', 'image/webp'], 10 * 1024 * 1024, 'Journal image');
+
+  const fileExt = safeExt || extensionForMime(normalizedType) || 'jpg';
+  const safeName = file.name
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-z0-9-_]+/gi, '-')
+    .slice(0, 48) || 'image';
+  const filePath = `${userId}/journals/${journalNoteId}/${safeName}-${Date.now()}.${fileExt}`;
+
+  const { error } = await withTimeout(
+    supabase.storage
+      .from('journal-images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        contentType: normalizedType,
+        upsert: false
+      }),
+    60000,
+    'Journal image upload'
+  );
+
+  if (error) {
+    console.error('Journal Upload Error:', error);
+    if (/bucket not found/i.test(error.message || '')) {
+      throw new Error('Journal image storage is not configured. Apply the latest Supabase migrations.');
+    }
+    throw new Error(`Journal image upload failed: ${error.message}`);
+  }
+
+  const { data, error: signedError } = await supabase.storage
+    .from('journal-images')
+    .createSignedUrl(filePath, 60 * 60 * 24 * 7);
+
+  if (signedError) {
+    console.error('Journal Signed URL Error:', signedError);
+    throw new Error(`Journal image upload succeeded, but preview setup failed: ${signedError.message}`);
+  }
+
+  return { signedUrl: data?.signedUrl || '', filePath };
+};
+
 const inferAudioTypeFromName = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase();
   if (ext === 'mp3') return 'audio/mpeg';

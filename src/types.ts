@@ -136,6 +136,7 @@ export interface Note {
   journal_date?: string; // yyyy-MM-dd
   location?: string;
   image_url?: string;
+  journal_canvas?: JournalCanvasElement[];
   audio_url?: string;
   audio_path?: string;
   audio_duration?: number;
@@ -586,6 +587,30 @@ export interface Comment {
   pinnedAt?: string | null;
   pinnedBy?: string | null;
   replies?: Comment[];
+}
+
+export interface JournalCanvasElement {
+  id: string;
+  type: 'image' | 'sticky' | 'text' | 'promptCard' | 'checklist' | 'visionLink';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  content: string;
+  zIndex?: number;
+  metadata?: {
+    imageUrl?: string;
+    storagePath?: string;
+    caption?: string;
+    color?: string;
+    prompt?: string;
+    response?: string;
+    visionId?: string;
+    visionTitle?: string;
+    progress?: number;
+    items?: { id: string; text: string; completed: boolean }[];
+  };
 }
 
 export interface Achievement {
