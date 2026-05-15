@@ -1205,6 +1205,7 @@ export const useStore = create<AppState>((set, get) => ({
           .map(t => ({
             id: t.id,
             text: t.text,
+            description: t.description || '',
             completed: t.completed,
             priority: t.priority || 'low',
             subTasks: t.sub_tasks || [],

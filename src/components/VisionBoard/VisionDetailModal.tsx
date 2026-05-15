@@ -76,23 +76,26 @@ type Tab = 'board' | 'milestones';
 // Add save status type
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
-function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriority, onUpdateText, onDeleteTask, onUpdateSubTaskText, onDeleteSubTask }: {
+function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriority, onUpdateText, onUpdateDescription, onDeleteTask, onUpdateSubTaskText, onDeleteSubTask }: {
   task: Task,
   onToggle: (id: string) => void,
   onAddSubTask: (parentId: string, text: string) => void,
   isLast: boolean,
   onUpdatePriority: (id: string, priority: 'low' | 'medium' | 'high') => void,
   onUpdateText: (id: string, text: string) => void,
+  onUpdateDescription: (id: string, description: string) => void,
   onDeleteTask: (id: string) => void,
   onUpdateSubTaskText: (parentId: string, subTaskId: string, text: string) => void,
   onDeleteSubTask: (parentId: string, subTaskId: string) => void
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [draftText, setDraftText] = useState(task.text);
+  const [draftDescription, setDraftDescription] = useState(task.description || '');
 
   useEffect(() => {
     setDraftText(task.text);
-  }, [task.text]);
+    setDraftDescription(task.description || '');
+  }, [task.text, task.description]);
   const {
     attributes,
     listeners,
@@ -178,6 +181,19 @@ function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriori
             }}
             onClick={(event) => event.stopPropagation()}
             className={cn("w-full bg-transparent outline-none text-lg font-bold tracking-tight transition-all", task.completed && "line-through opacity-40")}
+          />
+          <textarea
+            value={draftDescription}
+            onChange={(event) => setDraftDescription(event.target.value)}
+            onBlur={() => {
+              const next = draftDescription.trim();
+              if (next !== (task.description || '')) onUpdateDescription(task.id, next);
+            }}
+            onKeyDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            placeholder="Describe this step, success criteria, or proof needed..."
+            rows={2}
+            className={cn("mt-2 w-full resize-none bg-transparent outline-none text-xs font-semibold leading-relaxed text-text-secondary/70 placeholder:text-text-secondary/30", task.completed && "opacity-40")}
           />
           <div className="flex items-center gap-4 mt-1.5">
             <button
@@ -617,6 +633,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
   const { notes, updateVision, session, addToast, financeGoals, financeTransactions, fetchMoneyOverview } = useStore();
   const navigate = useNavigate();
   const [taskText, setTaskText] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -742,6 +759,23 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
       });
   };
 
+  const handleUpdateTaskDescription = (taskId: string, description: string) => {
+    const updatedTasks = vision.tasks.map(t => t.id === taskId ? { ...t, description } : t);
+    updateVision(vision.id, { tasks: updatedTasks });
+    if (taskId.startsWith('temp-')) return;
+    supabase
+      .from('tasks')
+      .update({ description, updated_at: new Date().toISOString() })
+      .eq('id', taskId)
+      .then(({ error }) => {
+        if (error) {
+          console.error('Failed to save blueprint task description:', error);
+          addToast({ type: 'error', title: 'Description failed', description: 'Could not save this roadmap description.' });
+          updateVision(vision.id, { tasks: vision.tasks });
+        }
+      });
+  };
+
   const handleDeleteTask = (taskId: string) => {
     const updatedTasks = vision.tasks.filter(t => t.id !== taskId);
     updateVision(vision.id, { tasks: updatedTasks });
@@ -807,12 +841,14 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
     const tempTask: Task = {
       id: `temp-${Date.now()}`,
       text,
+      description: taskDescription.trim(),
       completed: false,
       priority: 'low',
       subTasks: []
     };
     updateVision(vision.id, { tasks: [...vision.tasks, tempTask] });
     setTaskText('');
+    setTaskDescription('');
 
     const { data, error } = await supabase
       .from('tasks')
@@ -820,6 +856,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
         user_id: userId,
         vision_id: vision.id,
         text,
+        description: tempTask.description || '',
         completed: false,
         priority: 'low',
         sub_tasks: [],
@@ -839,6 +876,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
     const savedTask: Task = {
       id: data.id,
       text: data.text,
+      description: data.description || '',
       completed: data.completed,
       priority: data.priority || 'low',
       subTasks: data.sub_tasks || []
@@ -921,36 +959,43 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-card-border bg-card p-6 space-y-5">
+          <div className="rounded-[2rem] border border-card-border bg-card p-6 space-y-6">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-accent">Roadmap</p>
-                <h3 className="text-lg font-black text-text-main">Editable blueprint</h3>
+                <h3 className="text-lg font-black text-text-main">Editable execution roadmap</h3>
+                <p className="mt-1 text-xs font-semibold text-text-secondary/65">Add steps below, describe the work, then move each step between Now, Next, and Later.</p>
               </div>
               <p className="text-xs font-bold text-text-secondary">{vision.tasks.filter(task => task.completed).length}/{vision.tasks.length} complete</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="relative grid grid-cols-1 md:grid-cols-3 gap-4">
               {([
-                { key: 'high', label: 'Now', helper: 'Critical next moves' },
-                { key: 'medium', label: 'Next', helper: 'Priority work' },
-                { key: 'low', label: 'Later', helper: 'Standard tasks' }
+                { key: 'high', label: 'Now', helper: 'Critical next moves', step: '01' },
+                { key: 'medium', label: 'Next', helper: 'Priority work', step: '02' },
+                { key: 'low', label: 'Later', helper: 'Standard tasks', step: '03' }
               ] as const).map(column => {
                 const items = vision.tasks.filter(task => (task.priority || 'low') === column.key);
                 return (
-                  <div key={column.key} className="rounded-2xl bg-app-container border border-card-border p-4 min-h-32">
-                    <div className="mb-3">
+                  <div key={column.key} className="rounded-2xl bg-app-container border border-card-border p-4 min-h-44">
+                    <div className="mb-4 flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-[10px] font-black text-accent">{column.step}</div>
+                      <div className="min-w-0">
                       <p className="text-sm font-black text-text-main">{column.label}</p>
                       <p className="text-[10px] font-bold text-text-secondary">{column.helper}</p>
+                      </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {items.length > 0 ? items.slice(0, 5).map(task => (
                         <button
                           key={task.id}
                           onClick={() => handleUpdatePriority(task.id, column.key === 'high' ? 'medium' : column.key === 'medium' ? 'low' : 'high')}
-                          className={cn('w-full text-left rounded-xl border border-card-border bg-card px-3 py-2 text-xs font-bold text-text-secondary hover:border-accent/40', task.completed && 'line-through opacity-50')}
+                          className={cn('w-full text-left rounded-xl border border-card-border bg-card px-3 py-3 text-xs font-bold text-text-secondary hover:border-accent/40', task.completed && 'opacity-50')}
                           title="Click to move to the next roadmap stage"
                         >
-                          {task.text}
+                          <span className={cn("block text-text-main", task.completed && "line-through")}>{task.text}</span>
+                          <span className="mt-1 block line-clamp-2 text-[10px] font-semibold leading-relaxed text-text-secondary/65">
+                            {task.description || 'No description yet.'}
+                          </span>
                         </button>
                       )) : (
                         <p className="rounded-xl border border-dashed border-card-border p-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Empty</p>
@@ -977,19 +1022,26 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
              <div className="space-y-8">
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Action Steps</h3>
-                  <form onSubmit={handleAddTask} className="flex gap-3">
+                  <form onSubmit={handleAddTask} className="rounded-[2rem] border border-card-border bg-card p-4 space-y-3">
                     <input
                       value={taskText}
                       onChange={(event) => setTaskText(event.target.value)}
-                      placeholder="Add a task or next move..."
-                      className="min-w-0 flex-1 h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-bold text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
+                      placeholder="Step title..."
+                      className="w-full h-12 rounded-2xl bg-app-container border border-card-border px-4 text-sm font-bold text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
+                    />
+                    <textarea
+                      value={taskDescription}
+                      onChange={(event) => setTaskDescription(event.target.value)}
+                      placeholder="Describe this step, what to do, or what proof completes it..."
+                      rows={3}
+                      className="w-full resize-none rounded-2xl bg-app-container border border-card-border px-4 py-3 text-sm font-semibold text-text-secondary placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
                     />
                     <button
                       type="submit"
                       disabled={isAddingTask || !taskText.trim()}
-                      className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
+                      className="h-12 w-full justify-center rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
                     >
-                      <Plus size={16} /> Add
+                      <Plus size={16} /> Add roadmap step
                     </button>
                   </form>
                 </div>
@@ -1017,6 +1069,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
                           isLast={idx === vision.tasks.length - 1}
                           onUpdatePriority={handleUpdatePriority}
                           onUpdateText={handleUpdateTaskText}
+                          onUpdateDescription={handleUpdateTaskDescription}
                           onDeleteTask={handleDeleteTask}
                           onUpdateSubTaskText={handleUpdateSubTaskText}
                           onDeleteSubTask={handleDeleteSubTask}
