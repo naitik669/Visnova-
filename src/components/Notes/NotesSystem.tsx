@@ -28,7 +28,6 @@ import {
   Sidebar as SidebarIcon,
   MapPin,
   Cloud,
-  Image as ImageIcon,
   CheckCircle2,
   AlertCircle,
   Maximize2,
@@ -504,7 +503,7 @@ export default function NotesSystem() {
             ) : (
               <div className={cn(
                 "mx-auto transition-all duration-700",
-                isJournalFullView ? "max-w-none h-full" : activeTab === 'journal' ? "max-w-[1100px] space-y-6" : "max-w-[1600px] space-y-16"
+                isJournalFullView ? "max-w-none h-full" : activeTab === 'journal' ? "max-w-[1500px] space-y-6" : "max-w-[1600px] space-y-16"
               )}>
                 {activeTab === 'vault' && (
                   <section className="space-y-8">
@@ -767,7 +766,6 @@ const JOURNAL_PROMPTS = [
 ];
 
 const JOURNAL_PAGE_BREAK = '\n\n--- Page ---\n\n';
-const STICKERS = ['*', '!!', 'OK', 'IDEA', 'WIN', 'FOCUS'];
 const FOLDER_COLORS = [
   { name: 'Sky', value: '#3b82f6' },
   { name: 'Coral', value: '#f97316' },
@@ -837,7 +835,6 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
   const [isResizingElement, setIsResizingElement] = useState(false);
-  const stickerInputRef = useRef<HTMLInputElement>(null);
   const journalImageInputRef = useRef<HTMLInputElement>(null);
   const dragStateRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const resizeStateRef = useRef<{ id: string; startX: number; startY: number; width: number; height: number } | null>(null);
@@ -1053,22 +1050,6 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
     }
   };
 
-  const addSticker = (sticker: string) => {
-    if (isLocked) return;
-    updateCurrentPage(prev => `${prev}${prev ? ' ' : ''}${sticker}`);
-  };
-
-  const importStickerImage = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      if (result) {
-        updateCurrentPage(prev => `${prev}${prev ? '\n\n' : ''}![Imported sticker](${result})`);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
   const weekDays = useMemo(() => {
     const start = startOfWeek(selectedDate);
     return eachDayOfInterval({
@@ -1145,13 +1126,6 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={addJournalSticky}
-            disabled={isLocked}
-            className="h-11 px-4 rounded-2xl bg-yellow-100 text-yellow-900 border border-yellow-200 text-[10px] font-black uppercase tracking-widest shadow-sm disabled:opacity-50"
-          >
-            Sticky Note
-          </button>
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-secondary/40">
             {isSaving ? 'Saving...' : lastSaved ? `Saved ${safeFormat(lastSaved, 'h:mm a')}` : 'Unsaved'}
           </span>
@@ -1204,7 +1178,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
 
       <div className={cn(
         "flex transition-all duration-1000",
-        fullView ? "h-[calc(100vh-4rem)] p-3 sm:p-6 lg:p-10 gap-4 lg:gap-10" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[720px] justify-center"
+        fullView ? "h-[calc(100vh-4rem)] p-3 sm:p-6 lg:p-10 gap-4 lg:gap-10" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[860px] justify-center"
       )}>
         {journalMode === 'history' ? (
           <JournalHistoryView entries={safeArray<Note>(journalEntries)} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
@@ -1263,8 +1237,8 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
           key={`journal-page-${selectedDate.toISOString()}`}
           layout
           className={cn(
-            "flex-1 flex flex-col lg:flex-row gap-5 lg:gap-8 perspective-[1500px]",
-            fullView ? "h-full" : "min-h-[700px]"
+            "flex-1 grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 perspective-[1500px]",
+            fullView ? "h-full" : "min-h-[820px]"
           )}
         >
           {/* Left Page: Daily Overview */}
@@ -1272,7 +1246,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
             initial={{ rotateY: -10, opacity: 0 }}
             animate={{ rotateY: 0, opacity: 1 }}
             transition={{ duration: 0.8, type: 'spring' }}
-            className={cn("flex-1 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col items-center text-center space-y-5 sm:space-y-8 lg:space-y-10 origin-right relative overflow-hidden", !fullView && "lg:max-w-[360px]")}
+            className="min-w-0 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col items-center text-center space-y-5 sm:space-y-8 lg:space-y-10 origin-right relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-2 h-full bg-surface-muted/30 border-l border-card-border/10" />
             
@@ -1376,55 +1350,13 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
               const noteContent = e.dataTransfer.getData('text/plain');
               if (noteContent) handleDropNote(noteContent);
             }}
-            className={cn("flex-1 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col space-y-5 sm:space-y-8 relative origin-left overflow-hidden", !fullView && "lg:flex-[1.45]")}
+            className="min-w-0 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col space-y-5 sm:space-y-8 relative origin-left overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-2 h-full bg-surface-muted/30 border-r border-card-border/10" />
             <div className="absolute top-0 left-0 w-1.5 h-full bg-accent/5 rounded-l-full" />
             
-            {/* Prompt Card */}
-            <div className="bg-surface-muted rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-8 border border-card-border/50 space-y-3 relative overflow-hidden group">
-              <div className="absolute -right-4 -top-4 w-24 h-24 bg-accent/5 rounded-full blur-2xl group-hover:bg-accent/10 transition-colors" />
-              <div className="flex items-center gap-3">
-                <Sparkles size={14} className="text-accent" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-accent">Daily Reflection</span>
-              </div>
-              <p className="text-base sm:text-lg font-bold text-text-main leading-snug">
-                {prompt}
-              </p>
-              <div className="pt-4 flex flex-wrap items-center gap-2">
-                {STICKERS.map(sticker => (
-                  <button
-                    key={sticker}
-                    onClick={() => addSticker(sticker)}
-                    disabled={isLocked}
-                    className="px-3 h-8 rounded-lg bg-app-container border border-card-border text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent hover:border-accent/40 transition-all"
-                  >
-                    {sticker}
-                  </button>
-                ))}
-                <button
-                  onClick={() => stickerInputRef.current?.click()}
-                  disabled={isLocked}
-                  className="px-3 h-8 rounded-lg bg-app-container border border-card-border text-[9px] font-black uppercase tracking-widest text-accent flex items-center gap-2 hover:border-accent/40 transition-all"
-                >
-                  <ImageIcon size={12} /> Import
-                </button>
-                <input
-                  ref={stickerInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) importStickerImage(file);
-                    e.target.value = '';
-                  }}
-                />
-              </div>
-            </div>
-
             {/* Editor Area */}
-            <div className="flex-1 flex flex-col space-y-6">
+            <div className="flex-1 flex flex-col space-y-5 pt-10 sm:pt-12">
                <div className="absolute top-8 right-10 text-right pointer-events-none">
                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-text-secondary/30">Written</p>
                  <p className="text-xs font-black text-accent uppercase tracking-widest">{format(selectedDate, 'MMM dd, yyyy')}</p>
@@ -1441,26 +1373,17 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                  onChange={(e) => setContent(e.target.value)}
                  readOnly={isLocked}
                  placeholder="Write your thoughts for today..."
-                 className={cn("flex-1 w-full text-base font-medium text-text-secondary leading-relaxed bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20", isLocked && "cursor-default opacity-70")}
-                 style={{ backgroundImage: 'linear-gradient(transparent, transparent 31px, var(--card-border) 31px)', backgroundSize: '100% 32px' }}
+                 className={cn("flex-1 w-full text-base font-medium text-text-secondary bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20", isLocked && "cursor-default opacity-70")}
+                 style={{
+                   backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--card-border) 31px, var(--card-border) 32px)',
+                   lineHeight: '32px',
+                   paddingTop: 0
+                 }}
                />
             </div>
 
             {/* Metadata & Actions */}
-            <div className="pt-8 border-t border-card-border/30 space-y-8">
-               <div className="flex flex-wrap items-center gap-3">
-                 <div className="flex items-center gap-2 px-4 h-12 bg-surface-muted rounded-xl border border-card-border/50">
-                    <MapPin size={14} className="text-text-secondary/40" />
-                    <input 
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      readOnly={isLocked}
-                      placeholder="Origin"
-                      className="bg-transparent border-none focus:outline-none text-[10px] font-black tracking-widest uppercase text-text-secondary"
-                    />
-                 </div>
-              </div>
-
+            <div className="pt-5 border-t border-card-border/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-secondary/30">
                   {isSaving ? (
