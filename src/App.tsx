@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, Globe, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import VisionBoard from './components/VisionBoard/VisionBoard';
@@ -24,7 +24,6 @@ import FloatingTimer from './components/Dashboard/FloatingTimer';
 import UserProfileModal from './components/Social/UserProfileModal';
 import NotificationCenter from './components/Social/NotificationCenter';
 import ProfilePage from './components/Social/ProfilePage';
-import CommunitySpaces from './components/Community/CommunitySpaces';
 import ProfileDropdown from './components/ProfileDropdown';
 import ToastViewport from './components/ToastViewport';
 import { cn } from './lib/utils';
@@ -123,7 +122,6 @@ const mainNavBase: NavItem[] = [
   { icon: Wallet, label: 'Wallet', path: '/wallet' },
   { icon: Users, label: 'Circle', path: '/circle' },
   { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
-  { icon: Globe, label: 'Communities', path: '/communities' },
 ];
 
 const isRouteActive = (pathname: string, path: string) => {
@@ -432,8 +430,8 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/library': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/notes': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/journal': { title: 'Library', subtitle: 'Notes, audio, and journal' },
-  '/circle': { title: 'Circle', subtitle: 'Connections, messages, requests, and activity' },
-  '/communities': { title: 'Communities', subtitle: 'Threads for builders' },
+  '/circle': { title: 'Circle', subtitle: 'Messages, connections, communities, requests, and activity' },
+  '/communities': { title: 'Circle', subtitle: 'Messages, connections, communities, requests, and activity' },
   '/growth': { title: 'Growth', subtitle: 'Learn with purpose and turn resources into action' },
   '/money': { title: 'Wallet', subtitle: 'Track spending, subscriptions, and savings for your Visions' },
   '/wallet': { title: 'Wallet', subtitle: 'Track spending, subscriptions, and savings for your Visions' },
@@ -452,6 +450,7 @@ function PageContextHeader() {
   const navigate = useNavigate();
   const { user } = useStore();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  if (location.pathname === '/circle' || location.pathname === '/communities') return null;
   const meta = pageContext[location.pathname] || (location.pathname.startsWith('/post/') ? { title: 'Thread', subtitle: 'Post comments' } : null);
   if (!meta) return null;
 
@@ -630,7 +629,7 @@ function AppContent() {
                     <Route path="/visions" element={<VisionBoard />} />
                     <Route path="/vision" element={<Navigate to="/visions" replace />} />
                     <Route path="/circle" element={<Circle />} />
-                    <Route path="/communities" element={<CommunitySpaces />} />
+                    <Route path="/communities" element={<Navigate to="/circle?tab=communities" replace />} />
                     <Route path="/messages" element={<MessagesRedirect />} />
                     <Route path="/library" element={<NotesSystem />} />
                     <Route path="/notes" element={<NotesRedirect />} />

@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
-import { Check, Clock, Inbox, MessageCircle, Plus, Sparkles, Target, Users } from 'lucide-react';
+import { Check, Clock, Globe, Inbox, MessageCircle, Plus, Sparkles, Target, Users } from 'lucide-react';
 import VerifiedBadge from '../VerifiedBadge';
 import { getSuggestedUsers, SuggestedUser } from '../../services/discoveryService';
 import { supabase } from '../../lib/supabase';
 import { Post } from '../../types';
 import MessagesPage from '../Social/MessagesPage';
 import { safeFormat, safeString, safeTime } from '../../lib/safeData';
+import CommunitySpaces from '../Community/CommunitySpaces';
 
 const relationLabels: Record<string, string> = {
   following: 'Following',
@@ -25,12 +26,12 @@ export default function Circle() {
   const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
   const [activity, setActivity] = useState<Post[]>([]);
   const circleIds = useMemo(() => new Set(circle.map(member => member.id)), [circle]);
-  const activeTab = searchParams.get('tab') || 'connections';
-  const validTab = ['connections', 'messages', 'requests', 'activity'].includes(activeTab) ? activeTab : 'connections';
+  const activeTab = searchParams.get('tab') || 'messages';
+  const validTab = ['messages', 'connections', 'communities', 'requests', 'activity'].includes(activeTab) ? activeTab : 'messages';
 
   const changeTab = (tab: string) => {
     const nextParams = new URLSearchParams(searchParams);
-    if (tab === 'connections') nextParams.delete('tab');
+    if (tab === 'messages') nextParams.delete('tab');
     else nextParams.set('tab', tab);
     setSearchParams(nextParams, { replace: true });
   };
@@ -99,8 +100,9 @@ export default function Circle() {
   }, [circleIds]);
 
   const tabs = [
-    { id: 'connections', label: 'Connections', icon: Users },
     { id: 'messages', label: 'Messages', icon: MessageCircle },
+    { id: 'connections', label: 'Connections', icon: Users },
+    { id: 'communities', label: 'Communities', icon: Globe },
     { id: 'requests', label: 'Requests', icon: Inbox, badge: sharedVisions.length },
     { id: 'activity', label: 'Activity', icon: Sparkles },
   ];
@@ -208,6 +210,8 @@ export default function Circle() {
       )}
 
       {validTab === 'messages' && <MessagesPage />}
+
+      {validTab === 'communities' && <CommunitySpaces embedded />}
 
       {validTab === 'requests' && (
         <section className="space-y-6">

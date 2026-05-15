@@ -54,7 +54,11 @@ const kindStyles = {
   question: { label: 'Question', icon: Hash, className: 'bg-success/10 text-success border-success/20' }
 };
 
-export default function CommunitySpaces() {
+type CommunitySpacesProps = {
+  embedded?: boolean;
+};
+
+export default function CommunitySpaces({ embedded = false }: CommunitySpacesProps) {
   const { session, user, addToast, addXp } = useStore();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(null);
@@ -304,15 +308,17 @@ export default function CommunitySpaces() {
   }, [communities, currentUserId, communityMode, communitySearch]);
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto pb-20 animate-in fade-in duration-700 space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent mb-3">Community Spaces</p>
-          <h1 className="text-3xl sm:text-4xl font-black text-text-main tracking-tight font-display uppercase">Find your build crew</h1>
-          <p className="text-sm text-text-secondary/70 mt-3 max-w-2xl font-medium">
-            Join focused spaces, open threads, ask questions, and share achievements with people working toward similar goals.
-          </p>
-        </div>
+    <div className={cn('w-full max-w-[1800px] mx-auto animate-in fade-in duration-700 space-y-6', embedded ? 'pb-4' : 'pb-20')}>
+      <div className={cn('flex flex-col lg:flex-row justify-between gap-6', embedded ? 'items-end px-1' : 'lg:items-end')}>
+        {!embedded && (
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent mb-3">Community Spaces</p>
+            <h1 className="text-3xl sm:text-4xl font-black text-text-main tracking-tight font-display uppercase">Find your build crew</h1>
+            <p className="text-sm text-text-secondary/70 mt-3 max-w-2xl font-medium">
+              Join focused spaces, open threads, ask questions, and share achievements with people working toward similar goals.
+            </p>
+          </div>
+        )}
         <button
           onClick={() => canCreateCommunity ? setIsCreateOpen(true) : addToast({ type: 'info', title: 'Level 5 required', description: 'Community creation unlocks at level 5.' })}
           className={cn(
@@ -324,7 +330,7 @@ export default function CommunitySpaces() {
         </button>
       </div>
 
-      {!canCreateCommunity && (
+      {!canCreateCommunity && !embedded && (
         <div className="system-card p-4 border-accent/20 bg-accent/[0.03] flex items-center gap-3">
           <Sparkles size={18} className="text-accent" />
           <p className="text-xs font-bold text-text-secondary">
