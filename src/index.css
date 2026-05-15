@@ -302,6 +302,34 @@ select {
   body {
     @apply bg-bg-base text-text-main font-sans selection:bg-accent selection:text-accent-contrast;
   }
+
+  html[data-reduce-motion="true"] *,
+  html[data-reduce-motion="true"] *::before,
+  html[data-reduce-motion="true"] *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  html[data-compact-cards="true"] .system-card {
+    border-radius: 1.25rem;
+  }
+
+  html[data-compact-cards="true"] .system-card:hover {
+    transform: none;
+  }
+
+  html[data-compact-cards="true"] .visnova-menu-item,
+  html[data-compact-cards="true"] .visnova-select-trigger,
+  html[data-compact-cards="true"] .settings-input {
+    min-height: 2.5rem;
+    height: 2.5rem;
+  }
+
+  html[data-beta-tips="false"] .beta-tip {
+    display: none !important;
+  }
 }
 
 @layer utilities {

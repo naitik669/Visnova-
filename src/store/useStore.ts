@@ -31,6 +31,7 @@ import {
   validateFinanceSubscription,
   validateFinanceTransaction
 } from '../lib/financeValidation';
+import { getDefaultVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -1444,6 +1445,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   addToast: (toast) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    playInteractionSound(toast.type === 'success' ? 'success' : toast.type === 'error' ? 'error' : 'info');
     set((state) => ({
       toasts: [...state.toasts.slice(-3), { id, ...toast }],
     }));
@@ -1489,7 +1491,7 @@ export const useStore = create<AppState>((set, get) => ({
           notes: newVision.notes,
           proof: newVision.proof,
           elements: newVision.elements || [],
-          visibility: newVision.visibility || 'private',
+          visibility: newVision.visibility || toVisionVisibility(getDefaultVisibility()),
           deadline: newVision.deadline || null
         };
       let { data, error } = await supabase
@@ -2113,7 +2115,7 @@ export const useStore = create<AppState>((set, get) => ({
       folderId: safeNote.folderId || null,
       tags: safeNote.tags || [],
       linkedVisionId: safeNote.linkedVisionId || null,
-      visibility: safeNote.visibility || 'private',
+      visibility: safeNote.visibility || getDefaultVisibility(),
       isPinned: safeNote.isPinned || false,
       isFavorite: safeNote.isFavorite || false,
       isDeleted: false,
@@ -2460,7 +2462,7 @@ export const useStore = create<AppState>((set, get) => ({
           type: safePost.type,
           caption: safePost.caption,
           content: safePost.content || '',
-          visibility: safePost.visibility || 'public',
+          visibility: safePost.visibility || toPostVisibility(getDefaultVisibility()),
           metadata: postMetadata
         })
         .select('id, user_id, type, caption, content, visibility, metadata, stats, created_at, updated_at')

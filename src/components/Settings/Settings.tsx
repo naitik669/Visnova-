@@ -23,6 +23,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
+import {
+  defaultAppPreferences,
+  defaultNotificationPreferences,
+  getAppPreferences,
+  getNotificationPreferences,
+  playInteractionSound,
+  setAppPreferences,
+  setNotificationPreferences
+} from '../../lib/appPreferences';
 
 type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences';
 
@@ -39,15 +48,6 @@ const themes = [
   { id: 'sage', icon: Sparkles, label: 'Sage', desc: 'Natural and focused', color: 'bg-[#8da482] text-white' },
 ] as const;
 
-const loadLocalSetting = <T,>(key: string, fallback: T): T => {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
 export default function Settings() {
   const { theme, setTheme, user, updateUser, restartTutorial, signOut, addToast } = useStore();
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
@@ -62,18 +62,20 @@ export default function Settings() {
     role: user.role || user.rank || '',
     avatar: user.avatar
   });
-  const [notificationPrefs, setNotificationPrefs] = useState(() => loadLocalSetting('visnova-notification-settings', {
-    product: true,
-    social: true,
-    reminders: true,
-    sound: false
-  }));
-  const [preferencePrefs, setPreferencePrefs] = useState(() => loadLocalSetting('visnova-preference-settings', {
-    defaultVisibility: 'private',
-    reduceMotion: false,
-    compactCards: false,
-    betaTips: true
-  }));
+  const [notificationPrefs, setNotificationPrefsState] = useState(getNotificationPreferences);
+  const [preferencePrefs, setPreferencePrefsState] = useState(getAppPreferences);
+
+  const updateNotificationPrefs = (next: typeof notificationPrefs) => {
+    setNotificationPrefsState(next);
+    setNotificationPreferences(next);
+    playInteractionSound('click');
+  };
+
+  const updatePreferencePrefs = (next: typeof preferencePrefs) => {
+    setPreferencePrefsState(next);
+    setAppPreferences(next);
+    playInteractionSound('click');
+  };
 
   useEffect(() => {
     setEditData({
@@ -84,16 +86,6 @@ export default function Settings() {
       avatar: user.avatar
     });
   }, [user.avatar, user.bio, user.name, user.rank, user.role, user.username]);
-
-  useEffect(() => {
-    localStorage.setItem('visnova-notification-settings', JSON.stringify(notificationPrefs));
-  }, [notificationPrefs]);
-
-  useEffect(() => {
-    localStorage.setItem('visnova-preference-settings', JSON.stringify(preferencePrefs));
-    document.documentElement.dataset.reduceMotion = preferencePrefs.reduceMotion ? 'true' : 'false';
-    document.documentElement.dataset.compactCards = preferencePrefs.compactCards ? 'true' : 'false';
-  }, [preferencePrefs]);
 
   const sections = useMemo(() => [
     { id: 'profile' as const, icon: User, label: 'Profile', desc: 'Identity and public profile' },
@@ -133,9 +125,24 @@ export default function Settings() {
   const handleResetLocalPrefs = () => {
     localStorage.removeItem('visnova-notification-settings');
     localStorage.removeItem('visnova-preference-settings');
-    setNotificationPrefs({ product: true, social: true, reminders: true, sound: false });
-    setPreferencePrefs({ defaultVisibility: 'private', reduceMotion: false, compactCards: false, betaTips: true });
+    setNotificationPrefsState(defaultNotificationPreferences);
+    setPreferencePrefsState(defaultAppPreferences);
+    setNotificationPreferences(defaultNotificationPreferences);
+    setAppPreferences(defaultAppPreferences);
     addToast({ type: 'success', title: 'Preferences reset', description: 'Local settings were restored to defaults.' });
+  };
+
+  const requestBrowserNotifications = async () => {
+    if (!('Notification' in window)) {
+      addToast({ type: 'info', title: 'Not supported', description: 'This browser does not support notification permission.' });
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    addToast({
+      type: permission === 'granted' ? 'success' : 'info',
+      title: permission === 'granted' ? 'Notifications enabled' : 'Notifications not enabled',
+      description: permission === 'granted' ? 'Browser permission is ready for future reminders.' : 'You can allow notifications from browser settings later.'
+    });
   };
 
   return (
@@ -228,7 +235,10 @@ export default function Settings() {
                 {themes.map(item => (
                   <button
                     key={item.id}
-                    onClick={() => setTheme(item.id)}
+                    onClick={() => {
+                      setTheme(item.id);
+                      playInteractionSound('click');
+                    }}
                     className={cn(
                       'group relative min-h-44 rounded-3xl border-2 p-5 text-left transition-all',
                       theme === item.id ? 'border-accent bg-accent/5 shadow-xl shadow-accent/10' : 'border-card-border bg-card hover:border-accent/30'
@@ -284,10 +294,18 @@ export default function Settings() {
           {activeSection === 'notifications' && (
             <SettingsPanel title="Notifications" subtitle="Control product, social, and reminder signals on this browser.">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <ToggleRow label="Product updates" desc="Beta changes, important notices." checked={notificationPrefs.product} onChange={value => setNotificationPrefs({ ...notificationPrefs, product: value })} />
-                <ToggleRow label="Social activity" desc="Follows, messages, comments." checked={notificationPrefs.social} onChange={value => setNotificationPrefs({ ...notificationPrefs, social: value })} />
-                <ToggleRow label="Vision reminders" desc="Gentle nudges for tasks and habits." checked={notificationPrefs.reminders} onChange={value => setNotificationPrefs({ ...notificationPrefs, reminders: value })} />
-                <ToggleRow label="Sound" desc="Allow subtle sounds when supported." checked={notificationPrefs.sound} onChange={value => setNotificationPrefs({ ...notificationPrefs, sound: value })} />
+                <ToggleRow label="Product updates" desc="Beta changes, important notices." checked={notificationPrefs.product} onChange={value => updateNotificationPrefs({ ...notificationPrefs, product: value })} />
+                <ToggleRow label="Social activity" desc="Follows, messages, comments." checked={notificationPrefs.social} onChange={value => updateNotificationPrefs({ ...notificationPrefs, social: value })} />
+                <ToggleRow label="Vision reminders" desc="Gentle nudges for tasks and habits." checked={notificationPrefs.reminders} onChange={value => updateNotificationPrefs({ ...notificationPrefs, reminders: value })} />
+                <ToggleRow label="Subtle sounds" desc="Play soft sounds for toasts and setting interactions." checked={notificationPrefs.sound} onChange={value => updateNotificationPrefs({ ...notificationPrefs, sound: value })} />
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3 border-t border-card-border pt-5">
+                <button onClick={requestBrowserNotifications} className="h-11 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+                  Enable Browser Permission
+                </button>
+                <button onClick={() => playInteractionSound('message')} className="h-11 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                  Test Sound
+                </button>
               </div>
             </SettingsPanel>
           )}
@@ -296,16 +314,16 @@ export default function Settings() {
             <SettingsPanel title="Preferences" subtitle="Defaults for this browser and beta workspace.">
               <div className="space-y-5">
                 <SettingsField label="Default visibility">
-                  <select value={preferencePrefs.defaultVisibility} onChange={e => setPreferencePrefs({ ...preferencePrefs, defaultVisibility: e.target.value })} className="settings-input">
+                  <select value={preferencePrefs.defaultVisibility} onChange={e => updatePreferencePrefs({ ...preferencePrefs, defaultVisibility: e.target.value as any })} className="settings-input">
                     <option value="private">Private</option>
                     <option value="connections">Connections</option>
                     <option value="public">Public</option>
                   </select>
                 </SettingsField>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <ToggleRow label="Reduce motion" desc="Lower animation intensity." checked={preferencePrefs.reduceMotion} onChange={value => setPreferencePrefs({ ...preferencePrefs, reduceMotion: value })} />
-                  <ToggleRow label="Compact cards" desc="Use denser surfaces where supported." checked={preferencePrefs.compactCards} onChange={value => setPreferencePrefs({ ...preferencePrefs, compactCards: value })} />
-                  <ToggleRow label="Beta tips" desc="Show guidance for unfinished beta flows." checked={preferencePrefs.betaTips} onChange={value => setPreferencePrefs({ ...preferencePrefs, betaTips: value })} />
+                  <ToggleRow label="Reduce motion" desc="Lower animation intensity." checked={preferencePrefs.reduceMotion} onChange={value => updatePreferencePrefs({ ...preferencePrefs, reduceMotion: value })} />
+                  <ToggleRow label="Compact cards" desc="Use denser surfaces where supported." checked={preferencePrefs.compactCards} onChange={value => updatePreferencePrefs({ ...preferencePrefs, compactCards: value })} />
+                  <ToggleRow label="Beta tips" desc="Show guidance for unfinished beta flows." checked={preferencePrefs.betaTips} onChange={value => updatePreferencePrefs({ ...preferencePrefs, betaTips: value })} />
                 </div>
                 <div className="flex flex-wrap gap-3 border-t border-card-border pt-5">
                   <button onClick={restartTutorial} className="flex h-11 items-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
