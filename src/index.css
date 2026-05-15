@@ -349,4 +349,8 @@ select {
   .visnova-select-trigger {
     @apply flex h-12 w-full min-w-0 items-center gap-2 rounded-2xl border border-card-border bg-surface-muted px-4 text-sm font-bold text-text-main shadow-sm transition-all hover:border-accent/35 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-50;
   }
+
+  .settings-input {
+    @apply h-12 w-full rounded-2xl border border-card-border bg-surface-muted px-4 text-sm font-bold text-text-main shadow-sm outline-none transition-all placeholder:text-text-secondary/35 focus:border-accent focus:bg-card focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-50;
+  }
 }

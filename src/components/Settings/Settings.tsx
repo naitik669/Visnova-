@@ -1,12 +1,60 @@
-import { motion, AnimatePresence } from 'motion/react';
-import { Sun, Moon, Palette, Shield, User, Bell, Globe, ChevronRight, Check, X, Camera, Sparkles, Zap, Smartphone, Key } from 'lucide-react';
+import { motion } from 'motion/react';
+import {
+  Sun,
+  Moon,
+  Palette,
+  Shield,
+  User,
+  Bell,
+  Globe,
+  Check,
+  X,
+  Camera,
+  Sparkles,
+  Zap,
+  Key,
+  Lock,
+  LogOut,
+  Monitor,
+  RotateCcw,
+  Settings as SettingsIcon
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
-import { useState } from 'react';
+
+type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences';
+
+const themes = [
+  { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main' },
+  { id: 'dark', icon: Moon, label: 'Dark', desc: 'Optimized for deep work', color: 'bg-[#18191C] text-[#fafaf9]' },
+  { id: 'midnight', icon: Moon, label: 'Midnight', desc: 'Deep navy focus', color: 'bg-[#0f172a] text-[#38bdf8]' },
+  { id: 'graphite', icon: Palette, label: 'Graphite', desc: 'Neutral dark workspace', color: 'bg-[#262626] text-[#fafaf9]' },
+  { id: 'forest-dark', icon: Sparkles, label: 'Forest', desc: 'Dark green calm', color: 'bg-[#102719] text-[#86efac]' },
+  { id: 'plum-dark', icon: Palette, label: 'Plum', desc: 'Soft creative mode', color: 'bg-[#2f173d] text-[#f0abfc]' },
+  { id: 'green', icon: Sparkles, label: 'Green', desc: 'Organic growth focus', color: 'bg-[#4ade80] text-[#064e3b]' },
+  { id: 'yellow', icon: Zap, label: 'Yellow', desc: 'Optimistic energy', color: 'bg-[#eab308] text-[#422006]' },
+  { id: 'pastel', icon: Palette, label: 'Pastel', desc: 'Creative soft mood', color: 'bg-[#5D4361] text-[#FFF7F0]' },
+  { id: 'sage', icon: Sparkles, label: 'Sage', desc: 'Natural and focused', color: 'bg-[#8da482] text-white' },
+] as const;
+
+const loadLocalSetting = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 export default function Settings() {
-  const { theme, setTheme, user, updateUser } = useStore();
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const { theme, setTheme, user, updateUser, restartTutorial, signOut, addToast } = useStore();
+  const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [editData, setEditData] = useState({
     name: user.name,
     username: user.username || '',
@@ -14,338 +62,321 @@ export default function Settings() {
     role: user.role || user.rank || '',
     avatar: user.avatar
   });
+  const [notificationPrefs, setNotificationPrefs] = useState(() => loadLocalSetting('visnova-notification-settings', {
+    product: true,
+    social: true,
+    reminders: true,
+    sound: false
+  }));
+  const [preferencePrefs, setPreferencePrefs] = useState(() => loadLocalSetting('visnova-preference-settings', {
+    defaultVisibility: 'private',
+    reduceMotion: false,
+    compactCards: false,
+    betaTips: true
+  }));
+
+  useEffect(() => {
+    setEditData({
+      name: user.name,
+      username: user.username || '',
+      bio: user.bio || '',
+      role: user.role || user.rank || '',
+      avatar: user.avatar
+    });
+  }, [user.avatar, user.bio, user.name, user.rank, user.role, user.username]);
+
+  useEffect(() => {
+    localStorage.setItem('visnova-notification-settings', JSON.stringify(notificationPrefs));
+  }, [notificationPrefs]);
+
+  useEffect(() => {
+    localStorage.setItem('visnova-preference-settings', JSON.stringify(preferencePrefs));
+    document.documentElement.dataset.reduceMotion = preferencePrefs.reduceMotion ? 'true' : 'false';
+    document.documentElement.dataset.compactCards = preferencePrefs.compactCards ? 'true' : 'false';
+  }, [preferencePrefs]);
+
+  const sections = useMemo(() => [
+    { id: 'profile' as const, icon: User, label: 'Profile', desc: 'Identity and public profile' },
+    { id: 'themes' as const, icon: Palette, label: 'Themes', desc: 'Visual appearance' },
+    { id: 'security' as const, icon: Shield, label: 'Security', desc: 'Password and session' },
+    { id: 'notifications' as const, icon: Bell, label: 'Notifications', desc: 'Alerts and reminders' },
+    { id: 'preferences' as const, icon: SettingsIcon, label: 'Preferences', desc: 'Defaults and beta tools' },
+  ], []);
 
   const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
     await updateUser(editData);
-    setIsEditingProfile(false);
+    setIsSavingProfile(false);
   };
 
-  const themes = [
-    {
-      id: 'light',
-      icon: Sun,
-      label: 'Light',
-      desc: 'High contrast clarity',
-      color: 'bg-card text-text-main'
-    },
-    {
-      id: 'dark',
-      icon: Moon,
-      label: 'Dark',
-      desc: 'Optimized for deep work',
-      color: 'bg-[#18191C] text-accent-contrast'
-    },
-    {
-      id: 'midnight',
-      icon: Moon,
-      label: 'Midnight',
-      desc: 'Deep navy focus',
-      color: 'bg-[#0f172a] text-[#38bdf8]'
-    },
-    {
-      id: 'graphite',
-      icon: Palette,
-      label: 'Graphite',
-      desc: 'Neutral dark workspace',
-      color: 'bg-[#262626] text-[#fafaf9]'
-    },
-    {
-      id: 'forest-dark',
-      icon: Sparkles,
-      label: 'Forest',
-      desc: 'Dark green calm',
-      color: 'bg-[#102719] text-[#86efac]'
-    },
-    {
-      id: 'plum-dark',
-      icon: Palette,
-      label: 'Plum',
-      desc: 'Soft dark creative mode',
-      color: 'bg-[#2f173d] text-[#f0abfc]'
-    },
-    {
-      id: 'green',
-      icon: Sparkles,
-      label: 'Green',
-      desc: 'Organic growth focus',
-      color: 'bg-[#4ade80] text-[#064e3b]'
-    },
-    {
-      id: 'yellow',
-      icon: Zap,
-      label: 'Yellow',
-      desc: 'Optimistic energy',
-      color: 'bg-[#eab308] text-[#422006]'
-    },
-    {
-      id: 'pastel',
-      icon: Palette,
-      label: 'Pastel',
-      desc: 'Creative & Soft mood',
-      color: 'bg-[#5D4361] text-[#FFF7F0]'
-    },
-    {
-      id: 'sage',
-      icon: Sparkles,
-      label: 'Sage',
-      desc: 'Natural & Focused',
-      color: 'bg-[#8da482] text-white'
-    },
-  ] as const;
+  const handlePasswordUpdate = async () => {
+    if (password.length < 8) {
+      addToast({ type: 'error', title: 'Password too short', description: 'Use at least 8 characters.' });
+      return;
+    }
+    if (password !== confirmPassword) {
+      addToast({ type: 'error', title: 'Passwords do not match', description: 'Confirm the same password.' });
+      return;
+    }
+    setIsUpdatingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setIsUpdatingPassword(false);
+    if (error) {
+      addToast({ type: 'error', title: 'Password failed', description: error.message });
+      return;
+    }
+    setPassword('');
+    setConfirmPassword('');
+    addToast({ type: 'success', title: 'Password updated', description: 'Use your new password next time you sign in.' });
+  };
 
-  const sections = [
-    { icon: Key, label: 'Advanced Security', desc: 'Manage access keys and authentication protocols' },
-    { icon: Bell, label: 'Sensory Notifications', desc: 'Configure threshold and urgency limits' },
-    { icon: Smartphone, label: 'Device Integration', desc: 'Sync across mobile and desktop nodes' },
-    { icon: Globe, label: 'Regional Protocols', desc: 'Language and localization standards' },
-    { icon: Sparkles, label: 'System Tutorial', desc: 'Re-run the interactive orientation sequence', action: 'restart' },
-  ];
-
-  const { restartTutorial } = useStore();
+  const handleResetLocalPrefs = () => {
+    localStorage.removeItem('visnova-notification-settings');
+    localStorage.removeItem('visnova-preference-settings');
+    setNotificationPrefs({ product: true, social: true, reminders: true, sound: false });
+    setPreferencePrefs({ defaultVisibility: 'private', reduceMotion: false, compactCards: false, betaTips: true });
+    addToast({ type: 'success', title: 'Preferences reset', description: 'Local settings were restored to defaults.' });
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className="max-w-5xl mx-auto space-y-16 pb-32 pt-8"
+      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      className="mx-auto max-w-7xl space-y-8 pb-32 pt-6"
     >
-      {/* Dynamic Header */}
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-             <div className="w-1.5 h-6 bg-accent rounded-full" />
-             <h1 className="text-5xl font-black tracking-tighter text-text-main">SYSTEM CONFIG</h1>
+      <section className="px-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-accent">Settings</p>
+            <h1 className="mt-2 text-4xl font-black tracking-tight text-text-main">Account Controls</h1>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-text-secondary">
+              Manage your profile, theme, security, notifications, and beta preferences.
+            </p>
           </div>
-          <p className="text-text-secondary font-medium max-w-md leading-relaxed">
-            Calibrate your Vision interface and adjust environmental aesthetics to optimize for maximum cognitive output.
-          </p>
-        </div>
-        <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-50 pb-2">
-           <Zap size={14} className="text-warning" />
-           Latency: 12ms // VisNova Protocol v4.1
+          <div className="rounded-2xl border border-card-border bg-card px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/55">
+            VisNova Beta Settings
+          </div>
         </div>
       </section>
 
-      {/* Identity Core */}
-      <section className="relative px-4">
-        <div className="system-card relative overflow-hidden group">
-          {/* Background Mesh */}
-          <div className="absolute inset-0 bg-mesh opacity-20 pointer-events-none" />
+      <section className="grid grid-cols-1 gap-6 px-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="system-card h-fit bg-card p-3">
+          <div className="space-y-1">
+            {sections.map(section => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all',
+                  activeSection === section.id ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/10' : 'text-text-secondary hover:bg-surface-muted hover:text-text-main'
+                )}
+              >
+                <section.icon size={18} />
+                <span className="min-w-0">
+                  <span className="block text-xs font-black uppercase tracking-widest">{section.label}</span>
+                  <span className={cn('block text-[10px] font-semibold', activeSection === section.id ? 'text-accent-contrast/70' : 'text-text-secondary/55')}>{section.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </aside>
 
-          <div className="relative p-8 md:p-12 space-y-10">
-            <div className="flex flex-col md:flex-row items-start gap-10">
-              <div className="relative shrink-0">
-                <img
-                   src={editData.avatar}
-                   className="w-32 h-32 rounded-3xl object-cover border-4 border-card-border shadow-2xl transition-transform duration-700 group-hover:scale-105"
-                   alt="Profile"
-                />
-                <button className="absolute -bottom-3 -right-3 w-10 h-10 bg-accent text-accent-contrast rounded-xl flex items-center justify-center shadow-lg hover:scale-110 transition-transform active:scale-95">
-                   <Camera size={18} />
-                </button>
-              </div>
-
-              <div className="flex-1 space-y-6 pt-2 w-full">
-                {!isEditingProfile ? (
-                  <div className="space-y-6">
-                    <div>
-                      <h2 className="text-4xl font-bold text-text-main tracking-tight">{user.name}</h2>
-                      <p className="text-text-secondary font-medium mt-1 uppercase tracking-[0.15em] text-[10px]">@{user.username || 'user'} // STATUS: ONLINE</p>
+        <main className="min-w-0">
+          {activeSection === 'profile' && (
+            <SettingsPanel title="Profile" subtitle="Your public identity across VisNova.">
+              <div className="flex flex-col gap-8 lg:flex-row">
+                <div className="shrink-0">
+                  <div className="relative">
+                    <img src={editData.avatar} className="h-32 w-32 rounded-3xl border-4 border-card-border object-cover shadow-xl" alt="Profile" />
+                    <div className="absolute -bottom-3 -right-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-contrast shadow-lg">
+                      <Camera size={18} />
                     </div>
-
-                    <div className="flex flex-wrap gap-3">
-                        <span className="px-4 py-2 bg-accent text-accent-contrast font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-accent/20">
-                          {user.role || user.rank}
-                        </span>
-                        <span className="px-4 py-2 bg-success/10 text-success font-black text-[10px] uppercase tracking-widest rounded-xl border border-success/10">
-                          LEVEL {user.level} ARCHITECT
-                        </span>
-                    </div>
-
-                    <p className="text-sm text-text-secondary leading-relaxed max-w-xl  font-medium">
-                      "{user.bio || 'Your destiny is being written in these pathways. Define your bio to anchor your identity.'}"
-                    </p>
-
-                    <button
-                      onClick={() => setIsEditingProfile(true)}
-                      className="px-8 py-3 bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest rounded-xl hover:shadow-2xl hover:shadow-accent/20 active:scale-95 transition-all"
-                    >
-                      Update Identity Profile
+                  </div>
+                  <p className="mt-4 max-w-40 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
+                    Avatar upload lives on Profile for now.
+                  </p>
+                </div>
+                <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+                  <SettingsField label="Display name">
+                    <input value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} className="settings-input" />
+                  </SettingsField>
+                  <SettingsField label="Role title">
+                    <input value={editData.role} onChange={e => setEditData({ ...editData, role: e.target.value })} className="settings-input" />
+                  </SettingsField>
+                  <SettingsField label="Username">
+                    <input value={editData.username} onChange={e => setEditData({ ...editData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })} className="settings-input" />
+                  </SettingsField>
+                  <div className="md:col-span-2">
+                    <SettingsField label="Bio">
+                      <textarea value={editData.bio} onChange={e => setEditData({ ...editData, bio: e.target.value })} className="settings-input min-h-28 resize-none py-3" />
+                    </SettingsField>
+                  </div>
+                  <div className="md:col-span-2">
+                    <button onClick={handleSaveProfile} disabled={isSavingProfile} className="h-12 rounded-2xl bg-accent px-6 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50">
+                      {isSavingProfile ? 'Saving...' : 'Save Profile'}
                     </button>
                   </div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="space-y-6 bg-bg-base/50 p-6 rounded-3xl border border-card-border"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Full Name</label>
-                        <input
-                          type="text"
-                          value={editData.name}
-                          onChange={e => setEditData({...editData, name: e.target.value})}
-                          className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all font-bold"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Role Title</label>
-                        <input
-                          type="text"
-                          value={editData.role}
-                          onChange={e => setEditData({...editData, role: e.target.value})}
-                          className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all font-bold"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary ml-1">Identity Bio</label>
-                      <textarea
-                        value={editData.bio}
-                        onChange={e => setEditData({...editData, bio: e.target.value})}
-                        className="w-full h-24 p-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all resize-none font-medium text-sm leading-relaxed"
-                      />
-                    </div>
-                    <div className="flex gap-4 pt-2">
-                      <button
-                        onClick={handleSaveProfile}
-                        className="flex-1 h-12 bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg hover:shadow-accent/20 transition-all active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <Check size={16} /> Save Changes
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsEditingProfile(false);
-                          setEditData({
-                            name: user.name,
-                            username: user.username || '',
-                            bio: user.bio || '',
-                            role: user.role || user.rank || '',
-                            avatar: user.avatar
-                          });
-                        }}
-                        className="h-12 px-6 bg-card border border-card-border text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-surface-muted transition-all active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <X size={16} /> Cancel
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Grid Appearance */}
-      <section id="appearance" className="space-y-8 px-4 scroll-mt-6">
-        <div className="flex items-center gap-4">
-           <h2 className="text-2xl font-bold tracking-tight text-text-main">Environmental Aesthetics</h2>
-           <div className="flex-1 h-px bg-card-border" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {themes.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
-              className={cn(
-                "group relative h-72 rounded-[2rem] overflow-hidden border-2 transition-all duration-700 text-left",
-                theme === t.id
-                  ? "border-accent scale-[1.02] shadow-2xl shadow-accent/10"
-                  : "border-card-border bg-card opacity-70 hover:opacity-100 hover:border-accent/30"
-              )}
-            >
-              <div className="absolute inset-0 bg-mesh opacity-10 group-hover:opacity-20 transition-opacity" />
-
-              <div className="relative h-full p-8 flex flex-col justify-between">
-                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-transform duration-500 group-hover:rotate-12", t.color)}>
-                  <t.icon size={28} />
                 </div>
+              </div>
+            </SettingsPanel>
+          )}
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-black text-xs uppercase tracking-[0.2em]">{t.label}</h3>
-                    {theme === t.id && (
-                      <motion.div layoutId="active-theme" className="px-2 py-0.5 bg-accent text-[9px] font-black text-accent-contrast uppercase tracking-widest rounded-full">Active</motion.div>
+          {activeSection === 'themes' && (
+            <SettingsPanel title="Themes" subtitle="Choose the mood of your workspace.">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {themes.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setTheme(item.id)}
+                    className={cn(
+                      'group relative min-h-44 rounded-3xl border-2 p-5 text-left transition-all',
+                      theme === item.id ? 'border-accent bg-accent/5 shadow-xl shadow-accent/10' : 'border-card-border bg-card hover:border-accent/30'
                     )}
+                  >
+                    <div className={cn('mb-8 flex h-12 w-12 items-center justify-center rounded-2xl shadow-lg transition-transform group-hover:rotate-6', item.color)}>
+                      <item.icon size={24} />
+                    </div>
+                    <h3 className="text-xs font-black uppercase tracking-widest text-text-main">{item.label}</h3>
+                    <p className="mt-1 text-xs font-semibold text-text-secondary">{item.desc}</p>
+                    {theme === item.id && <span className="absolute right-4 top-4 rounded-full bg-accent px-2 py-1 text-[9px] font-black uppercase tracking-widest text-accent-contrast">Active</span>}
+                  </button>
+                ))}
+              </div>
+            </SettingsPanel>
+          )}
+
+          {activeSection === 'security' && (
+            <SettingsPanel title="Security" subtitle="Keep your account access clean and recoverable.">
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                <div className="rounded-3xl border border-card-border bg-app-container p-5">
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent"><Lock size={18} /></div>
+                    <div>
+                      <h3 className="text-sm font-black text-text-main">Update Password</h3>
+                      <p className="text-xs font-semibold text-text-secondary/60">Requires your current session.</p>
+                    </div>
                   </div>
-                  <p className="text-sm text-text-secondary font-medium leading-tight">{t.desc}</p>
+                  <div className="space-y-3">
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" className="settings-input" />
+                    <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="settings-input" />
+                    <button onClick={handlePasswordUpdate} disabled={isUpdatingPassword || !password || !confirmPassword} className="h-11 w-full rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50">
+                      {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+                    </button>
+                  </div>
+                </div>
+                <div className="rounded-3xl border border-card-border bg-app-container p-5">
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary"><Key size={18} /></div>
+                    <div>
+                      <h3 className="text-sm font-black text-text-main">Session</h3>
+                      <p className="text-xs font-semibold text-text-secondary/60">Sign out on this device.</p>
+                    </div>
+                  </div>
+                  <button onClick={signOut} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-card-border bg-card text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-danger">
+                    <LogOut size={14} /> Logout
+                  </button>
                 </div>
               </div>
+            </SettingsPanel>
+          )}
 
-              {/* Decorative Sample */}
-              <div className="absolute top-8 right-8 space-y-1.5 pointer-events-none">
-                 <div className="w-12 h-1 bg-accent/20 rounded-full" />
-                 <div className="w-8 h-1 bg-accent/10 rounded-full" />
+          {activeSection === 'notifications' && (
+            <SettingsPanel title="Notifications" subtitle="Control product, social, and reminder signals on this browser.">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <ToggleRow label="Product updates" desc="Beta changes, important notices." checked={notificationPrefs.product} onChange={value => setNotificationPrefs({ ...notificationPrefs, product: value })} />
+                <ToggleRow label="Social activity" desc="Follows, messages, comments." checked={notificationPrefs.social} onChange={value => setNotificationPrefs({ ...notificationPrefs, social: value })} />
+                <ToggleRow label="Vision reminders" desc="Gentle nudges for tasks and habits." checked={notificationPrefs.reminders} onChange={value => setNotificationPrefs({ ...notificationPrefs, reminders: value })} />
+                <ToggleRow label="Sound" desc="Allow subtle sounds when supported." checked={notificationPrefs.sound} onChange={value => setNotificationPrefs({ ...notificationPrefs, sound: value })} />
               </div>
-            </button>
-          ))}
-        </div>
+            </SettingsPanel>
+          )}
+
+          {activeSection === 'preferences' && (
+            <SettingsPanel title="Preferences" subtitle="Defaults for this browser and beta workspace.">
+              <div className="space-y-5">
+                <SettingsField label="Default visibility">
+                  <select value={preferencePrefs.defaultVisibility} onChange={e => setPreferencePrefs({ ...preferencePrefs, defaultVisibility: e.target.value })} className="settings-input">
+                    <option value="private">Private</option>
+                    <option value="connections">Connections</option>
+                    <option value="public">Public</option>
+                  </select>
+                </SettingsField>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <ToggleRow label="Reduce motion" desc="Lower animation intensity." checked={preferencePrefs.reduceMotion} onChange={value => setPreferencePrefs({ ...preferencePrefs, reduceMotion: value })} />
+                  <ToggleRow label="Compact cards" desc="Use denser surfaces where supported." checked={preferencePrefs.compactCards} onChange={value => setPreferencePrefs({ ...preferencePrefs, compactCards: value })} />
+                  <ToggleRow label="Beta tips" desc="Show guidance for unfinished beta flows." checked={preferencePrefs.betaTips} onChange={value => setPreferencePrefs({ ...preferencePrefs, betaTips: value })} />
+                </div>
+                <div className="flex flex-wrap gap-3 border-t border-card-border pt-5">
+                  <button onClick={restartTutorial} className="flex h-11 items-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+                    <Monitor size={14} /> Restart Tour
+                  </button>
+                  <button onClick={handleResetLocalPrefs} className="flex h-11 items-center gap-2 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                    <RotateCcw size={14} /> Reset Local Preferences
+                  </button>
+                </div>
+              </div>
+            </SettingsPanel>
+          )}
+        </main>
       </section>
 
-      {/* Account Parameters */}
-      <section className="space-y-8 px-4">
-        <div className="flex items-center gap-4">
-           <h2 className="text-2xl font-bold tracking-tight text-text-main">Protocol Parameters</h2>
-           <div className="flex-1 h-px bg-card-border" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sections.map((item) => (
-            <div
-              key={item.label}
-              onClick={() => {
-                if ('action' in item && item.action === 'restart') {
-                  restartTutorial();
-                }
-              }}
-              className="group p-8 rounded-3xl bg-card border border-card-border flex items-center justify-between cursor-pointer hover:border-accent/20 hover:shadow-xl hover:shadow-accent/5 transition-all duration-300"
-            >
-              <div className="flex items-center gap-8">
-                <div className="w-16 h-16 rounded-3xl bg-bg-base flex items-center justify-center text-text-secondary group-hover:text-accent group-hover:scale-110 transition-all duration-500 group-hover:bg-accent-soft">
-                  <item.icon size={24} />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-text-main uppercase tracking-widest text-xs">{item.label}</h4>
-                  <p className="text-sm text-text-secondary font-medium tracking-tight">{item.desc}</p>
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-bg-base flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                <ChevronRight size={18} className="text-accent" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* System Override */}
       <section className="px-4">
-        <div className="bg-danger/5 border border-danger/10 p-10 rounded-[3rem] space-y-10">
-          <div className="flex items-center gap-4">
-            <Shield size={32} className="text-danger" />
+        <div className="rounded-[2rem] border border-danger/15 bg-danger/5 p-6">
+          <div className="flex items-start gap-4">
+            <Shield size={24} className="mt-1 text-danger" />
             <div>
-              <h2 className="text-2xl font-black tracking-tight text-danger uppercase">System Override</h2>
-              <p className="text-danger/70 font-bold text-[10px] uppercase tracking-[0.2em] mt-1">Danger Zone // Irreversible Procedures</p>
+              <h2 className="text-xl font-black uppercase tracking-tight text-danger">Danger Zone</h2>
+              <p className="mt-1 text-sm font-semibold text-danger/70">
+                Data deletion and account deactivation should be handled through a confirmed support flow during beta. No fake destructive buttons are shown here.
+              </p>
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-            <button className="px-10 py-4 bg-card text-danger border border-danger/20 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-danger/5 transition-all active:scale-95 shadow-lg shadow-danger/5">
-              Reset App Data
-            </button>
-            <button className="px-10 py-4 bg-danger text-accent-contrast rounded-2xl font-black text-[10px] uppercase tracking-widest hover:brightness-95 shadow-2xl shadow-danger/20 transition-all active:scale-95">
-              Deactivate Identity
-            </button>
-          </div>
-
-          <div className="pt-4 border-t border-danger/10">
-             <p className="text-[10px] font-medium text-danger/60 uppercase tracking-[0.1em]">VisNova Secure Wipe v1.0.2 // Zero Retention Policy</p>
           </div>
         </div>
       </section>
     </motion.div>
+  );
+}
+
+function SettingsPanel({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <motion.section
+      key={title}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="system-card bg-card p-5 sm:p-7"
+    >
+      <div className="mb-6">
+        <h2 className="text-2xl font-black tracking-tight text-text-main">{title}</h2>
+        <p className="mt-1 text-sm font-semibold text-text-secondary">{subtitle}</p>
+      </div>
+      {children}
+    </motion.section>
+  );
+}
+
+function SettingsField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-2">
+      <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/55">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function ToggleRow({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className="flex items-center justify-between gap-4 rounded-3xl border border-card-border bg-app-container p-5 text-left transition-all hover:border-accent/30"
+    >
+      <span>
+        <span className="block text-sm font-black text-text-main">{label}</span>
+        <span className="mt-1 block text-xs font-semibold text-text-secondary/65">{desc}</span>
+      </span>
+      <span className={cn('relative h-7 w-12 rounded-full transition-colors', checked ? 'bg-accent' : 'bg-surface-muted')}>
+        <span className={cn('absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-6' : 'translate-x-1')} />
+      </span>
+    </button>
   );
 }
