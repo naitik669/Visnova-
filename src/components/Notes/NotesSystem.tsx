@@ -1972,21 +1972,21 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="fixed inset-0 z-[120] flex flex-col bg-app-container text-text-main overflow-hidden"
+      className="mx-auto flex min-h-[calc(100vh-13rem)] w-full max-w-[1600px] flex-col overflow-hidden bg-app-container text-text-main"
     >
-      <div className="h-20 flex items-center justify-between px-8 border-b border-card-border/60 shrink-0 bg-app-container/95 backdrop-blur-md">
-         <div className="flex items-center gap-6">
-           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-accent/5 text-accent flex items-center justify-center hover:bg-accent hover:text-white transition-all active:scale-90">
+      <div className="flex min-h-16 flex-col gap-4 border-b border-card-border/60 bg-app-container/95 px-1 pb-5 backdrop-blur-md sm:min-h-20 sm:flex-row sm:items-center sm:justify-between sm:px-0">
+         <div className="flex items-center gap-4 sm:gap-6">
+           <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/5 text-accent transition-all hover:bg-accent hover:text-white active:scale-90">
               <ChevronRight className="rotate-180" size={18} />
            </button>
-           <div className="space-y-0.5">
+           <div className="min-w-0 space-y-0.5">
              <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">
                {note.note_type === 'normal' ? 'Normal Note' : note.note_type === 'audio' ? 'Audio Note' : 'Journal'}
              </span>
              <p className="text-[9px] font-bold text-accent uppercase tracking-widest leading-none">Writing Space</p>
            </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
            <button 
              onClick={() => updateNote(note.id, { isFavorite: !note.isFavorite })}
              className={cn("w-10 h-10 rounded-xl border flex items-center justify-center transition-all", note.isFavorite ? "bg-accent/10 border-accent/30 text-accent" : "bg-transparent border-card-border text-text-secondary/45 hover:text-text-main")}
@@ -1997,7 +1997,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             onClick={isRecording ? stopRecording : startRecording}
             disabled={isAudioUploading}
             className={cn(
-              "h-10 px-5 rounded-xl flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50",
+              "h-10 px-4 sm:px-5 rounded-xl flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50",
               isRecording ? "bg-danger text-white" : "bg-accent/5 text-accent hover:bg-accent hover:text-white"
             )}
            >
@@ -2007,7 +2007,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
            <button
             onClick={() => audioInputRef.current?.click()}
             disabled={isAudioUploading || isRecording}
-            className="h-10 px-5 rounded-xl bg-surface-muted text-text-secondary flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest hover:bg-accent/5 hover:text-accent transition-all disabled:opacity-50"
+            className="h-10 px-4 sm:px-5 rounded-xl bg-surface-muted text-text-secondary flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest hover:bg-accent/5 hover:text-accent transition-all disabled:opacity-50"
            >
               <Upload size={12} />
               Audio
@@ -2026,8 +2026,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pt-12 pb-24 px-8 md:px-16">
-        <div className="max-w-6xl mx-auto space-y-12">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-1 pb-24 pt-8 sm:pt-10 md:pt-12">
+        <div className="mx-auto max-w-5xl space-y-10 sm:space-y-12">
           {note.note_type === 'journal' && (
             <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{safeFormat(note.createdAt, 'EEEE, MMM dd')}</h4>
           )}
@@ -2035,7 +2035,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
           <input
             value={note.title}
             onChange={e => updateNote(note.id, { title: e.target.value })}
-            className="w-full text-4xl font-extrabold text-text-main bg-transparent border-none focus:outline-none placeholder:text-text-secondary/20 tracking-tight"
+            className="w-full bg-transparent text-3xl font-extrabold tracking-tight text-text-main placeholder:text-text-secondary/20 focus:outline-none sm:text-4xl"
             placeholder="Document Title"
           />
           
@@ -2046,7 +2046,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               e.target.style.height = 'auto';
               e.target.style.height = e.target.scrollHeight + 'px';
             }}
-            className="w-full text-lg text-text-secondary bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20 leading-loose font-medium min-h-[60vh]"
+            className="min-h-[58vh] w-full resize-none bg-transparent text-base font-medium leading-loose text-text-secondary placeholder:text-text-secondary/20 focus:outline-none sm:text-lg"
             placeholder="Log details..."
             style={{ height: 'auto' }}
           />
