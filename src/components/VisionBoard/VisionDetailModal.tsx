@@ -910,141 +910,112 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-12 lg:p-20 space-y-20 custom-scrollbar">
-       <div className="max-w-4xl mx-auto space-y-16">
-          <div className="space-y-4">
-             <span className="text-[10px] font-black uppercase tracking-widest text-accent">Main Goal</span>
-             <h2 className="text-3xl font-black text-text-main tracking-tighter">{vision.title}</h2>
-             <p className="text-xl text-text-secondary font-medium  border-l-4 border-accent/20 pl-8">{vision.description}</p>
-          </div>
-
-          <div className="rounded-[2rem] border border-card-border bg-card p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
-                  <Wallet size={20} />
+    <div className="flex-1 overflow-y-auto p-5 sm:p-8 lg:p-10 custom-scrollbar">
+       <div className="mx-auto max-w-[1500px] space-y-8">
+          <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6">
+             <aside className="space-y-5">
+                <div className="rounded-[2rem] border border-card-border bg-card p-5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-accent">Execution Blueprint</span>
+                  <h2 className="mt-2 text-2xl font-black text-text-main tracking-tight">{vision.title}</h2>
+                  <p className="mt-3 text-sm font-semibold leading-relaxed text-text-secondary/75">{vision.description || 'Build this vision one clear step at a time.'}</p>
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-text-main">Wallet for this Vision</h3>
-                  <p className="text-xs font-semibold text-text-secondary mt-1">
-                    {linkedMoneyGoals.length > 0
-                      ? `${formatMoney(visionMoneySaved)} saved of ${formatMoney(visionMoneyTarget)} target`
-                      : 'Track the funds needed to make this Vision real.'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/wallet')}
-                className="h-10 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest"
-              >
-                Open Wallet
-              </button>
-            </div>
-            <div className="mt-5 h-2 rounded-full bg-surface-muted overflow-hidden">
-              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${visionMoneyProgress}%` }} />
-            </div>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-2xl bg-app-container border border-card-border p-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Goals</p>
-                <p className="text-sm font-black text-text-main mt-1">{linkedMoneyGoals.length}</p>
-              </div>
-              <div className="rounded-2xl bg-app-container border border-card-border p-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Saved</p>
-                <p className="text-sm font-black text-success mt-1">{formatMoney(visionMoneySaved)}</p>
-              </div>
-              <div className="rounded-2xl bg-app-container border border-card-border p-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Expenses</p>
-                <p className="text-sm font-black text-danger mt-1">{formatMoney(visionMoneyExpenses)}</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="rounded-[2rem] border border-card-border bg-card p-6 space-y-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-accent">Roadmap</p>
-                <h3 className="text-lg font-black text-text-main">Editable execution roadmap</h3>
-                <p className="mt-1 text-xs font-semibold text-text-secondary/65">Add steps below, describe the work, then move each step between Now, Next, and Later.</p>
-              </div>
-              <p className="text-xs font-bold text-text-secondary">{vision.tasks.filter(task => task.completed).length}/{vision.tasks.length} complete</p>
-            </div>
-            <div className="relative grid grid-cols-1 md:grid-cols-3 gap-4">
-              {([
-                { key: 'high', label: 'Now', helper: 'Critical next moves', step: '01' },
-                { key: 'medium', label: 'Next', helper: 'Priority work', step: '02' },
-                { key: 'low', label: 'Later', helper: 'Standard tasks', step: '03' }
-              ] as const).map(column => {
-                const items = vision.tasks.filter(task => (task.priority || 'low') === column.key);
-                return (
-                  <div key={column.key} className="rounded-2xl bg-app-container border border-card-border p-4 min-h-44">
-                    <div className="mb-4 flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-[10px] font-black text-accent">{column.step}</div>
-                      <div className="min-w-0">
-                      <p className="text-sm font-black text-text-main">{column.label}</p>
-                      <p className="text-[10px] font-bold text-text-secondary">{column.helper}</p>
-                      </div>
+                <form onSubmit={handleAddTask} className="rounded-[2rem] border border-card-border bg-card p-4 space-y-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-accent">Add step</p>
+                    <h3 className="text-base font-black text-text-main">Roadmap builder</h3>
+                  </div>
+                  <input
+                    value={taskText}
+                    onChange={(event) => setTaskText(event.target.value)}
+                    placeholder="Step title..."
+                    className="w-full h-12 rounded-2xl bg-app-container border border-card-border px-4 text-sm font-bold text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
+                  />
+                  <textarea
+                    value={taskDescription}
+                    onChange={(event) => setTaskDescription(event.target.value)}
+                    placeholder="Describe the step, success criteria, or proof needed..."
+                    rows={4}
+                    className="w-full resize-none rounded-2xl bg-app-container border border-card-border px-4 py-3 text-sm font-semibold text-text-secondary placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isAddingTask || !taskText.trim()}
+                    className="h-12 w-full justify-center rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Plus size={16} /> Add roadmap step
+                  </button>
+                </form>
+
+                <div className="rounded-[2rem] border border-card-border bg-card p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">Progress</p>
+                      <p className="text-sm font-black text-text-main">{vision.tasks.filter(task => task.completed).length}/{vision.tasks.length} complete</p>
                     </div>
-                    <div className="space-y-3">
-                      {items.length > 0 ? items.slice(0, 5).map(task => (
-                        <button
-                          key={task.id}
-                          onClick={() => handleUpdatePriority(task.id, column.key === 'high' ? 'medium' : column.key === 'medium' ? 'low' : 'high')}
-                          className={cn('w-full text-left rounded-xl border border-card-border bg-card px-3 py-3 text-xs font-bold text-text-secondary hover:border-accent/40', task.completed && 'opacity-50')}
-                          title="Click to move to the next roadmap stage"
-                        >
-                          <span className={cn("block text-text-main", task.completed && "line-through")}>{task.text}</span>
-                          <span className="mt-1 block line-clamp-2 text-[10px] font-semibold leading-relaxed text-text-secondary/65">
-                            {task.description || 'No description yet.'}
-                          </span>
-                        </button>
-                      )) : (
-                        <p className="rounded-xl border border-dashed border-card-border p-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Empty</p>
-                      )}
+                    <div className="h-12 w-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
+                      <Target size={18} />
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="mt-4 h-2 rounded-full bg-surface-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${vision.progress || 0}%` }} />
+                  </div>
+                </div>
+             </aside>
+
+             <section className="rounded-[2rem] border border-card-border bg-card p-5 sm:p-6 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-accent">Roadmap</p>
+                    <h3 className="text-2xl font-black text-text-main tracking-tight">Editable execution roadmap</h3>
+                    <p className="mt-1 text-xs font-semibold text-text-secondary/65">Click a card to move it from Now to Next to Later. Edit full details in Action Steps below.</p>
+                  </div>
+                  <p className="rounded-full border border-card-border bg-app-container px-4 py-2 text-xs font-bold text-text-secondary">{vision.tasks.length} steps</p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {([
+                    { key: 'high', label: 'Now', helper: 'Critical next moves', step: '01' },
+                    { key: 'medium', label: 'Next', helper: 'Priority work', step: '02' },
+                    { key: 'low', label: 'Later', helper: 'Standard tasks', step: '03' }
+                  ] as const).map(column => {
+                    const items = vision.tasks.filter(task => (task.priority || 'low') === column.key);
+                    return (
+                      <div key={column.key} className="rounded-2xl bg-app-container border border-card-border p-4 min-h-[360px]">
+                        <div className="mb-4 flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-[10px] font-black text-accent">{column.step}</div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-black text-text-main">{column.label}</p>
+                            <p className="text-[10px] font-bold text-text-secondary">{column.helper}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          {items.length > 0 ? items.map(task => (
+                            <button
+                              key={task.id}
+                              onClick={() => handleUpdatePriority(task.id, column.key === 'high' ? 'medium' : column.key === 'medium' ? 'low' : 'high')}
+                              className={cn('w-full text-left rounded-xl border border-card-border bg-card px-3 py-3 text-xs font-bold text-text-secondary hover:border-accent/40 hover:-translate-y-0.5 transition-all', task.completed && 'opacity-50')}
+                              title="Click to move to the next roadmap stage"
+                            >
+                              <span className={cn("block text-text-main", task.completed && "line-through")}>{task.text}</span>
+                              <span className="mt-1 block line-clamp-3 text-[10px] font-semibold leading-relaxed text-text-secondary/65">
+                                {task.description || 'No description yet.'}
+                              </span>
+                            </button>
+                          )) : (
+                            <p className="rounded-xl border border-dashed border-card-border p-4 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Add a step or move one here</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+             </section>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-             <div className="space-y-8">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Knowledge Base</h3>
-                <div className="grid grid-cols-1 gap-4">
-                   {notes.filter(n => n.linkedVisionId === vision.id).map(n => (
-                     <div key={n.id} className="p-6 bg-card border border-card-border rounded-[2rem] hover:border-accent/30 transition-all cursor-pointer">
-                        <h4 className="font-bold text-text-main mb-2 tracking-tight">{n.title}</h4>
-                        <p className="text-xs text-text-secondary line-clamp-2">{n.content}</p>
-                     </div>
-                   ))}
-                </div>
-             </div>
-             <div className="space-y-8">
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Action Steps</h3>
-                  <form onSubmit={handleAddTask} className="rounded-[2rem] border border-card-border bg-card p-4 space-y-3">
-                    <input
-                      value={taskText}
-                      onChange={(event) => setTaskText(event.target.value)}
-                      placeholder="Step title..."
-                      className="w-full h-12 rounded-2xl bg-app-container border border-card-border px-4 text-sm font-bold text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
-                    />
-                    <textarea
-                      value={taskDescription}
-                      onChange={(event) => setTaskDescription(event.target.value)}
-                      placeholder="Describe this step, what to do, or what proof completes it..."
-                      rows={3}
-                      className="w-full resize-none rounded-2xl bg-app-container border border-card-border px-4 py-3 text-sm font-semibold text-text-secondary placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isAddingTask || !taskText.trim()}
-                      className="h-12 w-full justify-center rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
-                    >
-                      <Plus size={16} /> Add roadmap step
-                    </button>
-                  </form>
-                </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
+             <section className="space-y-4">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Action Steps</h3>
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -1057,7 +1028,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
                     <div className="space-y-4">
                       {vision.tasks.length === 0 && (
                         <div className="p-8 rounded-[2rem] border border-dashed border-card-border text-center text-xs font-black uppercase tracking-widest text-text-secondary/40">
-                          No tasks yet. Add the first action step.
+                          No roadmap steps yet. Add the first step from the builder.
                         </div>
                       )}
                       {vision.tasks.map((t, idx) => (
@@ -1078,7 +1049,60 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
                     </div>
                   </SortableContext>
                 </DndContext>
-             </div>
+             </section>
+
+             <aside className="space-y-5">
+                <div className="rounded-[2rem] border border-card-border bg-card p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                      <Wallet size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-base font-black text-text-main">Wallet</h3>
+                      <p className="text-xs font-semibold text-text-secondary mt-1">
+                        {linkedMoneyGoals.length > 0
+                          ? `${formatMoney(visionMoneySaved)} saved of ${formatMoney(visionMoneyTarget)} target`
+                          : 'Track funds for this Vision.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-5 h-2 rounded-full bg-surface-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${visionMoneyProgress}%` }} />
+                  </div>
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl bg-app-container border border-card-border p-3">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Goals</p>
+                      <p className="text-sm font-black text-text-main mt-1">{linkedMoneyGoals.length}</p>
+                    </div>
+                    <div className="rounded-2xl bg-app-container border border-card-border p-3">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Saved</p>
+                      <p className="text-sm font-black text-success mt-1">{formatMoney(visionMoneySaved)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-app-container border border-card-border p-3">
+                      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Spend</p>
+                      <p className="text-sm font-black text-danger mt-1">{formatMoney(visionMoneyExpenses)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/wallet')}
+                    className="mt-4 h-10 w-full rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest"
+                  >
+                    Open Wallet
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Knowledge Base</h3>
+                  {notes.filter(n => n.linkedVisionId === vision.id).length === 0 ? (
+                    <div className="rounded-[2rem] border border-dashed border-card-border p-6 text-xs font-bold text-text-secondary/45">No linked notes yet.</div>
+                  ) : notes.filter(n => n.linkedVisionId === vision.id).map(n => (
+                    <div key={n.id} className="p-5 bg-card border border-card-border rounded-[2rem] hover:border-accent/30 transition-all cursor-pointer">
+                      <h4 className="font-bold text-text-main mb-2 tracking-tight">{n.title}</h4>
+                      <p className="text-xs text-text-secondary line-clamp-2">{n.content}</p>
+                    </div>
+                  ))}
+                </div>
+             </aside>
           </div>
        </div>
     </div>
