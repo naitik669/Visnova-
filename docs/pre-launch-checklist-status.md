@@ -35,6 +35,7 @@ Legend:
 - [x] Avatar upload works in code/storage contract
 - [x] Rate limiting added for auth attempts: max 5 attempts per 15 minutes
 - [x] No sensitive keys exposed in frontend
+- [x] Supabase client requires explicit `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; hardcoded production fallback removed
 - [x] Supabase RLS policies checked in migrations
 - [x] Storage upload paths are user-scoped
 - [x] Private buckets use signed URLs
@@ -100,27 +101,29 @@ Legend:
 - [x] No unnecessary full-page reloads found in source
 - [x] 404 page exists
 - [x] Error boundary added
-- [ ] <mark>OWNER</mark> `npm run build` in CI/Vercel verified
-- [ ] <mark>OWNER</mark> `npm run lint` in CI/Vercel verified
-- [ ] <mark>OWNER</mark> Main bundle size reviewed
-- [ ] Heavy modules lazy-loaded where possible
+- [x] Local production build verified on 2026-05-15
+- [x] Local lint/typecheck verified on 2026-05-15
+- [x] Main bundle size reviewed; initial JS reduced from ~1.86 MB minified to ~588 KB minified via route splitting
+- [x] Heavy route modules lazy-loaded where possible
+- [ ] <mark>OWNER</mark> `npm run build` in CI/Vercel verified after latest push
+- [ ] <mark>OWNER</mark> `npm run lint` in CI/Vercel verified after latest push
 - [ ] <mark>OWNER</mark> App refresh tested on every main route
 
 ## Analytics & Tracking
 
 - [ ] <mark>OWNER</mark> Choose analytics provider and privacy settings
-- [ ] Page tracking added
-- [ ] User event tracking added
+- [x] Session/day return beta events added without private content
+- [x] User event tracking added for core write actions in code path
 - [ ] Signup event tracked
-- [ ] Onboarding completion tracked
-- [ ] Vision created event tracked
-- [ ] Task completed event tracked
-- [ ] Note created event tracked
-- [ ] Journal entry created tracked
-- [ ] Post created tracked
-- [ ] Follow/comment events tracked
+- [x] Onboarding completion tracked
+- [x] Vision created event tracked
+- [x] Task completed event tracked
+- [x] Note created event tracked
+- [x] Journal entry created tracked
+- [x] Post created tracked
+- [x] Follow/comment events tracked
 - [ ] Day 1 / Day 7 retention tracked
-- [ ] Analytics does not expose private user content
+- [x] Analytics does not expose private user content in current tracked metadata
 - [x] Cookie notice added for future analytics-cookie disclosure
 
 ## SEO & Marketing Basics
@@ -157,6 +160,7 @@ Legend:
 
 - [x] Full codebase scanned for hardcoded keys
 - [x] No private API keys in frontend
+- [x] Hardcoded Supabase project fallback removed from production path
 - [x] `.env` files ignored
 - [x] `.env.example` uses placeholders only
 - [x] Supabase service role key not exposed

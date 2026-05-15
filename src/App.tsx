@@ -5,17 +5,11 @@
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import VisionBoard from './components/VisionBoard/VisionBoard';
 import Dashboard from './components/Dashboard/Dashboard';
 import Squad from './components/Mentors/Squad';
-import NovaClock from './components/Nova/NovaClock';
-import MindVisualizer from './components/Mind/MindVisualizer';
 import Circle from './components/Circle/Circle';
-import CommunityFeed from './components/Feed/CommunityFeed';
-import PostThreadPage from './components/Feed/PostThreadPage';
-import NotesSystem from './components/Notes/NotesSystem';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import AuthCallback from './components/Auth/AuthCallback';
 import { InteractiveTour } from './components/Onboarding/InteractiveTour';
@@ -23,19 +17,27 @@ import VisionAssistant from './components/AI/VisionAssistant';
 import FloatingTimer from './components/Dashboard/FloatingTimer';
 import UserProfileModal from './components/Social/UserProfileModal';
 import NotificationCenter from './components/Social/NotificationCenter';
-import ProfilePage from './components/Social/ProfilePage';
 import ProfileDropdown from './components/ProfileDropdown';
 import ToastViewport from './components/ToastViewport';
 import { cn } from './lib/utils';
 import { useStore } from './store/useStore';
 import FocusOverlay from './components/Dashboard/FocusOverlay';
-import Settings from './components/Settings/Settings';
 import ErrorBoundary from './components/ErrorBoundary';
 import CookieNotice from './components/CookieNotice';
-import FeedbackPage from './components/Support/FeedbackPage';
 import { CookiePolicyPage, PrivacyPolicyPage, SupportPage, TermsPage } from './components/Legal/LegalPages';
-import MoneyPage from './components/Money/MoneyPage';
-import { supabase } from './lib/supabase';
+import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supabase';
+import { trackBetaEvent } from './lib/betaAnalytics';
+
+const VisionBoard = lazy(() => import('./components/VisionBoard/VisionBoard'));
+const NovaClock = lazy(() => import('./components/Nova/NovaClock'));
+const MindVisualizer = lazy(() => import('./components/Mind/MindVisualizer'));
+const CommunityFeed = lazy(() => import('./components/Feed/CommunityFeed'));
+const PostThreadPage = lazy(() => import('./components/Feed/PostThreadPage'));
+const NotesSystem = lazy(() => import('./components/Notes/NotesSystem'));
+const ProfilePage = lazy(() => import('./components/Social/ProfilePage'));
+const Settings = lazy(() => import('./components/Settings/Settings'));
+const FeedbackPage = lazy(() => import('./components/Support/FeedbackPage'));
+const MoneyPage = lazy(() => import('./components/Money/MoneyPage'));
 
 function AccountabilityNudge() {
   const [visible, setVisible] = useState(false);
@@ -502,6 +504,38 @@ function NotesRedirect() {
   return <Navigate to={`/library${location.search || ''}`} replace />;
 }
 
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
+        className="h-10 w-10 rounded-full border-4 border-accent/10 border-t-accent"
+      />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50">Loading workspace</p>
+    </div>
+  );
+}
+
+function SupabaseConfigScreen() {
+  return (
+    <div className="h-screen w-screen bg-bg-base flex items-center justify-center p-6">
+      <div className="max-w-lg rounded-[2rem] border border-card-border bg-card p-8 text-center shadow-2xl">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-danger/10 text-danger">
+          <X size={22} />
+        </div>
+        <h1 className="text-lg font-black uppercase tracking-widest text-text-main">Supabase env required</h1>
+        <p className="mt-3 text-sm font-semibold leading-6 text-text-secondary">
+          VisNova is not connected because the Supabase environment variables are missing or invalid.
+        </p>
+        <p className="mt-4 rounded-2xl bg-surface-muted p-4 text-left text-xs font-bold text-text-secondary">
+          {supabaseConfigError || 'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before deployment.'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function AppContent() {
   const { 
     theme, 
@@ -526,8 +560,29 @@ function AppContent() {
 
   // Auth Initialization
   useEffect(() => {
-    initializeAuth();
+    if (isSupabaseConfigured()) initializeAuth();
   }, [initializeAuth]);
+
+  useEffect(() => {
+    if (!session?.user?.id || !isSupabaseConfigured()) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const sessionKey = `visnova_session_started_${session.user.id}_${today}`;
+    const returnKey = `visnova_day_return_${session.user.id}_${today}`;
+
+    if (sessionStorage.getItem(sessionKey) !== 'true') {
+      sessionStorage.setItem(sessionKey, 'true');
+      trackBetaEvent(session.user.id, 'session_started', { beta: true });
+    }
+
+    if (localStorage.getItem(returnKey) !== 'true') {
+      localStorage.setItem(returnKey, 'true');
+      trackBetaEvent(session.user.id, 'day_return', { date: today });
+    }
+  }, [session?.user?.id]);
+
+  if (!isSupabaseConfigured()) {
+    return <SupabaseConfigScreen />;
+  }
 
   if (authLoading && !isAuthInitialized && !isAuthCallbackPath) {
     return (
@@ -621,36 +676,38 @@ function AppContent() {
               <main className="flex-1 min-w-0 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
                 <PageContextHeader />
                 <div className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/dashboard" element={<Navigate to="/" replace />} />
-                    <Route path="/feed" element={<CommunityFeed />} />
-                    <Route path="/post/:postId" element={<PostThreadPage />} />
-                    <Route path="/visions" element={<VisionBoard />} />
-                    <Route path="/vision" element={<Navigate to="/visions" replace />} />
-                    <Route path="/circle" element={<Circle />} />
-                    <Route path="/communities" element={<Navigate to="/circle?tab=communities" replace />} />
-                    <Route path="/messages" element={<MessagesRedirect />} />
-                    <Route path="/library" element={<NotesSystem />} />
-                    <Route path="/notes" element={<NotesRedirect />} />
-                    <Route path="/journal" element={<Navigate to="/library?tab=journal" replace />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/profile/:profileId" element={<ProfilePage />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/money" element={<MoneyPage />} />
-                    <Route path="/wallet" element={<MoneyPage />} />
-                    <Route path="/nova-clock" element={<NovaClock />} />
-                    <Route path="/nova" element={<Navigate to="/nova-clock" replace />} />
-                    <Route path="/timeline" element={<Navigate to="/nova-clock" replace />} />
-                    <Route path="/growth" element={<MindVisualizer />} />
-                    <Route path="/mind-map" element={<Navigate to="/growth" replace />} />
-                    <Route path="/privacy" element={<PrivacyPolicyPage />} />
-                    <Route path="/terms" element={<TermsPage />} />
-                    <Route path="/cookies" element={<CookiePolicyPage />} />
-                    <Route path="/support" element={<SupportPage />} />
-                    <Route path="/feedback" element={<FeedbackPage />} />
-                    <Route path="*" element={<div className="p-20 text-center text-[10px] font-black text-text-secondary opacity-30 uppercase tracking-[0.4em]">Page Not Found</div>} />
-                  </Routes>
+                  <Suspense fallback={<RouteFallback />}>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                      <Route path="/feed" element={<CommunityFeed />} />
+                      <Route path="/post/:postId" element={<PostThreadPage />} />
+                      <Route path="/visions" element={<VisionBoard />} />
+                      <Route path="/vision" element={<Navigate to="/visions" replace />} />
+                      <Route path="/circle" element={<Circle />} />
+                      <Route path="/communities" element={<Navigate to="/circle?tab=communities" replace />} />
+                      <Route path="/messages" element={<MessagesRedirect />} />
+                      <Route path="/library" element={<NotesSystem />} />
+                      <Route path="/notes" element={<NotesRedirect />} />
+                      <Route path="/journal" element={<Navigate to="/library?tab=journal" replace />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/profile/:profileId" element={<ProfilePage />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/money" element={<MoneyPage />} />
+                      <Route path="/wallet" element={<MoneyPage />} />
+                      <Route path="/nova-clock" element={<NovaClock />} />
+                      <Route path="/nova" element={<Navigate to="/nova-clock" replace />} />
+                      <Route path="/timeline" element={<Navigate to="/nova-clock" replace />} />
+                      <Route path="/growth" element={<MindVisualizer />} />
+                      <Route path="/mind-map" element={<Navigate to="/growth" replace />} />
+                      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/terms" element={<TermsPage />} />
+                      <Route path="/cookies" element={<CookiePolicyPage />} />
+                      <Route path="/support" element={<SupportPage />} />
+                      <Route path="/feedback" element={<FeedbackPage />} />
+                      <Route path="*" element={<div className="p-20 text-center text-[10px] font-black text-text-secondary opacity-30 uppercase tracking-[0.4em]">Page Not Found</div>} />
+                    </Routes>
+                  </Suspense>
                 </div>
               </main>
               <MobileNav />

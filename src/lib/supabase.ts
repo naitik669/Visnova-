@@ -1,9 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { validateFile } from './security';
 
-const fallbackSupabaseUrl = 'https://mmzlgntkhkeextqjaagi.supabase.co';
-const fallbackSupabasePublishableKey = 'sb_publishable_XbMaxhW9WRBzkDMZADlYhQ_TxfNQo9o';
-
 const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const envSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -21,8 +18,15 @@ const isUsableSupabaseKey = (value?: string) => {
   return !!value && !/your-|undefined|null/i.test(value) && (value.startsWith('sb_publishable_') || value.startsWith('eyJ'));
 };
 
-const supabaseUrl = isUsableSupabaseUrl(envSupabaseUrl) ? envSupabaseUrl : fallbackSupabaseUrl;
-const supabaseAnonKey = isUsableSupabaseKey(envSupabaseAnonKey) ? envSupabaseAnonKey : fallbackSupabasePublishableKey;
+export const supabaseConfigError =
+  !isUsableSupabaseUrl(envSupabaseUrl)
+    ? 'Missing or invalid VITE_SUPABASE_URL.'
+    : !isUsableSupabaseKey(envSupabaseAnonKey)
+      ? 'Missing or invalid VITE_SUPABASE_ANON_KEY.'
+      : '';
+
+const supabaseUrl = supabaseConfigError ? 'https://missing-visnova-env.supabase.co' : envSupabaseUrl;
+const supabaseAnonKey = supabaseConfigError ? 'missing-supabase-anon-key' : envSupabaseAnonKey;
 const configuredAppUrl = import.meta.env.VITE_APP_URL || import.meta.env.VITE_SITE_URL;
 
 const isUsableAppUrl = (value?: string) => {
@@ -45,7 +49,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export const isSupabaseConfigured = () => {
-  return !!supabaseUrl && !!supabaseAnonKey && supabaseUrl !== 'your-project-url';
+  return !supabaseConfigError;
 };
 
 export const getAuthRedirectUrl = (path = '/auth/callback') => {
