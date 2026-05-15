@@ -1106,7 +1106,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
         </div>
       )}
 
-      <div className={cn("mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-between gap-3 px-2 pb-3", fullView && "px-6 pt-5")}>
+      <div className={cn("mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-3 px-2 pb-3", fullView && "px-6 pt-5")}>
         <div className="flex rounded-2xl border border-card-border bg-surface-muted p-1">
           {([
             { id: 'entry', label: 'Entry' },
@@ -1178,7 +1178,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
 
       <div className={cn(
         "flex transition-all duration-1000",
-        fullView ? "h-[calc(100vh-4rem)] p-3 sm:p-6 lg:p-10 gap-4 lg:gap-10" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[860px] justify-center"
+        fullView ? "h-[calc(100vh-8rem)] px-4 pb-6 pt-3 lg:px-8 lg:pb-8 lg:pt-4" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[860px] justify-center"
       )}>
         {journalMode === 'history' ? (
           <JournalHistoryView entries={safeArray<Note>(journalEntries)} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
@@ -1208,37 +1208,12 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
           />
         ) : (
           <>
-        {/* Sticky Notes Sidebar in Full View */}
-        {fullView && (
-          <div className="w-64 shrink-0 flex flex-col gap-6 animate-in slide-in-from-left duration-700">
-             <div className="space-y-1">
-               <h3 className="text-xs font-black text-text-main uppercase tracking-widest">Library Stickies</h3>
-               <p className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] opacity-40">Drag to Journal</p>
-             </div>
-             <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
-                {safeArray<Note>(recentLibraryNotes).map((note: any) => (
-                  <motion.div
-                    key={note.id}
-                    draggable
-                    onDragStart={(e: any) => e.dataTransfer.setData('text/plain', safeString(note.content))}
-                    whileHover={{ scale: 1.02 }}
-                    className="p-4 rounded-2xl bg-yellow-50 border border-yellow-200 shadow-sm cursor-grab active:cursor-grabbing group relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 left-0 w-full h-1 bg-yellow-200 group-hover:bg-yellow-400 transition-colors" />
-                    <h4 className="text-[10px] font-black text-yellow-800 uppercase tracking-tight truncate">{safeString(note.title, 'Untitled Note')}</h4>
-                    <p className="text-[9px] text-yellow-700/60 line-clamp-3 mt-1 leading-relaxed">{safeString(note.content, "Empty sticky...")}</p>
-                  </motion.div>
-                ))}
-             </div>
-          </div>
-        )}
-
         <motion.div 
           key={`journal-page-${selectedDate.toISOString()}`}
           layout
           className={cn(
-            "flex-1 grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 perspective-[1500px]",
-            fullView ? "h-full" : "min-h-[820px]"
+            "mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 perspective-[1500px]",
+            fullView ? "h-full max-w-[1500px]" : "min-h-[820px]"
           )}
         >
           {/* Left Page: Daily Overview */}
