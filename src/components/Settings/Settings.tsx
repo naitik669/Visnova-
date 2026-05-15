@@ -19,6 +19,7 @@ import {
   RotateCcw,
   Settings as SettingsIcon
 } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
@@ -36,16 +37,16 @@ import {
 type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences';
 
 const themes = [
-  { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main' },
-  { id: 'dark', icon: Moon, label: 'Dark', desc: 'Optimized for deep work', color: 'bg-[#18191C] text-[#fafaf9]' },
-  { id: 'midnight', icon: Moon, label: 'Midnight', desc: 'Deep navy focus', color: 'bg-[#0f172a] text-[#38bdf8]' },
-  { id: 'graphite', icon: Palette, label: 'Graphite', desc: 'Neutral dark workspace', color: 'bg-[#262626] text-[#fafaf9]' },
-  { id: 'forest-dark', icon: Sparkles, label: 'Forest', desc: 'Dark green calm', color: 'bg-[#102719] text-[#86efac]' },
-  { id: 'plum-dark', icon: Palette, label: 'Plum', desc: 'Soft creative mode', color: 'bg-[#2f173d] text-[#f0abfc]' },
-  { id: 'green', icon: Sparkles, label: 'Green', desc: 'Organic growth focus', color: 'bg-[#4ade80] text-[#064e3b]' },
-  { id: 'yellow', icon: Zap, label: 'Yellow', desc: 'Optimistic energy', color: 'bg-[#eab308] text-[#422006]' },
-  { id: 'pastel', icon: Palette, label: 'Pastel', desc: 'Creative soft mood', color: 'bg-[#5D4361] text-[#FFF7F0]' },
-  { id: 'sage', icon: Sparkles, label: 'Sage', desc: 'Natural and focused', color: 'bg-[#8da482] text-white' },
+  { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main', preview: { bg: '#f8f5f1', card: '#ffffff', accent: '#111827', text: '#1f2937', muted: '#e7e2da' } },
+  { id: 'dark', icon: Moon, label: 'Dark', desc: 'Optimized for deep work', color: 'bg-[#18191C] text-[#fafaf9]', preview: { bg: '#101114', card: '#18191c', accent: '#818cf8', text: '#fafaf9', muted: '#292b31' } },
+  { id: 'midnight', icon: Moon, label: 'Midnight', desc: 'Deep navy focus', color: 'bg-[#0f172a] text-[#38bdf8]', preview: { bg: '#07111f', card: '#0f172a', accent: '#38bdf8', text: '#dbeafe', muted: '#1e293b' } },
+  { id: 'graphite', icon: Palette, label: 'Graphite', desc: 'Neutral dark workspace', color: 'bg-[#262626] text-[#fafaf9]', preview: { bg: '#171717', card: '#262626', accent: '#f5f5f4', text: '#fafaf9', muted: '#404040' } },
+  { id: 'forest-dark', icon: Sparkles, label: 'Forest', desc: 'Dark green calm', color: 'bg-[#102719] text-[#86efac]', preview: { bg: '#07150d', card: '#102719', accent: '#86efac', text: '#dcfce7', muted: '#1c3b28' } },
+  { id: 'plum-dark', icon: Palette, label: 'Plum', desc: 'Soft creative mode', color: 'bg-[#2f173d] text-[#f0abfc]', preview: { bg: '#1d1026', card: '#2f173d', accent: '#f0abfc', text: '#fae8ff', muted: '#4a255f' } },
+  { id: 'green', icon: Sparkles, label: 'Green', desc: 'Organic growth focus', color: 'bg-[#4ade80] text-[#064e3b]', preview: { bg: '#edfdf3', card: '#ffffff', accent: '#4ade80', text: '#064e3b', muted: '#bbf7d0' } },
+  { id: 'yellow', icon: Zap, label: 'Yellow', desc: 'Optimistic energy', color: 'bg-[#eab308] text-[#422006]', preview: { bg: '#fff8db', card: '#fffdf2', accent: '#eab308', text: '#422006', muted: '#fde68a' } },
+  { id: 'pastel', icon: Palette, label: 'Pastel', desc: 'Creative soft mood', color: 'bg-[#5D4361] text-[#FFF7F0]', preview: { bg: '#f3edf4', card: '#fff7f0', accent: '#5d4361', text: '#2f2033', muted: '#ded0df' } },
+  { id: 'sage', icon: Sparkles, label: 'Sage', desc: 'Natural and focused', color: 'bg-[#8da482] text-white', preview: { bg: '#f2f5ef', card: '#ffffff', accent: '#8da482', text: '#263326', muted: '#dbe4d4' } },
 ] as const;
 
 export default function Settings() {
@@ -239,17 +240,61 @@ export default function Settings() {
                       setTheme(item.id);
                       playInteractionSound('click');
                     }}
+                    style={{
+                      '--theme-preview-bg': item.preview.bg,
+                      '--theme-preview-card': item.preview.card,
+                      '--theme-preview-accent': item.preview.accent,
+                      '--theme-preview-text': item.preview.text,
+                      '--theme-preview-muted': item.preview.muted
+                    } as CSSProperties}
                     className={cn(
-                      'group relative min-h-44 rounded-3xl border-2 p-5 text-left transition-all',
-                      theme === item.id ? 'border-accent bg-accent/5 shadow-xl shadow-accent/10' : 'border-card-border bg-card hover:border-accent/30'
+                      'group relative min-h-52 overflow-hidden rounded-3xl border-2 p-0 text-left transition-all duration-500',
+                      theme === item.id ? 'border-accent shadow-2xl shadow-accent/10' : 'border-card-border bg-card opacity-80 hover:opacity-100 hover:border-accent/30'
                     )}
                   >
-                    <div className={cn('mb-8 flex h-12 w-12 items-center justify-center rounded-2xl shadow-lg transition-transform group-hover:rotate-6', item.color)}>
-                      <item.icon size={24} />
+                    {theme === item.id && (
+                      <motion.div
+                        layoutId="active-theme-card"
+                        className="absolute inset-0 z-0 rounded-[1.35rem] border-2 border-accent bg-accent/5"
+                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                      />
+                    )}
+                    <div className="absolute inset-0 z-0 bg-mesh opacity-10 transition-opacity duration-500 group-hover:opacity-30" />
+                    <div
+                      className="absolute inset-0 z-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                      style={{
+                        background: `linear-gradient(145deg, ${item.preview.bg}, ${item.preview.card} 48%, ${item.preview.muted})`
+                      }}
+                    />
+
+                    <div className="relative z-10 flex min-h-52 flex-col justify-between p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className={cn('flex h-14 w-14 items-center justify-center rounded-2xl shadow-xl transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105', item.color)}>
+                          <item.icon size={26} />
+                        </div>
+                        {theme === item.id && (
+                          <motion.span layoutId="active-theme-pill" className="rounded-full bg-accent px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent-contrast">
+                            Active
+                          </motion.span>
+                        )}
+                      </div>
+
+                      <div className="pointer-events-none absolute right-5 top-20 w-24 rounded-2xl border border-white/20 p-2 opacity-70 shadow-xl transition-all duration-500 group-hover:translate-y-1 group-hover:opacity-100" style={{ backgroundColor: item.preview.card }}>
+                        <div className="mb-2 h-2 w-10 rounded-full" style={{ backgroundColor: item.preview.accent }} />
+                        <div className="mb-1 h-1.5 w-16 rounded-full" style={{ backgroundColor: item.preview.muted }} />
+                        <div className="h-1.5 w-12 rounded-full" style={{ backgroundColor: item.preview.muted }} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <h3 className="text-xs font-black uppercase tracking-[0.22em] text-text-main transition-colors duration-500 group-hover:text-[var(--theme-preview-text)]">{item.label}</h3>
+                        <p className="max-w-[13rem] text-sm font-semibold leading-snug text-text-secondary transition-colors duration-500 group-hover:text-[color-mix(in_srgb,var(--theme-preview-text)_76%,transparent)]">{item.desc}</p>
+                        <div className="flex gap-2 pt-2">
+                          <span className="h-2.5 w-8 rounded-full transition-transform duration-500 group-hover:scale-x-125" style={{ backgroundColor: item.preview.accent }} />
+                          <span className="h-2.5 w-5 rounded-full" style={{ backgroundColor: item.preview.muted }} />
+                          <span className="h-2.5 w-5 rounded-full" style={{ backgroundColor: item.preview.card, border: `1px solid ${item.preview.muted}` }} />
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-xs font-black uppercase tracking-widest text-text-main">{item.label}</h3>
-                    <p className="mt-1 text-xs font-semibold text-text-secondary">{item.desc}</p>
-                    {theme === item.id && <span className="absolute right-4 top-4 rounded-full bg-accent px-2 py-1 text-[9px] font-black uppercase tracking-widest text-accent-contrast">Active</span>}
                   </button>
                 ))}
               </div>
