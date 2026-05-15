@@ -1173,16 +1173,23 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
 
   if (element.type === 'sticky') {
     return (
-      <textarea
-        value={safeString(element.content)}
-        onPointerDown={(event) => event.stopPropagation()}
-        onFocus={() => onEditingStateChange(true)}
-        onBlur={() => onEditingStateChange(false)}
-        onChange={(event) => onUpdate({ content: event.target.value })}
-        className="resize-none border-none outline-none shadow-2xl p-5 text-base font-bold text-black/80 leading-tight"
+      <div
+        className="overflow-hidden rounded-2xl border border-black/5 shadow-2xl"
         style={{ width, height, backgroundColor: element.metadata?.color || '#fef08a' }}
-        data-no-pan
-      />
+      >
+        <div className="h-8 cursor-grab border-b border-black/5 bg-white/25 px-4 text-[9px] font-black uppercase tracking-widest text-black/35 flex items-center">
+          Drag sticky
+        </div>
+        <textarea
+          value={safeString(element.content)}
+          onPointerDown={(event) => event.stopPropagation()}
+          onFocus={() => onEditingStateChange(true)}
+          onBlur={() => onEditingStateChange(false)}
+          onChange={(event) => onUpdate({ content: event.target.value })}
+          className="h-[calc(100%-2rem)] w-full resize-none border-none bg-transparent outline-none p-5 pt-4 text-base font-bold text-black/80 leading-tight"
+          data-no-pan
+        />
+      </div>
     );
   }
 

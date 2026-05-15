@@ -925,6 +925,11 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
     setIsAddMenuOpen(false);
   };
 
+  const addJournalSticky = () => {
+    setJournalMode('canvas');
+    addCanvasElement('sticky', { color: JOURNAL_STICKY_COLORS[canvasElements.length % JOURNAL_STICKY_COLORS.length] });
+  };
+
   const addVisionElement = (visionId: string) => {
     const vision = safeArray<Vision>(visions).find(v => v.id === visionId);
     if (!vision) return;
@@ -1140,6 +1145,13 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={addJournalSticky}
+            disabled={isLocked}
+            className="h-11 px-4 rounded-2xl bg-yellow-100 text-yellow-900 border border-yellow-200 text-[10px] font-black uppercase tracking-widest shadow-sm disabled:opacity-50"
+          >
+            Sticky Note
+          </button>
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-secondary/40">
             {isSaving ? 'Saving...' : lastSaved ? `Saved ${safeFormat(lastSaved, 'h:mm a')}` : 'Unsaved'}
           </span>
@@ -1737,14 +1749,18 @@ function JournalCanvasItem({
         </div>
       )}
       {element.type === 'sticky' && (
-        <textarea
-          value={element.content}
-          onPointerDown={(event) => event.stopPropagation()}
-          onChange={(event) => onUpdate({ content: event.target.value.slice(0, 500) })}
-          readOnly={locked}
-          className="h-full w-full resize-none rounded-2xl border border-yellow-200 p-4 text-sm font-bold leading-relaxed text-black/75 shadow-xl outline-none"
-          style={{ backgroundColor: element.metadata?.color || '#fef3c7' }}
-        />
+        <div className="h-full w-full overflow-hidden rounded-2xl border border-yellow-200 shadow-xl" style={{ backgroundColor: element.metadata?.color || '#fef3c7' }}>
+          <div className="h-8 cursor-grab border-b border-black/5 bg-white/20 px-4 text-[9px] font-black uppercase tracking-widest text-black/35 flex items-center">
+            Drag sticky
+          </div>
+          <textarea
+            value={element.content}
+            onPointerDown={(event) => event.stopPropagation()}
+            onChange={(event) => onUpdate({ content: event.target.value.slice(0, 500) })}
+            readOnly={locked}
+            className="h-[calc(100%-2rem)] w-full resize-none bg-transparent p-4 text-sm font-bold leading-relaxed text-black/75 outline-none"
+          />
+        </div>
       )}
       {element.type === 'text' && (
         <textarea value={element.content} onPointerDown={(event) => event.stopPropagation()} onChange={(event) => onUpdate({ content: event.target.value })} readOnly={locked} className="h-full w-full resize-none rounded-2xl border border-card-border bg-card/90 p-4 text-base font-bold text-text-main shadow-xl outline-none" />
