@@ -221,7 +221,9 @@ function ScreenForgotPassword({ email, setEmail, backToLogin }: any) {
       const normalizedEmail = sanitizeText(email, 254).toLowerCase();
       const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_reset', 5, 15);
       if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: getAuthRedirectUrl()
+      });
       if (resetError) throw resetError;
       setSuccess('Recovery dispatch sent. Check your inbox.');
       addToast({ type: 'success', title: 'Recovery sent', description: 'Check your inbox for the reset link.' });
@@ -438,6 +440,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         email: normalizedEmail,
         password,
         options: {
+          emailRedirectTo: getAuthRedirectUrl(),
           data: {
             full_name: name,
             display_name: name

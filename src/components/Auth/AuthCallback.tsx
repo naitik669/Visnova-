@@ -12,14 +12,25 @@ export default function AuthCallback() {
     const handleAuthCallback = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
-        const oauthError = params.get('error') || params.get('error_code');
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const oauthError = params.get('error') || params.get('error_code') || hashParams.get('error') || hashParams.get('error_code');
         if (oauthError) {
-          throw new Error(params.get('error_description') || oauthError);
+          throw new Error(params.get('error_description') || hashParams.get('error_description') || oauthError);
         }
+
+        const authType = params.get('type') || hashParams.get('type');
+        if (authType === 'recovery') {
+          sessionStorage.setItem('visnova-auth-link-mode', 'recovery');
+        }
+
         const hasOAuthCode = params.has('code');
+        const hashAccessToken = hashParams.get('access_token');
+        const hashRefreshToken = hashParams.get('refresh_token');
         const result = hasOAuthCode
           ? await supabase.auth.exchangeCodeForSession(window.location.href)
-          : await supabase.auth.getSession();
+          : hashAccessToken && hashRefreshToken
+            ? await supabase.auth.setSession({ access_token: hashAccessToken, refresh_token: hashRefreshToken })
+            : await supabase.auth.getSession();
         const { data: { session }, error } = result;
         if (error) throw error;
 
