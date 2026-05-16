@@ -8,7 +8,7 @@ VisNova expects all email auth links and OAuth callbacks to return through the a
 
 In the Supabase dashboard, configure:
 
-- Site URL: the production VisNova URL, for example `https://visnova.vercel.app`
+- Site URL: `https://visnova.vercel.app`
 - Redirect URLs:
   - `https://visnova.vercel.app/auth/callback`
   - `https://visnova-naitik669s-projects.vercel.app/auth/callback`
@@ -22,6 +22,14 @@ For this Supabase project, Google Cloud should use:
 
 ```text
 https://mmzlgntkhkeextqjaagi.supabase.co/auth/v1/callback
+```
+
+Important: do **not** set the Supabase Site URL to `https://mmzlgntkhkeextqjaagi.supabase.co/auth/v1/callback`.
+That creates a callback-to-callback redirect loop and Chrome shows:
+
+```text
+mmzlgntkhkeextqjaagi.supabase.co redirected you too many times
+ERR_TOO_MANY_REDIRECTS
 ```
 
 Do not open that Supabase callback URL directly in the browser. Start OAuth only from VisNova's "Continue with Google" button so Supabase can generate and verify the OAuth `state` parameter.
