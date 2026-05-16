@@ -1812,11 +1812,14 @@ export const useStore = create<AppState>((set, get) => ({
   })),
   addXp: async (amount) => {
     let newXpData: any = null;
+    let oldLevel = get().user.level || 1;
+    let xpPersisted = true;
 
     set((state) => {
       const currentTotalXp = normalizeLegacyXp(state.user.level, state.user.xp);
       const newXp = currentTotalXp + amount;
       const nextLevel = getLevelFromXp(newXp);
+      oldLevel = state.user.level || getLevelFromXp(currentTotalXp);
       newXpData = {
         xp: newXp,
         level: nextLevel,
@@ -1831,10 +1834,26 @@ export const useStore = create<AppState>((set, get) => ({
     const userId = get().session?.user?.id;
     if (userId && newXpData) {
       try {
-        await supabase.from('profiles').update(newXpData).eq('id', userId);
+        const { error } = await supabase.from('profiles').update(newXpData).eq('id', userId);
+        if (error) {
+          xpPersisted = false;
+          console.error('Failed to update XP:', error);
+        }
       } catch (error) {
+        xpPersisted = false;
         console.error('Failed to update XP:', error);
       }
+    }
+
+    if (newXpData && xpPersisted && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('visnova-xp-gained', {
+        detail: {
+          amount,
+          newTotal: newXpData.xp,
+          leveledUp: newXpData.level > oldLevel,
+          newLevel: newXpData.level
+        }
+      }));
     }
   },
   toggleFocusMode: () => set((state) => ({ isFocusMode: !state.isFocusMode })),
@@ -4267,7 +4286,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   completeOnboarding: async (data: any) => {
-    const { name, email, interests, intent, commitment, username, bio, avatar, role, gender } = data;
+    const { name, email, interests, intent, commitment, username, bio, avatar, role, gender, hasInitialVision } = data;
     const session = get().session;
     const userId = session?.user?.id;
 
@@ -4319,7 +4338,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (profileError) throw profileError;
 
-      if (intent?.trim()) {
+      if (intent?.trim() && !hasInitialVision) {
         const visionPayload: any = {
             user_id: userId,
             user_email: email || session.user.email || null,
@@ -4376,7 +4395,12 @@ export const useStore = create<AppState>((set, get) => ({
       get().addToast({ type: 'success', title: 'Onboarding complete', description: 'Welcome to VisNova.' });
       trackBetaEvent(userId, 'onboarding_completed', {
         interests_count: Array.isArray(interests) ? interests.length : 0,
-        created_initial_vision: Boolean(intent?.trim())
+        created_initial_vision: Boolean(hasInitialVision || intent?.trim())
+      });
+      trackBetaEvent(userId, 'signup_completed', {
+        interests_count: Array.isArray(interests) ? interests.length : 0,
+        role: role || 'unknown',
+        has_initial_vision: Boolean(hasInitialVision || intent?.trim())
       });
     } catch (err: any) {
       console.error('Onboarding finalization failed:', err);

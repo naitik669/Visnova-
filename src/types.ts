@@ -517,7 +517,7 @@ export interface AppState {
   toggleVisionTask: (visionId: string, taskId: string) => void;
   acceptVision: (visionId: string) => Promise<void>;
   fetchUser: () => Promise<void>;
-  completeOnboarding: (data: { name: string, email: string, interests: string[], intent: string, commitment: string, username?: string, gender?: 'male' | 'female' | 'custom', bio?: string, tags?: string[], avatar?: string, role?: string, password?: string }) => Promise<void>;
+  completeOnboarding: (data: { name: string, email: string, interests: string[], intent: string, commitment: string, username?: string, gender?: 'male' | 'female' | 'custom', bio?: string, tags?: string[], avatar?: string, role?: string, password?: string, hasInitialVision?: boolean }) => Promise<void>;
   session: any | null;
   isFocusMode: boolean;
   focusSession: FocusSession;

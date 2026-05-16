@@ -99,6 +99,41 @@ const CircularProgress = ({
 
 import { useNavigate } from "react-router-dom";
 
+function FirstVisionPrompt({ onCreate, onFeed }: { onCreate: () => void; onFeed: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative overflow-hidden rounded-[2rem] border-2 border-accent/25 bg-accent/[0.04] p-6 shadow-xl shadow-accent/5 sm:p-8"
+    >
+      <div className="absolute right-0 top-0 h-48 w-48 translate-x-1/3 -translate-y-1/3 rounded-full bg-accent/10 blur-3xl" />
+      <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="max-w-2xl">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Start here</p>
+          <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-text-main sm:text-3xl">Start with a Vision</h2>
+          <p className="mt-3 text-sm font-semibold leading-6 text-text-secondary">
+            A Vision is a goal you are working toward. Break it into tasks and track your progress here.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+          <button
+            onClick={onCreate}
+            className="h-12 rounded-2xl bg-accent px-6 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/20"
+          >
+            Create my first Vision
+          </button>
+          <button
+            onClick={onFeed}
+            className="h-12 rounded-2xl border border-card-border bg-card px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent"
+          >
+            Explore the Feed
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Dashboard() {
   const {
     visions,
@@ -321,6 +356,13 @@ export default function Dashboard() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col gap-6">
+          {visions.length === 0 && (
+            <FirstVisionPrompt
+              onCreate={() => navigate('/visions')}
+              onFeed={() => navigate('/feed')}
+            />
+          )}
+
           {/* Today's Focus Section */}
           <div className="bg-card rounded-[1.6rem] sm:rounded-[2.5rem] p-4 sm:p-8 shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />

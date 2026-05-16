@@ -203,6 +203,15 @@ export default function CommunityFeed() {
   const navigate = useNavigate();
   const { posts, addPost, fetchPosts, user, trackInteraction, followingIds, circle, toggleFollow } = useStore();
   const [isLoading, setIsLoading] = useState(true);
+  const feedPromptKey = `visnova_feed_prompt_dismissed_${user.id || 'guest'}`;
+  const [isFeedPromptDismissed, setIsFeedPromptDismissed] = useState(() => (
+    typeof window !== 'undefined' && localStorage.getItem(feedPromptKey) === 'true'
+  ));
+  const hasPosted = posts.some(post => post.userId === user.id);
+
+  useEffect(() => {
+    setIsFeedPromptDismissed(typeof window !== 'undefined' && localStorage.getItem(feedPromptKey) === 'true');
+  }, [feedPromptKey]);
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
@@ -538,6 +547,39 @@ export default function CommunityFeed() {
         {activeTab !== 'explore' ? (
           <div className="flex flex-col lg:flex-row gap-8 max-w-[1440px] mx-auto">
             <div className="flex-1 max-w-6xl space-y-8">
+              {activeTab === 'feed' && !hasPosted && !isFeedPromptDismissed && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-[2rem] border border-accent/25 bg-accent/[0.04] p-5 shadow-sm"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Share progress</p>
+                      <h3 className="mt-1 text-lg font-black tracking-tight text-text-main">Share your first progress update</h3>
+                      <p className="mt-1 text-sm font-semibold text-text-secondary">What are you working on? Your Circle wants to know.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setIsComposerOpen(true)}
+                        className="h-11 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+                      >
+                        Compose Post
+                      </button>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem(feedPromptKey, 'true');
+                          setIsFeedPromptDismissed(true);
+                        }}
+                        className="h-11 w-11 rounded-2xl border border-card-border bg-card text-text-secondary"
+                        aria-label="Dismiss first post prompt"
+                      >
+                        <X size={16} className="mx-auto" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={feedSubTab}

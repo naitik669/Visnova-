@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
-import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as ImageIcon, Users, Plus, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as ImageIcon, Users, Plus, Sparkles, Target } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
+import { trackBetaEvent } from '../../lib/betaAnalytics';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
 
@@ -1253,7 +1254,7 @@ function ScreenInterests({ selectedInterests, setSelectedInterests, nextStep }: 
   );
 }
 
-function Screen8({ role, setRole, ROLE_CATEGORIES, handleComplete }: any) {
+function Screen8({ role, setRole, ROLE_CATEGORIES, nextStep }: any) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredCategories = ROLE_CATEGORIES.map((category: any) => ({
@@ -1328,13 +1329,68 @@ function Screen8({ role, setRole, ROLE_CATEGORIES, handleComplete }: any) {
 
       <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center pointer-events-none z-50">
         <button
-          onClick={handleComplete}
+          onClick={() => nextStep()}
           disabled={!role}
           className="w-full max-w-sm h-16 bg-accent text-accent-contrast font-black uppercase tracking-[0.25em] text-xs rounded-2xl disabled:opacity-50 disabled:bg-text-secondary transition-all shadow-2xl shadow-accent/40 pointer-events-auto active:scale-95"
         >
-          ENTER DASHBOARD
+          CONTINUE
         </button>
       </div>
+    </div>
+  );
+}
+
+function ScreenCreateFirstVision({ onCreate, onSkip }: { onCreate: (title: string) => Promise<void>; onSkip: () => void }) {
+  const [title, setTitle] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  const submit = async () => {
+    const nextTitle = title.trim();
+    if (!nextTitle || isCreating) return;
+    setIsCreating(true);
+    try {
+      await onCreate(nextTitle);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <div className="flex h-full w-full max-w-sm flex-col justify-center space-y-7 py-10 mx-auto">
+      <div className="space-y-3">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+          <Target size={26} />
+        </div>
+        <h2 className="text-4xl font-bold leading-tight tracking-tight text-text-main">Create your first Vision</h2>
+        <p className="text-sm font-medium text-text-secondary">What are you working toward?</p>
+      </div>
+      <div className="space-y-3">
+        <input
+          autoFocus
+          maxLength={120}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Launch my portfolio, master DSA, build a startup..."
+          className="h-14 w-full rounded-2xl border border-card-border bg-card px-5 text-sm font-bold text-text-main outline-none transition-all placeholder:text-text-secondary/40 focus:border-accent focus:ring-4 focus:ring-accent/10"
+        />
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/40">{title.length}/120</p>
+      </div>
+      <button
+        onClick={submit}
+        disabled={!title.trim() || isCreating}
+        className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+      >
+        {isCreating ? 'Creating...' : 'Create Vision & Start'}
+      </button>
+      <button onClick={onSkip} disabled={isCreating} className="text-xs font-black uppercase tracking-widest text-text-secondary/50 hover:text-accent">
+        Skip for now
+      </button>
     </div>
   );
 }
@@ -1397,7 +1453,7 @@ function Screen9({ handleForceStart }: { handleForceStart: () => void }) {
 export default function OnboardingFlow() {
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
-  const { completeOnboarding, addToast, session, signOut } = useStore();
+  const { completeOnboarding, addToast, session, signOut, addVision } = useStore();
   const navigate = useNavigate();
 
   const handleForceStart = async () => {
@@ -1452,6 +1508,8 @@ export default function OnboardingFlow() {
             .maybeSingle();
             
           if (profile?.onboarded) {
+             const today = new Date().toISOString().slice(0, 10);
+             trackBetaEvent(userId, 'returning_user_login', { day: today });
              addToast({ type: 'success', title: 'Session restored', description: 'Returning to dashboard.' });
              navigate('/');
              return;
@@ -1483,14 +1541,14 @@ export default function OnboardingFlow() {
     await useStore.getState().signInWithGoogle();
   };
 
-  const nextStep = useCallback((targetStep?: number | any) => {
+  const nextStep = useCallback((targetStep?: number) => {
     setDirection(1);
     const nextS = typeof targetStep === 'number' ? targetStep : step + 1;
     setStep(nextS);
     
     // Persist to DB if logged in
     const userId = session?.user?.id;
-    if (userId && nextS < 10) {
+    if (userId && Number.isInteger(nextS) && nextS < 10) {
       supabase.from('profiles').update({ onboarding_step: nextS }).eq('id', userId)
         .then(({ error }) => {
           if (error) console.error('Failed to save onboarding progress:', error);
@@ -1508,7 +1566,7 @@ export default function OnboardingFlow() {
     });
   }, []);
 
-  const handleComplete = async () => {
+  const handleComplete = async (hasInitialVision = false) => {
     if (!username || username.trim().length === 0) {
         if (step !== 8) setStep(8);
         addToast({ type: 'info', title: 'Username required', description: 'Please choose a unique identifying handle before proceeding.' });
@@ -1530,11 +1588,38 @@ export default function OnboardingFlow() {
         bio,
         gender,
         role,
-        avatar
+        avatar,
+        hasInitialVision
       });
     } catch (err) {
       console.error('Finalization failed:', err);
       addToast({ type: 'error', title: 'Setup interrupted', description: 'Something went wrong during final sync.' });
+    }
+  };
+
+  const handleCreateFirstVision = async (visionTitle: string) => {
+    try {
+      const cleanTitle = sanitizeText(visionTitle).slice(0, 120) || 'My first Vision';
+      await addVision({
+        title: cleanTitle,
+        description: commitment ? `Commitment level: ${commitment}` : '',
+        progress: 0,
+        status: 'planning',
+        tags: interests,
+        tasks: [],
+        notes: '',
+        proof: [],
+        elements: [],
+        visibility: 'private'
+      });
+      await handleComplete(true);
+    } catch (err) {
+      console.error('Failed to create first Vision:', err);
+      addToast({
+        type: 'error',
+        title: 'Vision failed',
+        description: err instanceof Error ? err.message : 'Could not create your first Vision.'
+      });
     }
   };
 
@@ -1631,7 +1716,8 @@ export default function OnboardingFlow() {
       case 6: return <Screen5 interests={interests} intent={intent} nextStep={nextStep} />;
       case 7: return <Screen6 nextStep={nextStep} />;
       case 8: return <Screen7 avatar={avatar} setAvatar={setAvatar} name={name} setName={setName} username={username} setUsername={setUsername} bio={bio} setBio={setBio} gender={gender} setGender={setGender} currentUserId={session?.user?.id} nextStep={nextStep} />;
-      case 9: return <Screen8 role={role} setRole={setRole} ROLE_CATEGORIES={ROLE_CATEGORIES} handleComplete={handleComplete} />;
+      case 9: return <Screen8 role={role} setRole={setRole} ROLE_CATEGORIES={ROLE_CATEGORIES} nextStep={() => nextStep(9.25)} />;
+      case 9.25: return <ScreenCreateFirstVision onCreate={handleCreateFirstVision} onSkip={() => handleComplete(false)} />;
       case 9.5: return <Screen9 handleForceStart={handleForceStart} />;
       case 10: return null; 
       default:

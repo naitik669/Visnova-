@@ -27,6 +27,7 @@ import CookieNotice from './components/CookieNotice';
 import { CookiePolicyPage, PrivacyPolicyPage, SupportPage, TermsPage } from './components/Legal/LegalPages';
 import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supabase';
 import { trackBetaEvent } from './lib/betaAnalytics';
+import { XpToast } from './components/ui/XpToast';
 
 const VisionBoard = lazy(() => import('./components/VisionBoard/VisionBoard'));
 const NovaClock = lazy(() => import('./components/Nova/NovaClock'));
@@ -536,6 +537,43 @@ function SupabaseConfigScreen() {
   );
 }
 
+function NotFoundPage() {
+  const navigate = useNavigate();
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-8 text-center">
+      <div className="text-6xl font-black text-text-main/10">404</div>
+      <h2 className="text-xl font-black uppercase tracking-widest text-text-main">Page not found</h2>
+      <p className="max-w-xs text-sm text-text-secondary">
+        This page does not exist or was moved. Head back to your dashboard.
+      </p>
+      <button
+        onClick={() => navigate('/')}
+        className="rounded-2xl bg-accent px-6 py-3 text-xs font-black uppercase tracking-widest text-accent-contrast transition-opacity hover:opacity-90"
+      >
+        Go to Dashboard
+      </button>
+    </div>
+  );
+}
+
+export function DeletedContentPage({ label = 'content' }: { label?: string }) {
+  const navigate = useNavigate();
+  return (
+    <div className="flex min-h-[55vh] flex-col items-center justify-center gap-5 p-8 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-surface-muted text-text-secondary">
+        <X size={26} />
+      </div>
+      <h2 className="text-lg font-black uppercase tracking-widest text-text-main">Unavailable {label}</h2>
+      <p className="max-w-xs text-sm font-semibold text-text-secondary">
+        This {label} may have been deleted, archived, or made private.
+      </p>
+      <button onClick={() => navigate('/')} className="rounded-2xl border border-card-border bg-card px-5 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">
+        Back to Dashboard
+      </button>
+    </div>
+  );
+}
+
 function AppContent() {
   const { 
     theme, 
@@ -577,6 +615,18 @@ function AppContent() {
     if (localStorage.getItem(returnKey) !== 'true') {
       localStorage.setItem(returnKey, 'true');
       trackBetaEvent(session.user.id, 'day_return', { date: today });
+    }
+
+    const signupDateKey = `visnova_signup_date_${session.user.id}`;
+    if (!localStorage.getItem(signupDateKey)) {
+      localStorage.setItem(signupDateKey, today);
+    }
+    const signupDate = localStorage.getItem(signupDateKey);
+    const daysSinceSignup = signupDate ? Math.floor((Date.now() - new Date(signupDate).getTime()) / 86400000) : 0;
+    const day7Key = `visnova_day_7_return_${session.user.id}`;
+    if (daysSinceSignup === 7 && localStorage.getItem(day7Key) !== 'true') {
+      localStorage.setItem(day7Key, 'true');
+      trackBetaEvent(session.user.id, 'day_7_return', { day: 7 });
     }
   }, [session?.user?.id]);
 
@@ -667,6 +717,7 @@ function AppContent() {
                 {isFocusMode && <FocusOverlay />}
                 <AccountabilityNudge />
                 <UserProfileModal />
+                <XpToast />
               </AnimatePresence>
 
               {!tutorialCompleted && hasCompletedOnboarding && !isPasswordRecovery && <InteractiveTour />}
@@ -705,7 +756,7 @@ function AppContent() {
                       <Route path="/cookies" element={<CookiePolicyPage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/feedback" element={<FeedbackPage />} />
-                      <Route path="*" element={<div className="p-20 text-center text-[10px] font-black text-text-secondary opacity-30 uppercase tracking-[0.4em]">Page Not Found</div>} />
+                      <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                   </Suspense>
                 </div>
