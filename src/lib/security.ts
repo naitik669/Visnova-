@@ -117,15 +117,16 @@ export const validateNotePayload = (note: any) => {
 };
 
 export const validateVisionElements = (elements: any[]) => {
-  const allowedTypes = new Set(['text', 'image', 'shape', 'sticky', 'flowchartNode', 'connector', 'checklist', 'note', 'task', 'link', 'emoji', 'quote', 'section', 'heading']);
+  const allowedTypes = new Set(['text', 'image', 'shape', 'sticky', 'flowchartNode', 'connector', 'checklist', 'note', 'task', 'link', 'emoji', 'quote', 'section', 'heading', 'drawing']);
   if (!Array.isArray(elements)) throw new Error('Vision board data is malformed.');
   if (elements.length > 500) throw new Error('Vision Board limit reached. Remove some elements before adding more.');
 
   return elements.map((element) => {
     if (!allowedTypes.has(element?.type)) throw new Error('Vision Board contains an unsupported element.');
+    const contentLimit = element?.type === 'drawing' ? 50000 : 5000;
     return {
       ...element,
-      content: sanitizePlainText(element?.content || '', 5000),
+      content: sanitizePlainText(element?.content || '', contentLimit),
       x: Number.isFinite(Number(element?.x)) ? Number(element.x) : 0,
       y: Number.isFinite(Number(element?.y)) ? Number(element.y) : 0,
       width: element?.width === undefined ? undefined : Math.max(20, Math.min(Number(element.width) || 120, 4000)),
