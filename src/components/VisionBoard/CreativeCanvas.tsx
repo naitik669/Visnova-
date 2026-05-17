@@ -490,10 +490,11 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     >
       <button
         onClick={() => setMobileToolsOpen(open => !open)}
-        className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 w-14 h-14 rounded-full bg-accent text-accent-contrast flex items-center justify-center shadow-2xl shadow-accent/25 hover:scale-105 active:scale-95 transition-transform"
+        className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] flex h-14 min-w-14 items-center justify-center gap-2 rounded-full bg-accent px-4 text-accent-contrast shadow-2xl shadow-accent/30 ring-4 ring-bg-base/75 hover:scale-105 active:scale-95 transition-transform"
         aria-label="Add to board"
       >
         <Plus size={28} className={cn('transition-transform', mobileToolsOpen && 'rotate-45')} />
+        <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest pr-1">Add</span>
       </button>
 
       <AnimatePresence>
@@ -502,7 +503,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             initial={{ opacity: 0, y: 14, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.96 }}
-            className="hidden md:grid absolute bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 grid-cols-4 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl"
+            className="hidden md:grid fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] grid-cols-4 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl"
           >
             {addMenuOptions}
           </motion.div>
