@@ -1147,16 +1147,14 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
                   <JournalAddButton label="Prompt Card" onClick={() => addCanvasElement('promptCard', { prompt: JOURNAL_PROMPT_OPTIONS[canvasElements.length % JOURNAL_PROMPT_OPTIONS.length], response: '' })} />
                   <JournalAddButton label="Checklist" onClick={() => addCanvasElement('checklist', { items: [{ id: newJournalElementId(), text: 'First action', completed: false }] })} />
                   {safeArray<Vision>(visions).length > 0 && (
-                    <select
-                      onChange={(event) => {
-                        if (event.target.value) addVisionElement(event.target.value);
-                        event.target.value = '';
+                    <SelectMenu
+                      value=""
+                      onChange={(value) => {
+                        if (value) addVisionElement(value);
                       }}
-                      className="mt-1 h-10 w-full rounded-xl border border-card-border bg-app-container px-3 text-[10px] font-bold text-text-secondary outline-none"
-                    >
-                      <option value="">Link Vision...</option>
-                      {safeArray<Vision>(visions).map(vision => <option key={vision.id} value={vision.id}>{vision.title}</option>)}
-                    </select>
+                      options={[{ value: '', label: 'Link Vision...' }, ...safeArray<Vision>(visions).map(vision => ({ value: vision.id, label: vision.title }))]}
+                      triggerClassName="mt-1 h-10 rounded-xl bg-app-container text-[10px]"
+                    />
                   )}
                 </div>
               )}
@@ -2230,9 +2228,13 @@ function NoteCard({
     onClick();
   };
 
-  const handleMoveChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    event.stopPropagation();
-    onMove(note.id, event.target.value || null);
+  const folderOptions = [
+    { value: '', label: 'Unfiled' },
+    ...safeFolders.map(folder => ({ value: folder.id, label: safeString(folder.name, 'Folder') }))
+  ];
+
+  const handleMoveChange = (value: string) => {
+    onMove(note.id, value || null);
   };
 
   const dragProps = {
@@ -2280,16 +2282,16 @@ function NoteCard({
            {noteTags.slice(0, 2).map((t, i) => (
              <span key={i} className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent uppercase tracking-widest">#{t}</span>
            ))}
-           <select
-             value={currentFolderValue}
-             onClick={(event) => event.stopPropagation()}
-             onChange={handleMoveChange}
-             className="h-9 rounded-xl border border-card-border bg-bg-base px-3 text-[10px] font-bold text-text-secondary outline-none"
-             aria-label="Move note to folder"
-           >
-             <option value="">Unfiled</option>
-             {safeFolders.map(folder => <option key={folder.id} value={folder.id}>{safeString(folder.name, 'Folder')}</option>)}
-           </select>
+           <div onClick={(event) => event.stopPropagation()} className="min-w-32">
+             <SelectMenu
+               value={currentFolderValue}
+               onChange={handleMoveChange}
+               options={folderOptions}
+               placeholder="Move"
+               triggerClassName="h-9 rounded-xl bg-bg-base px-3 text-[10px]"
+               menuClassName="sm:w-48"
+             />
+           </div>
         </div>
         <ChevronRight size={16} className="text-text-secondary/20 group-hover:text-accent group-hover:translate-x-1 transition-all" />
       </div>
@@ -2346,16 +2348,16 @@ function NoteCard({
             ))}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <select
-              value={currentFolderValue}
-              onClick={(event) => event.stopPropagation()}
-              onChange={handleMoveChange}
-              className="h-8 max-w-24 sm:max-w-28 rounded-lg border border-card-border bg-bg-base px-2 text-[9px] font-bold text-text-secondary outline-none"
-              aria-label="Move note to folder"
-            >
-              <option value="">Unfiled</option>
-              {safeFolders.map(folder => <option key={folder.id} value={folder.id}>{safeString(folder.name, 'Folder')}</option>)}
-            </select>
+            <div onClick={(event) => event.stopPropagation()} className="w-24 sm:w-28">
+              <SelectMenu
+                value={currentFolderValue}
+                onChange={handleMoveChange}
+                options={folderOptions}
+                placeholder="Move"
+                triggerClassName="h-8 rounded-lg px-2 text-[9px]"
+                menuClassName="sm:w-48"
+              />
+            </div>
             <div className="flex items-center gap-1 text-[9px] font-black text-accent uppercase tracking-widest group-hover:translate-x-1 transition-transform">
               Open <ChevronRight size={12} />
             </div>

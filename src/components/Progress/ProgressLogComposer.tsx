@@ -4,6 +4,7 @@ import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import type { EcosystemVisibility, ProgressLogType } from '../../types';
+import { SelectMenu } from '../ui/SelectMenu';
 
 const LOG_TYPES: Array<{ value: ProgressLogType; label: string }> = [
   { value: 'progress', label: 'Progress Log' },
@@ -87,16 +88,12 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
       <div className="space-y-5 p-5 sm:p-6">
         <div className="rounded-2xl border border-card-border bg-card p-4">
           <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Connected Vision</label>
-          <select
+          <SelectMenu
             value={visionId}
-            onChange={(event) => setVisionId(event.target.value)}
-            className="mt-2 h-12 w-full rounded-xl border border-card-border bg-app-container px-3 text-sm font-bold text-text-main outline-none focus:border-accent"
-          >
-            <option value="">No Vision link yet</option>
-            {visions.map(vision => (
-              <option key={vision.id} value={vision.id}>{vision.title}</option>
-            ))}
-          </select>
+            onChange={setVisionId}
+            options={[{ value: '', label: 'No Vision link yet' }, ...visions.map(vision => ({ value: vision.id, label: vision.title }))]}
+            triggerClassName="mt-2 rounded-xl bg-app-container"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

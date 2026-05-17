@@ -19,6 +19,7 @@ import {
 import { motion } from 'motion/react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
+import { SelectMenu } from '../ui/SelectMenu';
 import { supabase } from '../../lib/supabase';
 import { trackBetaEvent } from '../../lib/betaAnalytics';
 import { cn } from '../../lib/utils';
@@ -815,9 +816,7 @@ export default function MessagesPage() {
         <div className="p-5 space-y-4">
           <label className="space-y-2 block">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Reason</span>
-            <select value={reportReason} onChange={(event) => setReportReason(event.target.value)} className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent">
-              {reportReasons.map(reason => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
-            </select>
+            <SelectMenu value={reportReason} onChange={setReportReason} options={reportReasons} />
           </label>
           <label className="space-y-2 block">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details optional</span>
@@ -834,9 +833,7 @@ export default function MessagesPage() {
         <div className="p-5 space-y-4">
           <label className="space-y-2 block">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Reason</span>
-            <select value={profileReportReason} onChange={(event) => setProfileReportReason(event.target.value)} className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent">
-              {reportReasons.map(reason => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
-            </select>
+            <SelectMenu value={profileReportReason} onChange={setProfileReportReason} options={reportReasons} />
           </label>
           <label className="space-y-2 block">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details optional</span>

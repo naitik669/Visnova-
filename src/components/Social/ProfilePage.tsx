@@ -49,6 +49,7 @@ import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
+import { SelectMenu } from '../ui/SelectMenu';
 
 type SocialProfile = {
   id: string;
@@ -1102,13 +1103,7 @@ export default function ProfilePage() {
         <div className="p-5 space-y-4">
           <label className="space-y-2 block">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Reason</span>
-            <select
-              value={reportReason}
-              onChange={(event) => setReportReason(event.target.value)}
-              className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent"
-            >
-              {profileReportReasons.map(reason => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
-            </select>
+            <SelectMenu value={reportReason} onChange={setReportReason} options={profileReportReasons} />
           </label>
           <label className="space-y-2 block">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details optional</span>

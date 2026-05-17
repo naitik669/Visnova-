@@ -11,6 +11,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
+import { SelectMenu } from '../ui/SelectMenu';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import { FinanceBillingCycle, FinanceBudget, FinanceGoal, FinanceGoalPriority, FinanceGoalStatus, FinanceSubscription, FinanceTransaction, FinanceTransactionType } from '../../types';
@@ -543,11 +544,11 @@ function TransactionForm({ mode, transaction, visions, goals, onSubmit }: { mode
       <input type="hidden" name="type" value={type} />
       <Field label="Title"><input name="title" defaultValue={transaction?.title || ''} className={inputClass} required /></Field>
       <Field label="Amount"><input name="amount" type="number" min="1" step="0.01" defaultValue={transaction?.amount || ''} className={inputClass} required /></Field>
-      <Field label="Category"><select name="category" defaultValue={transaction?.category || categories[0]} className={inputClass}>{categories.map(c => <option key={c}>{c}</option>)}</select></Field>
+      <Field label="Category"><FormSelect name="category" defaultValue={transaction?.category || categories[0]} options={categories.map(c => ({ value: c, label: c }))} /></Field>
       <Field label="Date"><input name="transactionDate" type="date" defaultValue={transaction?.transactionDate || today()} className={inputClass} /></Field>
       <Field label="Payment Method"><input name="paymentMethod" defaultValue={transaction?.paymentMethod || ''} className={inputClass} placeholder="UPI, card, cash..." /></Field>
       <Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={transaction?.linkedVisionId || ''} /></Field>
-      <Field label="Linked Goal"><select name="linkedGoalId" defaultValue={transaction?.linkedGoalId || ''} className={inputClass}><option value="">No goal</option>{goals.map(goal => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></Field>
+      <Field label="Linked Goal"><FormSelect name="linkedGoalId" defaultValue={transaction?.linkedGoalId || ''} options={[{ value: '', label: 'No goal' }, ...goals.map(goal => ({ value: goal.id, label: goal.title }))]} /></Field>
       <div className="sm:col-span-2"><Field label="Note"><textarea name="note" defaultValue={transaction?.note || ''} className={textareaClass} /></Field></div>
       <button className="sm:col-span-2 h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Transaction</button>
     </form>
@@ -561,8 +562,8 @@ function GoalForm({ goal, visions, onSubmit }: { goal: FinanceGoal | null; visio
       <Field label="Target Amount"><input name="targetAmount" type="number" min="1" step="0.01" defaultValue={goal?.targetAmount || ''} className={inputClass} required /></Field>
       <Field label="Current Amount"><input name="currentAmount" type="number" min="0" step="0.01" defaultValue={goal?.currentAmount || 0} className={inputClass} /></Field>
       <Field label="Deadline"><input name="deadline" type="date" defaultValue={goal?.deadline || ''} className={inputClass} /></Field>
-      <Field label="Priority"><select name="priority" defaultValue={goal?.priority || 'medium'} className={inputClass}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></Field>
-      <Field label="Status"><select name="status" defaultValue={goal?.status || 'active'} className={inputClass}><option value="active">Active</option><option value="paused">Paused</option><option value="completed">Completed</option><option value="archived">Archived</option></select></Field>
+      <Field label="Priority"><FormSelect name="priority" defaultValue={goal?.priority || 'medium'} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} /></Field>
+      <Field label="Status"><FormSelect name="status" defaultValue={goal?.status || 'active'} options={[{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }, { value: 'completed', label: 'Completed' }, { value: 'archived', label: 'Archived' }]} /></Field>
       <div className="sm:col-span-2"><Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={goal?.linkedVisionId || ''} /></Field></div>
       <button className="sm:col-span-2 h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Goal</button>
     </form>
@@ -584,10 +585,10 @@ function SubscriptionForm({ subscription, visions, onSubmit }: { subscription: F
     <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <Field label="Name"><input name="name" defaultValue={subscription?.name || ''} className={inputClass} required /></Field>
       <Field label="Amount"><input name="amount" type="number" min="1" step="0.01" defaultValue={subscription?.amount || ''} className={inputClass} required /></Field>
-      <Field label="Billing Cycle"><select name="billingCycle" defaultValue={subscription?.billingCycle || 'monthly'} className={inputClass}><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option><option value="custom">Custom</option></select></Field>
+      <Field label="Billing Cycle"><FormSelect name="billingCycle" defaultValue={subscription?.billingCycle || 'monthly'} options={[{ value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'yearly', label: 'Yearly' }, { value: 'custom', label: 'Custom' }]} /></Field>
       <Field label="Next Billing"><input name="nextBillingDate" type="date" defaultValue={subscription?.nextBillingDate || ''} className={inputClass} /></Field>
       <Field label="Category"><input name="category" defaultValue={subscription?.category || 'Subscriptions'} className={inputClass} /></Field>
-      <Field label="Status"><select name="active" defaultValue={subscription?.active === false ? 'false' : 'true'} className={inputClass}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
+      <Field label="Status"><FormSelect name="active" defaultValue={subscription?.active === false ? 'false' : 'true'} options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]} /></Field>
       <div className="sm:col-span-2"><Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={subscription?.linkedVisionId || ''} /></Field></div>
       <button className="sm:col-span-2 h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Subscription</button>
     </form>
@@ -597,7 +598,7 @@ function SubscriptionForm({ subscription, visions, onSubmit }: { subscription: F
 function BudgetForm({ month, year, onSubmit }: { month: number; year: number; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <Field label="Category"><select name="category" className={inputClass}>{expenseCategories.map(c => <option key={c}>{c}</option>)}</select></Field>
+      <Field label="Category"><FormSelect name="category" defaultValue={expenseCategories[0]} options={expenseCategories.map(c => ({ value: c, label: c }))} /></Field>
       <Field label="Limit"><input name="limitAmount" type="number" min="1" step="0.01" className={inputClass} required /></Field>
       <Field label="Month"><input name="month" type="number" min="1" max="12" defaultValue={month} className={inputClass} /></Field>
       <Field label="Year"><input name="year" type="number" min="2000" max="2100" defaultValue={year} className={inputClass} /></Field>
@@ -624,10 +625,16 @@ function ReviewForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>
 }
 
 function VisionSelect({ name, visions, defaultValue }: { name: string; visions: any[]; defaultValue?: string }) {
+  return <FormSelect name={name} defaultValue={defaultValue || ''} options={[{ value: '', label: 'No Vision linked' }, ...visions.map(vision => ({ value: vision.id, label: vision.title }))]} />;
+}
+
+function FormSelect({ name, defaultValue = '', options }: { name: string; defaultValue?: string; options: Array<{ value: string; label: string }> }) {
+  const [value, setValue] = useState(defaultValue);
+
   return (
-    <select name={name} defaultValue={defaultValue || ''} className={inputClass}>
-      <option value="">No Vision linked</option>
-      {visions.map(vision => <option key={vision.id} value={vision.id}>{vision.title}</option>)}
-    </select>
+    <>
+      <input type="hidden" name={name} value={value} />
+      <SelectMenu value={value} onChange={setValue} options={options} />
+    </>
   );
 }

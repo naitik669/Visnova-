@@ -8,6 +8,7 @@ import { useStore } from '../../store/useStore';
 import { safeNumber, safeString } from '../../lib/safeData';
 import VerifiedBadge from '../VerifiedBadge';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
+import { SelectMenu } from '../ui/SelectMenu';
 
 const reportReasons = [
   { value: 'spam', label: 'Spam' },
@@ -354,13 +355,12 @@ export default function UserProfileModal() {
                     <X size={14} />
                   </button>
                 </div>
-                <select
+                <SelectMenu
                   value={reportReason}
-                  onChange={(event) => setReportReason(event.target.value)}
-                  className="w-full h-11 rounded-xl bg-card border border-card-border px-3 text-xs font-bold text-text-main outline-none focus:border-danger/50"
-                >
-                  {reportReasons.map(reason => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
-                </select>
+                  onChange={setReportReason}
+                  options={reportReasons}
+                  triggerClassName="h-11 rounded-xl bg-card text-xs"
+                />
                 <textarea
                   value={reportDetails}
                   onChange={(event) => setReportDetails(event.target.value)}

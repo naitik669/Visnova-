@@ -33,6 +33,7 @@ import {
   setAppPreferences,
   setNotificationPreferences
 } from '../../lib/appPreferences';
+import { SelectMenu } from '../ui/SelectMenu';
 
 type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences';
 
@@ -359,11 +360,15 @@ export default function Settings() {
             <SettingsPanel title="Preferences" subtitle="Defaults for this browser and beta workspace.">
               <div className="space-y-5">
                 <SettingsField label="Default visibility">
-                  <select value={preferencePrefs.defaultVisibility} onChange={e => updatePreferencePrefs({ ...preferencePrefs, defaultVisibility: e.target.value as any })} className="settings-input">
-                    <option value="private">Private</option>
-                    <option value="connections">Connections</option>
-                    <option value="public">Public</option>
-                  </select>
+                  <SelectMenu
+                    value={preferencePrefs.defaultVisibility}
+                    onChange={value => updatePreferencePrefs({ ...preferencePrefs, defaultVisibility: value as any })}
+                    options={[
+                      { value: 'private', label: 'Private' },
+                      { value: 'connections', label: 'Connections' },
+                      { value: 'public', label: 'Public' }
+                    ]}
+                  />
                 </SettingsField>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <ToggleRow label="Reduce motion" desc="Lower animation intensity." checked={preferencePrefs.reduceMotion} onChange={value => updatePreferencePrefs({ ...preferencePrefs, reduceMotion: value })} />

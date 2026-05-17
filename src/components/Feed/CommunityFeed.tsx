@@ -40,6 +40,7 @@ import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData'
 
 import { TrendingTopicsSection } from './TrendingTopicsSection';
 import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';
+import { SelectMenu } from '../ui/SelectMenu';
 
 const normalizeHashtag = (tag: string) => tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 const extractHashtags = (text: string) => {
@@ -1788,9 +1789,12 @@ export function PostReportModal({ onClose, reason, setReason, details, setDetail
         <div className="space-y-4">
           <label className="block space-y-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Reason</span>
-            <select value={reason} onChange={(event) => setReason(event.target.value)} className="w-full h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent">
-              {reportReasons.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
+            <SelectMenu
+              value={reason}
+              onChange={setReason}
+              options={reportReasons}
+              triggerClassName="bg-card"
+            />
           </label>
           <label className="block space-y-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details optional</span>
