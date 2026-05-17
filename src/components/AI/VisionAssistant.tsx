@@ -35,6 +35,7 @@ const staticAnswers: Record<string, string[]> = {
 export default function VisionAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isVisionBoardOpen, setIsVisionBoardOpen] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState<string>('ongoing_tasks');
   const [answerLines, setAnswerLines] = useState<string[]>(['Choose a question to get quick help.']);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +48,23 @@ export default function VisionAssistant() {
     window.addEventListener('open-visnova-help', openHelp);
     return () => window.removeEventListener('open-visnova-help', openHelp);
   }, []);
+
+  useEffect(() => {
+    const hideForBoard = () => {
+      setIsOpen(false);
+      setIsVisionBoardOpen(true);
+    };
+    const restoreAfterBoard = () => setIsVisionBoardOpen(false);
+
+    window.addEventListener('visnova-vision-board-open', hideForBoard);
+    window.addEventListener('visnova-vision-board-closed', restoreAfterBoard);
+    return () => {
+      window.removeEventListener('visnova-vision-board-open', hideForBoard);
+      window.removeEventListener('visnova-vision-board-closed', restoreAfterBoard);
+    };
+  }, []);
+
+  if (isVisionBoardOpen) return null;
 
   const requireUserId = () => {
     const userId = session?.user?.id;

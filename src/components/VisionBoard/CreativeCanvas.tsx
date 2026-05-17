@@ -11,6 +11,7 @@ import {
   Loader2,
   Maximize2,
   Minus,
+  MoreHorizontal,
   Plus,
   RotateCcw,
   Save,
@@ -482,20 +483,52 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     </>
   );
 
+  const primaryTools = (
+    <>
+      <CanvasQuickButton icon={<Type size={17} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} />
+      <CanvasQuickButton icon={<StickyNote size={17} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
+      <CanvasQuickButton icon={<FileText size={17} />} label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
+      <CanvasQuickButton icon={<ImageIcon size={17} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} />
+      <CanvasQuickButton icon={<LinkIcon size={17} />} label="Link" onClick={() => { setMobileToolsOpen(false); setLinkPanelOpen(true); }} />
+    </>
+  );
+
+  const secondaryTools = (
+    <>
+      <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#3b82f622', strokeColor: '#3b82f6' })} />
+      <CanvasToolButton icon={<Upload size={18} />} label="Import" onClick={() => setImportPanelOpen(true)} />
+    </>
+  );
+
   return (
     <div
       className="flex-1 relative overflow-hidden bg-bg-base/20 group/canvas select-none"
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleCanvasDrop}
     >
-      <button
-        onClick={() => setMobileToolsOpen(open => !open)}
-        className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] flex h-14 min-w-14 items-center justify-center gap-2 rounded-full bg-accent px-4 text-accent-contrast shadow-2xl shadow-accent/30 ring-4 ring-bg-base/75 hover:scale-105 active:scale-95 transition-transform"
-        aria-label="Add to board"
-      >
-        <Plus size={28} className={cn('transition-transform', mobileToolsOpen && 'rotate-45')} />
-        <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest pr-1">Add</span>
-      </button>
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] hidden md:flex items-center gap-1.5 rounded-full border border-card-border bg-card/95 p-2 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl">
+        {primaryTools}
+        <div className="mx-1 h-8 w-px bg-card-border" />
+        <CanvasQuickButton
+          icon={<MoreHorizontal size={18} />}
+          label="More"
+          onClick={() => setMobileToolsOpen(open => !open)}
+          active={mobileToolsOpen}
+        />
+      </div>
+
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] flex max-w-[calc(100vw-1rem)] items-center gap-1 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:hidden">
+        <CanvasQuickButton icon={<Type size={17} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} compact />
+        <CanvasQuickButton icon={<StickyNote size={17} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} compact />
+        <CanvasQuickButton icon={<ImageIcon size={17} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} compact />
+        <CanvasQuickButton
+          icon={<MoreHorizontal size={18} />}
+          label="More"
+          onClick={() => setMobileToolsOpen(open => !open)}
+          active={mobileToolsOpen}
+          compact
+        />
+      </div>
 
       <AnimatePresence>
         {mobileToolsOpen && (
@@ -503,9 +536,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             initial={{ opacity: 0, y: 14, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.96 }}
-            className="hidden md:grid fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] grid-cols-4 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl"
+            className="hidden md:grid fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 translate-x-[8.5rem] z-[165] grid-cols-2 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl"
           >
-            {addMenuOptions}
+            {secondaryTools}
           </motion.div>
         )}
       </AnimatePresence>
@@ -872,6 +905,42 @@ function ControlButton({ onClick, icon, label }: { onClick: () => void; icon: Re
   return (
     <button onClick={onClick} className="min-w-11 min-h-11 p-3 text-text-secondary hover:text-accent hover:bg-accent/5 rounded-xl transition-all" title={label} aria-label={label}>
       {icon}
+    </button>
+  );
+}
+
+function CanvasQuickButton({
+  icon,
+  label,
+  onClick,
+  loading = false,
+  active = false,
+  compact = false
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  loading?: boolean;
+  active?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className={cn(
+        "flex items-center justify-center gap-2 rounded-full font-black uppercase tracking-widest transition-all disabled:opacity-50",
+        compact ? "h-11 px-3 text-[8px]" : "h-12 px-4 text-[9px]",
+        active
+          ? "bg-accent text-accent-contrast shadow-lg shadow-accent/20"
+          : "text-text-secondary hover:bg-accent/10 hover:text-accent"
+      )}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+    >
+      {loading ? <Loader2 size={17} className="animate-spin" /> : icon}
+      <span>{label}</span>
     </button>
   );
 }

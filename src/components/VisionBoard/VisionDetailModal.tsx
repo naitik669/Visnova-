@@ -312,6 +312,14 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
   const imageImportRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!isOpen) return;
+    window.dispatchEvent(new Event('visnova-vision-board-open'));
+    return () => {
+      window.dispatchEvent(new Event('visnova-vision-board-closed'));
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (vision && historyIndex === -1) {
       setHistory([vision.elements || []]);
       setHistoryIndex(0);
@@ -591,20 +599,6 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                  />
                ) : (
                  <ExecutionPlan vision={vision} />
-               )}
-
-               {/* Collapsed Overlay Info */}
-               {isCollapsed && (
-                 <motion.div 
-                   initial={{ opacity: 0, y: 10 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   className="absolute top-20 left-10 z-40 bg-card/60 backdrop-blur-md border border-card-border p-4 rounded-3xl animate-in fade-in slide-in-from-top-4"
-                 >
-                    <div className="flex flex-col gap-1">
-                       <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60">Creative Workspace</span>
-                       <h3 className="text-sm font-bold text-text-main">{vision.title}</h3>
-                    </div>
-                 </motion.div>
                )}
 
             </div>
