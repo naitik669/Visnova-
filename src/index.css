@@ -26,6 +26,27 @@ select {
   font-size: 16px;
 }
 
+select {
+  color-scheme: light;
+  appearance: none;
+  background-color: var(--surface-muted);
+  color: var(--text-main);
+  border-color: var(--card-border);
+}
+
+[data-theme='dark'] select,
+[data-theme='midnight'] select,
+[data-theme='graphite'] select,
+[data-theme='forest-dark'] select,
+[data-theme='plum-dark'] select {
+  color-scheme: dark;
+}
+
+select option {
+  background: var(--card-elevated);
+  color: var(--text-main);
+}
+
 @media (min-width: 640px) {
   input,
   textarea,
@@ -343,6 +364,14 @@ select {
     @apply bg-card border border-card-border rounded-[2rem] shadow-soft backdrop-blur-md transition-all duration-500 hover:shadow-hover hover:scale-[1.005];
   }
 
+  [data-theme='dark'] .system-card,
+  [data-theme='midnight'] .system-card,
+  [data-theme='graphite'] .system-card,
+  [data-theme='forest-dark'] .system-card,
+  [data-theme='plum-dark'] .system-card {
+    box-shadow: 0 18px 42px rgb(0 0 0 / 0.22);
+  }
+
   .glass-effect {
     @apply bg-card/70 backdrop-blur-xl border border-card-border/50;
   }
@@ -358,7 +387,7 @@ select {
 
 @layer components {
   .visnova-menu {
-    @apply z-[220] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-card-border bg-card/95 text-text-main shadow-2xl backdrop-blur-xl ring-1 ring-white/10;
+    @apply z-[260] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-card-border bg-card-elevated/95 text-text-main shadow-2xl backdrop-blur-xl ring-1 ring-white/10;
     transform-origin: top right;
   }
 
@@ -380,5 +409,28 @@ select {
 
   .settings-input {
     @apply h-12 w-full rounded-2xl border border-card-border bg-surface-muted px-4 text-sm font-bold text-text-main shadow-sm outline-none transition-all placeholder:text-text-secondary/35 focus:border-accent focus:bg-card focus:ring-2 focus:ring-accent/15 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  [data-theme='dark'] .visnova-menu,
+  [data-theme='midnight'] .visnova-menu,
+  [data-theme='graphite'] .visnova-menu,
+  [data-theme='forest-dark'] .visnova-menu,
+  [data-theme='plum-dark'] .visnova-menu {
+    border-color: color-mix(in srgb, var(--accent) 18%, var(--card-border));
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+
+  [data-theme='dark'] .visnova-select-trigger,
+  [data-theme='dark'] .settings-input,
+  [data-theme='midnight'] .visnova-select-trigger,
+  [data-theme='midnight'] .settings-input,
+  [data-theme='graphite'] .visnova-select-trigger,
+  [data-theme='graphite'] .settings-input,
+  [data-theme='forest-dark'] .visnova-select-trigger,
+  [data-theme='forest-dark'] .settings-input,
+  [data-theme='plum-dark'] .visnova-select-trigger,
+  [data-theme='plum-dark'] .settings-input {
+    background-color: color-mix(in srgb, var(--card-elevated) 72%, var(--accent) 8%);
+    border-color: color-mix(in srgb, var(--accent) 16%, var(--card-border));
   }
 }

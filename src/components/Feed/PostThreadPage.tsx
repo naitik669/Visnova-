@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Archive, ArrowLeft, Bookmark, Edit3, Flag, Heart, Image as ImageIcon, Loader2, MessageSquare, MoreHorizontal, Pin, Reply, Send, Trash2, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '../../lib/utils';
@@ -92,7 +92,9 @@ function buildCommentTree(comments: Comment[]) {
 export default function PostThreadPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addComment, deleteComment, reportComment, session, addToast, updatePost, archivePost, restorePost, deletePost, reportPost } = useStore();
+  const menuRef = useRef<HTMLDivElement>(null);
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
@@ -109,6 +111,30 @@ export default function PostThreadPage() {
 
   const firstImage = useMemo(() => post?.media?.find(item => item.type === 'image'), [post]);
   const threadComments = useMemo(() => buildCommentTree(comments), [comments]);
+  const backTarget = (location.state as { from?: string } | null)?.from;
+
+  const goBackToSource = () => {
+    if (backTarget) navigate(backTarget);
+    else navigate('/feed');
+  };
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const closeMenu = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setIsMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', closeMenu);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isMenuOpen]);
 
   const fetchCommentRows = async (from: number, to: number) => {
     const enhanced = await supabase
@@ -381,14 +407,16 @@ export default function PostThreadPage() {
   return (
     <>
     <div className="w-full max-w-5xl mx-auto pb-10 animate-in fade-in duration-500">
-      <button onClick={() => navigate(-1)} className="mb-5 h-11 px-4 rounded-xl bg-card border border-card-border text-text-secondary hover:text-text-main flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+      <button onClick={goBackToSource} className="mb-5 h-11 px-4 rounded-xl bg-card border border-card-border text-text-secondary hover:text-text-main flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
         <ArrowLeft size={16} /> Back
       </button>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">
         <article className="bg-card border border-card-border rounded-[2rem] overflow-hidden shadow-sm">
           {firstImage ? (
-            <img src={firstImage.url} alt="Post media" className="w-full max-h-[520px] object-cover bg-surface-muted" />
+            <div className="bg-surface-muted/70 border-b border-card-border">
+              <img src={firstImage.url} alt="Post media" className="mx-auto max-h-[460px] w-full object-contain" />
+            </div>
           ) : (
             <div className="h-40 bg-surface-muted flex items-center justify-center text-text-secondary/30">
               <ImageIcon size={34} />
@@ -412,7 +440,7 @@ export default function PostThreadPage() {
               </div>
               </div>
               {session?.user?.id && (
-                <div className="relative shrink-0">
+                <div ref={menuRef} className="relative z-50 shrink-0">
                   <button onClick={() => setIsMenuOpen(open => !open)} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/50 hover:text-text-main" aria-label="Post options">
                     <MoreHorizontal size={18} />
                   </button>
@@ -427,7 +455,7 @@ export default function PostThreadPage() {
                             ) : (
                               <button onClick={async () => { setIsMenuOpen(false); const ok = await restorePost(post.id); if (ok) setPost(current => current ? { ...current, archived: false, archivedAt: null } : current); }} className="visnova-menu-item"><Archive size={14} /> Restore Post</button>
                             )}
-                            <button onClick={async () => { if (!confirm('Delete this post? This will remove it from your profile and feeds.')) return; setIsMenuOpen(false); const ok = await deletePost(post.id); if (ok) navigate('/feed'); }} className="visnova-menu-item visnova-menu-item-danger"><Trash2 size={14} /> Delete Post</button>
+                            <button onClick={async () => { if (!confirm('Delete this post? This will remove it from your profile and feeds.')) return; setIsMenuOpen(false); const ok = await deletePost(post.id); if (ok) goBackToSource(); }} className="visnova-menu-item visnova-menu-item-danger"><Trash2 size={14} /> Delete Post</button>
                           </>
                         ) : (
                           <button onClick={() => { setIsMenuOpen(false); setIsReportOpen(true); }} className="visnova-menu-item visnova-menu-item-danger"><Flag size={14} /> Report Post</button>

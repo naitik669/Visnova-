@@ -867,9 +867,28 @@ type MessageActionsProps = {
 function MessageActions({ message, isMine, openMenuId, setOpenMenuId, setReplyTo, deleteMessage, copyMessage, setReportMessage, resendMessage }: MessageActionsProps) {
   const isOpen = openMenuId === message.id;
   const deleted = !!message.deleted_at;
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const closeMenu = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpenMenuId(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenMenuId(null);
+    };
+
+    document.addEventListener('pointerdown', closeMenu);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isOpen, setOpenMenuId]);
 
   return (
-    <div className="relative shrink-0">
+    <div ref={menuRef} className="relative z-50 shrink-0">
       <button
         onClick={() => setOpenMenuId(isOpen ? null : message.id)}
         className="w-8 h-8 rounded-xl bg-card border border-card-border text-text-secondary hover:text-text-main flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"

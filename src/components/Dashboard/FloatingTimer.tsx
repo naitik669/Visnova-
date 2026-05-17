@@ -49,10 +49,10 @@ export default function FloatingTimer() {
              focusSession.isRunning ? "opacity-100" : "opacity-0"
            )} />
 
-           <div className="relative bg-text-main border border-card-border rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center gap-3 sm:gap-4 min-w-[160px] max-w-[calc(100vw-2rem)]">
+           <div className="relative bg-card-elevated border border-accent/20 rounded-2xl p-3 sm:p-4 shadow-2xl flex items-center gap-3 sm:gap-4 min-w-[160px] max-w-[calc(100vw-2rem)] ring-1 ring-white/5">
               <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
                  <svg className="absolute inset-0 w-full h-full -rotate-90">
-                    <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="3" />
+                    <circle cx="24" cy="24" r="20" fill="none" stroke="var(--surface-strong)" strokeWidth="3" />
                     <motion.circle
                        cx="24"
                        cy="24"
@@ -64,12 +64,12 @@ export default function FloatingTimer() {
                        animate={{ strokeDashoffset: 125.66 - (125.66 * progress) / 100 }}
                     />
                  </svg>
-                 <Clock size={16} className="text-accent-contrast relative z-10" />
+                 <Clock size={16} className="text-accent relative z-10" />
               </div>
 
               <div className="flex-1 pr-2">
-                 <p className="text-[8px] font-black uppercase tracking-widest text-accent-contrast/40 mb-1">{focusSession.label}</p>
-                 <p className="text-xl font-bold tabular-nums text-accent-contrast leading-none tracking-tight">
+                 <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/70 mb-1">{focusSession.label}</p>
+                 <p className="text-xl font-bold tabular-nums text-text-main leading-none tracking-tight">
                     {formatTime(focusSession.timeLeft)}
                  </p>
               </div>
@@ -77,13 +77,13 @@ export default function FloatingTimer() {
               <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                  <button
                     onClick={toggleFocusSession}
-                    className="w-8 h-8 rounded-lg bg-accent-contrast/10 text-accent-contrast flex items-center justify-center hover:bg-accent transition-colors"
+                    className="w-8 h-8 rounded-lg bg-surface-muted text-text-main border border-card-border flex items-center justify-center hover:bg-accent hover:text-accent-contrast transition-colors"
                  >
                     {focusSession.isRunning ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="ml-0.5" />}
                  </button>
                  <button
                     onClick={toggleFocusMode}
-                    className="w-8 h-8 rounded-lg bg-accent-contrast/10 text-accent-contrast flex items-center justify-center hover:bg-accent-contrast/20 transition-colors"
+                    className="w-8 h-8 rounded-lg bg-surface-muted text-text-main border border-card-border flex items-center justify-center hover:bg-accent hover:text-accent-contrast transition-colors"
                  >
                     <Maximize2 size={14} />
                  </button>
@@ -91,7 +91,7 @@ export default function FloatingTimer() {
 
               <button
                 onClick={endFocusSession}
-                className="absolute -top-2 -right-2 w-6 h-6 bg-danger text-accent-contrast rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                className="absolute -top-2 -right-2 w-6 h-6 bg-danger text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
               >
                 <X size={12} />
               </button>

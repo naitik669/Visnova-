@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Zap,
@@ -201,6 +201,7 @@ export default function CommunityFeed() {
   const [isHashtagLoading, setIsHashtagLoading] = useState(false);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { posts, addPost, fetchPosts, user, trackInteraction, followingIds, circle, toggleFollow } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const feedPromptKey = `visnova_feed_prompt_dismissed_${user.id || 'guest'}`;
@@ -436,7 +437,7 @@ export default function CommunityFeed() {
         <PostCard 
           key={`${post.id || 'post'}-${idx}`} 
           post={post} 
-          onOpenThread={() => navigate(`/post/${post.id}`)}
+          onOpenThread={() => navigate(`/post/${post.id}`, { state: { from: `${location.pathname}${location.search}` } })}
           onHashtagClick={handleHashtagClick}
           onPostDeleted={(postId) => useStore.setState(state => ({ posts: state.posts.filter(p => p.id !== postId) }))}
           onPostArchived={(postId) => useStore.setState(state => ({ posts: state.posts.filter(p => p.id !== postId) }))}
@@ -546,7 +547,7 @@ export default function CommunityFeed() {
       <div className="px-4">
         {activeTab !== 'explore' ? (
           <div className="flex flex-col lg:flex-row gap-8 max-w-[1440px] mx-auto">
-            <div className="flex-1 max-w-6xl space-y-8">
+            <div className="flex-1 max-w-3xl mx-auto space-y-7">
               {activeTab === 'feed' && !hasPosted && !isFeedPromptDismissed && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -672,7 +673,7 @@ export default function CommunityFeed() {
                      <PostCard
                        key={`explore-${post.id}-${idx}`} 
                         post={post}
-                        onOpenThread={() => navigate(`/post/${post.id}`)}
+                        onOpenThread={() => navigate(`/post/${post.id}`, { state: { from: `${location.pathname}${location.search}` } })}
                         onHashtagClick={handleHashtagClick}
                         onPostDeleted={(postId) => setHashtagPosts(prev => prev.filter(p => p.id !== postId))}
                         onPostArchived={(postId) => setHashtagPosts(prev => prev.filter(p => p.id !== postId))}
@@ -1279,6 +1280,7 @@ export function ImageLightbox({ src, alt, onClose }: { src: string, alt: string,
 function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpdated, onPostArchived, onAuthorMuted }: { post: Post, onOpenThread: () => void, onHashtagClick?: (tag: string) => void, onPostDeleted?: (postId: string) => void, onPostUpdated?: (postId: string, updates: Partial<Post>) => void, onPostArchived?: (postId: string) => void, onAuthorMuted?: (authorId: string) => void }) {
   const { trackInteraction, session, followingIds, toggleFollow, deletePost, updatePost, archivePost, restorePost, reportPost, muteUserPosts, addToast } = useStore();
   const hasTrackedView = useRef(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -1305,6 +1307,24 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
     setIsSaved(!!post.isSaved);
     setLikeCount(post.likes);
   }, [post.id, post.isLiked, post.isSaved, post.likes]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const closeMenu = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setIsMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', closeMenu);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isMenuOpen]);
 
   const handleLike = async () => {
     if (!currentUserId) {
@@ -1410,12 +1430,12 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
   
   return (
     <motion.div
-      className="system-card p-6 sm:p-12 bg-card border-card-border hover:border-accent/20 transition-all group w-full relative overflow-visible"
+      className="system-card p-5 sm:p-7 bg-card border-card-border hover:border-accent/20 transition-all group w-full relative overflow-visible"
       layout
     >
       <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
       
-      <div className="flex items-start justify-between relative z-10">
+      <div className="flex items-start justify-between relative z-30">
         <div className="flex items-center gap-5">
           <div className="relative">
             <img src={post.author.avatar} className="w-12 h-12 rounded-2xl border border-card-border shadow-sm group-hover:scale-110 transition-transform duration-500" alt={post.author.name} />
@@ -1433,7 +1453,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
             </div>
           </div>
         </div>
-        <div className="relative">
+        <div ref={menuRef} className="relative z-50">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -1624,7 +1644,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
               <button
                 key={idx}
                 onClick={() => setExpandedImage(item.url)}
-                className="relative rounded-3xl overflow-hidden border border-card-border aspect-[16/10] bg-surface-muted text-left group/media"
+                className="relative rounded-3xl overflow-hidden border border-card-border aspect-[16/10] max-h-[34rem] bg-surface-muted text-left group/media"
               >
                 <img src={item.url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="post media" />
                 <span className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-black/50 text-white text-[9px] font-black uppercase tracking-widest opacity-0 group-hover/media:opacity-100 transition-opacity">Expand</span>

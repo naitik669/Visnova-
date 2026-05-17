@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import {
   Zap,
@@ -77,6 +77,7 @@ const profileReportReasons = [
 export default function ProfilePage() {
   const { user: currentUser, session, posts: allPosts, visions, theme, setTheme, restartTutorial, updateUser, selectedProfileId, setSelectedProfileId, toggleFollow, fetchProfileStats, reportUser } = useStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { profileId } = useParams<{ profileId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') || 'overview') as 'overview' | 'posts' | 'followers' | 'following' | 'archived' | 'achievements' | 'settings';
@@ -684,7 +685,7 @@ export default function ProfilePage() {
                   <ProfilePostCard
                     key={post.id}
                     post={post}
-                    onOpenThread={() => navigate(`/post/${post.id}`)}
+                    onOpenThread={() => navigate(`/post/${post.id}`, { state: { from: `${location.pathname}${location.search}` } })}
                     onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                     onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
                     onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, archived: true, archivedAt: new Date().toISOString() } : p))}
@@ -705,7 +706,7 @@ export default function ProfilePage() {
                 <ProfilePostCard
                   key={post.id}
                   post={post}
-                  onOpenThread={() => navigate(`/post/${post.id}`)}
+                  onOpenThread={() => navigate(`/post/${post.id}`, { state: { from: `${location.pathname}${location.search}` } })}
                   onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                   onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
                   onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, archived: true, archivedAt: new Date().toISOString() } : p))}
@@ -794,7 +795,7 @@ export default function ProfilePage() {
                 <ProfilePostCard
                   key={post.id}
                   post={post}
-                  onOpenThread={() => navigate(`/post/${post.id}`)}
+                  onOpenThread={() => navigate(`/post/${post.id}`, { state: { from: `${location.pathname}${location.search}` } })}
                   onDeleted={(postId) => setProfilePosts(prev => prev.filter(p => p.id !== postId))}
                   onUpdated={(postId, updates) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, ...updates } : p))}
                   onArchived={(postId) => setProfilePosts(prev => prev.map(p => p.id === postId ? { ...p, archived: true, archivedAt: new Date().toISOString() } : p))}
@@ -1135,6 +1136,7 @@ export default function ProfilePage() {
 function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived }: { post: Post, onOpenThread: () => void, onDeleted?: (postId: string) => void, onUpdated?: (postId: string, updates: Partial<Post>) => void, onArchived?: (postId: string) => void }) {
   const { deletePost, updatePost, archivePost, restorePost, reportPost, session } = useStore();
   const navigate = useNavigate();
+  const menuRef = useRef<HTMLDivElement>(null);
   const [isLiked, setIsLiked] = useState(!!post.isLiked);
   const [isSaved, setIsSaved] = useState(!!post.isSaved);
   const [likeCount, setLikeCount] = useState(post.likes);
@@ -1146,6 +1148,24 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const isOwnPost = post.userId === session?.user?.id;
   const currentUserId = session?.user?.id;
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const closeMenu = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setIsMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', closeMenu);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isMenuOpen]);
 
   const handleHashtagClick = (tag: string) => {
     sessionStorage.setItem('visnova-feed-hashtag', tag);
@@ -1224,7 +1244,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
           )}
         </div>
         {(isOwnPost || currentUserId) && (
-          <div className="relative">
+          <div ref={menuRef} className="relative z-50">
             <button
               onClick={() => setIsMenuOpen(open => !open)}
               className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all shrink-0"
