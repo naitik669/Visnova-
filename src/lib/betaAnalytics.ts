@@ -1,3 +1,4 @@
+import { track } from '@vercel/analytics';
 import { isSupabaseConfigured, supabase } from './supabase';
 
 type AnalyticsMetadata = Record<string, string | number | boolean | null | undefined>;
@@ -15,6 +16,22 @@ export async function trackBetaEvent(
   const cleanMetadata = Object.fromEntries(
     Object.entries(metadata).filter(([, value]) => value !== undefined)
   );
+
+  if (typeof window !== 'undefined') {
+    try {
+      const vercelMetadata = Object.fromEntries(
+        Object.entries(cleanMetadata).filter(([, value]) => (
+          typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+        ))
+      ) as Record<string, string | number | boolean>;
+      track(eventType, {
+        ...vercelMetadata,
+        route: window.location.pathname
+      });
+    } catch (error) {
+      console.warn('Vercel analytics event skipped:', eventType, error);
+    }
+  }
 
   try {
     const { error } = await supabase.from('analytics_events').insert({

@@ -13,7 +13,7 @@ export default function CookieNotice() {
   return (
     <div className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] lg:bottom-4 lg:left-auto lg:right-4 lg:w-[420px] z-[250] rounded-2xl border border-card-border bg-card p-4 shadow-2xl">
       <p className="text-sm font-semibold text-text-secondary leading-relaxed">
-        VisNova uses essential cookies/browser storage for login, security, preferences, and app state. Analytics cookies are not configured in this build.
+        VisNova uses essential browser storage for login, security, preferences, and app state. We also collect privacy-friendly Vercel Web Analytics to understand beta usage without storing your private content.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
