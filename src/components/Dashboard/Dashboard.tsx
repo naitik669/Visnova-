@@ -384,85 +384,8 @@ export default function Dashboard() {
             />
           )}
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Command Center</p>
-                  <h2 className="mt-2 text-xl font-black uppercase tracking-tight text-text-main">Today’s Focus</h2>
-                  <p className="mt-2 text-sm font-semibold text-text-secondary">
-                    {activeVision ? `Active Vision: ${activeVision.title}` : 'Create a Vision to connect your work into one progress loop.'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowProgressComposer(true)}
-                  className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/20"
-                >
-                  <Plus size={15} />
-                  Log Progress
-                </button>
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {(activeVisionPendingTasks.length > 0 ? activeVisionPendingTasks : pendingTasks.slice(0, 3)).map(task => (
-                  <button
-                    key={task.reactKey}
-                    type="button"
-                    onClick={() => navigate('/visions')}
-                    className="rounded-2xl border border-card-border bg-app-container p-4 text-left hover:border-accent/40"
-                  >
-                    <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{task.vision}</p>
-                    <p className="mt-2 line-clamp-2 text-sm font-bold text-text-main">{task.text}</p>
-                  </button>
-                ))}
-                {pendingTasks.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-4 text-sm font-semibold text-text-secondary sm:col-span-3">
-                    No pending tasks yet. Add tasks to a Vision so the system can suggest your next action.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm sm:p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Ecosystem Snapshot</p>
-                  <h2 className="mt-2 text-xl font-black uppercase tracking-tight text-text-main">This Week</h2>
-                </div>
-                <Brain size={20} className="text-accent" />
-              </div>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                {[
-                  ['Proof logs', weeklyProgressLogs.length],
-                  ['Tasks done', completedTasksThisWeek.length],
-                  ['Reflections', weeklyJournalCount],
-                  ['AI insights', aiInsights.length],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl border border-card-border bg-app-container p-4">
-                    <p className="text-2xl font-black text-text-main">{value}</p>
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 rounded-2xl border border-card-border bg-app-container p-4">
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Resources pulse</p>
-                <p className="mt-1 text-sm font-bold text-text-main">{weeklyMoneyUpdates ? 'Wallet activity is connected to active resources.' : 'No resource updates linked this week.'}</p>
-              </div>
-              {recentTimeline.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {recentTimeline.map(event => (
-                    <div key={event.id} className="flex items-center gap-3 text-xs font-semibold text-text-secondary">
-                      <span className="h-2 w-2 rounded-full bg-accent" />
-                      <span className="line-clamp-1">{event.title}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Today's Focus Section */}
-          <div className="bg-card rounded-[1.6rem] sm:rounded-[2.5rem] p-4 sm:p-8 shadow-sm relative overflow-hidden group">
+          <div className="bg-card rounded-[1.6rem] sm:rounded-[2.5rem] p-4 sm:p-6 shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
             
             <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start">
@@ -470,7 +393,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
                   <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-60">
-                    Primary Objective
+                    Command Center
                   </h3>
                 </div>
 
@@ -500,13 +423,45 @@ export default function Dashboard() {
                       className="cursor-pointer group/focus"
                     >
                       <h2 className="text-xl lg:text-3xl font-display font-medium text-text-main leading-tight group-hover/focus:text-accent transition-colors">
-                        {user.statusNote || "Define your focus for today..."}
+                        {user.statusNote || activeVision?.title || "Choose today’s proof of progress"}
                       </h2>
+                      <p className="mt-2 max-w-xl text-xs font-semibold text-text-secondary/70">
+                        {activeVision
+                          ? "Pick the next action, log proof, and keep this Vision moving."
+                          : "Create a Vision so tasks, notes, journals, proof, and Circle activity connect in one loop."}
+                      </p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center gap-6 pt-4">
+                <div className="grid gap-2 pt-1 sm:grid-cols-3">
+                  {(activeVisionPendingTasks.length > 0 ? activeVisionPendingTasks : pendingTasks.slice(0, 3)).map(task => (
+                    <button
+                      key={task.reactKey}
+                      type="button"
+                      onClick={() => navigate('/visions')}
+                      className="rounded-2xl border border-card-border bg-app-container/80 p-3 text-left transition-colors hover:border-accent/40"
+                    >
+                      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/45 line-clamp-1">{task.vision}</p>
+                      <p className="mt-1.5 line-clamp-2 text-xs font-bold text-text-main">{task.text}</p>
+                    </button>
+                  ))}
+                  {pendingTasks.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-card-border bg-app-container/80 p-3 text-xs font-semibold text-text-secondary sm:col-span-3">
+                      Add tasks to a Vision so the command center can suggest your next action.
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowProgressComposer(true)}
+                    className="flex h-10 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[9px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/15"
+                  >
+                    <Plus size={13} />
+                    Log Progress
+                  </button>
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-40">Trajectory</span>
                     <span className="text-sm font-bold text-text-main">Day {user.streak || 1} - {user.rank || 'Explorer'}</span>
@@ -519,23 +474,23 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-5 flex flex-col gap-4 md:min-w-[240px] border border-card-border/50">
+              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 flex flex-col gap-3 md:min-w-[210px] border border-card-border/50">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-1">Streak Fire</p>
                     <p className="text-3xl font-display font-black text-warning">{currentStreak}</p>
                   </div>
-                  <div className="w-14 h-14 rounded-2xl bg-warning/10 border border-warning/20 flex items-center justify-center text-warning">
-                    <Flame size={28} className="fill-warning/20" />
+                  <div className="w-12 h-12 rounded-2xl bg-warning/10 border border-warning/20 flex items-center justify-center text-warning">
+                    <Flame size={24} className="fill-warning/20" />
                   </div>
                 </div>
-                <div className="grid grid-cols-7 gap-1.5">
+                <div className="grid grid-cols-7 gap-1">
                   {streakHeatmap.map(day => (
                     <div
                       key={day.key}
                       title={day.key}
                       className={cn(
-                        "h-7 rounded-lg border flex items-center justify-center text-[8px] font-black",
+                        "h-6 rounded-lg border flex items-center justify-center text-[8px] font-black",
                         day.active
                           ? "bg-warning text-white border-warning"
                           : "bg-app-container text-text-secondary/35 border-card-border"
@@ -565,7 +520,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 flex flex-col items-center gap-3 md:min-w-[200px] border border-card-border/50">
+              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 flex flex-col items-center gap-3 md:min-w-[170px] border border-card-border/50">
                 <div className="text-center">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-1">Total Progress</p>
                   <p className="text-3xl font-display font-black text-accent">{globalProgress}%</p>
@@ -1151,7 +1106,47 @@ export default function Dashboard() {
         </div>
 
         {/* Right Sidebar stats panel */}
-        <div className="w-full lg:w-[300px] shrink-0 bg-card rounded-[2.5rem] p-6 flex flex-col shadow-sm relative pt-8">
+        <div className="w-full lg:w-[300px] shrink-0 flex flex-col gap-4">
+          <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Ecosystem Snapshot</p>
+                <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-text-main">This Week</h3>
+              </div>
+              <Brain size={18} className="text-accent" />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {[
+                ['Proof', weeklyProgressLogs.length],
+                ['Tasks', completedTasksThisWeek.length],
+                ['Reflect', weeklyJournalCount],
+                ['AI', aiInsights.length],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl border border-card-border bg-app-container p-3">
+                  <p className="text-xl font-black leading-none text-text-main">{value}</p>
+                  <p className="mt-1.5 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
+              <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Resources</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-text-main">
+                {weeklyMoneyUpdates ? 'Wallet activity is linked to active resources.' : 'No resource updates linked this week.'}
+              </p>
+            </div>
+            {recentTimeline.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                {recentTimeline.map(event => (
+                  <div key={event.id} className="flex items-center gap-2 text-[11px] font-semibold text-text-secondary">
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                    <span className="line-clamp-1">{event.title}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card rounded-[2rem] p-5 flex flex-col shadow-sm relative">
           <div className="flex flex-col gap-4 w-full h-auto">
             <div className="flex items-center justify-between pb-2 border-b border-card-border/60">
               <h3 className="text-[14px] font-bold text-text-main">
@@ -1256,7 +1251,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="mt-10 flex flex-col gap-4">
+          <div className="mt-6 flex flex-col gap-3">
             <CircularProgress
               value={focusForce}
               color="#FF6A88"
@@ -1277,6 +1272,7 @@ export default function Dashboard() {
               color="#FACD4C"
               label="System Load"
             />
+          </div>
           </div>
         </div>
       </div>
