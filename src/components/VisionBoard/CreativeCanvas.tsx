@@ -46,7 +46,7 @@ type BoardTool = 'select' | 'pen' | 'eraser';
 
 const CANVAS_SIZE = 5200;
 const CANVAS_CENTER = CANVAS_SIZE / 2;
-const MIN_ZOOM = 0.2;
+const MIN_ZOOM = 0.08;
 const MAX_ZOOM = 2.5;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -188,6 +188,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [zoomLevel, setZoomLevel] = useState(1);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const transformWrapperRef = useRef<any>(null);
+  const canvasViewportRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingElementsRef = useRef<VisionElement[]>(normalizeBoardElements(vision.elements));
@@ -297,9 +298,17 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const setZoom = useCallback((nextScale: number) => {
     const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextScale));
     const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
+    const currentScale = transformState?.scale || 1;
     const positionX = transformState?.positionX || 0;
     const positionY = transformState?.positionY || 0;
-    transformWrapperRef.current?.setTransform?.(positionX, positionY, scale, 140);
+    const bounds = canvasViewportRef.current?.getBoundingClientRect();
+    const viewportCenterX = (bounds?.width || window.innerWidth) / 2;
+    const viewportCenterY = (bounds?.height || window.innerHeight) / 2;
+    const contentCenterX = (viewportCenterX - positionX) / currentScale;
+    const contentCenterY = (viewportCenterY - positionY) / currentScale;
+    const nextX = viewportCenterX - contentCenterX * scale;
+    const nextY = viewportCenterY - contentCenterY * scale;
+    transformWrapperRef.current?.setTransform?.(nextX, nextY, scale, 140);
     setZoomLevel(scale);
   }, []);
 
@@ -621,6 +630,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   return (
     <div
+      ref={canvasViewportRef}
       className={cn(
         "flex-1 relative overflow-hidden bg-bg-base/20 group/canvas select-none",
         activeTool === 'pen' && "cursor-crosshair",
@@ -777,9 +787,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
             <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-3 z-[170] w-56 rounded-2xl border border-card-border bg-card/95 p-2 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:right-5">
               <div className="grid h-14 grid-cols-[44px_1fr_44px] items-center rounded-xl bg-bg-base/50">
-                <ControlButton onClick={() => setZoom(zoomLevel - 0.1)} icon={<Minus size={22} />} label="Zoom Out" compact />
+                <ControlButton onClick={() => setZoom(zoomLevel - (zoomLevel <= 0.3 ? 0.03 : 0.1))} icon={<Minus size={22} />} label="Zoom Out" compact />
                 <span className="text-center text-lg font-black tabular-nums text-text-main">{Math.round(zoomLevel * 100)}%</span>
-                <ControlButton onClick={() => setZoom(zoomLevel + 0.1)} icon={<Plus size={24} />} label="Zoom In" compact />
+                <ControlButton onClick={() => setZoom(zoomLevel + (zoomLevel < 0.3 ? 0.03 : 0.1))} icon={<Plus size={24} />} label="Zoom In" compact />
               </div>
               <div className="mt-2 flex items-center gap-2 px-1">
                 <input
