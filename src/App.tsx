@@ -119,11 +119,11 @@ type NavItem = {
 const mainNavBase: NavItem[] = [
   { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
   { icon: Compass, label: 'Feed', path: '/feed' },
+  { icon: Users, label: 'Circle', path: '/circle' },
   { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
   { icon: LibraryBig, label: 'Library', path: '/library' },
   { icon: GraduationCap, label: 'Growth', path: '/growth' },
   { icon: Wallet, label: 'Wallet', path: '/wallet' },
-  { icon: Users, label: 'Circle', path: '/circle' },
   { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
 ];
 
