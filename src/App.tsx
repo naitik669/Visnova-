@@ -29,16 +29,52 @@ import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supab
 import { trackBetaEvent } from './lib/betaAnalytics';
 import { XpToast } from './components/ui/XpToast';
 
-const VisionBoard = lazy(() => import('./components/VisionBoard/VisionBoard'));
-const NovaClock = lazy(() => import('./components/Nova/NovaClock'));
-const MindVisualizer = lazy(() => import('./components/Mind/MindVisualizer'));
-const CommunityFeed = lazy(() => import('./components/Feed/CommunityFeed'));
-const PostThreadPage = lazy(() => import('./components/Feed/PostThreadPage'));
-const NotesSystem = lazy(() => import('./components/Notes/NotesSystem'));
-const ProfilePage = lazy(() => import('./components/Social/ProfilePage'));
-const Settings = lazy(() => import('./components/Settings/Settings'));
-const FeedbackPage = lazy(() => import('./components/Support/FeedbackPage'));
-const MoneyPage = lazy(() => import('./components/Money/MoneyPage'));
+const loadVisionBoard = () => import('./components/VisionBoard/VisionBoard');
+const loadNovaClock = () => import('./components/Nova/NovaClock');
+const loadMindVisualizer = () => import('./components/Mind/MindVisualizer');
+const loadCommunityFeed = () => import('./components/Feed/CommunityFeed');
+const loadPostThreadPage = () => import('./components/Feed/PostThreadPage');
+const loadNotesSystem = () => import('./components/Notes/NotesSystem');
+const loadProfilePage = () => import('./components/Social/ProfilePage');
+const loadSettings = () => import('./components/Settings/Settings');
+const loadFeedbackPage = () => import('./components/Support/FeedbackPage');
+const loadMoneyPage = () => import('./components/Money/MoneyPage');
+
+const VisionBoard = lazy(loadVisionBoard);
+const NovaClock = lazy(loadNovaClock);
+const MindVisualizer = lazy(loadMindVisualizer);
+const CommunityFeed = lazy(loadCommunityFeed);
+const PostThreadPage = lazy(loadPostThreadPage);
+const NotesSystem = lazy(loadNotesSystem);
+const ProfilePage = lazy(loadProfilePage);
+const Settings = lazy(loadSettings);
+const FeedbackPage = lazy(loadFeedbackPage);
+const MoneyPage = lazy(loadMoneyPage);
+
+const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Promise<unknown> }> = [
+  { match: path => path === '/feed', load: loadCommunityFeed },
+  { match: path => path.startsWith('/post/'), load: loadPostThreadPage },
+  { match: path => path === '/visions' || path === '/vision', load: loadVisionBoard },
+  { match: path => path === '/library' || path === '/notes' || path === '/journal', load: loadNotesSystem },
+  { match: path => path === '/profile' || path.startsWith('/profile/'), load: loadProfilePage },
+  { match: path => path === '/settings', load: loadSettings },
+  { match: path => path === '/feedback', load: loadFeedbackPage },
+  { match: path => path === '/wallet' || path === '/money', load: loadMoneyPage },
+  { match: path => path === '/nova-clock' || path === '/nova' || path === '/timeline', load: loadNovaClock },
+  { match: path => path === '/growth' || path === '/mind-map', load: loadMindVisualizer },
+];
+
+const preloadedRoutes = new Set<string>();
+
+function preloadRoute(path: string) {
+  const route = routePreloaders.find(item => item.match(path));
+  if (!route || preloadedRoutes.has(path)) return;
+  preloadedRoutes.add(path);
+  route.load().catch(error => {
+    preloadedRoutes.delete(path);
+    console.error('Route preload failed:', path, error);
+  });
+}
 
 function AccountabilityNudge() {
   const [visible, setVisible] = useState(false);
@@ -255,6 +291,9 @@ function Sidebar() {
               id={item.id}
               to={item.path}
               title={!isExpanded ? item.label : undefined}
+              onMouseEnter={() => preloadRoute(item.path)}
+              onFocus={() => preloadRoute(item.path)}
+              onTouchStart={() => preloadRoute(item.path)}
               className={cn(
                 'flex items-center h-11 rounded-xl transition-all duration-300 group relative',
                 isExpanded ? 'justify-start gap-4 px-3' : 'justify-center px-0',
@@ -406,6 +445,9 @@ function MobileNav() {
           <Link
             key={item.path}
             to={item.path}
+            onMouseEnter={() => preloadRoute(item.path)}
+            onFocus={() => preloadRoute(item.path)}
+            onTouchStart={() => preloadRoute(item.path)}
             className={cn(
               "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
               active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
@@ -629,6 +671,23 @@ function AppContent() {
       trackBetaEvent(session.user.id, 'day_7_return', { day: 7 });
     }
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id || !hasCompletedOnboarding || !isProfileReady || isPasswordRecovery || isAuthCallbackPath) return;
+
+    const commonRouteTimer = window.setTimeout(() => {
+      ['/feed', '/circle', '/visions', '/library'].forEach(preloadRoute);
+    }, 350);
+
+    const secondaryRouteTimer = window.setTimeout(() => {
+      ['/growth', '/wallet', '/nova-clock', '/profile', '/settings', '/feedback'].forEach(preloadRoute);
+    }, 1600);
+
+    return () => {
+      window.clearTimeout(commonRouteTimer);
+      window.clearTimeout(secondaryRouteTimer);
+    };
+  }, [session?.user?.id, hasCompletedOnboarding, isProfileReady, isPasswordRecovery, isAuthCallbackPath]);
 
   if (!isSupabaseConfigured()) {
     return <SupabaseConfigScreen />;
