@@ -536,7 +536,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                           activeTab === tab ? "bg-card text-accent shadow-premium" : "text-text-secondary/40 hover:text-text-main"
                         )}
                       >
-                        {tab === 'board' ? 'Canvas' : isCollapsed ? 'Blueprint' : 'Execution Blueprint'}
+                        {tab === 'board' ? 'Vision Board' : isCollapsed ? 'Blueprint' : 'Execution Blueprint'}
                       </button>
                     ))}
                 </div>

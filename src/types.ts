@@ -18,7 +18,7 @@ export interface Task {
 
 export interface VisionElement {
   id: string;
-  type: 'image' | 'text' | 'link' | 'emoji' | 'note' | 'quote' | 'shape' | 'connector' | 'sticky' | 'section' | 'heading' | 'checklist' | 'task' | 'flowchartNode';
+  type: 'image' | 'text' | 'link' | 'emoji' | 'note' | 'quote' | 'shape' | 'connector' | 'sticky' | 'drawing' | 'section' | 'heading' | 'checklist' | 'task' | 'flowchartNode';
   content: string;
   x: number;
   y: number;

@@ -2,7 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { motion, AnimatePresence } from 'motion/react';
 import {
+  ArrowDown,
+  ArrowUp,
+  Brush,
   Check,
+  Copy,
+  Eraser,
   FileText,
   ExternalLink,
   Image as ImageIcon,
@@ -37,13 +42,16 @@ interface CreativeCanvasProps {
 type SaveStatus = 'saved' | 'dirty' | 'saving' | 'failed';
 type ChecklistItem = NonNullable<NonNullable<VisionElement['metadata']>['checklist']>[number];
 type ResizeCorner = 'se' | 'sw' | 'ne' | 'nw';
+type BoardTool = 'select' | 'pen' | 'eraser';
 
 const CANVAS_SIZE = 5200;
 const CANVAS_CENTER = CANVAS_SIZE / 2;
+const MIN_ZOOM = 0.35;
+const MAX_ZOOM = 2.4;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const STABLE_BOARD_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'connector', 'link']);
+const STABLE_BOARD_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'connector', 'link', 'drawing']);
 const RESIZABLE_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'link']);
 
 const newId = (prefix = 'el') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -176,18 +184,21 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [isDraggingElement, setIsDraggingElement] = useState(false);
   const [isResizingElement, setIsResizingElement] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
+  const [activeTool, setActiveTool] = useState<BoardTool>('select');
+  const [zoomLevel, setZoomLevel] = useState(1);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const transformWrapperRef = useRef<any>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingElementsRef = useRef<VisionElement[]>(normalizeBoardElements(vision.elements));
+  const drawingRef = useRef<{ id: string; pointerId: number; points: Array<{ x: number; y: number }>; frame: number | null } | null>(null);
   const { session, addToast, notes, fetchNotes } = useStore();
 
   const selectedElement = useMemo(
     () => elements.find(element => element.id === selectedId) || null,
     [elements, selectedId]
   );
-  const canvasInteractionLocked = isDraggingElement || isResizingElement || isEditingText;
+  const canvasInteractionLocked = isDraggingElement || isResizingElement || isEditingText || activeTool !== 'select';
 
   useEffect(() => {
     const normalized = normalizeBoardElements(vision.elements);
@@ -265,6 +276,33 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     };
   };
 
+  const getCanvasPointFromPointer = (event: React.PointerEvent<HTMLElement>) => {
+    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
+    const scale = transformState?.scale || 1;
+    const positionX = transformState?.positionX || 0;
+    const positionY = transformState?.positionY || 0;
+
+    return {
+      x: (event.clientX - bounds.left - positionX) / scale,
+      y: (event.clientY - bounds.top - positionY) / scale
+    };
+  };
+
+  const pathFromPoints = (points: Array<{ x: number; y: number }>) => {
+    if (points.length === 0) return '';
+    return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${Math.round(point.x)} ${Math.round(point.y)}`).join(' ');
+  };
+
+  const setZoom = useCallback((nextScale: number) => {
+    const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextScale));
+    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
+    const positionX = transformState?.positionX || 0;
+    const positionY = transformState?.positionY || 0;
+    transformWrapperRef.current?.setTransform?.(positionX, positionY, scale, 140);
+    setZoomLevel(scale);
+  }, []);
+
   const createElement = useCallback((
     type: VisionElement['type'],
     content: string,
@@ -290,6 +328,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     };
     applyElements(current => [...current, element]);
     setSelectedId(element.id);
+    setActiveTool('select');
     setMobileToolsOpen(false);
     setImportPanelOpen(false);
     setLinkPanelOpen(false);
@@ -384,6 +423,30 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setSelectedId(current => current === id ? null : current);
   }, [applyElements]);
 
+  const duplicateElement = useCallback((id: string) => {
+    const source = elements.find(element => element.id === id);
+    if (!source) return;
+    const now = Date.now();
+    const duplicate: VisionElement = {
+      ...source,
+      id: newId('copy'),
+      x: source.x + 36,
+      y: source.y + 36,
+      zIndex: now,
+      createdAt: now,
+      updatedAt: now,
+      metadata: safeObject(source.metadata)
+    };
+    applyElements(current => [...current, duplicate]);
+    setSelectedId(duplicate.id);
+    addToast({ type: 'success', title: 'Copied', description: 'Element duplicated on the board.' });
+  }, [addToast, applyElements, elements]);
+
+  const moveElementLayer = useCallback((id: string, direction: 'forward' | 'backward') => {
+    const now = Date.now();
+    updateElement(id, { zIndex: direction === 'forward' ? now : -now });
+  }, [updateElement]);
+
   const importImageFile = useCallback(async (file: File, x?: number, y?: number) => {
     const normalizedType = (file.type || '').toLowerCase();
     if (!ALLOWED_IMAGE_TYPES.has(normalizedType)) {
@@ -445,6 +508,61 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     updateElement(element.id, { metadata: { checklist } });
   };
 
+  const startDrawing = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (activeTool !== 'pen' || event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = getCanvasPointFromPointer(event);
+    const now = Date.now();
+    const drawing: VisionElement = {
+      id: newId('drawing'),
+      type: 'drawing',
+      content: pathFromPoints([point]),
+      x: 0,
+      y: 0,
+      width: CANVAS_SIZE,
+      height: CANVAS_SIZE,
+      zIndex: now,
+      createdAt: now,
+      updatedAt: now,
+      metadata: { strokeColor: 'var(--accent)' }
+    };
+    drawingRef.current = { id: drawing.id, pointerId: event.pointerId, points: [point], frame: null };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelectedId(null);
+    setIsDraggingElement(true);
+    applyElements(current => [...current, drawing], false);
+  };
+
+  const continueDrawing = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drawing = drawingRef.current;
+    if (!drawing || drawing.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const point = getCanvasPointFromPointer(event);
+    drawing.points.push(point);
+    if (drawing.frame) return;
+    drawing.frame = requestAnimationFrame(() => {
+      const active = drawingRef.current;
+      if (!active) return;
+      active.frame = null;
+      const content = pathFromPoints(active.points);
+      applyElements(current => current.map(element => element.id === active.id ? { ...element, content, updatedAt: Date.now() } : element), false);
+    });
+  };
+
+  const stopDrawing = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drawing = drawingRef.current;
+    if (!drawing || drawing.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (drawing.frame) cancelAnimationFrame(drawing.frame);
+    const content = pathFromPoints(drawing.points);
+    drawingRef.current = null;
+    setIsDraggingElement(false);
+    applyElements(current => current.map(element => element.id === drawing.id ? { ...element, content, updatedAt: Date.now() } : element), true);
+  };
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -460,6 +578,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       }
       if (event.key === 'Escape') {
         setSelectedId(null);
+        setActiveTool('select');
         setMobileToolsOpen(false);
         setImportPanelOpen(false);
         setLinkPanelOpen(false);
@@ -502,12 +621,19 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   return (
     <div
-      className="flex-1 relative overflow-hidden bg-bg-base/20 group/canvas select-none"
+      className={cn(
+        "flex-1 relative overflow-hidden bg-bg-base/20 group/canvas select-none",
+        activeTool === 'pen' && "cursor-crosshair",
+        activeTool === 'eraser' && "cursor-not-allowed"
+      )}
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleCanvasDrop}
     >
       <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] hidden md:flex items-center gap-1.5 rounded-full border border-card-border bg-card/95 p-2 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl">
         {primaryTools}
+        <div className="mx-1 h-8 w-px bg-card-border" />
+        <CanvasQuickButton icon={<Brush size={17} />} label="Pen" onClick={() => setActiveTool(activeTool === 'pen' ? 'select' : 'pen')} active={activeTool === 'pen'} />
+        <CanvasQuickButton icon={<Eraser size={17} />} label="Eraser" onClick={() => setActiveTool(activeTool === 'eraser' ? 'select' : 'eraser')} active={activeTool === 'eraser'} />
         <div className="mx-1 h-8 w-px bg-card-border" />
         <CanvasQuickButton
           icon={<MoreHorizontal size={18} />}
@@ -520,6 +646,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] flex max-w-[calc(100vw-1rem)] items-center gap-1 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:hidden">
         <CanvasQuickButton icon={<Type size={17} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} compact />
         <CanvasQuickButton icon={<StickyNote size={17} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} compact />
+        <CanvasQuickButton icon={<Brush size={17} />} label="Pen" onClick={() => setActiveTool(activeTool === 'pen' ? 'select' : 'pen')} active={activeTool === 'pen'} compact />
         <CanvasQuickButton icon={<ImageIcon size={17} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} compact />
         <CanvasQuickButton
           icon={<MoreHorizontal size={18} />}
@@ -560,11 +687,14 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       <TransformWrapper
         ref={transformWrapperRef}
         initialScale={1}
-        minScale={0.2}
-        maxScale={3}
+        minScale={MIN_ZOOM}
+        maxScale={MAX_ZOOM}
         centerOnInit
         limitToBounds={false}
-        onTransform={(ref) => onActiveChange?.(ref.state.scale > 1.05)}
+        onTransform={(ref) => {
+          setZoomLevel(current => Math.abs(current - ref.state.scale) > 0.01 ? ref.state.scale : current);
+          onActiveChange?.(ref.state.scale > 1.05);
+        }}
         onPanningStart={() => onActiveChange?.(true)}
         doubleClick={{ disabled: true }}
         panning={{ disabled: canvasInteractionLocked, velocityDisabled: true }}
@@ -578,6 +708,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             >
               <div
                 className="relative w-full h-full overflow-hidden bg-[radial-gradient(circle,rgba(120,120,120,0.22)_1px,transparent_1px)] [background-size:24px_24px]"
+                onPointerDown={startDrawing}
+                onPointerMove={continueDrawing}
+                onPointerUp={stopDrawing}
+                onPointerCancel={stopDrawing}
                 onClick={() => {
                   setSelectedId(null);
                   setLinkingFromId(null);
@@ -604,10 +738,21 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                       onDelete={() => deleteElement(connector.id)}
                     />
                   ))}
+                  {elements.filter(element => element.type === 'drawing').map(drawing => (
+                    <path
+                      key={drawing.id}
+                      d={safeString(drawing.content)}
+                      fill="none"
+                      stroke={drawing.metadata?.strokeColor || 'var(--accent)'}
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  ))}
                   {linkingFromId && tempConnectorEnd && <TempConnectorLine fromId={linkingFromId} toPos={tempConnectorEnd} elements={elements} />}
                 </svg>
 
-                {elements.filter(element => element.type !== 'connector').map(element => (
+                {elements.filter(element => element.type !== 'connector' && element.type !== 'drawing').map(element => (
                   <CanvasElement
                     key={element.id}
                     element={element}
@@ -618,6 +763,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                     onSelect={() => linkingFromId ? finishLinking(element.id) : setSelectedId(element.id)}
                     onUpdate={(updates, save) => updateElement(element.id, updates, save)}
                     onDelete={() => deleteElement(element.id)}
+                    activeTool={activeTool}
                     onDragStateChange={setIsDraggingElement}
                     onResizeStateChange={setIsResizingElement}
                     onEditingStateChange={setIsEditingText}
@@ -631,9 +777,24 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
             <div className="absolute bottom-24 md:bottom-10 right-3 md:right-10 z-40 flex flex-col gap-2">
               <div className="bg-card/85 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
-                <ControlButton onClick={() => zoomIn()} icon={<Plus size={18} />} label="Zoom In" />
+                <ControlButton onClick={() => zoomIn(0.18)} icon={<Plus size={18} />} label="Zoom In" />
                 <div className="h-px bg-card-border mx-2" />
-                <ControlButton onClick={() => zoomOut()} icon={<Minus size={18} />} label="Zoom Out" />
+                <ControlButton onClick={() => zoomOut(0.18)} icon={<Minus size={18} />} label="Zoom Out" />
+              </div>
+              <div className="bg-card/85 backdrop-blur-xl border border-card-border p-2 rounded-2xl shadow-2xl">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={MIN_ZOOM}
+                    max={MAX_ZOOM}
+                    step={0.05}
+                    value={zoomLevel}
+                    onChange={(event) => setZoom(Number(event.target.value))}
+                    className="w-28 accent-[var(--accent)]"
+                    aria-label="Zoom level"
+                  />
+                  <span className="w-10 text-right text-[9px] font-black uppercase tracking-widest text-text-secondary">{Math.round(zoomLevel * 100)}%</span>
+                </div>
               </div>
               <div className="bg-card/85 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
                 <ControlButton onClick={() => resetTransform()} icon={<RotateCcw size={18} />} label="Reset View" />
@@ -645,6 +806,16 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       </TransformWrapper>
 
       <AnimatePresence>
+        {selectedElement && (
+          <SelectedElementActions
+            element={selectedElement}
+            onCopy={() => duplicateElement(selectedElement.id)}
+            onBringForward={() => moveElementLayer(selectedElement.id, 'forward')}
+            onSendBackward={() => moveElementLayer(selectedElement.id, 'backward')}
+            onDelete={() => deleteElement(selectedElement.id)}
+            onClose={() => setSelectedId(null)}
+          />
+        )}
         {selectedElement && (
           <ElementEditor
             element={selectedElement}
@@ -965,6 +1136,7 @@ type CanvasElementProps = {
   isSelected: boolean;
   isLinking: boolean;
   isLinkingFrom: boolean;
+  activeTool: BoardTool;
   getScale: () => number;
   onSelect: () => void;
   onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void;
@@ -980,6 +1152,7 @@ const CanvasElement = React.memo(({
   isSelected,
   isLinking,
   isLinkingFrom,
+  activeTool,
   getScale,
   onSelect,
   onUpdate,
@@ -1017,6 +1190,13 @@ const CanvasElement = React.memo(({
   }, []);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (activeTool === 'eraser') {
+      event.stopPropagation();
+      event.preventDefault();
+      onDelete();
+      return;
+    }
+    if (activeTool !== 'select') return;
     if (isLinking || event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
@@ -1070,11 +1250,13 @@ const CanvasElement = React.memo(({
       animate={{ opacity: 1, x: element.x, y: element.y, zIndex: isSelected ? 120 : (element.zIndex || 1) }}
       className={cn(
         'absolute cursor-grab active:cursor-grabbing touch-none will-change-transform',
+        activeTool === 'eraser' && 'cursor-crosshair active:cursor-crosshair',
         isSelected && !isLinking && 'ring-2 ring-accent ring-offset-4 ring-offset-bg-base/50 rounded-xl',
         isLinking && !isLinkingFrom && 'hover:ring-2 hover:ring-accent/50 hover:ring-offset-2 rounded-xl transition-all'
       )}
       onClick={(event) => {
         event.stopPropagation();
+        if (activeTool === 'eraser') return;
         onSelect();
       }}
       data-no-pan
@@ -1097,7 +1279,8 @@ const CanvasElement = React.memo(({
   prev.element === next.element &&
   prev.isSelected === next.isSelected &&
   prev.isLinking === next.isLinking &&
-  prev.isLinkingFrom === next.isLinkingFrom
+  prev.isLinkingFrom === next.isLinkingFrom &&
+  prev.activeTool === next.activeTool
 ));
 
 function ElementToolbar({ onDelete }: { onDelete: () => void }) {
@@ -1276,6 +1459,27 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
     );
   }
 
+  if (element.type === 'drawing') {
+    return (
+      <svg
+        width={CANVAS_SIZE}
+        height={CANVAS_SIZE}
+        viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}
+        className="pointer-events-none overflow-visible"
+        aria-hidden="true"
+      >
+        <path
+          d={safeString(element.content)}
+          fill="none"
+          stroke={element.metadata?.strokeColor || 'var(--accent)'}
+          strokeWidth={4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
   if (element.type === 'shape' || element.type === 'flowchartNode') {
     const shapeType = element.metadata?.shapeType || 'rectangle';
     return (
@@ -1403,6 +1607,61 @@ function ChecklistRow({ item, checklist, onUpdate }: { item: ChecklistItem; chec
         <X size={13} />
       </button>
     </div>
+  );
+}
+
+function SelectedElementActions({
+  element,
+  onCopy,
+  onBringForward,
+  onSendBackward,
+  onDelete,
+  onClose
+}: {
+  element: VisionElement;
+  onCopy: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 12, scale: 0.96 }}
+      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-1/2 z-[166] flex -translate-x-1/2 items-center gap-1 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl ring-4 ring-bg-base/70 backdrop-blur-xl"
+      data-no-pan
+    >
+      <span className="hidden sm:inline px-3 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">
+        {element.type}
+      </span>
+      <SelectedActionButton icon={<Copy size={15} />} label="Copy" onClick={onCopy} />
+      <SelectedActionButton icon={<ArrowUp size={15} />} label="Forward" onClick={onBringForward} />
+      <SelectedActionButton icon={<ArrowDown size={15} />} label="Back" onClick={onSendBackward} />
+      <SelectedActionButton icon={<Trash2 size={15} />} label="Delete" onClick={onDelete} danger />
+      <SelectedActionButton icon={<X size={15} />} label="Deselect" onClick={onClose} />
+    </motion.div>
+  );
+}
+
+function SelectedActionButton({ icon, label, onClick, danger = false }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      className={cn(
+        "flex h-10 items-center gap-2 rounded-full px-3 text-[9px] font-black uppercase tracking-widest transition-all",
+        danger ? "text-danger hover:bg-danger/10" : "text-text-secondary hover:bg-accent/10 hover:text-accent"
+      )}
+      title={label}
+      aria-label={label}
+    >
+      {icon}
+      <span className="hidden md:inline">{label}</span>
+    </button>
   );
 }
 
