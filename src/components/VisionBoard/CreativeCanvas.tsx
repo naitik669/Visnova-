@@ -773,6 +773,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                     onSelect={() => linkingFromId ? finishLinking(element.id) : setSelectedId(element.id)}
                     onUpdate={(updates, save) => updateElement(element.id, updates, save)}
                     onDelete={() => deleteElement(element.id)}
+                    onCopy={() => duplicateElement(element.id)}
+                    onBringForward={() => moveElementLayer(element.id, 'forward')}
+                    onSendBackward={() => moveElementLayer(element.id, 'backward')}
+                    onClose={() => setSelectedId(null)}
                     activeTool={activeTool}
                     onDragStateChange={setIsDraggingElement}
                     onResizeStateChange={setIsResizingElement}
@@ -811,16 +815,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       </TransformWrapper>
 
       <AnimatePresence>
-        {selectedElement && (
-          <SelectedElementActions
-            element={selectedElement}
-            onCopy={() => duplicateElement(selectedElement.id)}
-            onBringForward={() => moveElementLayer(selectedElement.id, 'forward')}
-            onSendBackward={() => moveElementLayer(selectedElement.id, 'backward')}
-            onDelete={() => deleteElement(selectedElement.id)}
-            onClose={() => setSelectedId(null)}
-          />
-        )}
         {selectedElement && (
           <ElementEditor
             element={selectedElement}
@@ -1154,6 +1148,10 @@ type CanvasElementProps = {
   onSelect: () => void;
   onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void;
   onDelete: () => void;
+  onCopy: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
+  onClose: () => void;
   onDragStateChange: (active: boolean) => void;
   onResizeStateChange: (active: boolean) => void;
   onEditingStateChange: (active: boolean) => void;
@@ -1170,6 +1168,10 @@ const CanvasElement = React.memo(({
   onSelect,
   onUpdate,
   onDelete,
+  onCopy,
+  onBringForward,
+  onSendBackward,
+  onClose,
   onDragStateChange,
   onResizeStateChange,
   onEditingStateChange,
@@ -1275,7 +1277,15 @@ const CanvasElement = React.memo(({
       data-no-pan
     >
       <div className="relative group/content">
-        {isSelected && !isLinking && <ElementToolbar onDelete={onDelete} />}
+        {isSelected && !isLinking && (
+          <SelectedElementActions
+            onCopy={onCopy}
+            onBringForward={onBringForward}
+            onSendBackward={onSendBackward}
+            onDelete={onDelete}
+            onClose={onClose}
+          />
+        )}
         {isLinkingFrom && (
           <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-accent text-accent-contrast rounded-full text-[8px] font-black uppercase tracking-widest">
             Pick target
@@ -1295,14 +1305,6 @@ const CanvasElement = React.memo(({
   prev.isLinkingFrom === next.isLinkingFrom &&
   prev.activeTool === next.activeTool
 ));
-
-function ElementToolbar({ onDelete }: { onDelete: () => void }) {
-  return (
-    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-card border border-card-border rounded-xl shadow-2xl p-1.5 flex items-center gap-1 z-20">
-      <button onClick={(event) => { event.stopPropagation(); onDelete(); }} className="p-2 text-danger hover:bg-danger/10 rounded-lg" title="Delete"><Trash2 size={14} /></button>
-    </div>
-  );
-}
 
 function ResizeHandles({ element, getScale, onUpdate, onResizeStateChange }: { element: VisionElement; getScale: () => number; onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void; onResizeStateChange: (active: boolean) => void }) {
   const startRef = useRef<{ x: number; y: number; width: number; height: number; left: number; top: number; frame: number | null; lastX: number; lastY: number; corner: ResizeCorner } | null>(null);
@@ -1624,14 +1626,12 @@ function ChecklistRow({ item, checklist, onUpdate }: { item: ChecklistItem; chec
 }
 
 function SelectedElementActions({
-  element,
   onCopy,
   onBringForward,
   onSendBackward,
   onDelete,
   onClose
 }: {
-  element: VisionElement;
   onCopy: () => void;
   onBringForward: () => void;
   onSendBackward: () => void;
@@ -1640,18 +1640,15 @@ function SelectedElementActions({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12, scale: 0.96 }}
+      initial={{ opacity: 0, y: 8, scale: 0.92 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 12, scale: 0.96 }}
-      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-1/2 z-[166] flex -translate-x-1/2 items-center gap-1 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl ring-4 ring-bg-base/70 backdrop-blur-xl"
+      exit={{ opacity: 0, y: 8, scale: 0.92 }}
+      className="absolute -top-14 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-card-border bg-card/95 p-1.5 shadow-2xl ring-4 ring-bg-base/70 backdrop-blur-xl"
       data-no-pan
     >
-      <span className="hidden sm:inline px-3 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">
-        {element.type}
-      </span>
       <SelectedActionButton icon={<Copy size={15} />} label="Copy" onClick={onCopy} />
-      <SelectedActionButton icon={<ArrowUp size={15} />} label="Forward" onClick={onBringForward} />
-      <SelectedActionButton icon={<ArrowDown size={15} />} label="Back" onClick={onSendBackward} />
+      <SelectedActionButton icon={<ArrowUp size={15} />} label="Bring forward" onClick={onBringForward} />
+      <SelectedActionButton icon={<ArrowDown size={15} />} label="Send backward" onClick={onSendBackward} />
       <SelectedActionButton icon={<Trash2 size={15} />} label="Delete" onClick={onDelete} danger />
       <SelectedActionButton icon={<X size={15} />} label="Deselect" onClick={onClose} />
     </motion.div>
@@ -1666,14 +1663,13 @@ function SelectedActionButton({ icon, label, onClick, danger = false }: { icon: 
         onClick();
       }}
       className={cn(
-        "flex h-10 items-center gap-2 rounded-full px-3 text-[9px] font-black uppercase tracking-widest transition-all",
+        "grid h-10 w-10 place-items-center rounded-xl transition-all",
         danger ? "text-danger hover:bg-danger/10" : "text-text-secondary hover:bg-accent/10 hover:text-accent"
       )}
       title={label}
       aria-label={label}
     >
       {icon}
-      <span className="hidden md:inline">{label}</span>
     </button>
   );
 }
