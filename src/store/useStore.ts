@@ -1485,6 +1485,7 @@ export const useStore = create<AppState>((set, get) => ({
           category: v.category,
           elements: v.elements || [],
           createdAt: safeTime(v.created_at),
+          updatedAt: safeTime(v.updated_at, safeTime(v.created_at)),
           visibility: v.visibility,
           deadline: v.deadline,
         };
@@ -1729,6 +1730,7 @@ export const useStore = create<AppState>((set, get) => ({
       proof: [],
       tags: vision.tags || [],
       createdAt: Date.now(),
+      updatedAt: Date.now(),
       ...vision,
     } as Vision;
 
@@ -1793,8 +1795,9 @@ export const useStore = create<AppState>((set, get) => ({
       return false;
     }
     const previousVisions = get().visions;
+    const updatedAt = Date.now();
     set((state) => ({
-      visions: state.visions.map((v) => (v.id === id ? { ...v, ...safeUpdates } : v)),
+      visions: state.visions.map((v) => (v.id === id ? { ...v, ...safeUpdates, updatedAt } : v)),
     }));
 
     try {

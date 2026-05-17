@@ -26,6 +26,7 @@ import DailyJournal from './DailyJournal';
 import { Vision } from '../../types';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
+import { safeArray, safeFormat } from '../../lib/safeData';
 
 export default function VisionBoard() {
   const { visions, addVision, updateVision, addActivity, addToast, session, fetchVisions } = useStore();
@@ -35,11 +36,13 @@ export default function VisionBoard() {
   const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Keep the spotlight small, but never hide older active boards from the repository.
-  const spotlightVisions = useMemo(
-    () => visions.filter(v => v.status === 'in-progress').slice(0, 3),
-    [visions]
-  );
+  const activeVisionBoards = useMemo(() => {
+    const boardsWithContent = visions.filter(vision => safeArray(vision.elements).length > 0);
+    const source = boardsWithContent.length ? boardsWithContent : visions;
+    return [...source]
+      .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
+      .slice(0, 4);
+  }, [visions]);
   const repositoryVisions = useMemo(() => visions, [visions]);
 
   useEffect(() => {
@@ -201,40 +204,39 @@ export default function VisionBoard() {
             className="space-y-16"
           >
              {/* Spotlight Grid Section */}
-            <section className="relative p-12 rounded-[3.5rem] bg-accent/[0.03] border border-accent/10 shadow-inner group/spotlight">
-               <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none group-hover/spotlight:opacity-10 transition-opacity">
-                  <Target size={300} className="text-accent" />
+            <section className="relative overflow-hidden rounded-[2.25rem] border border-accent/10 bg-accent/[0.025] p-5 shadow-inner sm:p-7 lg:p-8 group/spotlight">
+               <div className="absolute -right-16 -top-16 opacity-[0.04] pointer-events-none group-hover/spotlight:opacity-[0.08] transition-opacity">
+                  <Target size={220} className="text-accent" />
                </div>
                
-               <div className="flex items-center gap-6 mb-12 relative z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-accent-contrast shadow-lg shadow-accent/20">
-                     <Sparkles size={24} />
+               <div className="relative z-10 mb-6 flex items-center gap-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-lg shadow-accent/20">
+                     <Sparkles size={21} />
                   </div>
                   <div>
                     <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent/60">Priority Focus</h2>
-                    <h3 className="text-2xl font-black text-text-main tracking-tight uppercase mt-1">Active Trajectories</h3>
+                    <h3 className="mt-1 text-xl font-black uppercase tracking-tight text-text-main sm:text-2xl">Active Vision Boards</h3>
                   </div>
                   <div className="h-px flex-1 bg-accent/20" />
                </div>
                
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 relative z-10">
-                {spotlightVisions.map((vision) => (
-                  <VisionCard
+              <div className="relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {activeVisionBoards.map((vision) => (
+                  <RecentVisionBoardCard
                     key={vision.id}
                     vision={vision}
                     onClick={() => handleCardClick(vision)}
-                    className="w-full bg-card/80 backdrop-blur-sm border-accent/10"
                   />
                 ))}
               </div>
 
-              {spotlightVisions.length === 0 && (
-                  <div className="col-span-full py-20 border-2 border-dashed border-accent/20 rounded-[2.5rem] bg-card/40 flex flex-col items-center justify-center text-center px-10 group hover:border-accent/40 transition-all duration-700">
-                    <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center text-accent mb-6 group-hover:scale-110 transition-transform">
-                      <Compass size={32} />
+              {activeVisionBoards.length === 0 && (
+                  <div className="relative z-10 flex min-h-48 flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-accent/20 bg-card/40 px-8 py-10 text-center transition-all duration-700 hover:border-accent/40">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
+                      <Compass size={24} />
                     </div>
-                    <h3 className="text-xl font-black text-text-main tracking-tight uppercase">Nothing here yet</h3>
-                    <p className="text-text-secondary mt-2 max-w-xs text-sm font-medium">Activate a goal from your vault to get started.</p>
+                    <h3 className="text-lg font-black uppercase tracking-tight text-text-main">No vision boards yet</h3>
+                    <p className="mt-2 max-w-xs text-sm font-medium text-text-secondary">Create or edit a Vision Board and it will appear here.</p>
                   </div>
                 )}
             </section>
@@ -328,5 +330,70 @@ export default function VisionBoard() {
         {setupVision && <VisionHints />}
       </AnimatePresence>
     </div>
+  );
+}
+
+function RecentVisionBoardCard({ vision, onClick }: { vision: Vision; onClick: () => void }) {
+  const boardItems = safeArray(vision.elements);
+  const completedTasks = safeArray(vision.tasks).filter(task => task.completed).length;
+  const totalTasks = safeArray(vision.tasks).length;
+  const previewItems = boardItems.filter(item => item.type !== 'connector').slice(0, 5);
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.99 }}
+      className="group/board relative min-h-[168px] overflow-hidden rounded-[1.6rem] border border-card-border bg-card/85 p-4 text-left shadow-sm transition-all hover:border-accent/30 hover:shadow-xl hover:shadow-accent/5"
+    >
+      <div className="absolute inset-x-4 top-4 h-20 rounded-2xl border border-card-border bg-bg-base/45 bg-[radial-gradient(circle,rgba(120,120,120,0.18)_1px,transparent_1px)] [background-size:14px_14px]" />
+      <div className="absolute right-6 top-7 flex -space-x-2 opacity-80 transition-opacity group-hover/board:opacity-100">
+        {previewItems.length ? previewItems.map((item, index) => (
+          <span
+            key={`${item.id}-${index}`}
+            className={cn(
+              "block h-8 w-10 rounded-lg border border-card bg-accent/10 shadow-sm",
+              item.type === 'image' && "bg-success/15",
+              item.type === 'sticky' && "bg-warning/25",
+              item.type === 'checklist' && "bg-info/15",
+              item.type === 'link' && "bg-accent/20"
+            )}
+            style={{ transform: `translateY(${index % 2 ? 8 : 0}px) rotate(${index % 2 ? 4 : -4}deg)` }}
+          />
+        )) : (
+          <span className="block h-8 w-10 rounded-lg border border-dashed border-card-border bg-card/60" />
+        )}
+      </div>
+
+      <div className="relative z-10 flex min-h-[136px] flex-col justify-end">
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {(vision.tags || []).slice(0, 2).map((tag, index) => (
+              <span key={`${tag}-${index}`} className="rounded-lg border border-card-border bg-bg-base/70 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-text-secondary/60">
+                {tag}
+              </span>
+            ))}
+          </div>
+          <h4 className="line-clamp-2 text-base font-black uppercase leading-tight tracking-tight text-text-main group-hover/board:text-accent">
+            {vision.title || 'Untitled Vision'}
+          </h4>
+          <div className="flex items-center justify-between gap-3 text-[9px] font-black uppercase tracking-widest text-text-secondary/55">
+            <span>{boardItems.length} item{boardItems.length === 1 ? '' : 's'}</span>
+            <span>{completedTasks}/{totalTasks} tasks</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full border border-card-border/50 bg-surface-muted">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, Math.max(0, vision.progress || 0))}%` }}
+              className="h-full rounded-full bg-accent"
+            />
+          </div>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-text-secondary/40">
+            Edited {safeFormat(vision.updatedAt || vision.createdAt, 'MMM d')}
+          </p>
+        </div>
+      </div>
+    </motion.button>
   );
 }

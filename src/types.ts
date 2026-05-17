@@ -76,6 +76,7 @@ export interface Vision {
   visibility?: 'private' | 'friends' | 'public';
   deadline?: string | null;
   createdAt: number;
+  updatedAt?: number;
   elements?: VisionElement[];
   collaborators?: {
     id: string;
