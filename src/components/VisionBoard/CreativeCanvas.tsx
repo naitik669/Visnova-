@@ -46,8 +46,8 @@ type BoardTool = 'select' | 'pen' | 'eraser';
 
 const CANVAS_SIZE = 5200;
 const CANVAS_CENTER = CANVAS_SIZE / 2;
-const MIN_ZOOM = 0.35;
-const MAX_ZOOM = 2.4;
+const MIN_ZOOM = 0.55;
+const MAX_ZOOM = 2.25;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -629,12 +629,12 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleCanvasDrop}
     >
-      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] hidden md:flex items-center gap-1.5 rounded-full border border-card-border bg-card/95 p-2 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl">
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[165] hidden max-w-[min(680px,calc(100vw-24rem))] items-center gap-1 overflow-x-auto rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:flex">
         {primaryTools}
-        <div className="mx-1 h-8 w-px bg-card-border" />
+        <div className="mx-0.5 h-7 w-px shrink-0 bg-card-border" />
         <CanvasQuickButton icon={<Brush size={17} />} label="Pen" onClick={() => setActiveTool(activeTool === 'pen' ? 'select' : 'pen')} active={activeTool === 'pen'} />
         <CanvasQuickButton icon={<Eraser size={17} />} label="Eraser" onClick={() => setActiveTool(activeTool === 'eraser' ? 'select' : 'eraser')} active={activeTool === 'eraser'} />
-        <div className="mx-1 h-8 w-px bg-card-border" />
+        <div className="mx-0.5 h-7 w-px shrink-0 bg-card-border" />
         <CanvasQuickButton
           icon={<MoreHorizontal size={18} />}
           label="More"
@@ -663,7 +663,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             initial={{ opacity: 0, y: 14, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.96 }}
-            className="hidden md:grid fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 translate-x-[8.5rem] z-[165] grid-cols-2 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl"
+            className="hidden md:grid fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 translate-x-[6rem] z-[165] grid-cols-2 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl"
           >
             {secondaryTools}
           </motion.div>
@@ -690,7 +690,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         minScale={MIN_ZOOM}
         maxScale={MAX_ZOOM}
         centerOnInit
-        limitToBounds={false}
+        limitToBounds
         onTransform={(ref) => {
           setZoomLevel(current => Math.abs(current - ref.state.scale) > 0.01 ? ref.state.scale : current);
           onActiveChange?.(ref.state.scale > 1.05);
@@ -775,31 +775,23 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
               </div>
             </TransformComponent>
 
-            <div className="absolute bottom-24 md:bottom-10 right-3 md:right-10 z-40 flex flex-col gap-2">
-              <div className="bg-card/85 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
-                <ControlButton onClick={() => zoomIn(0.18)} icon={<Plus size={18} />} label="Zoom In" />
-                <div className="h-px bg-card-border mx-2" />
-                <ControlButton onClick={() => zoomOut(0.18)} icon={<Minus size={18} />} label="Zoom Out" />
-              </div>
-              <div className="bg-card/85 backdrop-blur-xl border border-card-border p-2 rounded-2xl shadow-2xl">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="range"
-                    min={MIN_ZOOM}
-                    max={MAX_ZOOM}
-                    step={0.05}
-                    value={zoomLevel}
-                    onChange={(event) => setZoom(Number(event.target.value))}
-                    className="w-28 accent-[var(--accent)]"
-                    aria-label="Zoom level"
-                  />
-                  <span className="w-10 text-right text-[9px] font-black uppercase tracking-widest text-text-secondary">{Math.round(zoomLevel * 100)}%</span>
-                </div>
-              </div>
-              <div className="bg-card/85 backdrop-blur-xl border border-card-border p-1.5 rounded-2xl flex flex-col shadow-2xl">
-                <ControlButton onClick={() => resetTransform()} icon={<RotateCcw size={18} />} label="Reset View" />
-                <ControlButton onClick={() => centerView()} icon={<Maximize2 size={18} />} label="Center" />
-              </div>
+            <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] right-3 z-[170] flex items-center gap-1 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:right-5">
+              <ControlButton onClick={() => setZoom(zoomLevel - 0.1)} icon={<Minus size={16} />} label="Zoom Out" compact />
+              <input
+                type="range"
+                min={MIN_ZOOM}
+                max={MAX_ZOOM}
+                step={0.05}
+                value={zoomLevel}
+                onChange={(event) => setZoom(Number(event.target.value))}
+                className="w-24 accent-[var(--accent)] md:w-32"
+                aria-label="Zoom level"
+              />
+              <ControlButton onClick={() => setZoom(zoomLevel + 0.1)} icon={<Plus size={16} />} label="Zoom In" compact />
+              <span className="w-10 text-right text-[9px] font-black uppercase tracking-widest text-text-secondary">{Math.round(zoomLevel * 100)}%</span>
+              <div className="mx-0.5 h-6 w-px bg-card-border" />
+              <ControlButton onClick={() => { resetTransform(); setZoomLevel(1); }} icon={<RotateCcw size={16} />} label="Reset View" compact />
+              <ControlButton onClick={() => centerView()} icon={<Maximize2 size={16} />} label="Center" compact />
             </div>
           </>
         )}
@@ -1072,9 +1064,17 @@ function SavePill({ status, lastSavedAt, onRetry }: { status: SaveStatus; lastSa
   );
 }
 
-function ControlButton({ onClick, icon, label }: { onClick: () => void; icon: React.ReactNode; label: string }) {
+function ControlButton({ onClick, icon, label, compact = false }: { onClick: () => void; icon: React.ReactNode; label: string; compact?: boolean }) {
   return (
-    <button onClick={onClick} className="min-w-11 min-h-11 p-3 text-text-secondary hover:text-accent hover:bg-accent/5 rounded-xl transition-all" title={label} aria-label={label}>
+    <button
+      onClick={onClick}
+      className={cn(
+        "text-text-secondary hover:text-accent hover:bg-accent/5 rounded-full transition-all",
+        compact ? "grid h-9 w-9 place-items-center" : "min-w-11 min-h-11 p-3 rounded-xl"
+      )}
+      title={label}
+      aria-label={label}
+    >
       {icon}
     </button>
   );
@@ -1100,8 +1100,8 @@ function CanvasQuickButton({
       onClick={onClick}
       disabled={loading}
       className={cn(
-        "flex items-center justify-center gap-2 rounded-full font-black uppercase tracking-widest transition-all disabled:opacity-50",
-        compact ? "h-11 px-3 text-[8px]" : "h-12 px-4 text-[9px]",
+        "flex shrink-0 items-center justify-center gap-1.5 rounded-full font-black uppercase tracking-widest transition-all disabled:opacity-50",
+        compact ? "h-10 px-2.5 text-[8px]" : "h-10 px-3 text-[8px]",
         active
           ? "bg-accent text-accent-contrast shadow-lg shadow-accent/20"
           : "text-text-secondary hover:bg-accent/10 hover:text-accent"
