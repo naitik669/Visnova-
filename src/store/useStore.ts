@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary, FinanceTransaction, FinanceGoal, FinanceBudget, FinanceSubscription, FinanceReview } from '../types';
+import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary, FinanceTransaction, FinanceGoal, FinanceBudget, FinanceSubscription, FinanceReview, ProgressLog, GrowthTimelineEvent, AIInsight } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured, getAuthRedirectUrl } from '../lib/supabase';
@@ -330,6 +330,66 @@ function formatFinanceReview(row: any): FinanceReview {
   };
 }
 
+function normalizeProgressLog(row: any): ProgressLog {
+  const createdAt = safeTime(row?.created_at);
+  const updatedAt = safeTime(row?.updated_at, createdAt);
+  return {
+    id: safeString(row?.id),
+    userId: safeString(row?.user_id),
+    visionId: row?.vision_id || null,
+    taskId: row?.task_id || null,
+    postId: row?.post_id || null,
+    logType: safeString(row?.log_type, 'progress') as ProgressLog['logType'],
+    content: safeString(row?.content),
+    visibility: safeString(row?.visibility, 'private') as ProgressLog['visibility'],
+    attachments: safeArray(row?.attachments),
+    linkedItems: row?.linked_items && typeof row.linked_items === 'object' ? row.linked_items : {},
+    metadata: row?.metadata && typeof row.metadata === 'object' ? row.metadata : {},
+    timeSpentMinutes: row?.time_spent_minutes ?? null,
+    blocker: row?.blocker || null,
+    lesson: row?.lesson || null,
+    createdAt,
+    updatedAt
+  };
+}
+
+function normalizeGrowthTimelineEvent(row: any): GrowthTimelineEvent {
+  return {
+    id: safeString(row?.id),
+    userId: safeString(row?.user_id),
+    visionId: row?.vision_id || null,
+    taskId: row?.task_id || null,
+    progressLogId: row?.progress_log_id || null,
+    sourceTable: row?.source_table || null,
+    sourceId: row?.source_id || null,
+    eventType: safeString(row?.event_type, 'progress'),
+    title: safeString(row?.title, 'Progress event'),
+    summary: row?.summary || null,
+    visibility: safeString(row?.visibility, 'private') as GrowthTimelineEvent['visibility'],
+    metadata: row?.metadata && typeof row.metadata === 'object' ? row.metadata : {},
+    createdAt: safeTime(row?.created_at)
+  };
+}
+
+function normalizeAIInsight(row: any): AIInsight {
+  const createdAt = safeTime(row?.created_at);
+  const updatedAt = safeTime(row?.updated_at, createdAt);
+  return {
+    id: safeString(row?.id),
+    userId: safeString(row?.user_id),
+    visionId: row?.vision_id || null,
+    taskId: row?.task_id || null,
+    type: safeString(row?.type, 'next_action'),
+    title: safeString(row?.title, 'Insight'),
+    content: safeString(row?.content),
+    actionSuggestions: safeArray(row?.action_suggestions),
+    visibility: safeString(row?.visibility, 'private') as AIInsight['visibility'],
+    metadata: row?.metadata && typeof row.metadata === 'object' ? row.metadata : {},
+    createdAt,
+    updatedAt
+  };
+}
+
 async function notifyMentionedUsers({
   actorId,
   postId,
@@ -433,6 +493,9 @@ function privateStateReset() {
     notes: [],
     todos: [],
     posts: [],
+    progressLogs: [],
+    growthTimelineEvents: [],
+    aiInsights: [],
     journalEntries: [],
     userInterests: {},
     userCircles: {},
@@ -489,6 +552,10 @@ function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
     isSaved: false,
     type: safeString(row?.type || draft?.type, 'update') as Post['type'],
     visibility: safeString(row?.visibility || draft?.visibility, 'public') as Post['visibility'],
+    visionId: row?.vision_id || draft?.visionId || draft?.vision_id || null,
+    taskId: row?.task_id || draft?.taskId || draft?.task_id || null,
+    progressLogId: row?.progress_log_id || draft?.progressLogId || draft?.progress_log_id || null,
+    proofSummary: row?.proof_summary || draft?.proofSummary || draft?.proof_summary || null,
     archived: safeBoolean(row?.archived),
     archivedAt: row?.archived_at || null,
     deletedAt: row?.deleted_at || null,
@@ -536,6 +603,9 @@ export const useStore = create<AppState>((set, get) => ({
   notes: [],
   todos: [],
   posts: [],
+  progressLogs: [],
+  growthTimelineEvents: [],
+  aiInsights: [],
   focusPresets: [
     { id: 'p1', label: 'Deep Work', duration: 25, type: 'work' },
     { id: 'p2', label: 'Hyper Focus', duration: 50, type: 'work' },
@@ -694,6 +764,9 @@ export const useStore = create<AppState>((set, get) => ({
     runBackground('Dashboard feed context refresh', () => get().fetchFeedContext());
     runBackground('Dashboard circle refresh', () => get().fetchCircleData());
     runBackground('Dashboard notifications refresh', () => get().fetchNotifications());
+    runBackground('Dashboard progress logs refresh', () => get().fetchProgressLogs());
+    runBackground('Dashboard growth timeline refresh', () => get().fetchGrowthTimeline());
+    runBackground('Dashboard AI insights refresh', () => get().fetchAIInsights());
     runBackground('Dashboard money refresh', async () => {
       try {
         await get().fetchMoneyOverview();
@@ -701,6 +774,188 @@ export const useStore = create<AppState>((set, get) => ({
         console.warn('Money overview unavailable:', error);
       }
     });
+  },
+
+  fetchProgressLogs: async (visionId?: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+    try {
+      let query = supabase
+        .from('progress_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (visionId) query = query.eq('vision_id', visionId);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      const logs = safeArray(data).map(normalizeProgressLog);
+      set((state) => ({
+        progressLogs: visionId
+          ? [...logs, ...state.progressLogs.filter(log => log.visionId !== visionId)]
+          : logs
+      }));
+    } catch (error) {
+      console.error('Failed to fetch progress logs:', error);
+    }
+  },
+
+  createProgressLog: async (log) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to log progress.' });
+      return false;
+    }
+
+    try {
+      const content = sanitizePlainText(log.content || '', 8000).trim();
+      if (!content) throw new Error('Progress log needs a short update.');
+      if (log.visionId && !get().visions.some(vision => vision.id === log.visionId)) {
+        throw new Error('Choose one of your Visions.');
+      }
+
+      const payload = {
+        user_id: userId,
+        vision_id: log.visionId || null,
+        task_id: log.taskId || null,
+        log_type: log.logType || 'progress',
+        content,
+        visibility: log.visibility || 'private',
+        attachments: safeArray(log.attachments),
+        linked_items: log.linkedItems || {},
+        metadata: log.metadata || {},
+        time_spent_minutes: Number.isFinite(log.timeSpentMinutes as number) ? log.timeSpentMinutes : null,
+        blocker: log.blocker ? sanitizePlainText(log.blocker, 2000) : null,
+        lesson: log.lesson ? sanitizePlainText(log.lesson, 2000) : null
+      };
+
+      const { data, error } = await supabase
+        .from('progress_logs')
+        .insert(payload)
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      const saved = normalizeProgressLog(data);
+      set((state) => ({ progressLogs: [saved, ...state.progressLogs.filter(item => item.id !== saved.id)] }));
+
+      const timelinePayload = {
+        user_id: userId,
+        vision_id: saved.visionId,
+        task_id: saved.taskId || null,
+        progress_log_id: saved.id,
+        source_table: 'progress_logs',
+        source_id: saved.id,
+        event_type: `progress_log_${saved.logType}`,
+        title: saved.logType === 'win' ? 'Win logged' : saved.logType === 'blocker' ? 'Blocker logged' : 'Progress logged',
+        summary: saved.content.slice(0, 240),
+        visibility: saved.visibility,
+        metadata: { log_type: saved.logType }
+      };
+      const { data: timelineData, error: timelineError } = await supabase
+        .from('growth_timeline_events')
+        .insert(timelinePayload)
+        .select('*')
+        .single();
+      if (timelineError) {
+        console.error('Failed to write growth timeline event:', timelineError);
+      } else if (timelineData) {
+        const event = normalizeGrowthTimelineEvent(timelineData);
+        set((state) => ({ growthTimelineEvents: [event, ...state.growthTimelineEvents.filter(item => item.id !== event.id)] }));
+      }
+
+      if (saved.visibility === 'public' || saved.visibility === 'circle') {
+        const posted = await get().addPost({
+          type: saved.logType === 'milestone' ? 'milestone' : saved.logType === 'win' ? 'achievement' : 'update',
+          content: saved.content,
+          caption: saved.logType === 'help_request' ? 'Help Request' : 'Progress Log',
+          visibility: saved.visibility === 'public' ? 'public' : 'friends',
+          visionId: saved.visionId,
+          taskId: saved.taskId,
+          progressLogId: saved.id,
+          proofSummary: saved.content.slice(0, 160),
+          metadata: {
+            ecosystem_source: 'progress_log',
+            progress_log_id: saved.id,
+            log_type: saved.logType
+          },
+          media: []
+        });
+        if (!posted) {
+          get().addToast({ type: 'info', title: 'Progress saved privately', description: 'Sharing to Feed failed, but your log is saved.' });
+        }
+      }
+
+      get().recordDailyActivity('post');
+      trackBetaEvent(userId, 'progress_log_created', {
+        log_type: saved.logType,
+        visibility: saved.visibility,
+        linked_to_vision: Boolean(saved.visionId)
+      }, saved.id);
+      if (saved.visibility !== 'private') {
+        trackBetaEvent(userId, 'progress_log_shared', {
+          visibility: saved.visibility,
+          linked_to_vision: Boolean(saved.visionId)
+        }, saved.id);
+      }
+
+      get().addToast({ type: 'success', title: 'Progress logged', description: 'Your proof has been added to your timeline.' });
+      return saved;
+    } catch (error: any) {
+      console.error('Failed to create progress log:', error);
+      get().addToast({ type: 'error', title: 'Progress log failed', description: error.message || 'Could not save this progress log.' });
+      return false;
+    }
+  },
+
+  fetchGrowthTimeline: async (visionId?: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+    try {
+      let query = supabase
+        .from('growth_timeline_events')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(80);
+      if (visionId) query = query.eq('vision_id', visionId);
+      const { data, error } = await query;
+      if (error) throw error;
+      const events = safeArray(data).map(normalizeGrowthTimelineEvent);
+      set((state) => ({
+        growthTimelineEvents: visionId
+          ? [...events, ...state.growthTimelineEvents.filter(event => event.visionId !== visionId)]
+          : events
+      }));
+    } catch (error) {
+      console.error('Failed to fetch growth timeline:', error);
+    }
+  },
+
+  fetchAIInsights: async (visionId?: string) => {
+    const userId = get().session?.user?.id;
+    if (!userId) return;
+    try {
+      let query = supabase
+        .from('ai_insights')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(40);
+      if (visionId) query = query.eq('vision_id', visionId);
+      const { data, error } = await query;
+      if (error) throw error;
+      const insights = safeArray(data).map(normalizeAIInsight);
+      set((state) => ({
+        aiInsights: visionId
+          ? [...insights, ...state.aiInsights.filter(insight => insight.visionId !== visionId)]
+          : insights
+      }));
+    } catch (error) {
+      console.error('Failed to fetch AI insights:', error);
+    }
   },
 
   fetchMoneyOverview: async () => {
@@ -2482,9 +2737,13 @@ export const useStore = create<AppState>((set, get) => ({
           caption: safePost.caption,
           content: safePost.content || '',
           visibility: safePost.visibility || toPostVisibility(getDefaultVisibility()),
+          vision_id: post.visionId || post.vision_id || null,
+          task_id: post.taskId || post.task_id || null,
+          progress_log_id: post.progressLogId || post.progress_log_id || null,
+          proof_summary: post.proofSummary || post.proof_summary || null,
           metadata: postMetadata
         })
-        .select('id, user_id, type, caption, content, visibility, metadata, stats, created_at, updated_at')
+        .select('id, user_id, type, caption, content, visibility, metadata, stats, vision_id, task_id, progress_log_id, proof_summary, created_at, updated_at')
         .single();
 
       let postResult: any;
@@ -2497,7 +2756,7 @@ export const useStore = create<AppState>((set, get) => ({
         postResult = await withTimeout<any>(
           supabase
             .from('posts')
-            .select('id, user_id, type, caption, content, visibility, metadata, stats, created_at, updated_at')
+            .select('id, user_id, type, caption, content, visibility, metadata, stats, vision_id, task_id, progress_log_id, proof_summary, created_at, updated_at')
             .eq('user_id', userId)
             .filter('metadata->>client_post_id', 'eq', clientPostId)
             .maybeSingle(),
@@ -3370,6 +3629,10 @@ export const useStore = create<AppState>((set, get) => ({
           isSaved: true,
           type: p.type || 'update',
           visibility: p.visibility || 'public',
+          visionId: p.vision_id || null,
+          taskId: p.task_id || null,
+          progressLogId: p.progress_log_id || null,
+          proofSummary: p.proof_summary || null,
           archived: !!p.archived,
           archivedAt: p.archived_at || null,
           deletedAt: p.deleted_at || null,
@@ -3506,6 +3769,10 @@ export const useStore = create<AppState>((set, get) => ({
         isSaved: mySaves.includes(p.id),
         type: p.type,
         visibility: p.visibility,
+        visionId: p.vision_id || null,
+        taskId: p.task_id || null,
+        progressLogId: p.progress_log_id || null,
+        proofSummary: p.proof_summary || null,
         archived: !!p.archived,
         archivedAt: p.archived_at || null,
         deletedAt: p.deleted_at || null,

@@ -33,6 +33,7 @@ import { cn } from "../../lib/utils";
 import { getLevelProgress, normalizeLegacyXp } from "../../lib/progression";
 import React from "react";
 import { safeArray, safeFormat } from "../../lib/safeData";
+import { ProgressLogComposer } from "../Progress/ProgressLogComposer";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -154,9 +155,13 @@ export default function Dashboard() {
     userStreak,
     weeklyActivity,
     moneyOverview,
+    progressLogs,
+    growthTimelineEvents,
+    aiInsights,
   } = useStore();
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = React.useState(new Date());
+  const [showProgressComposer, setShowProgressComposer] = React.useState(false);
   const hasRequestedDashboardData = React.useRef(false);
 
   React.useEffect(() => {
@@ -192,6 +197,7 @@ export default function Dashboard() {
   const [showAllTasks, setShowAllTasks] = React.useState(false);
 
   const activeVisions = visions.filter((v) => v.status === "in-progress");
+  const activeVision = activeVisions[0] || visions[0] || null;
   const allTasks = visions.flatMap((v) =>
     (v.tasks || []).map((t, idx) => ({
       ...t,
@@ -203,6 +209,7 @@ export default function Dashboard() {
 
   const pendingTasks = allTasks.filter((t) => !t.completed);
   const displayedTasks = showAllTasks ? pendingTasks : pendingTasks.slice(0, 3);
+  const activeVisionPendingTasks = pendingTasks.filter(task => !activeVision || task.visionId === activeVision.id).slice(0, 3);
   const sevenDaysAgo = React.useMemo(() => {
     const date = new Date();
     date.setDate(date.getDate() - 7);
@@ -303,6 +310,15 @@ export default function Dashboard() {
   }, [weeklyActivity]);
 
   const hasAnyDashboardData = visions.length > 0 || todos.length > 0 || notes.length > 0 || journalEntries.length > 0 || circle.length > 0;
+  const weekStart = React.useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 7);
+    return date.getTime();
+  }, []);
+  const weeklyProgressLogs = progressLogs.filter(log => log.createdAt >= weekStart);
+  const weeklyJournalCount = journalEntries.filter(entry => entry.createdAt >= weekStart).length;
+  const weeklyMoneyUpdates = moneyOverview ? (moneyOverview.monthIncome > 0 || moneyOverview.monthExpenses > 0 || moneyOverview.monthSavings > 0 ? 1 : 0) : 0;
+  const recentTimeline = growthTimelineEvents.slice(0, 3);
 
   if (isDashboardLoading && !hasAnyDashboardData) {
     return (
@@ -328,6 +344,11 @@ export default function Dashboard() {
 
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-5 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20 px-0 sm:px-4 overflow-x-hidden">
+      <ProgressLogComposer
+        open={showProgressComposer}
+        onClose={() => setShowProgressComposer(false)}
+        defaultVisionId={activeVision?.id}
+      />
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 px-1 sm:ml-2">
         <div id="dashboard-header">
@@ -362,6 +383,83 @@ export default function Dashboard() {
               onFeed={() => navigate('/feed')}
             />
           )}
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Command Center</p>
+                  <h2 className="mt-2 text-xl font-black uppercase tracking-tight text-text-main">Today’s Focus</h2>
+                  <p className="mt-2 text-sm font-semibold text-text-secondary">
+                    {activeVision ? `Active Vision: ${activeVision.title}` : 'Create a Vision to connect your work into one progress loop.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowProgressComposer(true)}
+                  className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/20"
+                >
+                  <Plus size={15} />
+                  Log Progress
+                </button>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                {(activeVisionPendingTasks.length > 0 ? activeVisionPendingTasks : pendingTasks.slice(0, 3)).map(task => (
+                  <button
+                    key={task.reactKey}
+                    type="button"
+                    onClick={() => navigate('/visions')}
+                    className="rounded-2xl border border-card-border bg-app-container p-4 text-left hover:border-accent/40"
+                  >
+                    <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{task.vision}</p>
+                    <p className="mt-2 line-clamp-2 text-sm font-bold text-text-main">{task.text}</p>
+                  </button>
+                ))}
+                {pendingTasks.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-4 text-sm font-semibold text-text-secondary sm:col-span-3">
+                    No pending tasks yet. Add tasks to a Vision so the system can suggest your next action.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Ecosystem Snapshot</p>
+                  <h2 className="mt-2 text-xl font-black uppercase tracking-tight text-text-main">This Week</h2>
+                </div>
+                <Brain size={20} className="text-accent" />
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                {[
+                  ['Proof logs', weeklyProgressLogs.length],
+                  ['Tasks done', completedTasksThisWeek.length],
+                  ['Reflections', weeklyJournalCount],
+                  ['AI insights', aiInsights.length],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-card-border bg-app-container p-4">
+                    <p className="text-2xl font-black text-text-main">{value}</p>
+                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 rounded-2xl border border-card-border bg-app-container p-4">
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Resources pulse</p>
+                <p className="mt-1 text-sm font-bold text-text-main">{weeklyMoneyUpdates ? 'Wallet activity is connected to active resources.' : 'No resource updates linked this week.'}</p>
+              </div>
+              {recentTimeline.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {recentTimeline.map(event => (
+                    <div key={event.id} className="flex items-center gap-3 text-xs font-semibold text-text-secondary">
+                      <span className="h-2 w-2 rounded-full bg-accent" />
+                      <span className="line-clamp-1">{event.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Today's Focus Section */}
           <div className="bg-card rounded-[1.6rem] sm:rounded-[2.5rem] p-4 sm:p-8 shadow-sm relative overflow-hidden group">

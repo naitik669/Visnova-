@@ -274,6 +274,68 @@ export interface MoneyOverview {
   topGoal: FinanceGoal | null;
 }
 
+export type EcosystemVisibility = 'private' | 'circle' | 'connections' | 'public';
+
+export type ProgressLogType =
+  | 'progress'
+  | 'milestone'
+  | 'lesson'
+  | 'build_update'
+  | 'reflection'
+  | 'help_request'
+  | 'win'
+  | 'blocker';
+
+export interface ProgressLog {
+  id: string;
+  userId: string;
+  visionId: string | null;
+  taskId?: string | null;
+  postId?: string | null;
+  logType: ProgressLogType;
+  content: string;
+  visibility: EcosystemVisibility;
+  attachments: any[];
+  linkedItems: Record<string, any>;
+  metadata: Record<string, any>;
+  timeSpentMinutes?: number | null;
+  blocker?: string | null;
+  lesson?: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GrowthTimelineEvent {
+  id: string;
+  userId: string;
+  visionId: string | null;
+  taskId?: string | null;
+  progressLogId?: string | null;
+  sourceTable?: string | null;
+  sourceId?: string | null;
+  eventType: string;
+  title: string;
+  summary?: string | null;
+  visibility: EcosystemVisibility;
+  metadata: Record<string, any>;
+  createdAt: number;
+}
+
+export interface AIInsight {
+  id: string;
+  userId: string;
+  visionId: string | null;
+  taskId?: string | null;
+  type: string;
+  title: string;
+  content: string;
+  actionSuggestions: any[];
+  visibility: EcosystemVisibility;
+  metadata: Record<string, any>;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Vitals {
   focus: number;
   energy: number;
@@ -386,6 +448,9 @@ export interface AppState {
   dateNotes: Record<string, string>;
   journalEntries: JournalEntry[];
   posts: Post[];
+  progressLogs: ProgressLog[];
+  growthTimelineEvents: GrowthTimelineEvent[];
+  aiInsights: AIInsight[];
   userInterests: Record<string, number>;
   userCircles: Record<string, 'friend' | 'close_friend' | 'collaborator'>;
   followingIds: string[];
@@ -423,6 +488,10 @@ export interface AppState {
   isAuthInitialized: boolean;
   selectedProfileId: string | null;
   fetchDashboardData: () => Promise<void>;
+  fetchProgressLogs: (visionId?: string) => Promise<void>;
+  createProgressLog: (log: Partial<ProgressLog> & { content: string }) => Promise<ProgressLog | false>;
+  fetchGrowthTimeline: (visionId?: string) => Promise<void>;
+  fetchAIInsights: (visionId?: string) => Promise<void>;
   fetchMoneyOverview: () => Promise<void>;
   fetchFinanceTransactions: () => Promise<void>;
   createFinanceTransaction: (transaction: Partial<FinanceTransaction> & Record<string, any>) => Promise<FinanceTransaction | false>;
@@ -545,6 +614,10 @@ export interface Post {
   isLiked?: boolean;
   type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement' | 'status';
   visibility: 'public' | 'private' | 'friends';
+  visionId?: string | null;
+  taskId?: string | null;
+  progressLogId?: string | null;
+  proofSummary?: string | null;
   archived?: boolean;
   archivedAt?: string | null;
   deletedAt?: string | null;
