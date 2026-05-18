@@ -29,7 +29,6 @@ import {
   Cloud,
   CheckCircle2,
   AlertCircle,
-  Maximize2,
   Mic,
   StopCircle,
   Upload,
@@ -79,7 +78,6 @@ export default function NotesSystem() {
   const initialTabParam = new URLSearchParams(location.search).get('tab');
   const initialTab = initialTabParam === 'journal' || location.pathname.includes('journal') ? 'journal' : initialTabParam === 'audio' ? 'audio' : 'vault';
   const [activeTab, setActiveTab] = useState<'vault' | 'audio' | 'journal'>(initialTab);
-  const [isJournalFullView, setIsJournalFullView] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [folderViewer, setFolderViewer] = useState<FolderType | null>(null);
@@ -285,11 +283,11 @@ export default function NotesSystem() {
   return (
     <div className={cn(
       "flex bg-app-container text-text-main transition-all duration-700 font-sans relative overflow-hidden max-w-full",
-      isJournalFullView ? "h-screen fixed inset-0 z-[100]" : "h-full min-h-[calc(100vh-3rem)]"
+      "h-full min-h-[calc(100vh-3rem)]"
     )}>
       {/* 1. Left Support Sidebar - Hidden with animation on Journal or Full View */}
       <AnimatePresence>
-        {!isJournalFullView && activeTab !== 'journal' && (
+        {activeTab !== 'journal' && (
           <motion.aside 
             initial={{ x: -280, opacity: 0 }}
             animate={{ x: 0, opacity: 1, width: isLibrarySidebarHovered ? 256 : 72 }}
@@ -409,71 +407,12 @@ export default function NotesSystem() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-app-container overflow-hidden relative">
         {/* Top Header - Reduced size and condensed content */}
-        {!isJournalFullView && (
-          <header className={cn(
-            "hidden items-center justify-between px-3 sm:px-8 md:px-12 border-b border-card-border/30 bg-app-container/70 backdrop-blur-sm shrink-0 transition-all duration-500 gap-3",
-            "min-h-24 sm:h-28"
-          )}>
-            <div className="flex items-center gap-3 sm:gap-8 lg:gap-12 min-w-0 flex-1">
-              <div className="min-w-0">
-                <h1 className={cn(
-                  "font-black text-text-main tracking-tight uppercase transition-all",
-                  "text-xl sm:text-3xl"
-                )}>
-                  Library
-                </h1>
-                <p className="hidden sm:block text-[10px] font-bold text-text-secondary/50 uppercase tracking-[0.2em] mt-1">Notes, audio, and journal</p>
-              </div>
-              <div className="flex max-w-full overflow-x-auto bg-surface-muted p-1 rounded-2xl border border-card-border/50 custom-scrollbar">
-                {[
-                  { label: 'Vault', value: 'vault' as const },
-                  { label: 'Audio', value: 'audio' as const },
-                  { label: 'Journal', value: 'journal' as const }
-                ].map((tab) => (
-                  <button
-                    key={tab.value}
-                    onClick={() => {
-                      setActiveTab(tab.value);
-                      setSelectedNoteId(null);
-                    }}
-                    className={cn(
-                      "h-9 px-3 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
-                      activeTab === tab.value ? "bg-card text-accent shadow-sm" : "text-text-secondary/45 hover:text-text-main"
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-              <div className="relative group hidden sm:block animate-in fade-in slide-in-from-right duration-500">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 group-focus-within:text-accent transition-colors" />
-                <input
-                  placeholder="Search Notes..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-11 pl-10 pr-4 w-64 bg-surface-muted border border-card-border/50 rounded-2xl text-[11px] font-bold text-text-main focus:outline-none focus:border-accent/40 focus:bg-card transition-all placeholder:text-text-secondary/30 shadow-sm"
-                />
-              </div>
-              <button 
-                onClick={() => activeTab === 'audio' ? setIsAudioModalOpen(true) : handleCreateNote(activeTab === 'journal' ? 'journal' : 'normal')}
-                className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl bg-accent text-white shadow-lg shadow-accent/10 hover:scale-105 transition-all md:hidden"
-              >
-                {activeTab === 'audio' ? <Mic size={22} /> : <Plus size={24} />}
-              </button>
-            </div>
-          </header>
-        )}
-
         {/* Content Section */}
         <div className={cn(
           "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
-          isJournalFullView ? "p-0" : activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-2 sm:px-8 md:px-12 py-5 sm:py-10"
+          activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-2 sm:px-8 md:px-12 py-5 sm:py-10"
         )}>
-          {!isJournalFullView && (
-            <header className="mx-auto max-w-[1600px] flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 sm:pb-8 mb-5 sm:mb-8 border-b border-card-border/30">
+          <header className="mx-auto max-w-[1600px] flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 sm:pb-8 mb-5 sm:mb-8 border-b border-card-border/30">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 min-w-0">
                 <div className="min-w-0">
                   <h1 className="font-black text-text-main tracking-tight uppercase text-2xl sm:text-3xl">Library</h1>
@@ -520,8 +459,7 @@ export default function NotesSystem() {
                   <span className="hidden sm:inline">{activeTab === 'audio' ? 'Audio Note' : activeTab === 'journal' ? 'Journal Entry' : 'New Note'}</span>
                 </button>
               </div>
-            </header>
-          )}
+          </header>
           <AnimatePresence mode="wait">
             {selectedNote ? (
               <NoteEditor 
@@ -534,7 +472,7 @@ export default function NotesSystem() {
             ) : (
               <div className={cn(
                 "mx-auto transition-all duration-700",
-                isJournalFullView ? "max-w-none h-full" : activeTab === 'journal' ? "max-w-[1500px] space-y-6" : "max-w-[1600px] space-y-16"
+                activeTab === 'journal' ? "max-w-[1500px] space-y-6" : "max-w-[1600px] space-y-16"
               )}>
                 {activeTab === 'vault' && (
                   <section className="space-y-8">
@@ -616,8 +554,8 @@ export default function NotesSystem() {
                   </section>
                 )}
 
-                <section className={cn("space-y-8", isJournalFullView && "h-full space-y-0")}>
-                   {!isJournalFullView && (
+                <section className="space-y-8">
+                   {(
                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                         <div className="space-y-1">
                           <h3 className="text-xl font-black text-text-main tracking-tight uppercase">
@@ -670,8 +608,6 @@ export default function NotesSystem() {
                         setSelectedDate={setSelectedDate}
                         entry={journalEntry}
                         streak={streak}
-                        fullView={isJournalFullView}
-                        toggleFullView={() => setIsJournalFullView(!isJournalFullView)}
                         recentLibraryNotes={safeArray<Note>(notes).filter(n => libraryNoteTypes.includes(n.note_type) && !n.isDeleted).slice(0, 5)}
                         journalEntries={safeArray<Note>(notes).filter(n => n.note_type === 'journal' && !n.isDeleted)}
                         visions={safeArray<Vision>(visions)}
@@ -859,7 +795,7 @@ const normalizeJournalCanvas = (value: unknown): JournalCanvasElement[] => {
   });
 };
 
-function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, onPostJournal, fullView, toggleFullView, recentLibraryNotes, journalEntries, visions, session, addToast }: any) {
+function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, onPostJournal, recentLibraryNotes, journalEntries, visions, session, addToast }: any) {
   const [pages, setPages] = useState<string[]>(safeString(entry?.content).split(JOURNAL_PAGE_BREAK));
   const [currentPage, setCurrentPage] = useState(0);
   const [title, setTitle] = useState(entry?.title || '');
@@ -1115,54 +1051,8 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
   const prompt = useMemo(() => getDailyPrompt(selectedDate), [selectedDate]);
 
   return (
-    <div className={cn(
-      "mx-auto transition-all duration-700 font-sans",
-      fullView ? "w-full h-screen bg-app-container overflow-hidden" : "w-full max-w-none py-4"
-    )}>
-      {fullView && (
-        <div className="h-16 flex items-center justify-between px-10 border-b border-card-border/30 bg-app-container/80 backdrop-blur-md">
-           <div className="flex items-center gap-4">
-              <button 
-                onClick={toggleFullView}
-                className="w-10 h-10 rounded-xl bg-accent text-white flex items-center justify-center hover:scale-105 transition-all"
-              >
-                 <X size={18} />
-              </button>
-              <h2 className="text-sm font-black text-text-main uppercase tracking-widest">Immersive Journal View</h2>
-            </div>
-            <div className="flex items-center gap-6">
-              <button
-                onClick={addNotebookPage}
-                disabled={isLocked}
-                className="w-10 h-10 rounded-xl bg-surface-muted border border-card-border flex items-center justify-center text-accent hover:bg-accent hover:text-white transition-all"
-                title="Add page"
-              >
-                <Plus size={16} />
-              </button>
-              <button
-                onClick={deleteNotebookPage}
-                disabled={isLocked || (safeArray<string>(pages).length <= 1 && !safeString(content).trim())}
-                className="w-10 h-10 rounded-xl bg-surface-muted border border-card-border flex items-center justify-center text-danger hover:bg-danger hover:text-white transition-all disabled:opacity-40"
-                title="Delete current page"
-              >
-                <Trash2 size={16} />
-              </button>
-               <div className="flex items-center gap-2">
-                <Star size={14} className={streak > 0 ? "text-accent fill-accent" : "text-text-secondary/20"} />
-                <span className="text-[10px] font-black text-text-main uppercase tracking-widest">{streak} Day Streak</span>
-              </div>
-              {isFutureEntry ? (
-                <span className="rounded-xl border border-card-border bg-surface-muted px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Future Locked</span>
-              ) : isLocked ? (
-                <button onClick={() => setIsEditingLockedEntry(true)} className="h-10 px-6 rounded-xl bg-text-main text-white text-[10px] font-black uppercase tracking-widest shadow-lg">Edit Locked Entry</button>
-              ) : (
-                <button onClick={handleSave} className="h-10 px-6 rounded-xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10">Save Record</button>
-              )}
-           </div>
-        </div>
-      )}
-
-      <div className={cn("mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-3 px-2 pb-3", fullView && "px-6 pt-5")}>
+    <div className="mx-auto w-full max-w-none py-4 transition-all duration-700 font-sans">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-3 px-2 pb-3">
         <div className="flex rounded-2xl border border-card-border bg-surface-muted p-1">
           {([
             { id: 'entry', label: 'Entry' },
@@ -1249,10 +1139,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
         </div>
       </div>
 
-      <div className={cn(
-        "flex transition-all duration-1000",
-        fullView ? "h-[calc(100vh-8rem)] px-4 pb-6 pt-3 lg:px-8 lg:pb-8 lg:pt-4" : "flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[860px] justify-center"
-      )}>
+      <div className="flex flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[860px] justify-center transition-all duration-1000">
         {journalMode === 'history' ? (
           <JournalHistoryView entries={safeArray<Note>(journalEntries)} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
         ) : journalMode === 'canvas' ? (
@@ -1284,10 +1171,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
         <motion.div 
           key={`journal-page-${selectedDate.toISOString()}`}
           layout
-          className={cn(
-            "mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 perspective-[1500px]",
-            fullView ? "h-full max-w-[1500px]" : "min-h-[820px]"
-          )}
+          className="mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 perspective-[1500px] min-h-[820px]"
         >
           {/* Left Page: Daily Overview */}
           <motion.div 
@@ -1310,8 +1194,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
 
             {/* Memory / Visual Card */}
             <div 
-              onClick={() => !fullView && toggleFullView()}
-              className="w-full max-h-64 lg:max-h-none aspect-square rounded-[1.5rem] sm:rounded-[2rem] bg-surface-muted border-2 border-dashed border-card-border/50 flex flex-col items-center justify-center p-5 sm:p-8 group hover:bg-accent/[0.02] transition-colors relative overflow-hidden cursor-pointer"
+              className="w-full max-h-64 lg:max-h-none aspect-square rounded-[1.5rem] sm:rounded-[2rem] bg-surface-muted border-2 border-dashed border-card-border/50 flex flex-col items-center justify-center p-5 sm:p-8 group hover:bg-accent/[0.02] transition-colors relative overflow-hidden"
             >
               {entry?.image_url ? (
                  <img src={entry.image_url} alt="Memory" className="absolute inset-0 w-full h-full object-cover" />
@@ -1463,8 +1346,11 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                     </>
                   )}
                 </div>
-                {!fullView && (
-                  isLocked ? (
+                {isFutureEntry ? (
+                  <span className="rounded-2xl border border-card-border bg-surface-muted px-5 py-4 text-[10px] font-black uppercase tracking-widest text-text-secondary/50">
+                    Future Locked
+                  </span>
+                ) : isLocked ? (
                     <button
                       onClick={() => setIsEditingLockedEntry(true)}
                       className="h-12 px-10 rounded-2xl bg-text-main text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:scale-105 active:scale-95 transition-all"
@@ -1479,7 +1365,6 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                     >
                       Save Entry
                     </button>
-                  )
                 )}
               </div>
             </div>
