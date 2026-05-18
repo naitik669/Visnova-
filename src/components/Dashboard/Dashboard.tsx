@@ -248,14 +248,28 @@ export default function Dashboard() {
     (v.tasks || []).map((t, idx) => ({
       ...t,
       reactKey: `${v.id}-${t.id || idx}`,
+      sourceType: "vision" as const,
       vision: v.title,
       visionId: v.id,
     })),
   );
 
-  const pendingTasks = allTasks.filter((t) => !t.completed);
+  const pendingVisionTasks = allTasks.filter((t) => !t.completed);
+  const scheduledTodos = todos
+    .filter(todo => !todo.completed && !todo.deletedAt && !!todo.scheduledDate)
+    .map(todo => ({
+      ...todo,
+      sourceType: "todo" as const,
+      reactKey: `todo-${todo.id}`,
+      vision: todo.scheduledDate
+        ? new Date(`${todo.scheduledDate}T00:00:00`).toLocaleDateString([], { month: "short", day: "numeric" })
+        : "Calendar",
+      visionId: "",
+    }))
+    .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
+  const pendingTasks = [...scheduledTodos, ...pendingVisionTasks];
   const displayedTasks = showAllTasks ? pendingTasks : pendingTasks.slice(0, 3);
-  const activeVisionPendingTasks = pendingTasks.filter(task => !activeVision || task.visionId === activeVision.id).slice(0, 3);
+  const activeVisionPendingTasks = pendingVisionTasks.filter(task => !activeVision || task.visionId === activeVision.id).slice(0, 3);
   const sevenDaysAgo = React.useMemo(() => {
     const date = new Date();
     date.setDate(date.getDate() - 7);
@@ -699,9 +713,13 @@ export default function Dashboard() {
                     <div
                       key={task.reactKey || `${task.visionId}-${task.id || idx}`}
                       className="bg-app-container rounded-[1.5rem] p-3 flex items-center gap-4 cursor-pointer hover:bg-surface-muted transition-all group"
-                      onClick={() =>
-                        toggleVisionTask(task.visionId, task.id || "")
-                      }
+                      onClick={() => {
+                        if (task.sourceType === "todo") {
+                          toggleTodo(task.id || "");
+                        } else {
+                          toggleVisionTask(task.visionId, task.id || "");
+                        }
+                      }}
                     >
                       <div
                         className={cn(
@@ -728,7 +746,7 @@ export default function Dashboard() {
                           {task.text}
                         </p>
                         <p className="text-[10px] text-text-secondary mt-1 uppercase tracking-wider">
-                          {task.vision}
+                          {task.sourceType === "todo" ? `Calendar - ${task.vision}` : task.vision}
                         </p>
                       </div>
                     </div>
