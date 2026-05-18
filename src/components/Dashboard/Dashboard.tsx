@@ -10,7 +10,6 @@
 
 import { motion } from "motion/react";
 import {
-  Target,
   MessageCircle,
   Calendar,
   ChevronLeft,
@@ -776,8 +775,8 @@ export default function Dashboard() {
           </div>
 
           {/* Middle Row: Schedule Log */}
-          <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col md:flex-row gap-10 items-stretch">
-            <div className="w-full md:w-auto bg-app-container rounded-[2rem] p-6 shrink-0 flex flex-col gap-4 min-w-[280px]">
+          <div className="bg-card rounded-[2.5rem] p-4 sm:p-6 shadow-sm grid grid-cols-1 xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)] gap-6 items-stretch">
+            <div className="w-full bg-app-container rounded-[2rem] p-5 sm:p-6 flex flex-col gap-4 min-w-0">
               <div className="flex items-center justify-between px-2 text-text-main pb-2">
                 <button
                   onClick={() => {
@@ -868,7 +867,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col gap-4 w-full h-full min-h-[300px]">
+            <div className="min-w-0 flex flex-col gap-4 w-full h-full min-h-[300px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 ml-2">
                   <Calendar size={18} className="text-text-secondary" />
@@ -884,8 +883,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(360px,1.25fr)_minmax(260px,0.95fr)] gap-5 h-full flex-1 items-start">
-                <div className="bg-app-container rounded-[2rem] p-5 sm:p-6 w-full flex flex-col gap-5 relative overflow-hidden border border-card-border/50 min-h-[260px]">
+              <div className="bg-app-container rounded-[2rem] p-5 sm:p-6 w-full flex flex-col gap-5 relative overflow-hidden border border-card-border/50 min-h-[260px]">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-widest text-accent">Selected Day</p>
@@ -955,27 +953,23 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  <div className="mt-auto pt-2 border-t border-card-border/60">
+                <div className="pt-4 border-t border-card-border/60">
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary/55">Planned for this day</p>
+                      <p className="text-[11px] font-semibold text-text-secondary/65">Tasks, notes, and journal entries stay tied to the selected date.</p>
+                    </div>
                     <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-widest text-text-secondary">
                       <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success" /> Task</span>
                       <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent" /> Note</span>
                       <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning" /> Journal</span>
                     </div>
                   </div>
-                </div>
 
-                <div className="w-full bg-app-container rounded-[2rem] p-5 sm:p-6 flex flex-col gap-4 relative overflow-hidden h-auto">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-[10px] font-black text-text-main uppercase tracking-[0.2em] opacity-40">
-                      Day Items
-                    </h4>
-                    <Target size={14} className="text-accent/40" />
-                  </div>
-
-                  <div className="flex flex-col gap-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     {selectedDayTasks.length === 0 && selectedDayNotes.length === 0 && !currentJournalEntry ? (
-                      <p className="text-[11px] font-medium text-text-secondary leading-relaxed px-1">
-                        No tasks or notes planned for this day yet. Add one from the panel beside the calendar.
+                      <p className="rounded-2xl border border-dashed border-card-border bg-card/60 p-4 text-[11px] font-medium text-text-secondary leading-relaxed lg:col-span-2">
+                        No tasks or notes planned for this day yet. Add one above to send it into Upcoming Tasks and this day view.
                       </p>
                     ) : (
                       <>
@@ -1023,13 +1017,6 @@ export default function Dashboard() {
                       </>
                     )}
                   </div>
-
-                  <button
-                    onClick={() => navigate("/library")}
-                    className="text-[10px] font-black text-accent uppercase tracking-[0.2em] mt-6 border border-accent/20 rounded-xl py-3 hover:bg-accent/5 transition-all text-center w-full"
-                  >
-                    Open Library
-                  </button>
                 </div>
               </div>
             </div>
