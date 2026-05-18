@@ -403,7 +403,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto space-y-5 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20 px-0 sm:px-4 overflow-x-hidden">
+    <div className="w-full max-w-[1440px] mx-auto space-y-5 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20 px-0 sm:px-4 overflow-x-hidden">
       <ProgressLogComposer
         open={showProgressComposer}
         onClose={() => setShowProgressComposer(false)}
@@ -434,9 +434,9 @@ export default function Dashboard() {
         </div>
         </div>
       </div>
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_280px]">
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col gap-6">
+        <div className="min-w-0 flex flex-col gap-6">
           {visions.length === 0 && (
             <FirstVisionPrompt
               onCreate={() => navigate('/visions')}
@@ -448,8 +448,8 @@ export default function Dashboard() {
           <div className="bg-card rounded-[1.6rem] sm:rounded-[2.5rem] p-4 sm:p-6 shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
             
-            <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-1 space-y-4">
+            <div className="relative z-10 flex min-w-0 flex-col xl:flex-row gap-6 2xl:gap-8 items-start">
+              <div className="min-w-0 flex-1 space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
                   <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-60">
@@ -534,7 +534,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 flex flex-col gap-3 md:min-w-[210px] border border-card-border/50">
+              <div className="w-full xl:w-[210px] 2xl:w-[220px] shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 flex flex-col gap-3 border border-card-border/50">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-1">Streak Fire</p>
@@ -580,7 +580,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="w-full md:w-auto shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 flex flex-col items-center gap-3 md:min-w-[170px] border border-card-border/50">
+              <div className="w-full xl:w-[170px] 2xl:w-[190px] shrink-0 bg-card-dark rounded-[1.5rem] sm:rounded-[2rem] p-4 flex flex-col items-center gap-3 border border-card-border/50">
                 <div className="text-center">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary mb-1">Total Progress</p>
                   <p className="text-3xl font-display font-black text-accent">{globalProgress}%</p>
@@ -1246,7 +1246,7 @@ export default function Dashboard() {
         </div>
 
         {/* Right Sidebar stats panel */}
-        <div className="w-full lg:w-[300px] shrink-0 flex flex-col gap-4">
+        <div className="min-w-0 w-full flex flex-col gap-4">
           <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
