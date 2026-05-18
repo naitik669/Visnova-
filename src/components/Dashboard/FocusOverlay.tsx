@@ -1,9 +1,39 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, RotateCcw, Brain, Save, Target, Plus, Trash2, Check } from 'lucide-react';
+import { Play, Pause, RotateCcw, Brain, Save, Target, Plus, Trash2, Check, Maximize2, Minimize2, Image as ImageIcon, Music2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
+
+const FOCUS_BACKGROUND_KEY = 'visnova_focus_background';
+
+const focusBackgrounds = [
+  {
+    id: 'none',
+    label: 'Clean',
+    url: ''
+  },
+  {
+    id: 'forest',
+    label: 'Forest',
+    url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1600&q=80'
+  },
+  {
+    id: 'lake',
+    label: 'Lake',
+    url: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80'
+  },
+  {
+    id: 'ocean',
+    label: 'Ocean',
+    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80'
+  },
+  {
+    id: 'mountain',
+    label: 'Mountain',
+    url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=80'
+  }
+];
 
 export default function FocusOverlay() {
   const {
@@ -28,6 +58,45 @@ export default function FocusOverlay() {
   const [newPresetLabel, setNewPresetLabel] = useState('');
   const [newPresetDuration, setNewPresetDuration] = useState('25');
   const [activePresetId, setActivePresetId] = useState<string | null>(focusPresets[0]?.id || null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showPersonalize, setShowPersonalize] = useState(false);
+  const [focusBackground, setFocusBackground] = useState(() => {
+    if (typeof window === 'undefined') return focusBackgrounds[0];
+    const saved = window.localStorage.getItem(FOCUS_BACKGROUND_KEY);
+    if (!saved) return focusBackgrounds[0];
+    try {
+      const parsed = JSON.parse(saved);
+      return {
+        id: parsed.id || 'custom',
+        label: parsed.label || 'Custom',
+        url: parsed.url || ''
+      };
+    } catch {
+      return focusBackgrounds[0];
+    }
+  });
+
+  const saveFocusBackground = (background: { id: string; label: string; url: string }) => {
+    setFocusBackground(background);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(FOCUS_BACKGROUND_KEY, JSON.stringify(background));
+      } catch {
+        // Large custom images may exceed local browser storage; keep the preview for this session.
+      }
+    }
+  };
+
+  const handleCustomBackground = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = typeof reader.result === 'string' ? reader.result : '';
+      if (url) saveFocusBackground({ id: 'custom', label: 'Custom', url });
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     // If opening focus mode and no session is active, start one
@@ -86,15 +155,118 @@ export default function FocusOverlay() {
     <ResponsiveModal
       open
       onClose={handleClose}
-      size="lg"
+      size={isExpanded ? 'fullscreen' : 'xl'}
       title={sessionState === 'reflection' ? 'Focus Reflection' : focusSession.label || 'Focus Timer'}
       subtitle={sessionState === 'reflection' ? 'Log what you finished before ending the sprint.' : primaryTask ? primaryTask.text : 'Choose a preset and run a focused sprint.'}
-      contentClassName="bg-card"
+      contentClassName="relative bg-card"
       zIndexClassName="z-[210]"
     >
-          <div className="p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+          {focusBackground.url && (
+            <div
+              className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25"
+              style={{ backgroundImage: `url(${focusBackground.url})` }}
+            />
+          )}
+          {focusBackground.url && <div className="pointer-events-none absolute inset-0 bg-card/70 backdrop-blur-[1px]" />}
+
+          <div className={cn(
+            "relative p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6",
+            isExpanded && "mx-auto w-full max-w-7xl"
+          )}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-card-border bg-app-container/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary">
+                <ImageIcon size={12} className="text-accent" />
+                {focusBackground.label} focus room
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPersonalize(value => !value)}
+                  className={cn(
+                    "h-10 rounded-xl border px-3 text-[9px] font-black uppercase tracking-widest transition-all",
+                    showPersonalize ? "border-accent bg-accent text-accent-contrast" : "border-card-border bg-app-container/80 text-text-secondary hover:text-text-main"
+                  )}
+                >
+                  Personalize
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(value => !value)}
+                  aria-label={isExpanded ? 'Exit expanded Deep Sprint' : 'Expand Deep Sprint'}
+                  className="grid h-10 w-10 place-items-center rounded-xl border border-card-border bg-app-container/80 text-text-secondary transition-all hover:text-text-main"
+                >
+                  {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {showPersonalize && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="rounded-[2rem] border border-card-border bg-app-container/85 p-4 shadow-sm backdrop-blur-md"
+                >
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/60">Focus background</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        {focusBackgrounds.map(background => (
+                          <button
+                            key={background.id}
+                            type="button"
+                            onClick={() => saveFocusBackground(background)}
+                            className={cn(
+                              "group overflow-hidden rounded-2xl border text-left transition-all",
+                              focusBackground.id === background.id ? "border-accent ring-2 ring-accent/20" : "border-card-border hover:border-accent/40"
+                            )}
+                          >
+                            <div
+                              className={cn("h-16 bg-surface-muted bg-cover bg-center", background.id === 'none' && "bg-gradient-to-br from-card to-surface-muted")}
+                              style={background.url ? { backgroundImage: `url(${background.url})` } : undefined}
+                            />
+                            <div className="bg-card px-3 py-2 text-[9px] font-black uppercase tracking-widest text-text-secondary group-hover:text-text-main">
+                              {background.label}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <label className="mt-3 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-card-border bg-card text-[9px] font-black uppercase tracking-widest text-text-secondary transition-all hover:border-accent/40 hover:text-accent">
+                        <ImageIcon size={14} />
+                        Use my image
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={(event) => handleCustomBackground(event.target.files?.[0])}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="w-full xl:w-80">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Music2 size={15} className="text-accent" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/60">Lo-fi focus</p>
+                      </div>
+                      <iframe
+                        title="Spotify lo-fi focus playlist"
+                        src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWQRwui0ExPn?utm_source=generator&theme=0"
+                        width="100%"
+                        height="152"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        className="rounded-2xl border border-card-border"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {sessionState === 'active' && (
-              <div className="space-y-5 sm:space-y-6">
+              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:space-y-0")}>
+                <div className="space-y-5 sm:space-y-6">
                 {/* Social Pulse in Focus */}
                 <div className="flex justify-center">
                   <div className="inline-flex items-center gap-4 px-4 py-2 rounded-full bg-accent/[0.03] border border-accent/10">
@@ -245,9 +417,13 @@ export default function FocusOverlay() {
                     </button>
                   </div>
                 </div>
+                </div>
 
                 {/* Cognitive Anchor */}
-                <div className="bg-bg-base/50 p-4 sm:p-5 rounded-3xl border border-card-border flex items-start gap-4">
+                <div className={cn(
+                  "bg-bg-base/60 p-4 sm:p-5 rounded-3xl border border-card-border flex items-start gap-4 backdrop-blur-sm",
+                  isExpanded && "xl:sticky xl:top-4 xl:flex-col"
+                )}>
                   <div className="w-10 h-10 rounded-xl bg-accent/5 flex items-center justify-center text-accent shrink-0">
                     <Brain size={20} />
                   </div>
@@ -256,6 +432,10 @@ export default function FocusOverlay() {
                     <p className="text-[11px] text-text-secondary leading-relaxed opacity-80">
                       Eliminate all external variables. Your physical body is a tool for alignment. Execute the singular task ahead.
                     </p>
+                    <div className="pt-3">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">Room setup</p>
+                      <p className="mt-1 text-xs font-semibold text-text-main">{focusBackground.label} background - Lo-fi playlist ready</p>
+                    </div>
                   </div>
                 </div>
               </div>
