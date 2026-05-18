@@ -866,23 +866,23 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-full flex-1 items-start">
-                <div className="bg-app-container rounded-[2rem] p-5 w-full flex flex-col gap-4 relative overflow-hidden border border-card-border/50 min-h-[260px]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(360px,1.25fr)_minmax(260px,0.95fr)] gap-5 h-full flex-1 items-start">
+                <div className="bg-app-container rounded-[2rem] p-5 sm:p-6 w-full flex flex-col gap-5 relative overflow-hidden border border-card-border/50 min-h-[260px]">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-widest text-accent">Selected Day</p>
-                      <h4 className="text-2xl font-black text-text-main tracking-tight mt-1">{selectedDayLabel}</h4>
+                      <h4 className="text-2xl sm:text-3xl font-black text-text-main tracking-tight mt-1 leading-tight break-words">{selectedDayLabel}</h4>
                     </div>
-                    <div className="flex rounded-2xl bg-card border border-card-border p-1">
+                    <div className="flex w-full sm:w-auto shrink-0 rounded-2xl bg-card border border-card-border p-1">
                       <button
                         onClick={() => setDayComposer("task")}
-                        className={cn("h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all", dayComposer === "task" ? "bg-accent text-accent-contrast" : "text-text-secondary hover:text-text-main")}
+                        className={cn("h-10 flex-1 sm:flex-none px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all", dayComposer === "task" ? "bg-accent text-accent-contrast" : "text-text-secondary hover:text-text-main")}
                       >
                         Task
                       </button>
                       <button
                         onClick={() => setDayComposer("note")}
-                        className={cn("h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all", dayComposer === "note" ? "bg-accent text-accent-contrast" : "text-text-secondary hover:text-text-main")}
+                        className={cn("h-10 flex-1 sm:flex-none px-4 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all", dayComposer === "note" ? "bg-accent text-accent-contrast" : "text-text-secondary hover:text-text-main")}
                       >
                         Note
                       </button>
@@ -893,7 +893,7 @@ export default function Dashboard() {
                     <div className="space-y-3">
                       <label className="block space-y-2">
                         <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Task for this day</span>
-                        <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
                           <input
                             value={dayTaskText}
                             onChange={(event) => setDayTaskText(event.target.value)}
@@ -901,12 +901,12 @@ export default function Dashboard() {
                               if (event.key === "Enter") createCalendarTask();
                             }}
                             placeholder="e.g. Record launch demo"
-                            className="flex-1 h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent"
+                            className="min-w-0 h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent"
                           />
                           <button
                             onClick={createCalendarTask}
                             disabled={!dayTaskText.trim()}
-                            className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-40 flex items-center justify-center gap-2"
+                            className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-40 flex items-center justify-center gap-2 whitespace-nowrap"
                           >
                             <Plus size={14} /> Add
                           </button>
@@ -946,7 +946,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="w-full bg-app-container rounded-[2rem] p-6 flex flex-col gap-4 relative overflow-hidden h-auto">
+                <div className="w-full bg-app-container rounded-[2rem] p-5 sm:p-6 flex flex-col gap-4 relative overflow-hidden h-auto">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-[10px] font-black text-text-main uppercase tracking-[0.2em] opacity-40">
                       Day Items
