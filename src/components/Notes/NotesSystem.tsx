@@ -37,7 +37,7 @@ import {
   Send
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, startOfDay } from 'date-fns';
+import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, isAfter, startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { Note, Folder as FolderType, JournalCanvasElement, Vision } from '../../types';
 import { getAudioNoteUrl, uploadAudioNote, uploadJournalImage } from '../../lib/supabase';
@@ -879,8 +879,11 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
   const resizeStateRef = useRef<{ id: string; startX: number; startY: number; width: number; height: number } | null>(null);
   const canvasElementsRef = useRef<JournalCanvasElement[]>(canvasElements);
   const content = safeArray<string>(pages)[currentPage] || '';
-  const isPastEntry = isBefore(startOfDay(selectedDate), startOfDay(new Date()));
-  const isLocked = isPastEntry && !isEditingLockedEntry;
+  const today = startOfDay(new Date());
+  const selectedDay = startOfDay(selectedDate);
+  const isPastEntry = isBefore(selectedDay, today);
+  const isFutureEntry = isAfter(selectedDay, today);
+  const isLocked = isFutureEntry || (isPastEntry && !isEditingLockedEntry);
   const selectedElement = canvasElements.find(element => element.id === selectedElementId) || null;
 
   useEffect(() => {
@@ -913,6 +916,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
 
   const persistCanvas = async (nextElements: JournalCanvasElement[], extraUpdates: Record<string, any> = {}) => {
     if (isLocked) return;
+    canvasElementsRef.current = nextElements;
     setCanvasElements(nextElements);
     setIsSaving(true);
     try {
@@ -998,10 +1002,21 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
     }
   };
 
-  const deleteSelectedElement = () => {
-    if (!selectedElementId || isLocked) return;
-    persistCanvas(canvasElements.filter(element => element.id !== selectedElementId));
+  const deleteSelectedElement = (targetId = selectedElementId) => {
+    if (!targetId || isLocked) return;
+    const nextElements = canvasElementsRef.current.filter(element => element.id !== targetId);
+    persistCanvas(nextElements);
     setSelectedElementId(null);
+  };
+
+  const handleDatePickerChange = (value: string) => {
+    if (!value) return;
+    const nextDate = safeDate(`${value}T12:00:00`);
+    if (isAfter(startOfDay(nextDate), today)) {
+      addToast?.({ type: 'info', title: 'Future journals are locked', description: 'You can write that entry when the date arrives.' });
+      return;
+    }
+    setSelectedDate(nextDate);
   };
 
   const startElementDrag = (event: React.PointerEvent, element: JournalCanvasElement) => {
@@ -1136,7 +1151,9 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                 <Star size={14} className={streak > 0 ? "text-accent fill-accent" : "text-text-secondary/20"} />
                 <span className="text-[10px] font-black text-text-main uppercase tracking-widest">{streak} Day Streak</span>
               </div>
-              {isLocked ? (
+              {isFutureEntry ? (
+                <span className="rounded-xl border border-card-border bg-surface-muted px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Future Locked</span>
+              ) : isLocked ? (
                 <button onClick={() => setIsEditingLockedEntry(true)} className="h-10 px-6 rounded-xl bg-text-main text-white text-[10px] font-black uppercase tracking-widest shadow-lg">Edit Locked Entry</button>
               ) : (
                 <button onClick={handleSave} className="h-10 px-6 rounded-xl bg-accent text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-accent/10">Save Record</button>
@@ -1165,11 +1182,23 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <label className="flex h-11 items-center gap-2 rounded-2xl border border-card-border bg-card px-3">
+            <Calendar size={14} className="text-text-secondary/45" />
+            <input
+              type="date"
+              value={format(selectedDate, 'yyyy-MM-dd')}
+              max={format(new Date(), 'yyyy-MM-dd')}
+              onChange={(event) => handleDatePickerChange(event.target.value)}
+              className="w-32 bg-transparent text-[10px] font-black uppercase tracking-widest text-text-main outline-none"
+              aria-label="Open journal calendar"
+            />
+          </label>
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-secondary/40">
             {isSaving ? 'Saving...' : lastSaved ? `Saved ${safeFormat(lastSaved, 'h:mm a')}` : 'Unsaved'}
           </span>
           <button
             onClick={onPostJournal}
+            disabled={isFutureEntry}
             className="flex h-11 items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 text-[10px] font-black uppercase tracking-widest text-accent transition-all hover:bg-accent hover:text-accent-contrast"
           >
             <Send size={14} />
@@ -1272,7 +1301,11 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
             <div className="space-y-2">
               <h2 className="text-2xl sm:text-4xl font-black text-text-main tracking-tight sm:tracking-tighter uppercase">{format(selectedDate, 'EEEE')}</h2>
               <p className="text-xs font-bold text-accent uppercase tracking-[0.3em] opacity-60">{format(selectedDate, 'MMMM dd, yyyy')}</p>
-              {isLocked && <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Locked until you click edit</p>}
+              {isFutureEntry ? (
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Future entries unlock on their date</p>
+              ) : isLocked && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Locked until you click edit</p>
+              )}
             </div>
 
             {/* Memory / Visual Card */}
@@ -1311,10 +1344,18 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                   return (
                     <button
                       key={i}
-                      onClick={() => setSelectedDate(date)}
+                      onClick={() => {
+                        if (isAfter(startOfDay(date), today)) {
+                          addToast?.({ type: 'info', title: 'Future journals are locked', description: 'You can write that entry when the date arrives.' });
+                          return;
+                        }
+                        setSelectedDate(date);
+                      }}
+                      disabled={isAfter(startOfDay(date), today)}
                       className={cn(
                         "flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-xl transition-all min-w-10 sm:min-w-[50px]",
-                        isActive ? "bg-card-elevated shadow-md text-accent scale-105" : "text-text-secondary/40 hover:text-text-main hover:bg-card/70"
+                        isActive ? "bg-card-elevated shadow-md text-accent scale-105" : "text-text-secondary/40 hover:text-text-main hover:bg-card/70",
+                        isAfter(startOfDay(date), today) && "cursor-not-allowed opacity-30 hover:bg-transparent hover:text-text-secondary/40"
                       )}
                     >
                       <span className="text-[8px] font-black uppercase tracking-widest">{format(date, 'EEE')}</span>
@@ -1543,7 +1584,7 @@ function JournalCanvasWorkspace({
   selectedElement: JournalCanvasElement | null;
   setSelectedElementId: (id: string | null) => void;
   onUpdateElement: (id: string, updates: Partial<JournalCanvasElement>) => void;
-  onDeleteSelected: () => void;
+  onDeleteSelected: (id?: string) => void;
   onStartDrag: (event: React.PointerEvent, element: JournalCanvasElement) => void;
   onMoveDrag: (event: React.PointerEvent) => void;
   onEndDrag: () => void;
@@ -1635,9 +1676,13 @@ function JournalCanvasWorkspace({
             />
           ))}
           {selectedElement && (
-            <div className="absolute bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-card-border bg-card/95 p-2 shadow-2xl">
+            <div
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+              className="absolute bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-card-border bg-card/95 p-2 shadow-2xl"
+            >
               <span className="px-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/45">{selectedElement.type}</span>
-              <button onClick={(event) => { event.stopPropagation(); onDeleteSelected(); }} className="h-9 px-3 rounded-xl bg-danger/10 text-[9px] font-black uppercase tracking-widest text-danger">Delete</button>
+              <button onClick={(event) => { event.stopPropagation(); onDeleteSelected(selectedElement.id); }} className="h-9 px-3 rounded-xl bg-danger/10 text-[9px] font-black uppercase tracking-widest text-danger">Delete</button>
             </div>
           )}
           {isResizingElement && <div className="pointer-events-none absolute left-5 top-5 rounded-xl bg-accent px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent-contrast">Resizing</div>}
