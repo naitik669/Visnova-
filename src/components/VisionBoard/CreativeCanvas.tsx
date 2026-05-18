@@ -46,7 +46,7 @@ type BoardTool = 'select' | 'pen' | 'eraser';
 
 const CANVAS_SIZE = 9000;
 const CANVAS_CENTER = CANVAS_SIZE / 2;
-const MIN_ZOOM = 0.04;
+const MIN_ZOOM_FLOOR = 0.04;
 const MAX_ZOOM = 2.5;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -186,6 +186,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [isEditingText, setIsEditingText] = useState(false);
   const [activeTool, setActiveTool] = useState<BoardTool>('select');
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const transformWrapperRef = useRef<any>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
@@ -200,6 +201,14 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     [elements, selectedId]
   );
   const canvasInteractionLocked = isDraggingElement || isResizingElement || isEditingText || activeTool !== 'select';
+  const minZoom = useMemo(() => {
+    if (!viewportSize.width || !viewportSize.height) return MIN_ZOOM_FLOOR;
+    const fitScale = Math.min(
+      Math.max(viewportSize.width - 96, 320) / CANVAS_SIZE,
+      Math.max(viewportSize.height - 96, 320) / CANVAS_SIZE
+    );
+    return Math.max(MIN_ZOOM_FLOOR, Math.min(1, fitScale));
+  }, [viewportSize.height, viewportSize.width]);
 
   useEffect(() => {
     const normalized = normalizeBoardElements(vision.elements);
@@ -216,6 +225,25 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    const node = canvasViewportRef.current;
+    if (!node) return;
+
+    const updateSize = () => {
+      const bounds = node.getBoundingClientRect();
+      setViewportSize({ width: bounds.width, height: bounds.height });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(node);
+    window.addEventListener('resize', updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
   }, []);
 
   useEffect(() => {
@@ -295,26 +323,33 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${Math.round(point.x)} ${Math.round(point.y)}`).join(' ');
   };
 
-  const setZoomAtPoint = useCallback((nextScale: number, viewportX?: number, viewportY?: number) => {
-    const scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextScale));
-    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
-    const currentScale = transformState?.scale || 1;
-    const positionX = transformState?.positionX || 0;
-    const positionY = transformState?.positionY || 0;
+  const zoomFromViewportCenter = useCallback((nextScale: number, animationTime = 120) => {
+    const scale = Math.min(MAX_ZOOM, Math.max(minZoom, nextScale));
     const bounds = canvasViewportRef.current?.getBoundingClientRect();
-    const originX = viewportX ?? (bounds?.width || window.innerWidth) / 2;
-    const originY = viewportY ?? (bounds?.height || window.innerHeight) / 2;
-    const contentX = (originX - positionX) / currentScale;
-    const contentY = (originY - positionY) / currentScale;
-    const nextX = originX - contentX * scale;
-    const nextY = originY - contentY * scale;
-    transformWrapperRef.current?.setTransform?.(nextX, nextY, scale, 140);
+    const viewportCenterX = (bounds?.width || window.innerWidth) / 2;
+    const viewportCenterY = (bounds?.height || window.innerHeight) / 2;
+    const nextX = viewportCenterX - CANVAS_CENTER * scale;
+    const nextY = viewportCenterY - CANVAS_CENTER * scale;
+    transformWrapperRef.current?.setTransform?.(nextX, nextY, scale, animationTime);
     setZoomLevel(scale);
-  }, []);
+  }, [minZoom]);
 
-  const setZoom = useCallback((nextScale: number) => {
-    setZoomAtPoint(nextScale);
-  }, [setZoomAtPoint]);
+  useEffect(() => {
+    if (zoomLevel < minZoom - 0.001) {
+      zoomFromViewportCenter(minZoom, 0);
+    }
+  }, [minZoom, zoomFromViewportCenter, zoomLevel]);
+
+  const handleWheelCapture = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    if (isEditingText) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
+    const currentScale = transformState?.scale || zoomLevel;
+    const zoomFactor = Math.exp(-event.deltaY * 0.0018);
+    zoomFromViewportCenter(currentScale * zoomFactor, 0);
+  }, [isEditingText, zoomFromViewportCenter, zoomLevel]);
 
   const createElement = useCallback((
     type: VisionElement['type'],
@@ -589,6 +624,22 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         event.preventDefault();
         persistNow();
       }
+      if (event.ctrlKey || event.metaKey) {
+        const key = event.key.toLowerCase();
+        const currentScale = (transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state)?.scale || zoomLevel;
+        if (key === '+' || key === '=') {
+          event.preventDefault();
+          zoomFromViewportCenter(currentScale + (currentScale < 0.2 ? 0.02 : 0.1));
+        }
+        if (key === '-' || key === '_') {
+          event.preventDefault();
+          zoomFromViewportCenter(currentScale - (currentScale <= 0.2 ? 0.02 : 0.1));
+        }
+        if (key === '0') {
+          event.preventDefault();
+          zoomFromViewportCenter(1);
+        }
+      }
       if (event.key === 'Escape') {
         setSelectedId(null);
         setActiveTool('select');
@@ -601,7 +652,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [deleteElement, persistNow, selectedId]);
+  }, [deleteElement, persistNow, selectedId, zoomFromViewportCenter, zoomLevel]);
 
   const addMenuOptions = (
     <>
@@ -642,6 +693,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       )}
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleCanvasDrop}
+      onWheelCapture={handleWheelCapture}
     >
       <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[165] hidden max-w-[calc(100vw-22rem)] -translate-x-1/2 items-center gap-0.5 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:flex">
         <CanvasQuickButton icon={<Brush size={17} />} label="Pen" onClick={() => setActiveTool(activeTool === 'pen' ? 'select' : 'pen')} active={activeTool === 'pen'} />
@@ -701,7 +753,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       <TransformWrapper
         ref={transformWrapperRef}
         initialScale={1}
-        minScale={MIN_ZOOM}
+        minScale={minZoom}
         maxScale={MAX_ZOOM}
         centerOnInit
         limitToBounds={false}
@@ -718,7 +770,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         pinch={{ disabled: isEditingText, step: 8, allowPanning: true }}
         trackPadPanning={{ disabled: canvasInteractionLocked, velocityDisabled: true }}
       >
-        {({ zoomIn, zoomOut, resetTransform, centerView }) => (
+        {() => (
           <>
             <TransformComponent
               wrapperStyle={{ width: '100%', height: '100%' }}
@@ -799,27 +851,27 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
             <div className="absolute bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-3 z-[170] w-60 rounded-2xl border border-card-border bg-card/95 p-2 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:bottom-[calc(1rem+env(safe-area-inset-bottom))] md:right-5">
               <div className="grid h-14 grid-cols-[44px_1fr_44px] items-center rounded-xl bg-bg-base/50">
-                <ControlButton onClick={() => setZoom(zoomLevel - (zoomLevel <= 0.2 ? 0.02 : 0.1))} icon={<Minus size={22} />} label="Zoom Out" compact />
+                <ControlButton onClick={() => zoomFromViewportCenter(zoomLevel - (zoomLevel <= 0.2 ? 0.02 : 0.1))} icon={<Minus size={22} />} label="Zoom Out" compact />
                 <span className="text-center text-lg font-black tabular-nums text-text-main">{Math.round(zoomLevel * 100)}%</span>
-                <ControlButton onClick={() => setZoom(zoomLevel + (zoomLevel < 0.2 ? 0.02 : 0.1))} icon={<Plus size={24} />} label="Zoom In" compact />
+                <ControlButton onClick={() => zoomFromViewportCenter(zoomLevel + (zoomLevel < 0.2 ? 0.02 : 0.1))} icon={<Plus size={24} />} label="Zoom In" compact />
               </div>
               <div className="mt-2 flex items-center gap-2 px-1">
-                <span className="w-8 text-[9px] font-black tabular-nums text-text-secondary">{Math.round(MIN_ZOOM * 100)}%</span>
+                <span className="w-8 text-[9px] font-black tabular-nums text-text-secondary">{Math.round(minZoom * 100)}%</span>
                 <input
                   type="range"
-                  min={MIN_ZOOM}
+                  min={minZoom}
                   max={MAX_ZOOM}
                   step={0.01}
                   value={zoomLevel}
-                  onChange={(event) => setZoom(Number(event.target.value))}
+                  onChange={(event) => zoomFromViewportCenter(Number(event.target.value), 0)}
                   className="min-w-0 flex-1 accent-[var(--accent)]"
                   aria-label="Zoom level"
                 />
                 <span className="w-9 text-right text-[9px] font-black tabular-nums text-text-secondary">{Math.round(MAX_ZOOM * 100)}%</span>
               </div>
               <div className="mt-2 flex items-center justify-end gap-2 px-1">
-                <ControlButton onClick={() => { resetTransform(); setZoomLevel(1); }} icon={<RotateCcw size={14} />} label="Reset View" compact />
-                <ControlButton onClick={() => centerView()} icon={<Maximize2 size={14} />} label="Center" compact />
+                <ControlButton onClick={() => zoomFromViewportCenter(1)} icon={<RotateCcw size={14} />} label="Reset View" compact />
+                <ControlButton onClick={() => zoomFromViewportCenter(minZoom)} icon={<Maximize2 size={14} />} label="Fit Board" compact />
               </div>
             </div>
           </>
