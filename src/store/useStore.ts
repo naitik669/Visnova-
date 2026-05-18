@@ -1580,6 +1580,7 @@ export const useStore = create<AppState>((set, get) => ({
         xpAwarded: !!t.xp_awarded,
         xpAwardedAt: t.xp_awarded_at || null,
         deletedAt: t.deleted_at || null,
+        scheduledDate: t.metadata?.scheduled_date || null,
       }));
 
       set({ todos: formattedTodos });
@@ -2581,7 +2582,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  addTodo: async (text) => {
+  addTodo: async (text, scheduledDate = null) => {
     const userId = get().session?.user?.id;
     if (!userId) {
       get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to add tasks.' });
@@ -2589,7 +2590,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     const tempId = Math.random().toString(36).substring(7);
-    const newTodo = { id: tempId, text, completed: false, completedAt: null, xpAwarded: false, xpAwardedAt: null, deletedAt: null };
+    const newTodo = { id: tempId, text, completed: false, completedAt: null, xpAwarded: false, xpAwardedAt: null, deletedAt: null, scheduledDate };
 
     set((state) => ({
       todos: [newTodo, ...state.todos]
@@ -2598,8 +2599,8 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('todos')
-        .insert({ user_id: userId, text, completed: false, created_at: new Date().toISOString() })
-        .select('id, text, completed, completed_at, xp_awarded, xp_awarded_at, deleted_at')
+        .insert({ user_id: userId, text, completed: false, created_at: new Date().toISOString(), metadata: scheduledDate ? { scheduled_date: scheduledDate } : {} })
+        .select('id, text, completed, completed_at, xp_awarded, xp_awarded_at, deleted_at, metadata')
         .single();
       if (error) throw error;
       set((state) => ({
@@ -2610,9 +2611,11 @@ export const useStore = create<AppState>((set, get) => ({
           completedAt: data.completed_at || null,
           xpAwarded: !!data.xp_awarded,
           xpAwardedAt: data.xp_awarded_at || null,
-          deletedAt: data.deleted_at || null
+          deletedAt: data.deleted_at || null,
+          scheduledDate: data.metadata?.scheduled_date || null
         } : todo)
       }));
+      get().addToast({ type: 'success', title: scheduledDate ? 'Task scheduled' : 'Task added', description: scheduledDate ? 'Added to your calendar day.' : undefined });
     } catch (error) {
       console.error('Failed to add todo:', error);
       set((state) => ({ todos: state.todos.filter(todo => todo.id !== tempId) }));

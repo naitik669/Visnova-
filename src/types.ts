@@ -14,6 +14,7 @@ export interface Task {
   xpAwarded?: boolean;
   xpAwardedAt?: string | null;
   deletedAt?: string | null;
+  scheduledDate?: string | null;
 }
 
 export interface VisionElement {
@@ -556,7 +557,7 @@ export interface AppState {
   updateNote: (id: string, updates: Partial<Note>) => void;
   moveNoteToFolder: (noteId: string, folderId: string | null) => Promise<boolean>;
   deleteNote: (id: string) => void;
-  addTodo: (text: string) => void;
+  addTodo: (text: string, scheduledDate?: string | null) => void;
   toggleTodo: (id: string) => void;
   deleteTodo: (id: string) => void;
   addPost: (post: any) => Promise<boolean>;

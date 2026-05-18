@@ -27,6 +27,7 @@ import {
   Flame,
   Minus,
   Wallet,
+  FileText,
 } from "lucide-react";
 import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
@@ -145,6 +146,7 @@ export default function Dashboard() {
     toggleTodo,
     addTodo,
     deleteTodo,
+    addNote,
     journalEntries,
     activities,
     isDashboardLoading,
@@ -162,6 +164,10 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = React.useState(new Date());
   const [showProgressComposer, setShowProgressComposer] = React.useState(false);
+  const [dayTaskText, setDayTaskText] = React.useState("");
+  const [dayNoteTitle, setDayNoteTitle] = React.useState("");
+  const [dayNoteText, setDayNoteText] = React.useState("");
+  const [dayComposer, setDayComposer] = React.useState<"task" | "note">("task");
   const hasRequestedDashboardData = React.useRef(false);
 
   React.useEffect(() => {
@@ -192,6 +198,46 @@ export default function Dashboard() {
 
   const dateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
   const currentJournalEntry = journalEntries.find((e) => e.date === dateKey);
+  const keyForTimestamp = React.useCallback((timestamp: number) => {
+    const date = new Date(timestamp);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }, []);
+  const selectedDayNotes = React.useMemo(
+    () => notes.filter(note => !note.isDeleted && note.note_type === "normal" && keyForTimestamp(note.createdAt) === dateKey),
+    [dateKey, keyForTimestamp, notes],
+  );
+  const selectedDayTasks = React.useMemo(
+    () => todos.filter(todo => !todo.deletedAt && todo.scheduledDate === dateKey),
+    [dateKey, todos],
+  );
+  const selectedDayLabel = selectedDate.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+
+  const createCalendarTask = React.useCallback(() => {
+    const text = dayTaskText.trim();
+    if (!text) return;
+    addTodo(text, dateKey);
+    setDayTaskText("");
+  }, [addTodo, dateKey, dayTaskText]);
+
+  const createCalendarNote = React.useCallback(async () => {
+    const content = dayNoteText.trim();
+    const title = dayNoteTitle.trim() || `Note for ${selectedDayLabel}`;
+    if (!content && !dayNoteTitle.trim()) return;
+    const createdAt = new Date(`${dateKey}T12:00:00`).getTime();
+    const note = await addNote({
+      title,
+      content: content || "No content yet.",
+      note_type: "normal",
+      visibility: "private",
+      tags: ["calendar"],
+      createdAt,
+      updatedAt: createdAt,
+    });
+    if (note) {
+      setDayNoteTitle("");
+      setDayNoteText("");
+    }
+  }, [addNote, dateKey, dayNoteText, dayNoteTitle, selectedDayLabel]);
 
   const [showAllCircle, setShowAllCircle] = React.useState(false);
   const [showAllTasks, setShowAllTasks] = React.useState(false);
@@ -769,6 +815,12 @@ export default function Dashboard() {
                     const hasJournal = journalEntries.some(
                       (e) => e.date === dateKey,
                     );
+                    const hasNote = notes.some(
+                      (note) => !note.isDeleted && note.note_type === "normal" && keyForTimestamp(note.createdAt) === dateKey,
+                    );
+                    const hasTask = todos.some(
+                      (todo) => !todo.deletedAt && todo.scheduledDate === dateKey,
+                    );
                     const isSelected = selectedDate.getDate() === i;
 
                     days.push(
@@ -783,8 +835,12 @@ export default function Dashboard() {
                         )}
                       >
                         {i}
-                        {hasJournal && !isSelected && (
-                          <div className="absolute top-1 right-2 w-1.5 h-1.5 bg-accent rounded-full border border-card" />
+                        {(hasJournal || hasNote || hasTask) && !isSelected && (
+                          <div className="absolute top-1 right-1.5 flex gap-0.5">
+                            {hasTask && <span className="w-1.5 h-1.5 bg-success rounded-full border border-card" />}
+                            {hasNote && <span className="w-1.5 h-1.5 bg-accent rounded-full border border-card" />}
+                            {hasJournal && <span className="w-1.5 h-1.5 bg-warning rounded-full border border-card" />}
+                          </div>
                         )}
                       </div>,
                     );
@@ -797,98 +853,164 @@ export default function Dashboard() {
             <div className="flex-1 flex flex-col gap-4 w-full h-full min-h-[300px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 ml-2">
-                  <BookOpen size={18} className="text-text-secondary" />
+                  <Calendar size={18} className="text-text-secondary" />
                   <h3 className="text-[15px] font-semibold text-text-secondary">
-                    Daily Reflection
+                    Day Planner
                   </h3>
                 </div>
                 <button
-                  onClick={() => navigate("/library?tab=journal")}
+                  onClick={() => navigate("/library")}
                   className="text-[10px] font-bold tracking-widest uppercase text-accent bg-accent/10 px-3 py-1 rounded-full hover:bg-accent/20 transition-colors"
                 >
-                  Open Journal
+                  Open Library
                 </button>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-full flex-1 items-start">
-                <div
-                  onClick={() => navigate("/library?tab=journal")}
-                  className="bg-app-container rounded-[2rem] p-6 w-full flex flex-col gap-4 relative overflow-hidden group border border-transparent hover:border-accent/20 transition-all min-h-[180px] cursor-pointer"
-                >
-                  {currentJournalEntry ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">
-                          {currentJournalEntry.mood || "Note"}
-                        </span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">
-                          Mood Locked
-                        </span>
-                      </div>
-                      <p className="text-[13px] font-medium text-text-main line-clamp-4 leading-relaxed opacity-80">
-                        "{currentJournalEntry.note}"
-                      </p>
+                <div className="bg-app-container rounded-[2rem] p-5 w-full flex flex-col gap-4 relative overflow-hidden border border-card-border/50 min-h-[260px]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-accent">Selected Day</p>
+                      <h4 className="text-2xl font-black text-text-main tracking-tight mt-1">{selectedDayLabel}</h4>
+                    </div>
+                    <div className="flex rounded-2xl bg-card border border-card-border p-1">
+                      <button
+                        onClick={() => setDayComposer("task")}
+                        className={cn("h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all", dayComposer === "task" ? "bg-accent text-accent-contrast" : "text-text-secondary hover:text-text-main")}
+                      >
+                        Task
+                      </button>
+                      <button
+                        onClick={() => setDayComposer("note")}
+                        className={cn("h-9 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all", dayComposer === "note" ? "bg-accent text-accent-contrast" : "text-text-secondary hover:text-text-main")}
+                      >
+                        Note
+                      </button>
+                    </div>
+                  </div>
+
+                  {dayComposer === "task" ? (
+                    <div className="space-y-3">
+                      <label className="block space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Task for this day</span>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            value={dayTaskText}
+                            onChange={(event) => setDayTaskText(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") createCalendarTask();
+                            }}
+                            placeholder="e.g. Record launch demo"
+                            className="flex-1 h-12 rounded-2xl bg-card border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent"
+                          />
+                          <button
+                            onClick={createCalendarTask}
+                            disabled={!dayTaskText.trim()}
+                            className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-40 flex items-center justify-center gap-2"
+                          >
+                            <Plus size={14} /> Add
+                          </button>
+                        </div>
+                      </label>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full py-8 text-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-accent/5 flex items-center justify-center text-accent/40">
-                        <Plus size={24} />
-                      </div>
-                      <div>
-                        <p className="text-[13px] font-bold text-text-main">
-                          No reflection for today.
-                        </p>
-                        <p className="text-[11px] text-text-secondary mt-1">
-                          Manifest your thoughts into the system.
-                        </p>
-                      </div>
+                    <div className="space-y-3">
+                      <input
+                        value={dayNoteTitle}
+                        onChange={(event) => setDayNoteTitle(event.target.value)}
+                        placeholder="Note title"
+                        className="w-full h-11 rounded-2xl bg-card border border-card-border px-4 text-sm font-semibold text-text-main outline-none focus:border-accent"
+                      />
+                      <textarea
+                        value={dayNoteText}
+                        onChange={(event) => setDayNoteText(event.target.value)}
+                        placeholder="Write a note for this day..."
+                        className="w-full min-h-24 rounded-2xl bg-card border border-card-border px-4 py-3 text-sm font-medium text-text-main outline-none resize-none focus:border-accent"
+                      />
+                      <button
+                        onClick={createCalendarNote}
+                        disabled={!dayNoteTitle.trim() && !dayNoteText.trim()}
+                        className="w-full h-12 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest disabled:opacity-40 flex items-center justify-center gap-2"
+                      >
+                        <Plus size={14} /> Add Note
+                      </button>
                     </div>
                   )}
 
-                  <div className="mt-auto flex items-center justify-center">
-                    <span className="text-[9px] uppercase font-black tracking-[0.25em] text-accent opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
-                      Enter Reflection Window
-                    </span>
+                  <div className="mt-auto pt-2 border-t border-card-border/60">
+                    <div className="flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-widest text-text-secondary">
+                      <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success" /> Task</span>
+                      <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent" /> Note</span>
+                      <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning" /> Journal</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="w-full bg-app-container rounded-[2rem] p-6 flex flex-col gap-4 relative overflow-hidden h-auto">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-[10px] font-black text-text-main uppercase tracking-[0.2em] opacity-40">
-                      Strategic Context
+                      Day Items
                     </h4>
                     <Target size={14} className="text-accent/40" />
                   </div>
 
-                  <div className="flex flex-col gap-3">
-                    {currentJournalEntry?.visionIds &&
-                    currentJournalEntry.visionIds.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {safeArray<string>(currentJournalEntry.visionIds).map((vid) => {
-                          const vision = visions.find((v) => v.id === vid);
-                          return vision ? (
-                            <span
-                              key={vid}
-                              className="px-3 py-1.5 rounded-xl bg-card border border-accent/10 text-[10px] font-bold text-text-main"
-                            >
-                              {vision.title}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    ) : (
+                  <div className="flex flex-col gap-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                    {selectedDayTasks.length === 0 && selectedDayNotes.length === 0 && !currentJournalEntry ? (
                       <p className="text-[11px] font-medium text-text-secondary leading-relaxed px-1">
-                        Today's journal entries are not yet aligned with
-                        specific vision trajectories.
+                        No tasks or notes planned for this day yet. Add one from the panel beside the calendar.
                       </p>
+                    ) : (
+                      <>
+                        {selectedDayTasks.map((task) => (
+                          <div key={task.id} className="flex items-start gap-3 rounded-2xl bg-card border border-card-border p-3">
+                            <button
+                              onClick={() => toggleTodo(task.id)}
+                              disabled={task.completed}
+                              className={cn("mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center shrink-0", task.completed ? "bg-success border-success text-white" : "border-card-border hover:border-accent")}
+                              aria-label="Complete task"
+                            >
+                              {task.completed && <CheckCircle2 size={13} />}
+                            </button>
+                            <div className="min-w-0">
+                              <p className={cn("text-xs font-bold text-text-main leading-snug", task.completed && "line-through opacity-60")}>{task.text}</p>
+                              <p className="text-[9px] font-black uppercase tracking-widest text-success mt-1">Task</p>
+                            </div>
+                          </div>
+                        ))}
+                        {selectedDayNotes.map((note) => (
+                          <button
+                            key={note.id}
+                            onClick={() => navigate(`/library?tab=notes&note=${note.id}`)}
+                            className="text-left rounded-2xl bg-card border border-card-border p-3 hover:border-accent/30 transition-all"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <FileText size={14} className="text-accent" />
+                              <p className="text-xs font-bold text-text-main truncate">{note.title}</p>
+                            </div>
+                            <p className="text-[11px] text-text-secondary line-clamp-2">{note.content || "No content yet."}</p>
+                          </button>
+                        ))}
+                        {currentJournalEntry && (
+                          <button
+                            onClick={() => navigate("/library?tab=journal")}
+                            className="text-left rounded-2xl bg-card border border-warning/20 p-3 hover:border-warning/40 transition-all"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <BookOpen size={14} className="text-warning" />
+                              <p className="text-xs font-bold text-text-main truncate">Journal entry</p>
+                            </div>
+                            <p className="text-[11px] text-text-secondary line-clamp-2">{currentJournalEntry.note}</p>
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
 
                   <button
-                    onClick={() => navigate("/visions")}
+                    onClick={() => navigate("/library")}
                     className="text-[10px] font-black text-accent uppercase tracking-[0.2em] mt-6 border border-accent/20 rounded-xl py-3 hover:bg-accent/5 transition-all text-center w-full"
                   >
-                    Align Visions
+                    Open Library
                   </button>
                 </div>
               </div>
