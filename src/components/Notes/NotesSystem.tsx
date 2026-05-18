@@ -1311,18 +1311,27 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                  placeholder="Journal Entry Title"
                  className="text-2xl font-black text-text-main placeholder:text-text-secondary/20 bg-transparent border-none focus:outline-none uppercase tracking-tight"
                />
-               <textarea 
-                 value={content}
-                 onChange={(e) => setContent(e.target.value)}
-                 readOnly={isLocked}
-                 placeholder="Write your thoughts for today..."
-                 className={cn("flex-1 w-full text-base font-medium text-text-secondary bg-transparent border-none focus:outline-none resize-none placeholder:text-text-secondary/20", isLocked && "cursor-default opacity-70")}
+               <div
+                 className="relative flex-1 overflow-hidden rounded-b-[1.25rem]"
                  style={{
-                   backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 31px, var(--card-border) 31px, var(--card-border) 32px)',
-                   lineHeight: '32px',
-                   paddingTop: 0
+                   backgroundImage: 'linear-gradient(to bottom, transparent 35px, rgba(120,120,120,0.18) 35px, rgba(120,120,120,0.18) 36px)',
+                   backgroundSize: '100% 36px',
+                   backgroundPosition: '0 2px'
                  }}
-               />
+               >
+                 <div className="pointer-events-none absolute left-8 top-0 h-full w-px bg-accent/10" />
+                 <textarea
+                   value={content}
+                   onChange={(e) => setContent(e.target.value)}
+                   readOnly={isLocked}
+                   placeholder="Write your thoughts for today..."
+                   className={cn(
+                     "h-full w-full resize-none border-none bg-transparent py-[7px] pl-12 pr-4 text-[15px] font-semibold leading-[36px] text-text-secondary outline-none placeholder:text-text-secondary/20",
+                     isLocked && "cursor-default opacity-70"
+                   )}
+                   style={{ lineHeight: '36px' }}
+                 />
+               </div>
             </div>
 
             {/* Metadata & Actions */}
