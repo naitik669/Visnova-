@@ -44,9 +44,9 @@ type ChecklistItem = NonNullable<NonNullable<VisionElement['metadata']>['checkli
 type ResizeCorner = 'se' | 'sw' | 'ne' | 'nw';
 type BoardTool = 'select' | 'pen' | 'eraser';
 
-const CANVAS_SIZE = 5200;
+const CANVAS_SIZE = 9000;
 const CANVAS_CENTER = CANVAS_SIZE / 2;
-const MIN_ZOOM = 0.1;
+const MIN_ZOOM = 0.04;
 const MAX_ZOOM = 2.5;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -315,19 +315,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const setZoom = useCallback((nextScale: number) => {
     setZoomAtPoint(nextScale);
   }, [setZoomAtPoint]);
-
-  const handleWheelCapture = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    if (!event.ctrlKey || isEditingText) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const bounds = canvasViewportRef.current?.getBoundingClientRect();
-    const viewportX = event.clientX - (bounds?.left || 0);
-    const viewportY = event.clientY - (bounds?.top || 0);
-    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
-    const currentScale = transformState?.scale || zoomLevel;
-    const zoomFactor = Math.exp(-event.deltaY * 0.002);
-    setZoomAtPoint(currentScale * zoomFactor, viewportX, viewportY);
-  }, [isEditingText, setZoomAtPoint, zoomLevel]);
 
   const createElement = useCallback((
     type: VisionElement['type'],
@@ -655,7 +642,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       )}
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleCanvasDrop}
-      onWheelCapture={handleWheelCapture}
     >
       <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[165] hidden max-w-[calc(100vw-22rem)] -translate-x-1/2 items-center gap-0.5 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:flex">
         <CanvasQuickButton icon={<Brush size={17} />} label="Pen" onClick={() => setActiveTool(activeTool === 'pen' ? 'select' : 'pen')} active={activeTool === 'pen'} />
@@ -719,14 +705,18 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         maxScale={MAX_ZOOM}
         centerOnInit
         limitToBounds={false}
+        centerZoomedOut={false}
+        smooth
         onTransform={(ref) => {
-          setZoomLevel(current => Math.abs(current - ref.state.scale) > 0.01 ? ref.state.scale : current);
+          setZoomLevel(current => Math.abs(current - ref.state.scale) > 0.005 ? ref.state.scale : current);
           onActiveChange?.(ref.state.scale > 1.05);
         }}
         onPanningStart={() => onActiveChange?.(true)}
         doubleClick={{ disabled: true }}
         panning={{ disabled: canvasInteractionLocked, velocityDisabled: true }}
-        wheel={{ disabled: isEditingText }}
+        wheel={{ disabled: isEditingText, step: 0.08, touchPadDisabled: false }}
+        pinch={{ disabled: isEditingText, step: 8, allowPanning: true }}
+        trackPadPanning={{ disabled: canvasInteractionLocked, velocityDisabled: true }}
       >
         {({ zoomIn, zoomOut, resetTransform, centerView }) => (
           <>
@@ -809,9 +799,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
             <div className="absolute bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-3 z-[170] w-60 rounded-2xl border border-card-border bg-card/95 p-2 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:bottom-[calc(1rem+env(safe-area-inset-bottom))] md:right-5">
               <div className="grid h-14 grid-cols-[44px_1fr_44px] items-center rounded-xl bg-bg-base/50">
-                <ControlButton onClick={() => setZoom(zoomLevel - (zoomLevel <= 0.3 ? 0.03 : 0.1))} icon={<Minus size={22} />} label="Zoom Out" compact />
+                <ControlButton onClick={() => setZoom(zoomLevel - (zoomLevel <= 0.2 ? 0.02 : 0.1))} icon={<Minus size={22} />} label="Zoom Out" compact />
                 <span className="text-center text-lg font-black tabular-nums text-text-main">{Math.round(zoomLevel * 100)}%</span>
-                <ControlButton onClick={() => setZoom(zoomLevel + (zoomLevel < 0.3 ? 0.03 : 0.1))} icon={<Plus size={24} />} label="Zoom In" compact />
+                <ControlButton onClick={() => setZoom(zoomLevel + (zoomLevel < 0.2 ? 0.02 : 0.1))} icon={<Plus size={24} />} label="Zoom In" compact />
               </div>
               <div className="mt-2 flex items-center gap-2 px-1">
                 <span className="w-8 text-[9px] font-black tabular-nums text-text-secondary">{Math.round(MIN_ZOOM * 100)}%</span>
