@@ -379,6 +379,13 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setTransformAroundPoint(boardFocusCenter, nextScale, animationTime);
   }, [boardFocusCenter, minZoom, setTransformAroundPoint]);
 
+  const zoomByWheelDelta = useCallback((deltaY: number, animationTime = 0) => {
+    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
+    const currentScale = transformState?.scale || zoomLevel || 1;
+    const zoomFactor = Math.exp(-deltaY * 0.0018);
+    zoomAroundViewportCenter(currentScale * zoomFactor, animationTime);
+  }, [zoomAroundViewportCenter, zoomLevel]);
+
   useEffect(() => {
     if (zoomLevel < minZoom - 0.001) {
       zoomAroundViewportCenter(minZoom, 0);
@@ -397,11 +404,24 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     if (isEditingText) return;
     event.preventDefault();
     event.stopPropagation();
-    const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
-    const currentScale = transformState?.scale || zoomLevel;
-    const zoomFactor = Math.exp(-event.deltaY * 0.0018);
-    zoomAroundViewportCenter(currentScale * zoomFactor, 0);
-  }, [isEditingText, zoomAroundViewportCenter, zoomLevel]);
+    zoomByWheelDelta(event.deltaY, 0);
+  }, [isEditingText, zoomByWheelDelta]);
+
+  useEffect(() => {
+    const node = canvasViewportRef.current;
+    if (!node) return;
+
+    const handleNativeWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      if (isEditingText) return;
+      event.preventDefault();
+      event.stopPropagation();
+      zoomByWheelDelta(event.deltaY, 0);
+    };
+
+    node.addEventListener('wheel', handleNativeWheel, { capture: true, passive: false });
+    return () => node.removeEventListener('wheel', handleNativeWheel, { capture: true } as AddEventListenerOptions);
+  }, [isEditingText, zoomByWheelDelta]);
 
   const createElement = useCallback((
     type: VisionElement['type'],
