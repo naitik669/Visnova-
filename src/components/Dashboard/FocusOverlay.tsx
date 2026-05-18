@@ -271,24 +271,27 @@ export default function FocusOverlay() {
             </AnimatePresence>
 
             {sessionState === 'active' && (
-              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid min-h-0 flex-1 gap-6 overflow-hidden xl:grid-cols-[minmax(0,1fr)_380px] xl:space-y-0")}>
-                <div className={cn("space-y-5 sm:space-y-6", isExpanded && "flex min-h-0 flex-col justify-start pt-2")}>
+              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid min-h-0 flex-1 gap-5 overflow-hidden xl:grid-cols-[minmax(0,1fr)_360px] xl:space-y-0")}>
+                <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-3 pt-0")}>
                 {/* Social Pulse in Focus */}
                 <div className="flex justify-center">
-                  <div className="inline-flex items-center gap-4 px-4 py-2 rounded-full bg-accent/[0.03] border border-accent/10">
+                  <div className={cn(
+                    "inline-flex items-center gap-4 rounded-full border px-4 py-2",
+                    isExpanded ? "border-accent/20 bg-overlay/35 backdrop-blur-md" : "bg-accent/[0.03] border-accent/10"
+                  )}>
                     <div className="flex -space-x-2">
                        {circle.filter(m => m.isGrinding).slice(0, 3).map(m => (
                          <img key={m.id} src={m.avatar} className="w-6 h-6 rounded-full border-2 border-card" alt={m.name} />
                        ))}
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-accent">
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest", isExpanded ? "text-accent-contrast" : "text-accent")}>
                       {circle.filter(m => m.isGrinding).length} circle members grinding with you
                     </span>
                   </div>
                 </div>
 
                 {/* Header Info */}
-                <div className="space-y-4 text-center">
+                <div className={cn("text-center", isExpanded ? "space-y-2" : "space-y-4")}>
                   <div className={cn(
                     "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest leading-none",
                     isExpanded ? "bg-overlay/40 text-accent-contrast shadow-md backdrop-blur-md" : "bg-accent/10 text-accent"
@@ -304,7 +307,7 @@ export default function FocusOverlay() {
                 </div>
 
                 {/* Preset Selector */}
-                <div className="space-y-4">
+                <div className={cn("space-y-4", isExpanded && "row-start-2")}>
                   <div className="flex items-center justify-between">
                     <span className={cn("text-[10px] font-bold uppercase tracking-wider", isExpanded ? "text-accent-contrast/80" : "text-text-secondary/60")}>Presets</span>
                     <button
@@ -388,7 +391,10 @@ export default function FocusOverlay() {
                 </div>
 
                 {/* Main Timer Area */}
-                <div className="flex flex-col items-center justify-center py-2 sm:py-4">
+                <div className={cn(
+                  "flex flex-col items-center justify-center",
+                  isExpanded ? "row-start-3 min-h-0 -mt-4 pb-4" : "py-2 sm:py-4"
+                )}>
                   <div className="relative group">
                     <motion.div
                       animate={{
@@ -400,7 +406,7 @@ export default function FocusOverlay() {
                         "font-medium tracking-tighter leading-none select-none tabular-nums relative z-10",
                         isExpanded ? "text-accent-contrast drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)]" : "text-text-main"
                       )}
-                      style={{ fontSize: isExpanded ? 'clamp(4rem, 12vw, 9.5rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
+                      style={{ fontSize: isExpanded ? 'clamp(5.5rem, 15vw, 11.5rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
                     >
                       {formatTime(focusSession.timeLeft)}
                     </motion.div>
@@ -411,7 +417,7 @@ export default function FocusOverlay() {
                   </div>
 
                   {/* Controls */}
-                  <div className="flex items-center justify-center gap-4 sm:gap-6 mt-5 sm:mt-7">
+                  <div className={cn("flex items-center justify-center gap-4 sm:gap-6", isExpanded ? "mt-4" : "mt-5 sm:mt-7")}>
                     <button
                       onClick={handleToggleActive}
                       className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-accent/20"
