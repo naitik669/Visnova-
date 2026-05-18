@@ -76,8 +76,9 @@ type Tab = 'board' | 'milestones';
 // Add save status type
 type SaveStatus = 'idle' | 'saving' | 'saved';
 
-function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriority, onUpdateText, onUpdateDescription, onDeleteTask, onUpdateSubTaskText, onDeleteSubTask }: {
+function SortableTaskItem({ task, index, onToggle, onAddSubTask, isLast, onUpdatePriority, onUpdateText, onUpdateDescription, onDeleteTask, onUpdateSubTaskText, onDeleteSubTask }: {
   task: Task,
+  index: number,
   onToggle: (id: string) => void,
   onAddSubTask: (parentId: string, text: string) => void,
   isLast: boolean,
@@ -118,175 +119,174 @@ function SortableTaskItem({ task, onToggle, onAddSubTask, isLast, onUpdatePriori
     if (text) onAddSubTask(task.id, text);
   };
 
-  const priorityColors = {
-    low: "text-text-secondary/40 fill-none",
-    medium: "text-warning fill-warning/20",
-    high: "text-danger fill-danger/20"
-  };
-
   const priorityLabels = {
-    low: "Standard",
-    medium: "Priority",
-    high: "Critical"
+    low: "Later",
+    medium: "Next",
+    high: "Now"
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="space-y-3">
-      <div
-        className={cn(
-          "flex items-center gap-5 p-7 rounded-[2rem] border transition-all cursor-pointer group relative",
-          task.completed
-              ? "bg-bg-base/30 border-transparent text-text-secondary/30"
-              : "bg-card border-card-border hover:shadow-2xl hover:shadow-accent/5 hover:translate-y-[-2px]"
-        )}
-      >
-        <div
-          {...attributes}
-          {...listeners}
-          className="touch-none flex items-center justify-center text-text-secondary/10 group-hover:text-text-secondary/40 transition-colors cursor-grab active:cursor-grabbing p-1.5 -ml-2"
-        >
-          <GripVertical size={18} />
-        </div>
-
-        {/* Priority Indicator Line */}
-        <div className={cn(
-          "absolute left-10 top-4 bottom-4 w-1 rounded-full",
-          task.priority === 'high' ? "bg-danger shadow-[0_0_10px_rgba(239,68,68,0.4)]" :
-          task.priority === 'medium' ? "bg-warning" :
-          "bg-card-border/0"
-        )} />
-
-        <div
+    <div ref={setNodeRef} style={style} className="relative grid grid-cols-[2.25rem_2.25rem_minmax(0,1fr)] gap-4 group">
+      <div className="pt-1 text-right text-sm font-black tabular-nums text-text-secondary/55">{index + 1}</div>
+      <div className="relative flex justify-center">
+        {!isLast && <div className="absolute top-9 bottom-[-1.5rem] w-0.5 rounded-full bg-accent/35" />}
+        <button
           onClick={() => onToggle(task.id)}
           className={cn(
-              "w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all shrink-0",
-              task.completed ? "bg-success border-success" : "border-card-border group-hover:border-accent"
+            "relative z-10 flex h-9 w-9 items-center justify-center rounded-full border-2 bg-card transition-all",
+            task.completed ? "border-success bg-success text-accent-contrast" : "border-accent/35 text-accent hover:border-accent hover:bg-accent/10"
           )}
+          aria-label={task.completed ? 'Mark roadmap step incomplete' : 'Mark roadmap step complete'}
         >
-            {task.completed && <CheckCircle2 size={16} className="text-accent-contrast" />}
-        </div>
-        
-        <div className="flex-1 flex flex-col min-w-0">
-          <input
-            value={draftText}
-            onChange={(event) => setDraftText(event.target.value)}
-            onBlur={() => {
-              const next = draftText.trim();
-              if (next && next !== task.text) onUpdateText(task.id, next);
-              if (!next) setDraftText(task.text);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') event.currentTarget.blur();
-              event.stopPropagation();
-            }}
-            onClick={(event) => event.stopPropagation()}
-            className={cn("w-full bg-transparent outline-none text-lg font-bold tracking-tight transition-all", task.completed && "line-through opacity-40")}
-          />
-          <textarea
-            value={draftDescription}
-            onChange={(event) => setDraftDescription(event.target.value)}
-            onBlur={() => {
-              const next = draftDescription.trim();
-              if (next !== (task.description || '')) onUpdateDescription(task.id, next);
-            }}
-            onKeyDown={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
-            placeholder="Describe this step, success criteria, or proof needed..."
-            rows={2}
-            className={cn("mt-2 w-full resize-none bg-transparent outline-none text-xs font-semibold leading-relaxed text-text-secondary/70 placeholder:text-text-secondary/30", task.completed && "opacity-40")}
-          />
-          <div className="flex items-center gap-4 mt-1.5">
-            <button
-               onClick={(e) => {
-                 e.stopPropagation();
-                 const next: Record<string, 'low' | 'medium' | 'high'> = { low: 'medium', medium: 'high', high: 'low' };
-                 onUpdatePriority(task.id, next[task.priority || 'low'] as any);
-               }}
-               className={cn("flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105", priorityColors[task.priority || 'low'])}
-            >
-               <Target size={12} className={cn("transition-transform", (task.priority === 'high' || task.priority === 'medium') && "animate-pulse")} />
-               {priorityLabels[task.priority || 'low']}
-            </button>
-            {task.subTasks && task.subTasks.length > 0 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(!isExpanded);
-                }}
-                className="flex items-center gap-1.5 text-text-secondary/30 hover:text-accent transition-colors text-[9px] font-black uppercase tracking-widest"
-              >
-                {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-                {task.subTasks.filter(st => st.completed).length}/{task.subTasks.length} Layers
-              </button>
-            )}
-          </div>
-        </div>
-
-        <button
-          onClick={handleAddSubTask}
-          className="w-12 h-12 rounded-2xl bg-accent/5 text-accent opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-accent hover:text-accent-contrast hover:rotate-90"
-          aria-label="Add checklist item"
-        >
-          <Plus size={20} />
-        </button>
-        <button
-          onClick={(event) => {
-            event.stopPropagation();
-            onDeleteTask(task.id);
-          }}
-          className="w-12 h-12 rounded-2xl bg-danger/5 text-danger opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-danger hover:text-white"
-          aria-label="Delete roadmap item"
-        >
-          <Trash2 size={18} />
+          {task.completed ? <CheckCircle2 size={18} /> : <span className="h-2.5 w-2.5 rounded-full bg-accent" />}
         </button>
       </div>
 
-      {/* Sub-tasks */}
-      <AnimatePresence>
-        {isExpanded && task.subTasks && task.subTasks.length > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="pl-12 space-y-2 overflow-hidden"
-          >
-            {task.subTasks.map((subTask, sIdx) => (
-              <div
-                key={subTask.id || sIdx}
+      <div
+        className={cn(
+          "min-w-0 rounded-[1.5rem] border bg-card/95 p-4 shadow-sm transition-all",
+          task.completed
+            ? "border-card-border/50 opacity-65"
+            : "border-card-border hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5"
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const next: Record<string, 'low' | 'medium' | 'high'> = { low: 'medium', medium: 'high', high: 'low' };
+                  onUpdatePriority(task.id, next[task.priority || 'low'] as any);
+                }}
                 className={cn(
-                  "flex items-center gap-4 p-4 rounded-xl border border-card-border/50 bg-card/30 hover:bg-card/50 transition-all group",
-                  subTask.completed && "opacity-50"
+                  "rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest transition-all",
+                  task.priority === 'high' ? "border-danger/25 bg-danger/10 text-danger" :
+                  task.priority === 'medium' ? "border-warning/25 bg-warning/10 text-warning" :
+                  "border-card-border bg-app-container text-text-secondary"
                 )}
               >
+                {priorityLabels[task.priority || 'low']}
+              </button>
+              {task.subTasks && task.subTasks.length > 0 && (
                 <button
-                  onClick={() => onToggle(subTask.id)}
-                  className={cn(
-                  "w-4 h-4 rounded border flex items-center justify-center transition-all",
-                  subTask.completed ? "bg-success border-success" : "border-card-border group-hover:border-accent"
-                )}>
-                  {subTask.completed && <CheckCircle2 size={10} className="text-accent-contrast" />}
-                </button>
-                <input
-                  value={subTask.text}
-                  onChange={(event) => onUpdateSubTaskText(task.id, subTask.id, event.target.value)}
-                  onKeyDown={(event) => event.stopPropagation()}
-                  className={cn("min-w-0 flex-1 bg-transparent outline-none text-xs font-medium tracking-tight", subTask.completed && "line-through")}
-                />
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDeleteSubTask(task.id, subTask.id);
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
                   }}
-                  className="w-8 h-8 rounded-lg text-text-secondary/40 hover:text-danger hover:bg-danger/10 flex items-center justify-center"
-                  aria-label="Delete checklist item"
+                  className="flex items-center gap-1 rounded-full border border-card-border bg-app-container px-3 py-1 text-[9px] font-black uppercase tracking-widest text-text-secondary hover:text-accent"
                 >
-                  <X size={13} />
+                  {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                  {task.subTasks.filter(st => st.completed).length}/{task.subTasks.length}
                 </button>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              )}
+            </div>
+            <input
+              value={draftText}
+              onChange={(event) => setDraftText(event.target.value)}
+              onBlur={() => {
+                const next = draftText.trim();
+                if (next && next !== task.text) onUpdateText(task.id, next);
+                if (!next) setDraftText(task.text);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur();
+                event.stopPropagation();
+              }}
+              onClick={(event) => event.stopPropagation()}
+              className={cn("w-full bg-transparent text-xl font-black tracking-tight text-text-main outline-none placeholder:text-text-secondary/30", task.completed && "line-through opacity-60")}
+            />
+            <textarea
+              value={draftDescription}
+              onChange={(event) => setDraftDescription(event.target.value)}
+              onBlur={() => {
+                const next = draftDescription.trim();
+                if (next !== (task.description || '')) onUpdateDescription(task.id, next);
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
+              placeholder="Describe this step, proof needed, or next move..."
+              rows={2}
+              className={cn("mt-2 w-full resize-none bg-transparent text-sm font-semibold leading-relaxed text-text-secondary outline-none placeholder:text-text-secondary/35", task.completed && "opacity-60")}
+            />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              {...attributes}
+              {...listeners}
+              className="touch-none grid h-9 w-9 place-items-center rounded-xl text-text-secondary/35 hover:bg-app-container hover:text-accent cursor-grab active:cursor-grabbing"
+              aria-label="Reorder roadmap step"
+            >
+              <GripVertical size={16} />
+            </button>
+            <button
+              onClick={handleAddSubTask}
+              className="grid h-9 w-9 place-items-center rounded-xl text-accent hover:bg-accent hover:text-accent-contrast"
+              aria-label="Add checklist item"
+            >
+              <Plus size={17} />
+            </button>
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onDeleteTask(task.id);
+              }}
+              className="grid h-9 w-9 place-items-center rounded-xl text-danger hover:bg-danger hover:text-white"
+              aria-label="Delete roadmap item"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {isExpanded && task.subTasks && task.subTasks.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mt-3 space-y-2 overflow-hidden border-t border-card-border pt-3"
+            >
+              {task.subTasks.map((subTask, sIdx) => (
+                <div
+                  key={subTask.id || sIdx}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border border-card-border/60 bg-app-container px-3 py-2",
+                    subTask.completed && "opacity-55"
+                  )}
+                >
+                  <button
+                    onClick={() => onToggle(subTask.id)}
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-full border transition-all",
+                      subTask.completed ? "bg-success border-success" : "border-card-border hover:border-accent"
+                    )}
+                  >
+                    {subTask.completed && <CheckCircle2 size={11} className="text-accent-contrast" />}
+                  </button>
+                  <input
+                    value={subTask.text}
+                    onChange={(event) => onUpdateSubTaskText(task.id, subTask.id, event.target.value)}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    className={cn("min-w-0 flex-1 bg-transparent text-xs font-bold text-text-secondary outline-none", subTask.completed && "line-through")}
+                  />
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDeleteSubTask(task.id, subTask.id);
+                    }}
+                    className="grid h-7 w-7 place-items-center rounded-lg text-text-secondary/40 hover:bg-danger/10 hover:text-danger"
+                    aria-label="Delete checklist item"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -904,201 +904,156 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-5 sm:p-8 lg:p-10 custom-scrollbar">
-       <div className="mx-auto max-w-[1500px] space-y-8">
-          <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6">
-             <aside className="space-y-5">
-                <div className="rounded-[2rem] border border-card-border bg-card p-5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-accent">Execution Blueprint</span>
-                  <h2 className="mt-2 text-2xl font-black text-text-main tracking-tight">{vision.title}</h2>
-                  <p className="mt-3 text-sm font-semibold leading-relaxed text-text-secondary/75">{vision.description || 'Build this vision one clear step at a time.'}</p>
-                </div>
-
-                <form onSubmit={handleAddTask} className="rounded-[2rem] border border-card-border bg-card p-4 space-y-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-accent">Add step</p>
-                    <h3 className="text-base font-black text-text-main">Roadmap builder</h3>
-                  </div>
-                  <input
-                    value={taskText}
-                    onChange={(event) => setTaskText(event.target.value)}
-                    placeholder="Step title..."
-                    className="w-full h-12 rounded-2xl bg-app-container border border-card-border px-4 text-sm font-bold text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
-                  />
-                  <textarea
-                    value={taskDescription}
-                    onChange={(event) => setTaskDescription(event.target.value)}
-                    placeholder="Describe the step, success criteria, or proof needed..."
-                    rows={4}
-                    className="w-full resize-none rounded-2xl bg-app-container border border-card-border px-4 py-3 text-sm font-semibold text-text-secondary placeholder:text-text-secondary/30 focus:outline-none focus:border-accent"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isAddingTask || !taskText.trim()}
-                    className="h-12 w-full justify-center rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <Plus size={16} /> Add roadmap step
-                  </button>
-                </form>
-
-                <div className="rounded-[2rem] border border-card-border bg-card p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/45">Progress</p>
-                      <p className="text-sm font-black text-text-main">{vision.tasks.filter(task => task.completed).length}/{vision.tasks.length} complete</p>
-                    </div>
-                    <div className="h-12 w-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
-                      <Target size={18} />
-                    </div>
-                  </div>
-                  <div className="mt-4 h-2 rounded-full bg-surface-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${vision.progress || 0}%` }} />
-                  </div>
-                </div>
-             </aside>
-
-             <section className="rounded-[2rem] border border-card-border bg-card p-5 sm:p-6 space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-accent">Roadmap</p>
-                    <h3 className="text-2xl font-black text-text-main tracking-tight">Editable execution roadmap</h3>
-                    <p className="mt-1 text-xs font-semibold text-text-secondary/65">Click a card to move it from Now to Next to Later. Edit full details in Action Steps below.</p>
-                  </div>
-                  <p className="rounded-full border border-card-border bg-app-container px-4 py-2 text-xs font-bold text-text-secondary">{vision.tasks.length} steps</p>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {([
-                    { key: 'high', label: 'Now', helper: 'Critical next moves', step: '01' },
-                    { key: 'medium', label: 'Next', helper: 'Priority work', step: '02' },
-                    { key: 'low', label: 'Later', helper: 'Standard tasks', step: '03' }
-                  ] as const).map(column => {
-                    const items = vision.tasks.filter(task => (task.priority || 'low') === column.key);
-                    return (
-                      <div key={column.key} className="rounded-2xl bg-app-container border border-card-border p-4 min-h-[360px]">
-                        <div className="mb-4 flex items-start gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-[10px] font-black text-accent">{column.step}</div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-black text-text-main">{column.label}</p>
-                            <p className="text-[10px] font-bold text-text-secondary">{column.helper}</p>
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          {items.length > 0 ? items.map(task => (
-                            <button
-                              key={task.id}
-                              onClick={() => handleUpdatePriority(task.id, column.key === 'high' ? 'medium' : column.key === 'medium' ? 'low' : 'high')}
-                              className={cn('w-full text-left rounded-xl border border-card-border bg-card px-3 py-3 text-xs font-bold text-text-secondary hover:border-accent/40 hover:-translate-y-0.5 transition-all', task.completed && 'opacity-50')}
-                              title="Click to move to the next roadmap stage"
-                            >
-                              <span className={cn("block text-text-main", task.completed && "line-through")}>{task.text}</span>
-                              <span className="mt-1 block line-clamp-3 text-[10px] font-semibold leading-relaxed text-text-secondary/65">
-                                {task.description || 'No description yet.'}
-                              </span>
-                            </button>
-                          )) : (
-                            <p className="rounded-xl border border-dashed border-card-border p-4 text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Add a step or move one here</p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-             </section>
+    <div className="flex-1 overflow-hidden bg-bg-base/40">
+      <div className="mx-auto flex h-full max-w-[1180px] flex-col gap-4 p-4 sm:p-6 lg:p-8">
+        <div className="rounded-[2rem] border border-card-border bg-card/95 p-4 shadow-xl shadow-accent/5 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Execution Blueprint</p>
+              <h2 className="mt-1 truncate text-2xl font-black tracking-tight text-text-main sm:text-3xl">
+                The roadmap to {vision.title}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-text-secondary/75">
+                {vision.description || 'Turn this Vision into a clear sequence of proof-backed steps.'}
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:min-w-[320px]">
+              <div className="rounded-2xl border border-card-border bg-app-container p-3">
+                <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/55">Steps</p>
+                <p className="mt-1 text-xl font-black text-text-main">{vision.tasks.length}</p>
+              </div>
+              <div className="rounded-2xl border border-card-border bg-app-container p-3">
+                <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/55">Done</p>
+                <p className="mt-1 text-xl font-black text-success">{vision.tasks.filter(task => task.completed).length}</p>
+              </div>
+              <div className="rounded-2xl border border-card-border bg-app-container p-3">
+                <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/55">Progress</p>
+                <p className="mt-1 text-xl font-black text-accent">{vision.progress || 0}%</p>
+              </div>
+            </div>
           </div>
+          <div className="mt-4 h-2 rounded-full bg-surface-muted overflow-hidden">
+            <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${vision.progress || 0}%` }} />
+          </div>
+        </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
-             <section className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Action Steps</h3>
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <section className="flex min-h-0 flex-col rounded-[2rem] border border-card-border bg-card/95 shadow-xl shadow-accent/5">
+            <div className="flex flex-col gap-3 border-b border-card-border p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-text-secondary/50">Roadmap</p>
+                  <h3 className="text-lg font-black text-text-main">Action sequence</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    const input = document.getElementById('blueprint-task-title');
+                    input?.focus();
+                  }}
+                  className="flex h-10 items-center gap-2 rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/20"
                 >
-                  <SortableContext
-                    items={vision.tasks.map(t => t.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-4">
-                      {vision.tasks.length === 0 && (
-                        <div className="p-8 rounded-[2rem] border border-dashed border-card-border text-center text-xs font-black uppercase tracking-widest text-text-secondary/40">
-                          No roadmap steps yet. Add the first step from the builder.
+                  <Plus size={15} /> Add task
+                </button>
+              </div>
+              <form onSubmit={handleAddTask} className="grid gap-2 rounded-2xl border border-card-border bg-app-container p-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_auto]">
+                <input
+                  id="blueprint-task-title"
+                  value={taskText}
+                  onChange={(event) => setTaskText(event.target.value)}
+                  placeholder="Add a task..."
+                  className="h-11 min-w-0 rounded-xl border border-card-border bg-card px-3 text-sm font-bold text-text-main outline-none placeholder:text-text-secondary/35 focus:border-accent"
+                />
+                <input
+                  value={taskDescription}
+                  onChange={(event) => setTaskDescription(event.target.value)}
+                  placeholder="Description or proof needed..."
+                  className="h-11 min-w-0 rounded-xl border border-card-border bg-card px-3 text-sm font-semibold text-text-secondary outline-none placeholder:text-text-secondary/35 focus:border-accent"
+                />
+                <button
+                  type="submit"
+                  disabled={isAddingTask || !taskText.trim()}
+                  className="h-11 rounded-xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </form>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar sm:p-5">
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={vision.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-6 pb-8">
+                    {vision.tasks.length === 0 && (
+                      <div className="rounded-[2rem] border border-dashed border-card-border p-10 text-center">
+                        <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-accent/10 text-accent">
+                          <Target size={20} />
                         </div>
-                      )}
-                      {vision.tasks.map((t, idx) => (
-                        <SortableTaskItem
-                          key={t.id || idx}
-                          task={t}
-                          onToggle={handleToggleTask}
-                          onAddSubTask={handleAddSubTask}
-                          isLast={idx === vision.tasks.length - 1}
-                          onUpdatePriority={handleUpdatePriority}
-                          onUpdateText={handleUpdateTaskText}
-                          onUpdateDescription={handleUpdateTaskDescription}
-                          onDeleteTask={handleDeleteTask}
-                          onUpdateSubTaskText={handleUpdateSubTaskText}
-                          onDeleteSubTask={handleDeleteSubTask}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-             </section>
+                        <p className="mt-4 text-sm font-black uppercase tracking-widest text-text-main">No roadmap steps yet</p>
+                        <p className="mt-2 text-sm font-semibold text-text-secondary">Add the first task and VisNova will turn it into a clear execution path.</p>
+                      </div>
+                    )}
+                    {vision.tasks.map((t, idx) => (
+                      <SortableTaskItem
+                        key={t.id || idx}
+                        task={t}
+                        index={idx}
+                        onToggle={handleToggleTask}
+                        onAddSubTask={handleAddSubTask}
+                        isLast={idx === vision.tasks.length - 1}
+                        onUpdatePriority={handleUpdatePriority}
+                        onUpdateText={handleUpdateTaskText}
+                        onUpdateDescription={handleUpdateTaskDescription}
+                        onDeleteTask={handleDeleteTask}
+                        onUpdateSubTaskText={handleUpdateSubTaskText}
+                        onDeleteSubTask={handleDeleteSubTask}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          </section>
 
-             <aside className="space-y-5">
-                <div className="rounded-[2rem] border border-card-border bg-card p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
-                      <Wallet size={20} />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-base font-black text-text-main">Wallet</h3>
-                      <p className="text-xs font-semibold text-text-secondary mt-1">
-                        {linkedMoneyGoals.length > 0
-                          ? `${formatMoney(visionMoneySaved)} saved of ${formatMoney(visionMoneyTarget)} target`
-                          : 'Track funds for this Vision.'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-5 h-2 rounded-full bg-surface-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${visionMoneyProgress}%` }} />
-                  </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-2xl bg-app-container border border-card-border p-3">
-                      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Goals</p>
-                      <p className="text-sm font-black text-text-main mt-1">{linkedMoneyGoals.length}</p>
-                    </div>
-                    <div className="rounded-2xl bg-app-container border border-card-border p-3">
-                      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Saved</p>
-                      <p className="text-sm font-black text-success mt-1">{formatMoney(visionMoneySaved)}</p>
-                    </div>
-                    <div className="rounded-2xl bg-app-container border border-card-border p-3">
-                      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Spend</p>
-                      <p className="text-sm font-black text-danger mt-1">{formatMoney(visionMoneyExpenses)}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => navigate('/wallet')}
-                    className="mt-4 h-10 w-full rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest"
-                  >
-                    Open Wallet
-                  </button>
+          <aside className="grid gap-4 xl:block xl:space-y-4 xl:overflow-y-auto xl:pr-1 custom-scrollbar">
+            <div className="rounded-[2rem] border border-card-border bg-card/95 p-5">
+              <div className="flex items-start gap-4">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/10 text-accent">
+                  <Wallet size={20} />
                 </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-black text-text-main">Resource pulse</h3>
+                  <p className="mt-1 text-xs font-semibold text-text-secondary">
+                    {linkedMoneyGoals.length > 0 ? `${formatMoney(visionMoneySaved)} saved of ${formatMoney(visionMoneyTarget)}` : 'Connect funds to this Vision.'}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 h-2 overflow-hidden rounded-full bg-surface-muted">
+                <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${visionMoneyProgress}%` }} />
+              </div>
+              <button
+                onClick={() => navigate('/wallet')}
+                className="mt-4 h-10 w-full rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+              >
+                Open Wallet
+              </button>
+            </div>
 
-                <div className="space-y-3">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">Knowledge Base</h3>
-                  {notes.filter(n => n.linkedVisionId === vision.id).length === 0 ? (
-                    <div className="rounded-[2rem] border border-dashed border-card-border p-6 text-xs font-bold text-text-secondary/45">No linked notes yet.</div>
-                  ) : notes.filter(n => n.linkedVisionId === vision.id).map(n => (
-                    <div key={n.id} className="p-5 bg-card border border-card-border rounded-[2rem] hover:border-accent/30 transition-all cursor-pointer">
-                      <h4 className="font-bold text-text-main mb-2 tracking-tight">{n.title}</h4>
-                      <p className="text-xs text-text-secondary line-clamp-2">{n.content}</p>
-                    </div>
-                  ))}
-                </div>
-             </aside>
-          </div>
-       </div>
+            <div className="rounded-[2rem] border border-card-border bg-card/95 p-5">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.28em] text-text-secondary/50">Linked Notes</h3>
+              <div className="mt-4 space-y-3">
+                {notes.filter(n => n.linkedVisionId === vision.id).length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-card-border p-5 text-xs font-bold text-text-secondary/50">No linked notes yet.</div>
+                ) : notes.filter(n => n.linkedVisionId === vision.id).slice(0, 5).map(n => (
+                  <div key={n.id} className="rounded-2xl border border-card-border bg-app-container p-4">
+                    <h4 className="line-clamp-1 text-sm font-black text-text-main">{n.title}</h4>
+                    <p className="mt-1 line-clamp-2 text-xs font-semibold text-text-secondary">{n.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
     </div>
   );
 }
