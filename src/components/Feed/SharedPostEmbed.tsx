@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { ArrowUpRight, BookOpen, ChevronLeft, ChevronRight, FileText, Link as LinkIcon, StickyNote } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { safeArray, safeString } from '../../lib/safeData';
@@ -6,16 +7,116 @@ import { safeFormat } from '../../lib/dateUtils';
 import { Post, VisionElement } from '../../types';
 
 const PAGE_SIZE = 760;
+const PAGE_BREAK_PATTERN = /\n?\s*---\s*Page\s*---\s*\n?/gi;
 
 const chunkPages = (value: string) => {
   const text = safeString(value).trim();
   if (!text) return ['No content was added to this page.'];
   const pages: string[] = [];
-  for (let index = 0; index < text.length; index += PAGE_SIZE) {
-    pages.push(text.slice(index, index + PAGE_SIZE).trim());
-  }
+  const manualPages = text
+    .split(PAGE_BREAK_PATTERN)
+    .map(page => page.trim())
+    .filter(Boolean);
+  const sourcePages = manualPages.length > 1 ? manualPages : [text.replace(PAGE_BREAK_PATTERN, '').trim()];
+  sourcePages.forEach(sourcePage => {
+    for (let index = 0; index < sourcePage.length; index += PAGE_SIZE) {
+      pages.push(sourcePage.slice(index, index + PAGE_SIZE).trim());
+    }
+  });
   return pages.length ? pages : ['No content was added to this page.'];
 };
+
+const pageLines = (value: string) => {
+  const lines = safeString(value)
+    .split(/\r?\n/)
+    .map(line => line.trimEnd());
+  return lines.length ? lines : [''];
+};
+
+function JournalPageBody({ content, direction, page }: { content: string; direction: number; page: number }) {
+  return (
+    <div
+      className="relative min-h-72 overflow-hidden p-5 sm:p-6"
+      style={{
+        perspective: '1200px',
+        backgroundImage: 'linear-gradient(to bottom, transparent 0, transparent 31px, rgba(120,120,120,0.16) 31px, rgba(120,120,120,0.16) 32px)',
+        backgroundSize: '100% 32px',
+        backgroundPosition: '0 24px'
+      }}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={`${page}-${content}`}
+          initial={{ opacity: 0, x: direction >= 0 ? 28 : -28, rotateY: direction >= 0 ? -10 : 10 }}
+          animate={{ opacity: 1, x: 0, rotateY: 0 }}
+          exit={{ opacity: 0, x: direction >= 0 ? -28 : 28, rotateY: direction >= 0 ? 10 : -10 }}
+          transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+          className="min-h-60 origin-center rounded-xl"
+          style={{ transformStyle: 'preserve-3d' }}
+        >
+          <div className="space-y-0 pt-0.5">
+            {pageLines(content).map((line, index) => (
+              <p
+                key={`${index}-${line}`}
+                className="min-h-8 whitespace-pre-wrap break-words text-sm font-semibold leading-8 text-text-secondary"
+              >
+                {line || '\u00A0'}
+              </p>
+            ))}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function PageArrow({ direction, disabled, onClick }: { direction: 'previous' | 'next'; disabled: boolean; onClick: () => void }) {
+  const Icon = direction === 'previous' ? ChevronLeft : ChevronRight;
+  return (
+    <button
+      type="button"
+      aria-label={direction === 'previous' ? 'Previous journal page' : 'Next journal page'}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'grid h-10 w-10 place-items-center rounded-full border border-card-border bg-card/95 text-text-main shadow-sm transition-all hover:border-accent/40 hover:text-accent disabled:pointer-events-none disabled:opacity-25'
+      )}
+    >
+      <Icon size={18} />
+    </button>
+  );
+}
+
+function JournalPageControls({ page, pages, onPrevious, onNext }: { page: number; pages: number; onPrevious: () => void; onNext: () => void }) {
+  if (pages <= 1) return null;
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 border-t border-card-border/60 pt-4">
+      <PageArrow direction="previous" disabled={page === 0} onClick={onPrevious} />
+      <span className="rounded-full border border-card-border bg-card px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary/50">
+        Page {page + 1} / {pages}
+      </span>
+      <PageArrow direction="next" disabled={page === pages - 1} onClick={onNext} />
+    </div>
+  );
+}
+
+function useJournalPages(content: unknown) {
+  const [page, setPage] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const pages = useMemo(() => chunkPages(safeString(content)), [content]);
+
+  useEffect(() => {
+    setPage(0);
+    setDirection(1);
+  }, [content]);
+
+  const goToPage = (nextPage: number) => {
+    setDirection(nextPage > page ? 1 : -1);
+    setPage(Math.max(0, Math.min(pages.length - 1, nextPage)));
+  };
+
+  return { page, pages, direction, goToPage };
+}
 
 const boardElementPreview = (element: VisionElement, index: number) => {
   const type = safeString(element.type, 'text');
@@ -56,9 +157,8 @@ const boardElementPreview = (element: VisionElement, index: number) => {
 
 export function SharedPostEmbed({ post }: { post: Post }) {
   const embed = post.metadata?.shared_embed;
-  const [page, setPage] = useState(0);
+  const { page, pages, direction, goToPage } = useJournalPages(embed?.content);
 
-  const pages = useMemo(() => chunkPages(embed?.content), [embed?.content]);
   if (!embed?.kind) return null;
 
   if (embed.kind === 'journal') {
@@ -86,33 +186,14 @@ export function SharedPostEmbed({ post }: { post: Post }) {
                 <div className="rounded-xl border border-card-border bg-card px-3 py-2">Pages: {pages.length}</div>
               </div>
             </div>
-            <div
-              className="min-h-64 p-5"
-              style={{
-                backgroundImage: 'linear-gradient(transparent, transparent 31px, rgba(120,120,120,0.13) 31px)',
-                backgroundSize: '100% 32px'
-              }}
-            >
-              <p className="whitespace-pre-wrap text-sm font-semibold leading-8 text-text-secondary">{pages[page]}</p>
-              {pages.length > 1 && (
-                <div className="mt-5 flex items-center justify-between border-t border-card-border/60 pt-4">
-                  <button
-                    onClick={() => setPage(value => Math.max(0, value - 1))}
-                    disabled={page === 0}
-                    className="flex h-10 items-center gap-2 rounded-xl border border-card-border bg-card px-3 text-[9px] font-black uppercase tracking-widest text-text-secondary disabled:opacity-35"
-                  >
-                    <ChevronLeft size={14} /> Previous
-                  </button>
-                  <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">{page + 1} / {pages.length}</span>
-                  <button
-                    onClick={() => setPage(value => Math.min(pages.length - 1, value + 1))}
-                    disabled={page === pages.length - 1}
-                    className="flex h-10 items-center gap-2 rounded-xl border border-card-border bg-card px-3 text-[9px] font-black uppercase tracking-widest text-text-secondary disabled:opacity-35"
-                  >
-                    Next <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
+            <div className="min-h-64">
+              <JournalPageBody content={pages[page]} direction={direction} page={page} />
+              <JournalPageControls
+                page={page}
+                pages={pages.length}
+                onPrevious={() => goToPage(page - 1)}
+                onNext={() => goToPage(page + 1)}
+              />
             </div>
           </div>
         </div>
