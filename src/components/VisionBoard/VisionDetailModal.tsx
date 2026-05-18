@@ -588,7 +588,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
             </motion.div>
 
             {/* Main Canvas Area */}
-            <div className="flex-1 relative overflow-hidden bg-bg-base/30">
+            <div className="flex-1 relative min-h-0 overflow-hidden bg-bg-base/30">
                {activeTab === 'board' ? (
                  <CreativeCanvas 
                    vision={vision} 
@@ -904,8 +904,8 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
   };
 
   return (
-    <div className="flex-1 overflow-hidden bg-bg-base/40">
-      <div className="mx-auto flex h-full max-w-[1180px] flex-col gap-4 p-4 sm:p-6 lg:p-8">
+    <div className="h-full min-h-0 overflow-y-auto bg-bg-base/40 custom-scrollbar">
+      <div className="mx-auto flex min-h-full max-w-[1180px] flex-col gap-4 p-4 sm:p-6 lg:h-full lg:min-h-0 lg:p-8">
         <div className="rounded-[2rem] border border-card-border bg-card/95 p-4 shadow-xl shadow-accent/5 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
@@ -979,7 +979,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
               </form>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar sm:p-5">
+            <div className="max-h-[62vh] min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar sm:p-5 lg:max-h-none">
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={vision.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-6 pb-8">
