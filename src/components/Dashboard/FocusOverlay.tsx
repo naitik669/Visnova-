@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, RotateCcw, Brain, Save, Target, Plus, Trash2, Check, Maximize2, Minimize2, Image as ImageIcon, Music2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Brain, Save, Target, Plus, Trash2, Check, Maximize2, Minimize2, Image as ImageIcon, Music2, X } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useState, useEffect } from 'react';
 import { cn } from '../../lib/utils';
@@ -156,10 +156,11 @@ export default function FocusOverlay() {
       open
       onClose={handleClose}
       size={isExpanded ? 'fullscreen' : 'xl'}
-      className={isExpanded ? 'sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)]' : undefined}
-      title={sessionState === 'reflection' ? 'Focus Reflection' : focusSession.label || 'Focus Timer'}
-      subtitle={sessionState === 'reflection' ? 'Log what you finished before ending the sprint.' : primaryTask ? primaryTask.text : 'Choose a preset and run a focused sprint.'}
-      contentClassName="relative bg-card"
+      className={isExpanded ? 'sm:h-[100dvh] sm:max-h-[100dvh] sm:w-screen sm:rounded-none sm:border-0' : undefined}
+      overlayClassName={isExpanded ? 'sm:p-0 bg-overlay/95 backdrop-blur-none' : undefined}
+      title={isExpanded ? undefined : sessionState === 'reflection' ? 'Focus Reflection' : focusSession.label || 'Focus Timer'}
+      subtitle={isExpanded ? undefined : sessionState === 'reflection' ? 'Log what you finished before ending the sprint.' : primaryTask ? primaryTask.text : 'Choose a preset and run a focused sprint.'}
+      contentClassName={cn("relative bg-card", isExpanded && "!overflow-hidden")}
       zIndexClassName="z-[210]"
     >
           {focusBackground.url && (
@@ -169,15 +170,18 @@ export default function FocusOverlay() {
             />
           )}
           {focusBackground.url && (
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-app-container/40 via-accent/15 to-card/45 backdrop-blur-[0.5px]" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-overlay/70 via-accent/25 to-overlay/65" />
           )}
 
           <div className={cn(
             "relative p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6",
-            isExpanded && "mx-auto flex min-h-full w-full max-w-7xl flex-col"
+            isExpanded && "mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden"
           )}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-card-border bg-app-container/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary">
+              <div className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-widest",
+                isExpanded ? "border-accent/25 bg-overlay/35 text-accent-contrast shadow-lg backdrop-blur-md" : "border-card-border bg-app-container/80 text-text-secondary"
+              )}>
                 <ImageIcon size={12} className="text-accent" />
                 {focusBackground.label} focus room
               </div>
@@ -187,7 +191,11 @@ export default function FocusOverlay() {
                   onClick={() => setShowPersonalize(value => !value)}
                   className={cn(
                     "h-10 rounded-xl border px-3 text-[9px] font-black uppercase tracking-widest transition-all",
-                    showPersonalize ? "border-accent bg-accent text-accent-contrast" : "border-card-border bg-app-container/80 text-text-secondary hover:text-text-main"
+                    showPersonalize
+                      ? "border-accent bg-accent text-accent-contrast"
+                      : isExpanded
+                        ? "border-accent/25 bg-overlay/35 text-accent-contrast backdrop-blur-md hover:bg-accent"
+                        : "border-card-border bg-app-container/80 text-text-secondary hover:text-text-main"
                   )}
                 >
                   Personalize
@@ -196,10 +204,23 @@ export default function FocusOverlay() {
                   type="button"
                   onClick={() => setIsExpanded(value => !value)}
                   aria-label={isExpanded ? 'Exit expanded Deep Sprint' : 'Expand Deep Sprint'}
-                  className="grid h-10 w-10 place-items-center rounded-xl border border-card-border bg-app-container/80 text-text-secondary transition-all hover:text-text-main"
+                  className={cn(
+                    "grid h-10 w-10 place-items-center rounded-xl border transition-all",
+                    isExpanded ? "border-accent/25 bg-overlay/35 text-accent-contrast backdrop-blur-md hover:bg-accent" : "border-card-border bg-app-container/80 text-text-secondary hover:text-text-main"
+                  )}
                 >
                   {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
+                {isExpanded && (
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    aria-label="Exit Deep Sprint"
+                    className="grid h-10 w-10 place-items-center rounded-xl border border-accent/25 bg-overlay/35 text-accent-contrast backdrop-blur-md transition-all hover:bg-accent"
+                  >
+                    <X size={17} />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -250,8 +271,8 @@ export default function FocusOverlay() {
             </AnimatePresence>
 
             {sessionState === 'active' && (
-              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid flex-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:space-y-0")}>
-                <div className={cn("space-y-5 sm:space-y-6", isExpanded && "flex min-h-[560px] flex-col justify-center")}>
+              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid min-h-0 flex-1 gap-6 overflow-hidden xl:grid-cols-[minmax(0,1fr)_380px] xl:space-y-0")}>
+                <div className={cn("space-y-5 sm:space-y-6", isExpanded && "flex min-h-0 flex-col justify-start pt-2")}>
                 {/* Social Pulse in Focus */}
                 <div className="flex justify-center">
                   <div className="inline-flex items-center gap-4 px-4 py-2 rounded-full bg-accent/[0.03] border border-accent/10">
@@ -268,10 +289,16 @@ export default function FocusOverlay() {
 
                 {/* Header Info */}
                 <div className="space-y-4 text-center">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[9px] font-bold uppercase tracking-widest leading-none">
+                  <div className={cn(
+                    "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest leading-none",
+                    isExpanded ? "bg-overlay/40 text-accent-contrast shadow-md backdrop-blur-md" : "bg-accent/10 text-accent"
+                  )}>
                     <Target size={12} /> execution in progress
                   </div>
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight text-text-main line-clamp-2">
+                  <h1 className={cn(
+                    "text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight line-clamp-2",
+                    isExpanded ? "text-accent-contrast drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]" : "text-text-main"
+                  )}>
                     "{primaryTask ? primaryTask.text : 'Calibrating Focus State...'}"
                   </h1>
                 </div>
@@ -279,10 +306,10 @@ export default function FocusOverlay() {
                 {/* Preset Selector */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary/60">Presets</span>
+                    <span className={cn("text-[10px] font-bold uppercase tracking-wider", isExpanded ? "text-accent-contrast/80" : "text-text-secondary/60")}>Presets</span>
                     <button
                       onClick={() => setShowAddPreset(!showAddPreset)}
-                      className="text-accent text-[10px] font-bold uppercase tracking-wider hover:underline"
+                      className={cn("text-[10px] font-bold uppercase tracking-wider hover:underline", isExpanded ? "text-accent-contrast" : "text-accent")}
                     >
                       {showAddPreset ? 'Cancel' : 'Add Custom'}
                     </button>
@@ -335,10 +362,12 @@ export default function FocusOverlay() {
                             <button
                               onClick={() => handleSelectPreset(preset.id, preset.duration, preset.label)}
                               className={cn(
-                                "px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 border",
+                                "px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 border shadow-sm",
                                 activePresetId === preset.id
                                   ? "bg-accent border-accent text-accent-contrast shadow-lg shadow-accent/20"
-                                  : "bg-card border-card-border text-text-secondary hover:border-accent/30 hover:text-text-main"
+                                  : isExpanded
+                                    ? "bg-accent-contrast/90 border-accent-contrast/50 text-accent hover:border-accent hover:bg-accent-contrast"
+                                    : "bg-card border-card-border text-text-secondary hover:border-accent/30 hover:text-text-main"
                               )}
                             >
                               {preset.label} <span className="opacity-60 tabular-nums">{preset.duration}m</span>
@@ -367,8 +396,11 @@ export default function FocusOverlay() {
                         rotate: focusSession.isRunning ? [0, 1, -1, 0] : 0
                       }}
                       transition={{ duration: 4, repeat: Infinity }}
-                      className="font-medium tracking-tighter leading-none select-none text-text-main tabular-nums relative z-10"
-                      style={{ fontSize: isExpanded ? 'clamp(5rem, 17vw, 13rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
+                      className={cn(
+                        "font-medium tracking-tighter leading-none select-none tabular-nums relative z-10",
+                        isExpanded ? "text-accent-contrast drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)]" : "text-text-main"
+                      )}
+                      style={{ fontSize: isExpanded ? 'clamp(4rem, 12vw, 9.5rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
                     >
                       {formatTime(focusSession.timeLeft)}
                     </motion.div>
@@ -389,56 +421,63 @@ export default function FocusOverlay() {
 
                     <button
                       onClick={() => { updateFocusTime(focusSession.totalTime); }}
-                      className="w-12 h-12 rounded-xl border border-card-border flex items-center justify-center hover:bg-surface-muted text-text-secondary hover:text-text-main transition-all"
+                      className={cn(
+                        "w-12 h-12 rounded-xl border flex items-center justify-center transition-all",
+                        isExpanded ? "border-accent/25 bg-overlay/35 text-accent-contrast backdrop-blur-md hover:bg-accent" : "border-card-border hover:bg-surface-muted text-text-secondary hover:text-text-main"
+                      )}
                     >
                       <RotateCcw size={18} />
                     </button>
 
                     <button
                       onClick={() => setSessionState('reflection')}
-                      className="w-12 h-12 rounded-xl border border-card-border flex items-center justify-center hover:bg-surface-muted text-text-secondary hover:text-text-main transition-all"
+                      className={cn(
+                        "w-12 h-12 rounded-xl border flex items-center justify-center transition-all",
+                        isExpanded ? "border-accent/25 bg-overlay/35 text-accent-contrast backdrop-blur-md hover:bg-accent" : "border-card-border hover:bg-surface-muted text-text-secondary hover:text-text-main"
+                      )}
                     >
                       <Save size={18} />
                     </button>
                   </div>
-
-                  {isExpanded && (
-                    <div className="mt-6 w-full max-w-xl rounded-[2rem] border border-accent/20 bg-app-container/85 p-3 shadow-xl shadow-accent/10 backdrop-blur-md">
-                      <div className="mb-3 flex items-center justify-center gap-2">
-                        <Music2 size={15} className="text-accent" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/70">Lo-fi focus</p>
-                      </div>
-                      <iframe
-                        title="Spotify lo-fi focus playlist"
-                        src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWQRwui0ExPn?utm_source=generator&theme=0"
-                        width="100%"
-                        height="152"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        className="rounded-2xl border border-card-border"
-                      />
-                    </div>
-                  )}
                 </div>
                 </div>
 
                 {/* Cognitive Anchor */}
                 <div className={cn(
-                  "bg-bg-base/60 p-4 sm:p-5 rounded-3xl border border-card-border flex items-start gap-4 backdrop-blur-sm",
-                  isExpanded && "xl:sticky xl:top-4 xl:flex-col"
+                  "p-4 sm:p-5 rounded-3xl border flex items-start gap-4 backdrop-blur-md",
+                  isExpanded
+                    ? "self-start border-accent/20 bg-overlay/45 text-accent-contrast shadow-2xl shadow-overlay/30 xl:flex-col"
+                    : "bg-bg-base/60 border-card-border"
                 )}>
-                  <div className="w-10 h-10 rounded-xl bg-accent/5 flex items-center justify-center text-accent shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center text-accent shrink-0">
                     <Brain size={20} />
                   </div>
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-text-main">Core Strategy</h4>
-                    <p className="text-[11px] text-text-secondary leading-relaxed opacity-80">
+                  <div className="w-full space-y-1">
+                    <h4 className={cn("text-xs font-bold uppercase tracking-wider", isExpanded ? "text-accent-contrast" : "text-text-main")}>Core Strategy</h4>
+                    <p className={cn("text-[11px] leading-relaxed", isExpanded ? "text-accent-contrast/80" : "text-text-secondary opacity-80")}>
                       Eliminate all external variables. Your physical body is a tool for alignment. Execute the singular task ahead.
                     </p>
                     <div className="pt-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">Room setup</p>
-                      <p className="mt-1 text-xs font-semibold text-text-main">{focusBackground.label} background - Lo-fi playlist ready</p>
+                      <p className={cn("text-[9px] font-black uppercase tracking-widest", isExpanded ? "text-accent-contrast/45" : "text-text-secondary/45")}>Room setup</p>
+                      <p className={cn("mt-1 text-xs font-semibold", isExpanded ? "text-accent-contrast" : "text-text-main")}>{focusBackground.label} background - Lo-fi playlist ready</p>
                     </div>
+                    {isExpanded && (
+                      <div className="pt-4">
+                        <div className="mb-2 flex items-center gap-2">
+                          <Music2 size={15} className="text-accent" />
+                          <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent-contrast/60">Lo-fi focus</p>
+                        </div>
+                        <iframe
+                          title="Spotify lo-fi focus playlist"
+                          src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWQRwui0ExPn?utm_source=generator&theme=0"
+                          width="100%"
+                          height="96"
+                          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                          loading="lazy"
+                          className="rounded-2xl border border-accent/20"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

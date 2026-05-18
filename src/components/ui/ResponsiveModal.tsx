@@ -16,6 +16,7 @@ interface ResponsiveModalProps {
   className?: string;
   contentClassName?: string;
   headerClassName?: string;
+  overlayClassName?: string;
   disableCloseOnOverlayClick?: boolean;
   closeLabel?: string;
   zIndexClassName?: string;
@@ -40,6 +41,7 @@ export function ResponsiveModal({
   className,
   contentClassName,
   headerClassName,
+  overlayClassName,
   disableCloseOnOverlayClick = false,
   closeLabel = 'Close modal',
   zIndexClassName = 'z-[220]'
@@ -69,7 +71,8 @@ export function ResponsiveModal({
           className={cn(
             'fixed inset-0 flex items-end sm:items-center justify-center bg-overlay/80 backdrop-blur-md overflow-hidden',
             'p-0 sm:p-4',
-            zIndexClassName
+            zIndexClassName,
+            overlayClassName
           )}
           role="presentation"
           onMouseDown={(event) => {
