@@ -936,7 +936,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-bg-base/40 custom-scrollbar">
-      <div className="mx-auto flex min-h-full max-w-[1180px] flex-col gap-4 p-4 sm:p-6 lg:h-full lg:min-h-0 lg:p-8">
+      <div className="mx-auto flex min-h-full max-w-[1180px] flex-col gap-4 p-4 sm:p-6 lg:p-8">
         <div className="rounded-[2rem] border border-card-border bg-card/95 p-4 shadow-xl shadow-accent/5 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
@@ -968,8 +968,8 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <section className="flex min-h-0 flex-col rounded-[2rem] border border-card-border bg-card/95 shadow-xl shadow-accent/5">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <section className="flex flex-col rounded-[2rem] border border-card-border bg-card/95 shadow-xl shadow-accent/5">
             <div className="flex flex-col gap-3 border-b border-card-border p-4 sm:p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -1010,7 +1010,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
               </form>
             </div>
 
-            <div className="max-h-[62vh] min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar sm:p-5 lg:max-h-none">
+            <div className="p-4 sm:p-5">
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={vision.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-6 pb-8">
@@ -1045,7 +1045,7 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
             </div>
           </section>
 
-          <aside className="grid gap-4 xl:block xl:space-y-4 xl:overflow-y-auto xl:pr-1 custom-scrollbar">
+          <aside className="grid gap-4 self-start xl:block xl:space-y-4">
             <div className="rounded-[2rem] border border-card-border bg-card/95 p-5">
               <div className="flex items-start gap-4">
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/10 text-accent">
