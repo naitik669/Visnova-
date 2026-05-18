@@ -156,6 +156,7 @@ export default function FocusOverlay() {
       open
       onClose={handleClose}
       size={isExpanded ? 'fullscreen' : 'xl'}
+      className={isExpanded ? 'sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)]' : undefined}
       title={sessionState === 'reflection' ? 'Focus Reflection' : focusSession.label || 'Focus Timer'}
       subtitle={sessionState === 'reflection' ? 'Log what you finished before ending the sprint.' : primaryTask ? primaryTask.text : 'Choose a preset and run a focused sprint.'}
       contentClassName="relative bg-card"
@@ -163,15 +164,17 @@ export default function FocusOverlay() {
     >
           {focusBackground.url && (
             <div
-              className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25"
+              className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-100"
               style={{ backgroundImage: `url(${focusBackground.url})` }}
             />
           )}
-          {focusBackground.url && <div className="pointer-events-none absolute inset-0 bg-card/70 backdrop-blur-[1px]" />}
+          {focusBackground.url && (
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-app-container/40 via-accent/15 to-card/45 backdrop-blur-[0.5px]" />
+          )}
 
           <div className={cn(
             "relative p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6",
-            isExpanded && "mx-auto w-full max-w-7xl"
+            isExpanded && "mx-auto flex min-h-full w-full max-w-7xl flex-col"
           )}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="inline-flex items-center gap-2 rounded-full border border-card-border bg-app-container/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary">
@@ -206,10 +209,9 @@ export default function FocusOverlay() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="rounded-[2rem] border border-card-border bg-app-container/85 p-4 shadow-sm backdrop-blur-md"
+                  className="rounded-[2rem] border border-accent/20 bg-app-container/85 p-4 shadow-sm shadow-accent/10 backdrop-blur-md"
                 >
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                    <div className="min-w-0 flex-1">
+                  <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/60">Focus background</p>
                       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
                         {focusBackgrounds.map(background => (
@@ -232,7 +234,7 @@ export default function FocusOverlay() {
                           </button>
                         ))}
                       </div>
-                      <label className="mt-3 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-card-border bg-card text-[9px] font-black uppercase tracking-widest text-text-secondary transition-all hover:border-accent/40 hover:text-accent">
+                      <label className="mt-3 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-accent/25 bg-card/80 text-[9px] font-black uppercase tracking-widest text-text-secondary transition-all hover:border-accent/50 hover:text-accent">
                         <ImageIcon size={14} />
                         Use my image
                         <input
@@ -242,31 +244,14 @@ export default function FocusOverlay() {
                           onChange={(event) => handleCustomBackground(event.target.files?.[0])}
                         />
                       </label>
-                    </div>
-
-                    <div className="w-full xl:w-80">
-                      <div className="mb-3 flex items-center gap-2">
-                        <Music2 size={15} className="text-accent" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/60">Lo-fi focus</p>
-                      </div>
-                      <iframe
-                        title="Spotify lo-fi focus playlist"
-                        src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWQRwui0ExPn?utm_source=generator&theme=0"
-                        width="100%"
-                        height="152"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        className="rounded-2xl border border-card-border"
-                      />
-                    </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {sessionState === 'active' && (
-              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:space-y-0")}>
-                <div className="space-y-5 sm:space-y-6">
+              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid flex-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:space-y-0")}>
+                <div className={cn("space-y-5 sm:space-y-6", isExpanded && "flex min-h-[560px] flex-col justify-center")}>
                 {/* Social Pulse in Focus */}
                 <div className="flex justify-center">
                   <div className="inline-flex items-center gap-4 px-4 py-2 rounded-full bg-accent/[0.03] border border-accent/10">
@@ -383,7 +368,7 @@ export default function FocusOverlay() {
                       }}
                       transition={{ duration: 4, repeat: Infinity }}
                       className="font-medium tracking-tighter leading-none select-none text-text-main tabular-nums relative z-10"
-                      style={{ fontSize: 'clamp(3.5rem, 12vw, 8rem)' }}
+                      style={{ fontSize: isExpanded ? 'clamp(5rem, 17vw, 13rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
                     >
                       {formatTime(focusSession.timeLeft)}
                     </motion.div>
@@ -416,6 +401,24 @@ export default function FocusOverlay() {
                       <Save size={18} />
                     </button>
                   </div>
+
+                  {isExpanded && (
+                    <div className="mt-6 w-full max-w-xl rounded-[2rem] border border-accent/20 bg-app-container/85 p-3 shadow-xl shadow-accent/10 backdrop-blur-md">
+                      <div className="mb-3 flex items-center justify-center gap-2">
+                        <Music2 size={15} className="text-accent" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/70">Lo-fi focus</p>
+                      </div>
+                      <iframe
+                        title="Spotify lo-fi focus playlist"
+                        src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWQRwui0ExPn?utm_source=generator&theme=0"
+                        width="100%"
+                        height="152"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        className="rounded-2xl border border-card-border"
+                      />
+                    </div>
+                  )}
                 </div>
                 </div>
 
