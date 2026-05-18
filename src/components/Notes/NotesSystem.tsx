@@ -23,7 +23,6 @@ import {
   Smile,
   Hash,
   Archive,
-  MoreVertical,
   Home,
   Sidebar as SidebarIcon,
   MapPin,
@@ -34,7 +33,8 @@ import {
   Mic,
   StopCircle,
   Upload,
-  Volume2
+  Volume2,
+  Send
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, startOfDay } from 'date-fns';
@@ -74,7 +74,7 @@ function getTranscriptLabel(note: Note) {
 }
 
 export default function NotesSystem() {
-  const { notes, folders, visions, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, moveNoteToFolder, user, session, addToast } = useStore();
+  const { notes, folders, visions, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, moveNoteToFolder, addPost, user, session, addToast } = useStore();
   const location = useLocation();
   const initialTabParam = new URLSearchParams(location.search).get('tab');
   const initialTab = initialTabParam === 'journal' || location.pathname.includes('journal') ? 'journal' : initialTabParam === 'audio' ? 'audio' : 'vault';
@@ -249,6 +249,37 @@ export default function NotesSystem() {
   const handleMoveNote = async (noteId: string, folderId: string | null) => {
     const targetFolderId = folderId === UNFILED_FOLDER_ID ? null : folderId;
     await moveNoteToFolder(noteId, targetFolderId);
+  };
+
+  const postNoteToProfile = async (note: Note) => {
+    const content = safeString(note.content).trim();
+    const kind = note.note_type === 'journal' ? 'journal' : 'note';
+    const title = safeString(note.title, kind === 'journal' ? 'Journal Entry' : 'Untitled Note');
+    const posted = await addPost({
+      type: kind === 'journal' ? 'insight' : 'update',
+      caption: kind === 'journal' ? `Journal: ${title}` : `Note: ${title}`,
+      content: content ? cleanPreview(content).slice(0, 240) : `${title} shared from Library.`,
+      visibility: 'public',
+      visionId: note.linkedVisionId || null,
+      tags: [kind === 'journal' ? 'journal' : 'notes'],
+      metadata: {
+        shared_embed: {
+          kind,
+          sourceId: note.id,
+          title,
+          content: content.slice(0, 12000),
+          date: note.journal_date || note.createdAt,
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
+          mood: note.mood || null,
+          imageUrl: note.image_url || null,
+          canvas: safeArray(note.journal_canvas).slice(0, 24)
+        }
+      }
+    });
+    if (posted) {
+      addToast({ type: 'success', title: 'Posted to profile', description: kind === 'journal' ? 'Your notebook-style journal post is live.' : 'Your note embed is live.' });
+    }
   };
 
   return (
@@ -646,6 +677,13 @@ export default function NotesSystem() {
                         visions={safeArray<Vision>(visions)}
                         session={session}
                         addToast={addToast}
+                        onPostJournal={() => {
+                          if (journalEntry) {
+                            postNoteToProfile(journalEntry);
+                          } else {
+                            addToast({ type: 'info', title: 'Save first', description: 'Save this journal entry before posting it.' });
+                          }
+                        }}
                         onSave={(content: string, updates: any) => {
                           if (journalEntry) {
                             return updateNote(journalEntry.id, { content, ...updates });
@@ -694,6 +732,7 @@ export default function NotesSystem() {
                                 setDraggingNoteId(null);
                                 setDragOverFolderId(null);
                               }}
+                              onPost={() => postNoteToProfile(note)}
                               viewMode={viewMode}
                             />
                           </SafeItemBoundary>
@@ -820,7 +859,7 @@ const normalizeJournalCanvas = (value: unknown): JournalCanvasElement[] => {
   });
 };
 
-function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, fullView, toggleFullView, recentLibraryNotes, journalEntries, visions, session, addToast }: any) {
+function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, onPostJournal, fullView, toggleFullView, recentLibraryNotes, journalEntries, visions, session, addToast }: any) {
   const [pages, setPages] = useState<string[]>(safeString(entry?.content).split(JOURNAL_PAGE_BREAK));
   const [currentPage, setCurrentPage] = useState(0);
   const [title, setTitle] = useState(entry?.title || '');
@@ -1129,6 +1168,13 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, f
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-secondary/40">
             {isSaving ? 'Saving...' : lastSaved ? `Saved ${safeFormat(lastSaved, 'h:mm a')}` : 'Unsaved'}
           </span>
+          <button
+            onClick={onPostJournal}
+            className="flex h-11 items-center gap-2 rounded-2xl border border-accent/20 bg-accent/10 px-4 text-[10px] font-black uppercase tracking-widest text-accent transition-all hover:bg-accent hover:text-accent-contrast"
+          >
+            <Send size={14} />
+            Post to Profile
+          </button>
           {journalMode === 'canvas' && (
             <div className="relative">
               <button
@@ -2182,6 +2228,7 @@ function NoteCard({
   onMove,
   onDragStart,
   onDragEnd,
+  onPost,
   viewMode
 }: {
   note: Note;
@@ -2191,6 +2238,7 @@ function NoteCard({
   onMove: (noteId: string, folderId: string | null) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onPost: () => void;
   viewMode?: 'grid' | 'list';
 }) {
   if (!note?.id) return null;
@@ -2279,6 +2327,15 @@ function NoteCard({
           )}
         </div>
         <div className="flex items-center gap-3 sm:px-4">
+           <button
+             onClick={(event) => {
+               event.stopPropagation();
+               onPost();
+             }}
+             className="h-9 rounded-xl border border-accent/20 bg-accent/10 px-3 text-[9px] font-black uppercase tracking-widest text-accent hover:bg-accent hover:text-accent-contrast transition-all"
+           >
+             Post
+           </button>
            {noteTags.slice(0, 2).map((t, i) => (
              <span key={i} className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent uppercase tracking-widest">#{t}</span>
            ))}
@@ -2316,11 +2373,14 @@ function NoteCard({
           </div>
           <button
             type="button"
-            aria-label="Note actions"
-            onClick={(event) => event.stopPropagation()}
-            className="w-8 h-8 rounded-xl text-text-secondary/45 hover:text-accent hover:bg-surface-muted flex items-center justify-center shrink-0"
+            aria-label="Post note to profile"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPost();
+            }}
+            className="w-8 h-8 rounded-xl text-text-secondary/45 hover:text-accent hover:bg-accent/10 flex items-center justify-center shrink-0"
           >
-            <MoreVertical size={16} />
+            <Send size={14} />
           </button>
        </div>
 

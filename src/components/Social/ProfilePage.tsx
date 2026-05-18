@@ -45,6 +45,7 @@ import { Post, Achievement, Milestone } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { uploadAvatar } from '../../lib/supabase';
 import { ImageLightbox, PostEditModal, PostReportModal } from '../Feed/CommunityFeed';
+import { SharedPostEmbed } from '../Feed/SharedPostEmbed';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
@@ -1329,6 +1330,8 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
         <p className="text-sm text-text-secondary leading-relaxed font-semibold opacity-80">
           {renderInteractiveText(post.content, post.mentions)}
         </p>
+
+        <SharedPostEmbed post={post} />
 
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">

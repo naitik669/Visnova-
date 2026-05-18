@@ -41,6 +41,7 @@ import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData'
 import { TrendingTopicsSection } from './TrendingTopicsSection';
 import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';
 import { SelectMenu } from '../ui/SelectMenu';
+import { SharedPostEmbed } from './SharedPostEmbed';
 
 const normalizeHashtag = (tag: string) => tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 const extractHashtags = (text: string) => {
@@ -1635,6 +1636,8 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
             {renderInteractiveText(post.content, post.mentions)}
           </p>
         </div>
+
+        <SharedPostEmbed post={post} />
 
         {post.media && post.media.length > 0 && (
           <div className={cn(

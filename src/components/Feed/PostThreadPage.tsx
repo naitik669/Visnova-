@@ -10,6 +10,7 @@ import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
 import { PostEditModal, PostReportModal } from './CommunityFeed';
+import { SharedPostEmbed } from './SharedPostEmbed';
 
 const COMMENTS_PAGE_SIZE = 50;
 const isCommentEnhancementMissing = (error: any) => (
@@ -43,7 +44,8 @@ const mapPostRow = (p: any): Post => ({
   deletedAt: p?.deleted_at || null,
   editedAt: p?.edited_at || null,
   media: safeArray<any>(p?.media).map((m: any) => ({ id: m.id, url: m.media_url, type: (m.media_type || 'image') as 'image' | 'video' })),
-  tags: safeArray<any>(p?.post_tags).map((t: any) => t.tag).filter(Boolean)
+  tags: safeArray<any>(p?.post_tags).map((t: any) => t.tag).filter(Boolean),
+  metadata: p?.metadata
 });
 
 const mapCommentRow = (comment: any): Comment => ({
@@ -479,6 +481,8 @@ export default function PostThreadPage() {
                 {post.content && <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{post.content}</p>}
               </div>
             )}
+
+            <SharedPostEmbed post={post} />
 
             {post.tags && post.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">

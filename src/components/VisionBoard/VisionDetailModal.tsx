@@ -64,6 +64,7 @@ import { CreativeCanvas } from './CreativeCanvas';
 import PublishModal from './PublishModal';
 import CollaborateModal from './CollaborateModal';
 import { supabase, uploadVisionBoardImage } from '../../lib/supabase';
+import { safeArray } from '../../lib/safeData';
 
 interface VisionDetailModalProps {
   vision: Vision | null;
@@ -292,7 +293,7 @@ function SortableTaskItem({ task, index, onToggle, onAddSubTask, isLast, onUpdat
 }
 
 export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDetailModalProps) {
-  const { updateVision, deleteVision, notes, addNote, shareVision, session, addToast } = useStore();
+  const { updateVision, deleteVision, notes, addNote, shareVision, addPost, session, addToast } = useStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('board');
   const [isFullscreen, setIsFullscreen] = useState(true);
@@ -424,6 +425,35 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
       shapeType,
       color: shapeType === 'circle' ? '#10b981' : shapeType === 'diamond' ? '#8b5cf6' : '#3b82f6'
     });
+  };
+
+  const postVisionBoardToProfile = async () => {
+    if (!vision) return;
+    const elements = safeArray<VisionElement>(vision.elements).slice(0, 80);
+    const elementSummary = elements.length
+      ? `${elements.length} board item${elements.length === 1 ? '' : 's'} shared from this Vision Board.`
+      : 'Shared this Vision Board from VisNova.';
+    const posted = await addPost({
+      type: 'update',
+      caption: `Vision Board: ${vision.title}`,
+      content: elementSummary,
+      visibility: 'public',
+      visionId: vision.id,
+      tags: ['visionboard', 'vision'],
+      metadata: {
+        shared_embed: {
+          kind: 'vision_board',
+          sourceId: vision.id,
+          title: vision.title,
+          description: vision.description || vision.notes || '',
+          progress: vision.progress || 0,
+          elements
+        }
+      }
+    });
+    if (posted) {
+      addToast({ type: 'success', title: 'Posted to profile', description: 'Your Vision Board embed is now on your profile and feed.' });
+    }
   };
 
   const handleMultiImport = (items: any[]) => {
@@ -573,6 +603,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                    <HeaderAction key="header-expand" icon={isCollapsed ? <Minimize2 size={16} /> : <ChevronDown size={16} />} onClick={() => setIsCollapsed(!isCollapsed)} label={isCollapsed ? "Expand" : "Collapse"} />
                    <HeaderAction key="header-focus" icon={isFullscreen ? <Box size={16} /> : <Maximize2 size={16} />} onClick={() => setIsFullscreen(!isFullscreen)} label="Focus" />
                    <div className="w-px h-6 bg-card-border" />
+                   <HeaderAction key="header-post-profile" icon={<Share2 size={16} />} onClick={postVisionBoardToProfile} label="Post to profile" />
                    <HeaderAction key="header-publish" icon={<Globe size={16} />} onClick={() => setShowPublishModal(true)} label="Publish" />
                    <HeaderAction key="header-collab" icon={<UserPlus size={16} />} onClick={() => setShowCollaborateModal(true)} label="Collaborate" />
                    <HeaderAction key="header-purge" icon={<Trash2 size={16} />} onClick={() => deleteVision(vision.id)} label="Purge" className="hover:text-danger" />
