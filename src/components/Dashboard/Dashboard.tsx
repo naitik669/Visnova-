@@ -626,8 +626,8 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Progress Pulse</p>
-              <h3 className="mt-1 text-lg font-black text-text-main">Growth tracker</h3>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Growth Tracker</p>
+              <h3 className="mt-1 text-lg font-black text-text-main">Growth Tracker</h3>
             </div>
             <span className="rounded-full bg-accent/10 px-3 py-1.5 text-[10px] font-black text-accent">{Math.min(100, Math.round(weeklyScore || 0))}%</span>
           </div>
@@ -1509,7 +1509,7 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Progress Pulse</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Growth Tracker</p>
                 <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-text-main">Growth Tracker</h3>
               </div>
               <Brain size={18} className="text-accent" />

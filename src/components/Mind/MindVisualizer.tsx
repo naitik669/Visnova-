@@ -34,7 +34,7 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
@@ -192,7 +192,6 @@ export default function MindVisualizer() {
   } = useStore();
   const userId = session?.user?.id;
   const location = useLocation();
-  const navigate = useNavigate();
   const [resources, setResources] = useState<GrowthResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -235,7 +234,7 @@ export default function MindVisualizer() {
 
   useEffect(() => {
     if (userId && visions.length === 0) fetchVisions();
-    if (userId) fetchDashboardData().catch(error => console.error('Failed to load Progress Pulse data:', error));
+    if (userId) fetchDashboardData().catch(error => console.error('Failed to load Growth Tracker data:', error));
     fetchGrowthResources();
   }, [userId]);
 
@@ -363,15 +362,6 @@ export default function MindVisualizer() {
       updates,
     };
   }, [financeGoals, journalEntries, progressLogs, todos, user.streak, userStreak, visionById, visions, weeklyActivity]);
-
-  const closePulse = () => {
-    if ((location.state as any)?.fromDashboard) {
-      navigate('/');
-      return;
-    }
-    if (window.history.length > 1) navigate(-1);
-    else navigate('/');
-  };
 
   const visibleResources = useMemo(() => {
     return resources.filter(resource => {
@@ -667,13 +657,13 @@ export default function MindVisualizer() {
         <div className="grid grid-cols-2 gap-2">
           {([
             { id: 'resources', label: 'Resources', desc: 'Learning and saved material' },
-            { id: 'tracker', label: 'Tracker', desc: 'Proof, streaks, goals' },
+            { id: 'tracker', label: 'Growth Tracker', desc: 'Proof, streaks, goals' },
           ] as const).map(section => (
             <button
               key={section.id}
               onClick={() => setGrowthSection(section.id)}
               className={cn(
-                'rounded-[1.4rem] px-4 py-3 text-left transition-all',
+                'rounded-[1.25rem] px-4 py-2.5 text-left transition-all',
                 growthSection === section.id ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/15' : 'bg-app-container text-text-secondary hover:text-text-main'
               )}
             >
@@ -686,22 +676,38 @@ export default function MindVisualizer() {
 
       {growthSection === 'tracker' && (
       <>
-      <section className="relative overflow-hidden rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-6 lg:p-7">
-        <div className="absolute right-0 top-0 h-72 w-72 translate-x-1/3 -translate-y-1/3 rounded-full bg-accent/10 blur-3xl" />
-        <button
-          onClick={closePulse}
-          className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-2xl border border-card-border bg-app-container text-text-secondary shadow-sm transition-colors hover:text-text-main"
-          aria-label="Close Progress Pulse"
-        >
-          <X size={18} />
-        </button>
-        <div className="relative z-10 pr-14">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Progress Pulse</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-5xl">Progress Pulse</h1>
-          <p className="mt-2 max-w-2xl text-sm font-semibold text-text-secondary">Your visible proof of growth across Visions, proof logs, tasks, resources, deadlines, and reflection.</p>
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-card-border bg-card p-4 shadow-sm sm:p-5 lg:p-6">
+        <div className="absolute right-0 top-0 h-56 w-56 translate-x-1/3 -translate-y-1/3 rounded-full bg-accent/10 blur-3xl" />
+        <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-accent">Growth Tracker</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-text-main sm:text-3xl">Visible proof, not guesswork.</h1>
+            <p className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-text-secondary sm:text-sm">A compact read on proof logs, streaks, resources, deadlines, and reflection.</p>
+          </div>
+          <div className="rounded-[1.5rem] border border-card-border bg-app-container p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Weekly score</p>
+                <p className="mt-1 text-3xl font-black leading-none text-text-main tabular-nums">{pulse.weeklyScore}%</p>
+              </div>
+              <span className="rounded-full bg-accent/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent">This week</span>
+            </div>
+            <div className="mt-4 flex h-14 items-end gap-1.5">
+              {pulse.activityChart.map(day => {
+                const value = day.logs + day.tasks + day.journal;
+                const height = Math.max(12, Math.min(56, value * 12));
+                return (
+                  <div key={day.day} className="flex flex-1 flex-col items-center gap-1.5">
+                    <span className="w-full rounded-t-xl bg-accent/75" style={{ height }} />
+                    <span className="text-[8px] font-black uppercase text-text-secondary/45">{day.day.slice(0, 1)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="relative z-10 mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <PulseStat label="Total Proof Logs" value={pulse.totalLogs} icon={FileText} />
           <PulseStat label="Current Streak" value={pulse.currentStreak} icon={Zap} />
           <PulseStat label="Weekly Score" value={`${pulse.weeklyScore}%`} icon={GraduationCap} />
@@ -859,11 +865,11 @@ export default function MindVisualizer() {
 
       {growthSection === 'resources' && (
       <>
-      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5">
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent mb-3">Learning to action</p>
-          <h2 className="text-3xl sm:text-4xl font-black text-text-main tracking-tight font-display uppercase">Growth Resources</h2>
-          <p className="text-sm text-text-secondary/70 mt-3 max-w-2xl font-medium">Learn with purpose. Turn resources into action.</p>
+          <p className="mb-2 text-[9px] font-black uppercase tracking-[0.3em] text-accent">Learning to action</p>
+          <h2 className="text-2xl font-black tracking-tight text-text-main sm:text-3xl">Growth Resources</h2>
+          <p className="mt-2 max-w-2xl text-xs font-semibold text-text-secondary/70 sm:text-sm">Learn with purpose. Turn resources into action.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <button onClick={openAddResource} className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-accent/20">
@@ -993,22 +999,24 @@ export default function MindVisualizer() {
 
 function PulseStat({ label, value, icon: Icon }: { label: string; value: number | string; icon: LucideIcon }) {
   return (
-    <div className="rounded-2xl border border-card-border bg-app-container p-4">
+    <div className="rounded-[1.35rem] border border-card-border bg-app-container p-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.03)]">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
-        <Icon size={16} className="text-accent" />
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 text-accent">
+          <Icon size={15} />
+        </span>
       </div>
-      <p className="mt-3 text-2xl font-black text-text-main tabular-nums">{value}</p>
+      <p className="mt-2 text-xl font-black text-text-main tabular-nums">{value}</p>
     </div>
   );
 }
 
 function PulsePanel({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-5">
-      <div className="mb-4">
-        <h2 className="text-lg font-black text-text-main">{title}</h2>
-        <p className="mt-1 text-xs font-semibold text-text-secondary">{subtitle}</p>
+    <section className="rounded-[1.75rem] border border-card-border bg-card p-4 shadow-sm">
+      <div className="mb-3">
+        <h2 className="text-base font-black text-text-main">{title}</h2>
+        <p className="mt-1 text-[11px] font-semibold text-text-secondary">{subtitle}</p>
       </div>
       {children}
     </section>
