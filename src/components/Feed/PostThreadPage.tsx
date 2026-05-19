@@ -188,7 +188,7 @@ export default function PostThreadPage() {
             comment_count:comments(count),
             media:post_media(*),
             post_tags(*),
-            mentions:post_mentions(*, user:profiles(username))
+            mentions:post_mentions(*, user:profiles!post_mentions_mentioned_user_id_fkey(username))
           `)
           .eq('id', postId)
           .maybeSingle(),

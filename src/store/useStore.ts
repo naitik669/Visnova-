@@ -3233,7 +3233,7 @@ export const useStore = create<AppState>((set, get) => ({
           comment_count:comments(count),
           media:post_media(*),
           post_tags(*),
-          mentions:post_mentions(*, user:profiles(username))
+          mentions:post_mentions(*, user:profiles!post_mentions_mentioned_user_id_fkey(username))
         `)
         .eq('user_id', userId)
         .eq('archived', true)
@@ -3703,7 +3703,7 @@ export const useStore = create<AppState>((set, get) => ({
               comment_count:comments(count),
               media:post_media(*),
               post_tags(*),
-              mentions:post_mentions(*, user:profiles(username))
+              mentions:post_mentions(*, user:profiles!post_mentions_mentioned_user_id_fkey(username))
             )
           `)
           .eq('user_id', userId)
@@ -3788,7 +3788,7 @@ export const useStore = create<AppState>((set, get) => ({
           comment_count:comments(count),
           media:post_media(*),
           post_tags(*),
-          mentions:post_mentions(*, user:profiles(username))
+          mentions:post_mentions(*, user:profiles!post_mentions_mentioned_user_id_fkey(username))
         `)
         .eq('visibility', 'public')
         .or('archived.is.false,archived.is.null')

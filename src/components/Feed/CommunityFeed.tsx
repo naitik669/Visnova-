@@ -350,7 +350,7 @@ export default function CommunityFeed() {
           comment_count:comments(count),
           media:post_media(*),
           post_tags!inner(*),
-          mentions:post_mentions(*, user:profiles(username))
+          mentions:post_mentions(*, user:profiles!post_mentions_mentioned_user_id_fkey(username))
         `)
         .eq('visibility', 'public')
         .or('archived.is.false,archived.is.null')
