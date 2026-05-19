@@ -43,6 +43,7 @@ type SaveStatus = 'saved' | 'dirty' | 'saving' | 'failed';
 type ChecklistItem = NonNullable<NonNullable<VisionElement['metadata']>['checklist']>[number];
 type ResizeCorner = 'se' | 'sw' | 'ne' | 'nw';
 type BoardTool = 'select' | 'pen' | 'eraser';
+type InteractionMode = 'idle' | 'canvas-pan' | 'element-drag' | 'resize' | 'text-edit' | 'draw';
 
 const CANVAS_SIZE = 9000;
 const LEGACY_CANVAS_CENTER = 2600;
@@ -194,6 +195,9 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const imageInputRef = useRef<HTMLInputElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingElementsRef = useRef<VisionElement[]>(normalizeBoardElements(vision.elements));
+  const interactionModeRef = useRef<InteractionMode>('idle');
+  const currentVisionIdRef = useRef(vision.id);
+  const isDirtyRef = useRef(false);
   const drawingRef = useRef<{ id: string; pointerId: number; points: Array<{ x: number; y: number }>; frame: number | null } | null>(null);
   const { session, addToast, notes, fetchNotes } = useStore();
 
@@ -225,7 +229,11 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       y: Math.min(CANVAS_SIZE, Math.max(0, (bounds.minY + bounds.maxY) / 2))
     };
   }, [elements]);
-  const canvasInteractionLocked = isDraggingElement || isResizingElement || isEditingText || activeTool !== 'select';
+  const setInteractionMode = useCallback((mode: InteractionMode) => {
+    interactionModeRef.current = mode;
+  }, []);
+
+  const canvasInteractionLocked = isDraggingElement || isResizingElement || isEditingText || activeTool !== 'select' || interactionModeRef.current !== 'idle';
   const minZoom = useMemo(() => {
     if (!viewportSize.width || !viewportSize.height) return MIN_ZOOM_FLOOR;
     const fitScale = Math.min(
@@ -237,17 +245,24 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   useEffect(() => {
     const normalized = normalizeBoardElements(vision.elements);
+    const visionChanged = currentVisionIdRef.current !== vision.id;
+    currentVisionIdRef.current = vision.id;
+    if (!visionChanged && isDirtyRef.current) return;
     setElements(normalized);
     pendingElementsRef.current = normalized;
-    setSelectedId(null);
-    setLinkingFromId(null);
-    setTempConnectorEnd(null);
-    setMobileToolsOpen(false);
-    setImportPanelOpen(false);
-    setLinkPanelOpen(false);
+    if (visionChanged) {
+      setSelectedId(null);
+      setLinkingFromId(null);
+      setTempConnectorEnd(null);
+      setMobileToolsOpen(false);
+      setImportPanelOpen(false);
+      setLinkPanelOpen(false);
+      setInteractionMode('idle');
+    }
+    isDirtyRef.current = false;
     setSaveStatus('saved');
     if (centeredVisionRef.current !== vision.id) centeredVisionRef.current = null;
-  }, [vision.id, vision.elements]);
+  }, [setInteractionMode, vision.id, vision.elements]);
 
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -285,6 +300,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     try {
       const result = await Promise.resolve(updateVision(vision.id, { elements: payload }));
       if (result === false) throw new Error('Could not save this board change.');
+      isDirtyRef.current = false;
       setSaveStatus('saved');
       setLastSavedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (error) {
@@ -296,6 +312,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   const scheduleSave = useCallback((nextElements: VisionElement[]) => {
     pendingElementsRef.current = nextElements;
+    isDirtyRef.current = true;
     setSaveStatus('dirty');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
@@ -648,6 +665,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       metadata: { strokeColor: 'var(--accent)' }
     };
     drawingRef.current = { id: drawing.id, pointerId: event.pointerId, points: [point], frame: null };
+    setInteractionMode('draw');
     event.currentTarget.setPointerCapture(event.pointerId);
     setSelectedId(null);
     setIsDraggingElement(true);
@@ -679,6 +697,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     if (drawing.frame) cancelAnimationFrame(drawing.frame);
     const content = pathFromPoints(drawing.points);
     drawingRef.current = null;
+    setInteractionMode('idle');
     setIsDraggingElement(false);
     applyElements(current => current.map(element => element.id === drawing.id ? { ...element, content, updatedAt: Date.now() } : element), true);
   };
@@ -691,6 +710,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId) {
         event.preventDefault();
         deleteElement(selectedId);
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd' && selectedId) {
+        event.preventDefault();
+        duplicateElement(selectedId);
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
@@ -724,7 +747,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [deleteElement, fitBoardToViewport, persistNow, selectedId, zoomAroundViewportCenter, zoomLevel]);
+  }, [deleteElement, duplicateElement, fitBoardToViewport, persistNow, selectedId, zoomAroundViewportCenter, zoomLevel]);
 
   const addMenuOptions = (
     <>
@@ -837,10 +860,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         }}
         onPanningStart={() => onActiveChange?.(true)}
         doubleClick={{ disabled: true }}
-        panning={{ disabled: canvasInteractionLocked, velocityDisabled: true }}
-        wheel={{ disabled: isEditingText, step: 0.08, touchPadDisabled: false }}
+        panning={{ disabled: canvasInteractionLocked, velocityDisabled: true, excluded: ['input', 'textarea', 'button', '[data-no-pan]', '[contenteditable="true"]'] }}
+        wheel={{ disabled: true, step: 0.08, touchPadDisabled: true }}
         pinch={{ disabled: isEditingText, step: 8, allowPanning: true }}
-        trackPadPanning={{ disabled: canvasInteractionLocked, velocityDisabled: true }}
+        trackPadPanning={{ disabled: canvasInteractionLocked, velocityDisabled: true, excluded: ['input', 'textarea', 'button', '[data-no-pan]', '[contenteditable="true"]'] }}
       >
         {() => (
           <>
@@ -913,6 +936,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                     onDragStateChange={setIsDraggingElement}
                     onResizeStateChange={setIsResizingElement}
                     onEditingStateChange={setIsEditingText}
+                    setInteractionMode={setInteractionMode}
                     onHover={() => {
                       if (linkingFromId) setTempConnectorEnd(centerOf(element));
                     }}
@@ -1291,6 +1315,7 @@ type CanvasElementProps = {
   onDragStateChange: (active: boolean) => void;
   onResizeStateChange: (active: boolean) => void;
   onEditingStateChange: (active: boolean) => void;
+  setInteractionMode: (mode: InteractionMode) => void;
   onHover: () => void;
 };
 
@@ -1311,6 +1336,7 @@ const CanvasElement = React.memo(({
   onDragStateChange,
   onResizeStateChange,
   onEditingStateChange,
+  setInteractionMode,
   onHover
 }: CanvasElementProps) => {
   const dragRef = useRef<{
@@ -1332,6 +1358,7 @@ const CanvasElement = React.memo(({
     const nextX = activeDrag.startX + (activeDrag.lastClientX - activeDrag.startClientX) / scale;
     const nextY = activeDrag.startY + (activeDrag.lastClientY - activeDrag.startClientY) / scale;
     dragRef.current = null;
+    setInteractionMode('idle');
     onDragStateChange(false);
     onUpdate({ x: nextX, y: nextY }, true);
   }, [getScale, onDragStateChange, onUpdate]);
@@ -1347,11 +1374,18 @@ const CanvasElement = React.memo(({
       onDelete();
       return;
     }
+    const clickCount = (event.nativeEvent as PointerEvent & { detail?: number }).detail || 0;
+    if ((event.target as HTMLElement).closest('[data-text-content]') && clickCount > 1) {
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
     if (activeTool !== 'select') return;
     if (isLinking || event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
     onSelect();
+    setInteractionMode('element-drag');
     onDragStateChange(true);
 
     const target = event.currentTarget;
@@ -1427,9 +1461,9 @@ const CanvasElement = React.memo(({
             Pick target
           </div>
         )}
-        <ElementContent element={element} onUpdate={(updates) => onUpdate(updates, true)} onEditingStateChange={onEditingStateChange} />
+        <ElementContent element={element} isSelected={isSelected} onSelect={onSelect} onUpdate={(updates) => onUpdate(updates, true)} onEditingStateChange={onEditingStateChange} setInteractionMode={setInteractionMode} />
         {isSelected && RESIZABLE_TYPES.has(element.type) && (
-          <ResizeHandles element={element} getScale={getScale} onUpdate={onUpdate} onResizeStateChange={onResizeStateChange} />
+          <ResizeHandles element={element} getScale={getScale} onUpdate={onUpdate} onResizeStateChange={onResizeStateChange} setInteractionMode={setInteractionMode} />
         )}
       </div>
     </motion.div>
@@ -1442,7 +1476,19 @@ const CanvasElement = React.memo(({
   prev.activeTool === next.activeTool
 ));
 
-function ResizeHandles({ element, getScale, onUpdate, onResizeStateChange }: { element: VisionElement; getScale: () => number; onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void; onResizeStateChange: (active: boolean) => void }) {
+function ResizeHandles({
+  element,
+  getScale,
+  onUpdate,
+  onResizeStateChange,
+  setInteractionMode
+}: {
+  element: VisionElement;
+  getScale: () => number;
+  onUpdate: (updates: Partial<VisionElement>, save?: boolean) => void;
+  onResizeStateChange: (active: boolean) => void;
+  setInteractionMode: (mode: InteractionMode) => void;
+}) {
   const startRef = useRef<{ x: number; y: number; width: number; height: number; left: number; top: number; frame: number | null; lastX: number; lastY: number; corner: ResizeCorner } | null>(null);
   const width = element.width || defaultSize(element.type).width;
   const height = element.height || defaultSize(element.type).height;
@@ -1451,6 +1497,7 @@ function ResizeHandles({ element, getScale, onUpdate, onResizeStateChange }: { e
   const onPointerDown = (corner: ResizeCorner, event: React.PointerEvent) => {
     event.stopPropagation();
     event.preventDefault();
+    setInteractionMode('resize');
     onResizeStateChange(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     startRef.current = { x: event.clientX, y: event.clientY, width, height, left: element.x, top: element.y, frame: null, lastX: event.clientX, lastY: event.clientY, corner };
@@ -1486,6 +1533,7 @@ function ResizeHandles({ element, getScale, onUpdate, onResizeStateChange }: { e
         startRef.current = null;
         onUpdate({}, true);
       }
+      setInteractionMode('idle');
       onResizeStateChange(false);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
@@ -1543,23 +1591,68 @@ function TempConnectorLine({ fromId, toPos, elements }: { fromId: string; toPos:
   return <path d={`M ${from.x} ${from.y} L ${toPos.x} ${toPos.y}`} fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="text-accent animate-pulse" />;
 }
 
-const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Partial<VisionElement>) => void; onEditingStateChange: (active: boolean) => void }> = ({ element, onUpdate, onEditingStateChange }) => {
+const ElementContent: React.FC<{
+  element: VisionElement;
+  isSelected: boolean;
+  onSelect: () => void;
+  onUpdate: (updates: Partial<VisionElement>) => void;
+  onEditingStateChange: (active: boolean) => void;
+  setInteractionMode: (mode: InteractionMode) => void;
+}> = ({ element, isSelected, onSelect, onUpdate, onEditingStateChange, setInteractionMode }) => {
   const width = element.width || defaultSize(element.type).width;
   const height = element.height || defaultSize(element.type).height;
+  const [isTextEditing, setIsTextEditing] = useState(false);
+
+  const enterTextEdit = () => {
+    if (element.type !== 'text' && element.type !== 'heading') return;
+    onSelect();
+    setIsTextEditing(true);
+    onEditingStateChange(true);
+    setInteractionMode('text-edit');
+  };
+
+  const exitTextEdit = () => {
+    setIsTextEditing(false);
+    onEditingStateChange(false);
+    setInteractionMode('idle');
+  };
 
   if (element.type === 'text' || element.type === 'heading') {
     return (
       <div
-        contentEditable
+        data-text-content
+        data-no-pan
+        contentEditable={isTextEditing}
         suppressContentEditableWarning
-        onPointerDown={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.stopPropagation()}
-        onFocus={() => onEditingStateChange(true)}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          enterTextEdit();
+          window.requestAnimationFrame(() => (event.currentTarget as HTMLDivElement).focus());
+        }}
+        onPointerDown={(event) => {
+          if (isTextEditing) event.stopPropagation();
+        }}
+        onKeyDown={(event) => {
+          event.stopPropagation();
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            (event.currentTarget as HTMLDivElement).blur();
+          }
+        }}
+        onFocus={() => {
+          if (!isTextEditing) enterTextEdit();
+        }}
         onBlur={(event) => {
-          onEditingStateChange(false);
+          exitTextEdit();
           onUpdate({ content: event.currentTarget.textContent || '' });
         }}
-        className={cn('outline-none whitespace-pre-wrap break-words', element.type === 'heading' ? 'font-black tracking-tight' : 'font-bold')}
+        className={cn(
+          'outline-none whitespace-pre-wrap break-words',
+          !isTextEditing && 'cursor-grab select-none',
+          isSelected && !isTextEditing && 'rounded-lg bg-accent/5',
+          isTextEditing && 'cursor-text select-text ring-2 ring-accent/25',
+          element.type === 'heading' ? 'font-black tracking-tight' : 'font-bold'
+        )}
         style={{
           width,
           minHeight: height,
@@ -1587,8 +1680,14 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         <textarea
           value={safeString(element.content)}
           onPointerDown={(event) => event.stopPropagation()}
-          onFocus={() => onEditingStateChange(true)}
-          onBlur={() => onEditingStateChange(false)}
+          onFocus={() => {
+            onEditingStateChange(true);
+            setInteractionMode('text-edit');
+          }}
+          onBlur={() => {
+            onEditingStateChange(false);
+            setInteractionMode('idle');
+          }}
           onChange={(event) => onUpdate({ content: event.target.value })}
           className="h-[calc(100%-2rem)] w-full resize-none border-none bg-transparent outline-none p-5 pt-4 text-base font-bold text-black/80 leading-tight"
           data-no-pan
@@ -1648,8 +1747,14 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         <textarea
           value={safeString(element.content)}
           onPointerDown={(event) => event.stopPropagation()}
-          onFocus={() => onEditingStateChange(true)}
-          onBlur={() => onEditingStateChange(false)}
+          onFocus={() => {
+            onEditingStateChange(true);
+            setInteractionMode('text-edit');
+          }}
+          onBlur={() => {
+            onEditingStateChange(false);
+            setInteractionMode('idle');
+          }}
           onChange={(event) => onUpdate({ content: event.target.value })}
           className="w-full bg-transparent resize-none border-none outline-none text-center font-bold text-text-main px-4"
           style={{ transform: shapeType === 'diamond' ? 'rotate(-45deg)' : undefined }}
@@ -1666,8 +1771,14 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
         <input
           value={safeString(element.content, 'Checklist')}
           onPointerDown={(event) => event.stopPropagation()}
-          onFocus={() => onEditingStateChange(true)}
-          onBlur={() => onEditingStateChange(false)}
+          onFocus={() => {
+            onEditingStateChange(true);
+            setInteractionMode('text-edit');
+          }}
+          onBlur={() => {
+            onEditingStateChange(false);
+            setInteractionMode('idle');
+          }}
           onChange={(event) => onUpdate({ content: event.target.value })}
           className="w-full bg-transparent border-none outline-none font-black text-text-main"
           data-no-pan
@@ -1707,8 +1818,14 @@ const ElementContent: React.FC<{ element: VisionElement; onUpdate: (updates: Par
           <input
             value={title}
             onPointerDown={(event) => event.stopPropagation()}
-            onFocus={() => onEditingStateChange(true)}
-            onBlur={() => onEditingStateChange(false)}
+            onFocus={() => {
+              onEditingStateChange(true);
+              setInteractionMode('text-edit');
+            }}
+            onBlur={() => {
+              onEditingStateChange(false);
+              setInteractionMode('idle');
+            }}
             onChange={(event) => onUpdate({ metadata: { title: event.target.value } })}
             className="w-full bg-transparent outline-none font-black text-text-main text-sm"
             data-no-pan
