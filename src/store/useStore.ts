@@ -3917,20 +3917,43 @@ export const useStore = create<AppState>((set, get) => ({
 
       let myLikes: string[] = [];
       let mySaves: string[] = [];
+      let engagementCounts: Record<string, { likes: number; comments: number; saves: number }> = {};
 
       if (userId && data.length > 0) {
         const postIds = data.map((p: any) => p.id);
-        const [likesRes, savesRes] = await Promise.all([
+        const [likesRes, savesRes, allLikesRes, commentsRes, allSavesRes] = await Promise.all([
           supabase.from('post_likes').select('post_id').eq('user_id', userId).in('post_id', postIds),
-          supabase.from('saved_posts').select('post_id').eq('user_id', userId).in('post_id', postIds)
+          supabase.from('saved_posts').select('post_id').eq('user_id', userId).in('post_id', postIds),
+          supabase.from('post_likes').select('post_id').in('post_id', postIds),
+          supabase.from('comments').select('post_id').in('post_id', postIds).is('deleted_at', null),
+          supabase.from('saved_posts').select('post_id').in('post_id', postIds)
         ]);
         
         myLikes = likesRes.data?.map(l => l.post_id) || [];
         mySaves = savesRes.data?.map(s => s.post_id) || [];
+        engagementCounts = postIds.reduce((acc: Record<string, { likes: number; comments: number; saves: number }>, postId: string) => {
+          acc[postId] = { likes: 0, comments: 0, saves: 0 };
+          return acc;
+        }, {});
+
+        if (allLikesRes.error) console.warn('Post like count lookup failed:', allLikesRes.error);
+        if (commentsRes.error) console.warn('Post comment count lookup failed:', commentsRes.error);
+        if (allSavesRes.error) console.warn('Post save count lookup failed:', allSavesRes.error);
+
+        (allLikesRes.data || []).forEach((row: any) => {
+          if (engagementCounts[row.post_id]) engagementCounts[row.post_id].likes += 1;
+        });
+        (commentsRes.data || []).forEach((row: any) => {
+          if (engagementCounts[row.post_id]) engagementCounts[row.post_id].comments += 1;
+        });
+        (allSavesRes.data || []).forEach((row: any) => {
+          if (engagementCounts[row.post_id]) engagementCounts[row.post_id].saves += 1;
+        });
       }
 
       const formattedPosts: Post[] = (data || []).map((p: any) => {
         const createdAt = safeTime(p.created_at);
+        const counts = engagementCounts[p.id];
         return {
         id: p.id,
         userId: p.user_id,
@@ -3945,9 +3968,9 @@ export const useStore = create<AppState>((set, get) => ({
         content: p.content || '',
         timestamp: safeFormat(createdAt, 'MMM d, yyyy'),
         createdAt,
-        likes: p.likes?.[0]?.count || 0,
-        comments: p.comment_count?.[0]?.count || 0,
-        saves: p.saves?.[0]?.count || 0,
+        likes: counts?.likes ?? p.likes?.[0]?.count ?? 0,
+        comments: counts?.comments ?? p.comment_count?.[0]?.count ?? 0,
+        saves: counts?.saves ?? p.saves?.[0]?.count ?? 0,
         isLiked: myLikes.includes(p.id),
         isSaved: mySaves.includes(p.id),
         type: p.type,
