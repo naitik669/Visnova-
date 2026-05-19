@@ -17,10 +17,12 @@ import {
   LogOut,
   Monitor,
   RotateCcw,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Cookie
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -34,8 +36,10 @@ import {
   setNotificationPreferences
 } from '../../lib/appPreferences';
 import { SelectMenu } from '../ui/SelectMenu';
+import { CookiePreferencesModal } from '../Legal/CookiePreferencesModal';
+import { useCookieConsent } from '../../hooks/useCookieConsent';
 
-type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences';
+type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences' | 'privacy';
 
 const themes = [
   { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main', preview: { bg: '#f8f5f1', card: '#ffffff', accent: '#111827', text: '#1f2937', muted: '#e7e2da' } },
@@ -66,6 +70,15 @@ export default function Settings() {
   });
   const [notificationPrefs, setNotificationPrefsState] = useState(getNotificationPreferences);
   const [preferencePrefs, setPreferencePrefsState] = useState(getAppPreferences);
+  const {
+    consent,
+    preferencesOpen,
+    openPreferences,
+    closePreferences,
+    canUseAnalytics,
+    canUsePersonalization,
+    canUseResourceRecommendations
+  } = useCookieConsent();
 
   const updateNotificationPrefs = (next: typeof notificationPrefs) => {
     setNotificationPrefsState(next);
@@ -95,6 +108,7 @@ export default function Settings() {
     { id: 'security' as const, icon: Shield, label: 'Security', desc: 'Password and session' },
     { id: 'notifications' as const, icon: Bell, label: 'Notifications', desc: 'Alerts and reminders' },
     { id: 'preferences' as const, icon: SettingsIcon, label: 'Preferences', desc: 'Defaults and beta tools' },
+    { id: 'privacy' as const, icon: Cookie, label: 'Privacy', desc: 'Cookies and legal links' },
   ], []);
 
   const handleSaveProfile = async () => {
@@ -386,6 +400,60 @@ export default function Settings() {
               </div>
             </SettingsPanel>
           )}
+
+          {activeSection === 'privacy' && (
+            <SettingsPanel title="Privacy & Cookies" subtitle="Control optional analytics and personalization storage.">
+              <div className="space-y-5">
+                <div className="rounded-3xl border border-card-border bg-app-container p-5">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                          <Cookie size={18} />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-text-main">Cookie preferences</h3>
+                          <p className="text-xs font-semibold text-text-secondary/60">Essential cookies/storage stay active for login, security, and app functionality.</p>
+                        </div>
+                      </div>
+                      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-card-border bg-card p-4">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Analytics</p>
+                          <p className={cn('mt-2 text-sm font-black', canUseAnalytics ? 'text-success' : 'text-text-secondary')}>{canUseAnalytics ? 'On' : 'Off'}</p>
+                        </div>
+                        <div className="rounded-2xl border border-card-border bg-card p-4">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Personalization</p>
+                          <p className={cn('mt-2 text-sm font-black', canUsePersonalization ? 'text-success' : 'text-text-secondary')}>{canUsePersonalization ? 'On' : 'Off'}</p>
+                        </div>
+                        <div className="rounded-2xl border border-card-border bg-card p-4">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Recommendations</p>
+                          <p className={cn('mt-2 text-sm font-black', canUseResourceRecommendations ? 'text-success' : 'text-text-secondary')}>{canUseResourceRecommendations ? 'On' : 'Off'}</p>
+                        </div>
+                      </div>
+                      {consent?.updatedAt && (
+                        <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
+                          Last updated {new Date(consent.updatedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                    <button onClick={openPreferences} className="h-11 shrink-0 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+                      Manage cookie preferences
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-card-border bg-card p-5">
+                  <h3 className="text-sm font-black text-text-main">Legal links</h3>
+                  <p className="mt-1 text-xs font-semibold text-text-secondary/60">Cookie choices can be changed anytime. Private messages are never used for recommendations.</p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link to="/cookie-policy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
+                    <Link to="/privacy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy Policy</Link>
+                    <Link to="/terms" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms of Service</Link>
+                  </div>
+                </div>
+              </div>
+            </SettingsPanel>
+          )}
         </main>
       </section>
 
@@ -402,6 +470,11 @@ export default function Settings() {
           </div>
         </div>
       </section>
+      <CookiePreferencesModal
+        open={preferencesOpen}
+        onClose={closePreferences}
+        onSaved={() => addToast({ type: 'success', title: 'Cookie preferences updated', description: 'Your choices were saved on this browser.' })}
+      />
     </motion.div>
   );
 }

@@ -70,14 +70,65 @@ export function TermsPage() {
 
 export function CookiePolicyPage() {
   return (
-    <LegalShell title="Cookie Policy">
+    <LegalShell title="Cookie Policy for VisNova">
       <section className="space-y-4">
-        <h2 className="text-xl font-black text-text-main">Current Cookie Use</h2>
-        <p>VisNova currently uses essential browser storage for authentication sessions, preferences, local UI state, and rate-limit friction. These are needed for the app to work.</p>
+        <p>This Cookie Policy explains how VisNova uses cookies, local storage, session storage, and similar technologies when you use our website or app.</p>
+        <p>VisNova is a personal growth and productivity platform where users can create visions, track progress, write notes and journals, manage wallet/resource goals, interact with other users, and receive optional personalized recommendations.</p>
       </section>
       <section className="space-y-4">
-        <h2 className="text-xl font-black text-text-main">Analytics Cookies</h2>
-        <p>No analytics provider is configured in the repository right now. If analytics cookies are added later, VisNova should show a cookie notice and update this page before launch.</p>
+        <h2 className="text-xl font-black text-text-main">1. What are cookies?</h2>
+        <p>Cookies are small text files stored on your device when you visit a website. Similar technologies, such as local storage and session storage, may also be used to remember preferences, keep you signed in, improve security, and understand how the app is used.</p>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-black text-text-main">2. Types of cookies and storage we use</h2>
+        <h3 className="text-base font-black text-text-main">A. Essential cookies and storage</h3>
+        <p>These are required for VisNova to work properly.</p>
+        <p>We may use essential cookies or storage to keep you signed in, maintain your session, protect your account, support authentication, remember security settings, prevent repeated login issues, support app navigation, and save temporary app state.</p>
+        <p>Without these, VisNova may not work correctly.</p>
+
+        <h3 className="text-base font-black text-text-main">B. Preference cookies and storage</h3>
+        <p>These help VisNova remember your choices, including theme preference, layout preference, sidebar preference, notification settings, privacy settings, and recommendation settings.</p>
+
+        <h3 className="text-base font-black text-text-main">C. Analytics cookies and similar technologies</h3>
+        <p>With your permission, we may use analytics tools to understand how people use VisNova.</p>
+        <p>Analytics may help us learn which features are used most, where users face errors, which pages load slowly, which flows need improvement, and how beta users interact with the app.</p>
+        <p>Analytics should not include private messages, private journals, private notes, private wallet entries, private goals, or private files.</p>
+
+        <h3 className="text-base font-black text-text-main">D. Recommendation-related storage</h3>
+        <p>VisNova may provide resource or product recommendations based on user-controlled settings.</p>
+        <p>If enabled, recommendations may use signals such as selected interests, vision categories, task tags, saved resources, wallet/resource goals, store activity, and product interactions.</p>
+        <p className="font-bold text-text-main">Private messages are never used for recommendations.</p>
+
+        <h3 className="text-base font-black text-text-main">E. Third-party cookies and services</h3>
+        <p>VisNova may use third-party services to operate the app, such as authentication providers, hosting providers, database/storage providers, analytics providers, payment providers, and store or affiliate partners in the future.</p>
+        <p>These services may use their own cookies or similar technologies according to their own policies.</p>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-black text-text-main">3. Why we use cookies and similar technologies</h2>
+        <p>We use cookies and similar technologies to keep VisNova secure, keep users logged in, remember user preferences, improve app performance, find and fix bugs, understand feature usage, personalize the app experience if allowed, and support optional resource/product recommendations if allowed.</p>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-black text-text-main">4. What we do not use cookies for</h2>
+        <p>VisNova does not use private messages for product/resource recommendations.</p>
+        <p>We do not intentionally use private journals, private notes, private wallet entries, or private goals for analytics or recommendations unless the user has clearly allowed related personalization settings.</p>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-black text-text-main">5. User choices</h2>
+        <p>Users can control cookies and tracking through VisNova’s Cookie Settings or Privacy Settings where available, browser settings, clearing cookies/local storage from their browser, and disabling optional analytics or recommendation personalization.</p>
+        <p>Disabling essential cookies or storage may cause parts of VisNova to stop working properly.</p>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-black text-text-main">6. Cookie consent</h2>
+        <p>Where required, VisNova asks for consent before using optional analytics, marketing, or recommendation-related cookies.</p>
+        <p>Essential cookies required for login, security, and core app functionality may be used without separate consent.</p>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-black text-text-main">7. Changes to this Cookie Policy</h2>
+        <p>We may update this Cookie Policy as VisNova evolves. If we make important changes, we may notify users through the app or update the “Last updated” date.</p>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-black text-text-main">8. Contact</h2>
+        <p>For privacy or cookie-related questions, contact us at <a className="text-accent font-bold" href={`mailto:${supportEmail}`}>{supportEmail}</a>.</p>
       </section>
     </LegalShell>
   );

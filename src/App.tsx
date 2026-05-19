@@ -486,6 +486,7 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/privacy': { title: 'Privacy', subtitle: 'How VisNova handles data' },
   '/terms': { title: 'Terms', subtitle: 'Rules for using VisNova' },
   '/cookies': { title: 'Cookies', subtitle: 'Browser storage and cookies' },
+  '/cookie-policy': { title: 'Cookie Policy', subtitle: 'Browser storage and optional tracking choices' },
   '/support': { title: 'Support', subtitle: 'Legal, account, and help requests' },
   '/feedback': { title: 'Feedback', subtitle: 'Report bugs and beta feedback' },
 };
@@ -756,6 +757,7 @@ function AppContent() {
   }
 
   const showOnboarding = !session || (isProfileReady && !hasCompletedOnboarding) || isPasswordRecovery;
+  const isPublicLegalPath = ['/privacy', '/terms', '/cookies', '/cookie-policy', '/support'].includes(location.pathname);
 
   return (
     <>
@@ -773,6 +775,23 @@ function AppContent() {
           >
             <Routes>
               <Route path="/auth/callback" element={<AuthCallback />} />
+            </Routes>
+          </motion.div>
+        ) : isPublicLegalPath ? (
+          <motion.div
+            key="public-legal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.98, filter: 'blur(5px)' }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="min-h-screen bg-bg-base p-5 sm:p-8 overflow-y-auto"
+          >
+            <Routes>
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/cookies" element={<CookiePolicyPage />} />
+              <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+              <Route path="/support" element={<SupportPage />} />
             </Routes>
           </motion.div>
         ) : showOnboarding ? (
@@ -839,6 +858,7 @@ function AppContent() {
                       <Route path="/privacy" element={<PrivacyPolicyPage />} />
                       <Route path="/terms" element={<TermsPage />} />
                       <Route path="/cookies" element={<CookiePolicyPage />} />
+                      <Route path="/cookie-policy" element={<CookiePolicyPage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/feedback" element={<FeedbackPage />} />
                       <Route path="*" element={<NotFoundPage />} />

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
 import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as ImageIcon, Users, Plus, Sparkles, Target } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
@@ -1858,8 +1858,11 @@ export default function OnboardingFlow() {
       </div>
 
       {/* Footer Meta */}
-      <div className="h-8 sm:h-10 px-4 flex items-center justify-center pointer-events-none opacity-40 shrink-0">
+      <div className="h-8 sm:h-10 px-4 flex flex-wrap items-center justify-center gap-3 opacity-50 shrink-0">
          <span className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest">VisNova setup</span>
+         <Link to="/cookie-policy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
+         <Link to="/privacy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy</Link>
+         <Link to="/terms" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms</Link>
       </div>
     </div>
   );
