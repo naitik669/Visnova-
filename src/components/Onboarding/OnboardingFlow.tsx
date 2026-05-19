@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
 import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as ImageIcon, Users, Plus, Sparkles, Target } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
@@ -44,7 +44,7 @@ function GoogleIcon() {
   );
 }
 
-function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handleGoogleLogin }: any) {
+function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handleGoogleLogin, verifiedMessage }: any) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -124,6 +124,11 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
       </div>
 
       <div className="space-y-3">
+        {verifiedMessage && (
+          <div className="p-3 bg-success/10 border border-success/20 rounded-xl text-success text-[10px] font-black uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
+            Email verified. You can now log in.
+          </div>
+        )}
         {error && (
           <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
             {error}
@@ -436,14 +441,16 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
       const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_signup', 5, 15);
       if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
       
+      const redirectUrl = `${window.location.origin}/auth/callback`;
       const { data, error: signupError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
         options: {
-          emailRedirectTo: getAuthRedirectUrl(),
+          emailRedirectTo: redirectUrl,
           data: {
             full_name: name,
-            display_name: name
+            display_name: name,
+            username: normalizedEmail.split('@')[0]
           }
         }
       });
@@ -458,7 +465,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         title: 'Account created',
         description: data.user?.identities?.length === 0 
           ? 'This email is already registered. Please login.'
-          : 'Please check your email to confirm registration.',
+          : 'Verification email sent. Please check your inbox.',
       });
       
       if (data.user?.identities?.length === 0) {
@@ -664,17 +671,16 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
     setIsResending(true);
     setError('');
     try {
-      if (session?.user) {
-        const normalizedEmail = sanitizeText(session.user.email || email, 254).toLowerCase();
-        const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_resend', 5, 15);
-        if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
-        await supabase.auth.resend({
-          type: 'signup',
-          email: normalizedEmail,
-          options: { emailRedirectTo: getAuthRedirectUrl() }
-        });
-        setError('A new verification link has been dispatched to your inbox.');
-      }
+      const normalizedEmail = sanitizeText(session?.user?.email || email, 254).toLowerCase();
+      if (!normalizedEmail) throw new Error('Enter your email first.');
+      const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_resend', 5, 15);
+      if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
+      await supabase.auth.resend({
+        type: 'signup',
+        email: normalizedEmail,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+      });
+      setError('A new verification link has been dispatched to your inbox.');
     } catch (err: any) {
       setError(err.message || 'Resend failed.');
     } finally {
@@ -1458,6 +1464,9 @@ export default function OnboardingFlow() {
   const [direction, setDirection] = useState(1);
   const { completeOnboarding, addToast, session, signOut, addVision } = useStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const verifiedLogin = searchParams.get('verified') === 'true';
 
   const handleForceStart = async () => {
     if (!username) {
@@ -1469,6 +1478,15 @@ export default function OnboardingFlow() {
   };
 
   // Save step to backend (removed localStorage sync)
+
+  useEffect(() => {
+    if (verifiedLogin || location.pathname === '/login') {
+      setStep(11);
+      if (verifiedLogin) {
+        addToast({ type: 'success', title: 'Email verified', description: 'Email verified. You can now log in.' });
+      }
+    }
+  }, [addToast, location.pathname, verifiedLogin]);
 
   // State
   const [name, setName] = useState(session?.user?.user_metadata?.full_name || '');
@@ -1705,6 +1723,7 @@ export default function OnboardingFlow() {
           switchToSignup={() => nextStep(1)}
           setStep={setStep}
           handleGoogleLogin={handleGoogleLogin}
+          verifiedMessage={verifiedLogin}
         />;
       case 12:
         return <ScreenForgotPassword
