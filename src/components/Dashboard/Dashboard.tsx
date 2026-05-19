@@ -34,6 +34,7 @@ import { getLevelProgress, normalizeLegacyXp } from "../../lib/progression";
 import React from "react";
 import { safeArray, safeFormat } from "../../lib/safeData";
 import { ProgressLogComposer } from "../Progress/ProgressLogComposer";
+import { formatCurrency } from "../../lib/currency";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -155,6 +156,8 @@ export default function Dashboard() {
     notes,
     userStreak,
     weeklyActivity,
+    financeGoals,
+    financeTransactions,
     moneyOverview,
     progressLogs,
     growthTimelineEvents,
@@ -349,13 +352,8 @@ export default function Dashboard() {
 
   // Use vitals from store to allow persistence of manual adjustments
   const { focus: focusForce, energy: energyState, sleep: systemLoad } = vitals;
-  const formatMoney = (amount: number) => {
-    try {
-      return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
-    } catch {
-      return `INR ${Math.round(amount || 0).toLocaleString('en-IN')}`;
-    }
-  };
+  const formatMoney = formatCurrency;
+  const defaultCurrency = user.defaultCurrency || 'INR';
   
   // Alignment is calculated from current vision data
   const globalProgress =
@@ -396,6 +394,99 @@ export default function Dashboard() {
   const weeklyJournalCount = journalEntries.filter(entry => entry.createdAt >= weekStart).length;
   const weeklyMoneyUpdates = moneyOverview ? (moneyOverview.monthIncome > 0 || moneyOverview.monthExpenses > 0 || moneyOverview.monthSavings > 0 ? 1 : 0) : 0;
   const recentTimeline = growthTimelineEvents.slice(0, 3);
+  const visionById = React.useMemo(() => new Map(visions.map(vision => [vision.id, vision])), [visions]);
+  const activeMoneyGoals = React.useMemo(() => (
+    financeGoals
+      .filter(goal => goal.status !== 'archived')
+      .map(goal => {
+        const progress = Math.min(100, Math.round((goal.currentAmount / Math.max(1, goal.targetAmount)) * 100));
+        const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
+        const linkedVision = goal.linkedVisionId ? visionById.get(goal.linkedVisionId) : null;
+        const daysRemaining = goal.deadline
+          ? Math.ceil((new Date(`${goal.deadline}T23:59:59`).getTime() - Date.now()) / 86400000)
+          : null;
+        const status = goal.status === 'completed' || progress >= 100
+          ? 'completed'
+          : daysRemaining !== null && daysRemaining < 0
+            ? 'behind'
+            : daysRemaining !== null && daysRemaining <= 7 && progress < 70
+              ? 'at risk'
+              : 'on track';
+
+        return { ...goal, progress, remaining, linkedVision, daysRemaining, pulseStatus: status };
+      })
+      .sort((a, b) => {
+        const statusWeight = { behind: 0, 'at risk': 1, 'on track': 2, completed: 3 } as Record<string, number>;
+        return statusWeight[a.pulseStatus] - statusWeight[b.pulseStatus] || b.remaining - a.remaining;
+      })
+  ), [financeGoals, visionById]);
+  const deadlineCards = React.useMemo(() => (
+    visions
+      .filter(vision => !!vision.deadline)
+      .map(vision => {
+        const progress = Math.min(100, Math.round(vision.progress || 0));
+        const deadlineDate = new Date(`${vision.deadline}T23:59:59`);
+        const daysRemaining = Math.ceil((deadlineDate.getTime() - Date.now()) / 86400000);
+        const tasksRemaining = (vision.tasks || []).filter(task => !task.completed && !task.deletedAt).length;
+        const status = progress >= 100
+          ? 'completed'
+          : daysRemaining < 0
+            ? 'behind'
+            : daysRemaining <= 7 && progress < 70
+              ? 'at risk'
+              : 'on track';
+
+        return { vision, progress, daysRemaining, tasksRemaining, status };
+      })
+      .sort((a, b) => a.daysRemaining - b.daysRemaining)
+      .slice(0, 3)
+  ), [visions]);
+  const resourceReadinessCards = React.useMemo(() => (
+    visions
+      .map(vision => {
+        const linkedGoals = activeMoneyGoals.filter(goal => goal.linkedVisionId === vision.id);
+        const purchased = linkedGoals.filter(goal => goal.pulseStatus === 'completed').length;
+        const saved = linkedGoals.filter(goal => goal.currentAmount > 0 && goal.pulseStatus !== 'completed').length;
+        const missing = linkedGoals.filter(goal => goal.currentAmount <= 0 && goal.pulseStatus !== 'completed').length;
+        const weightedReady = linkedGoals.reduce((sum, goal) => sum + (goal.pulseStatus === 'completed' ? 1 : goal.currentAmount > 0 ? 0.5 : 0), 0);
+        const readiness = linkedGoals.length ? Math.round((weightedReady / linkedGoals.length) * 100) : 0;
+        return { vision, linkedGoals, planned: linkedGoals.length, saved, purchased, missing, readiness };
+      })
+      .filter(card => card.planned > 0)
+      .sort((a, b) => b.readiness - a.readiness)
+      .slice(0, 2)
+  ), [activeMoneyGoals, visions]);
+  const daysSinceLastProgress = React.useMemo(() => {
+    const latest = progressLogs[0]?.createdAt;
+    return latest ? Math.max(0, Math.floor((Date.now() - latest) / 86400000)) : null;
+  }, [progressLogs]);
+  const mostActiveVision = React.useMemo(() => {
+    const counts = weeklyProgressLogs.reduce<Record<string, number>>((acc, log) => {
+      if (log.visionId) acc[log.visionId] = (acc[log.visionId] || 0) + 1;
+      return acc;
+    }, {});
+    const topId = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    return topId ? visionById.get(topId) : null;
+  }, [visionById, weeklyProgressLogs]);
+  const progressUpdates = React.useMemo(() => {
+    const updates: string[] = [];
+    const topGoal = activeMoneyGoals.find(goal => goal.pulseStatus !== 'completed' && goal.remaining > 0);
+    if (topGoal) {
+      updates.push(`You need ${formatMoney(topGoal.remaining, topGoal.currency)} more to complete ${topGoal.title}.`);
+    }
+    const nextDeadline = deadlineCards.find(card => card.status !== 'completed');
+    if (nextDeadline) {
+      updates.push(`${nextDeadline.vision.title} deadline is ${nextDeadline.daysRemaining >= 0 ? `in ${nextDeadline.daysRemaining} days` : `${Math.abs(nextDeadline.daysRemaining)} days behind`}.`);
+      if (nextDeadline.tasksRemaining > 0) updates.push(`You have ${nextDeadline.tasksRemaining} tasks left before ${nextDeadline.vision.title} is complete.`);
+    }
+    if (daysSinceLastProgress !== null && daysSinceLastProgress >= 2) {
+      updates.push(`You have not logged progress for ${daysSinceLastProgress} days.`);
+    }
+    if (mostActiveVision) {
+      updates.push(`Your most active Vision this week is ${mostActiveVision.title}.`);
+    }
+    return updates.slice(0, 4);
+  }, [activeMoneyGoals, daysSinceLastProgress, deadlineCards, formatMoney, mostActiveVision]);
 
   if (isDashboardLoading && !hasAnyDashboardData) {
     return (
@@ -1352,15 +1443,15 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
                   <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Saved this month</p>
-                  <p className="mt-2 text-lg font-black text-text-main">{formatMoney(moneyOverview.monthSavings)}</p>
+                  <p className="mt-2 text-lg font-black text-text-main">{formatMoney(moneyOverview.monthSavings, defaultCurrency)}</p>
                 </div>
                 <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
                   <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Income</p>
-                  <p className="mt-2 text-lg font-black text-success">{formatMoney(moneyOverview.monthIncome)}</p>
+                  <p className="mt-2 text-lg font-black text-success">{formatMoney(moneyOverview.monthIncome, defaultCurrency)}</p>
                 </div>
                 <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
                   <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Expenses</p>
-                  <p className="mt-2 text-lg font-black text-danger">{formatMoney(moneyOverview.monthExpenses)}</p>
+                  <p className="mt-2 text-lg font-black text-danger">{formatMoney(moneyOverview.monthExpenses, defaultCurrency)}</p>
                 </div>
               </div>
             ) : (
@@ -1394,7 +1485,7 @@ export default function Dashboard() {
           <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Ecosystem Snapshot</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Progress Pulse</p>
                 <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-text-main">This Week</h3>
               </div>
               <Brain size={18} className="text-accent" />
@@ -1415,9 +1506,99 @@ export default function Dashboard() {
             <div className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
               <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Resources</p>
               <p className="mt-1 text-xs font-bold leading-5 text-text-main">
-                {weeklyMoneyUpdates ? 'Wallet activity is linked to active resources.' : 'No resource updates linked this week.'}
+                {activeMoneyGoals.length
+                  ? `${activeMoneyGoals.length} Vision-linked money goals are active.`
+                  : weeklyMoneyUpdates ? 'Wallet activity is active this month.' : 'No Vision resources planned yet.'}
               </p>
             </div>
+            {activeMoneyGoals.slice(0, 2).map(goal => (
+              <div key={goal.id} className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="line-clamp-1 text-[11px] font-black text-text-main">{goal.title}</p>
+                    <p className="mt-0.5 line-clamp-1 text-[9px] font-bold uppercase tracking-widest text-text-secondary/45">
+                      {goal.linkedVision?.title || 'No Vision linked'}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    'shrink-0 rounded-full px-2 py-1 text-[7px] font-black uppercase tracking-widest',
+                    goal.pulseStatus === 'completed' ? 'bg-success/10 text-success' :
+                      goal.pulseStatus === 'behind' ? 'bg-danger/10 text-danger' :
+                        goal.pulseStatus === 'at risk' ? 'bg-warning/10 text-warning' :
+                          'bg-accent/10 text-accent'
+                  )}>
+                    {goal.pulseStatus}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-text-main">{formatMoney(goal.currentAmount, goal.currency)} / {formatMoney(goal.targetAmount, goal.currency)}</p>
+                    <p className="mt-0.5 text-[9px] font-semibold text-text-secondary">{formatMoney(goal.remaining, goal.currency)} remaining</p>
+                  </div>
+                  <span className="text-[10px] font-black text-accent">{goal.progress}%</span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${goal.progress}%` }} />
+                </div>
+                {goal.deadline && (
+                  <p className="mt-2 text-[9px] font-bold text-text-secondary/60">Deadline {safeFormat(goal.deadline, 'MMM d, yyyy')}</p>
+                )}
+              </div>
+            ))}
+            {deadlineCards.length > 0 && (
+              <div className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
+                <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Deadlines</p>
+                <div className="mt-2 space-y-2">
+                  {deadlineCards.map(card => (
+                    <div key={card.vision.id} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="line-clamp-1 text-[11px] font-bold text-text-main">{card.vision.title}</p>
+                        <p className="text-[9px] font-semibold text-text-secondary/55">
+                          {card.daysRemaining >= 0 ? `${card.daysRemaining}d left` : `${Math.abs(card.daysRemaining)}d behind`} - {card.tasksRemaining} tasks
+                        </p>
+                      </div>
+                      <span className={cn(
+                        'rounded-full px-2 py-1 text-[7px] font-black uppercase tracking-widest',
+                        card.status === 'completed' ? 'bg-success/10 text-success' :
+                          card.status === 'behind' ? 'bg-danger/10 text-danger' :
+                            card.status === 'at risk' ? 'bg-warning/10 text-warning' :
+                              'bg-accent/10 text-accent'
+                      )}>
+                        {card.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {resourceReadinessCards.length > 0 && (
+              <div className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
+                <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Resource readiness</p>
+                <div className="mt-2 space-y-2">
+                  {resourceReadinessCards.map(card => (
+                    <div key={card.vision.id}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="line-clamp-1 text-[11px] font-bold text-text-main">{card.vision.title}</p>
+                        <span className="text-[10px] font-black text-accent">{card.readiness}%</span>
+                      </div>
+                      <p className="mt-0.5 text-[9px] font-semibold text-text-secondary/55">
+                        {card.planned} planned - {card.saved} saved - {card.purchased} purchased - {card.missing} missing
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {progressUpdates.length > 0 && (
+              <div className="mt-3 rounded-2xl border border-accent/15 bg-accent/5 p-3">
+                <p className="text-[8px] font-black uppercase tracking-widest text-accent">Smart updates</p>
+                <div className="mt-2 space-y-1.5">
+                  {progressUpdates.map(update => (
+                    <p key={update} className="text-[11px] font-semibold leading-4 text-text-main">{update}</p>
+                  ))}
+                </div>
+              </div>
+            )}
             {recentTimeline.length > 0 && (
               <div className="mt-3 space-y-1.5">
                 {recentTimeline.map(event => (

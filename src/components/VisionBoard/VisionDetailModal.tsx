@@ -65,6 +65,7 @@ import PublishModal from './PublishModal';
 import CollaborateModal from './CollaborateModal';
 import { supabase, uploadVisionBoardImage } from '../../lib/supabase';
 import { safeArray } from '../../lib/safeData';
+import { formatCurrency } from '../../lib/currency';
 
 interface VisionDetailModalProps {
   vision: Vision | null;
@@ -666,17 +667,13 @@ function ExecutionPlan({ vision }: { vision: Vision }) {
   );
   const linkedMoneyGoals = financeGoals.filter(goal => goal.linkedVisionId === vision.id && goal.status !== 'archived');
   const linkedMoneyTransactions = financeTransactions.filter(transaction => transaction.linkedVisionId === vision.id && !transaction.deletedAt);
-  const visionMoneyTarget = linkedMoneyGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
-  const visionMoneySaved = linkedMoneyGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
-  const visionMoneyExpenses = linkedMoneyTransactions.filter(transaction => transaction.type === 'expense').reduce((sum, transaction) => sum + transaction.amount, 0);
+  const primaryMoneyCurrency = linkedMoneyGoals[0]?.currency || linkedMoneyTransactions[0]?.currency || 'INR';
+  const linkedMoneyGoalsInPrimaryCurrency = linkedMoneyGoals.filter(goal => goal.currency === primaryMoneyCurrency);
+  const visionMoneyTarget = linkedMoneyGoalsInPrimaryCurrency.reduce((sum, goal) => sum + goal.targetAmount, 0);
+  const visionMoneySaved = linkedMoneyGoalsInPrimaryCurrency.reduce((sum, goal) => sum + goal.currentAmount, 0);
+  const visionMoneyExpenses = linkedMoneyTransactions.filter(transaction => transaction.type === 'expense' && transaction.currency === primaryMoneyCurrency).reduce((sum, transaction) => sum + transaction.amount, 0);
   const visionMoneyProgress = Math.min(100, Math.round((visionMoneySaved / Math.max(1, visionMoneyTarget)) * 100));
-  const formatMoney = (amount: number) => {
-    try {
-      return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
-    } catch {
-      return `INR ${Math.round(amount || 0).toLocaleString('en-IN')}`;
-    }
-  };
+  const formatMoney = (amount: number) => formatCurrency(amount, primaryMoneyCurrency);
 
   useEffect(() => {
     fetchMoneyOverview().catch(error => console.error('Failed to load Vision Wallet summary:', error));

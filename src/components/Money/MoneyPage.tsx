@@ -15,6 +15,7 @@ import { SelectMenu } from '../ui/SelectMenu';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import { FinanceBillingCycle, FinanceBudget, FinanceGoal, FinanceGoalPriority, FinanceGoalStatus, FinanceSubscription, FinanceTransaction, FinanceTransactionType } from '../../types';
+import { CURRENCY_OPTIONS, formatCurrency, normalizeCurrencyCode } from '../../lib/currency';
 
 type MoneyTab = 'overview' | 'transactions' | 'goals' | 'subscriptions' | 'budgets' | 'review';
 type MoneyModal = 'income' | 'expense' | 'goal' | 'subscription' | 'budget' | 'review' | null;
@@ -41,13 +42,7 @@ const formNullableString = (form: FormData, key: string) => {
   return value || null;
 };
 
-const formatMoney = (amount: number, currency = 'INR') => {
-  try {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount || 0);
-  } catch {
-    return `${currency} ${Math.round(amount || 0).toLocaleString('en-IN')}`;
-  }
-};
+const formatMoney = formatCurrency;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -67,6 +62,7 @@ function linkedVisionName(visions: ReturnType<typeof useStore.getState>['visions
 
 export default function MoneyPage() {
   const {
+    user,
     visions,
     financeTransactions,
     financeGoals,
@@ -111,6 +107,10 @@ export default function MoneyPage() {
   const currentYear = new Date().getFullYear();
 
   const activeGoals = financeGoals.filter(goal => goal.status === 'active');
+  const defaultCurrency = user.defaultCurrency || 'INR';
+  const currencyRows = Object.entries(moneyOverview?.currencyBreakdown || {}).filter(([, totals]) => {
+    return !!totals && (totals.income !== 0 || totals.expenses !== 0 || totals.savings !== 0 || totals.budgetLeft !== 0);
+  });
   const activeSubscriptions = financeSubscriptions.filter(sub => sub.active);
   const monthlySubscriptionTotal = activeSubscriptions.reduce((sum, sub) => {
     const multiplier = sub.billingCycle === 'weekly' ? 4 : sub.billingCycle === 'yearly' ? 1 / 12 : sub.billingCycle === 'quarterly' ? 1 / 3 : 1;
@@ -132,6 +132,7 @@ export default function MoneyPage() {
       type: formString(form, 'type') as FinanceTransactionType,
       title: formString(form, 'title'),
       amount: Number(formString(form, 'amount', '0')),
+      currency: normalizeCurrencyCode(formString(form, 'currency', 'INR')),
       category: formNullableString(form, 'category'),
       transactionDate: formString(form, 'transactionDate'),
       paymentMethod: formNullableString(form, 'paymentMethod'),
@@ -152,6 +153,7 @@ export default function MoneyPage() {
       title: formString(form, 'title'),
       targetAmount: Number(formString(form, 'targetAmount', '0')),
       currentAmount: Number(formString(form, 'currentAmount', '0')),
+      currency: normalizeCurrencyCode(formString(form, 'currency', 'INR')),
       deadline: formNullableString(form, 'deadline'),
       linkedVisionId: formNullableString(form, 'linkedVisionId'),
       priority: (formString(form, 'priority', 'medium') as FinanceGoalPriority),
@@ -177,6 +179,7 @@ export default function MoneyPage() {
     const payload = {
       name: formString(form, 'name'),
       amount: Number(formString(form, 'amount', '0')),
+      currency: normalizeCurrencyCode(formString(form, 'currency', 'INR')),
       billingCycle: formString(form, 'billingCycle', 'monthly') as FinanceBillingCycle,
       nextBillingDate: formNullableString(form, 'nextBillingDate'),
       category: formNullableString(form, 'category'),
@@ -196,7 +199,8 @@ export default function MoneyPage() {
       month: Number(form.get('month')),
       year: Number(form.get('year')),
       category: formString(form, 'category'),
-      limitAmount: Number(formString(form, 'limitAmount', '0'))
+      limitAmount: Number(formString(form, 'limitAmount', '0')),
+      currency: normalizeCurrencyCode(formString(form, 'currency', 'INR'))
     });
     if (ok) closeModal();
   };
@@ -266,11 +270,34 @@ export default function MoneyPage() {
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <MetricCard icon={ArrowUpRight} label="This Month Income" value={formatMoney(moneyOverview?.monthIncome || 0)} tone="success" />
-            <MetricCard icon={ArrowDownLeft} label="This Month Expenses" value={formatMoney(moneyOverview?.monthExpenses || 0)} tone="danger" />
-            <MetricCard icon={PiggyBank} label="Saved This Month" value={formatMoney(moneyOverview?.monthSavings || 0)} tone="accent" />
+            <MetricCard icon={ArrowUpRight} label="This Month Income" value={formatMoney(moneyOverview?.monthIncome || 0, defaultCurrency)} tone="success" />
+            <MetricCard icon={ArrowDownLeft} label="This Month Expenses" value={formatMoney(moneyOverview?.monthExpenses || 0, defaultCurrency)} tone="danger" />
+            <MetricCard icon={PiggyBank} label="Saved This Month" value={formatMoney(moneyOverview?.monthSavings || 0, defaultCurrency)} tone="accent" />
             <MetricCard icon={Target} label="Active Goals" value={String(moneyOverview?.activeGoals || 0)} tone="neutral" />
           </div>
+          {currencyRows.length > 1 && (
+            <section className="rounded-[2rem] border border-card-border bg-card p-5">
+              <h2 className="text-lg font-black text-text-main">Currency breakdown</h2>
+              <p className="mt-1 text-xs font-semibold text-text-secondary">Multiple currencies are shown separately. No exchange conversion is guessed.</p>
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {currencyRows.map(([currency, totals]) => (
+                  <div key={currency} className="rounded-2xl border border-card-border bg-app-container p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-accent">{currency}</p>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs font-bold">
+                      <span className="text-success">{formatMoney(totals?.income || 0, currency)}</span>
+                      <span className="text-danger">{formatMoney(totals?.expenses || 0, currency)}</span>
+                      <span className="text-text-main">{formatMoney(totals?.savings || 0, currency)}</span>
+                    </div>
+                    <div className="mt-1 grid grid-cols-3 gap-2 text-[8px] font-black uppercase tracking-widest text-text-secondary/45">
+                      <span>Income</span>
+                      <span>Spent</span>
+                      <span>Saved</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <section className="lg:col-span-2 rounded-[2rem] bg-card border border-card-border p-5">
@@ -544,6 +571,7 @@ function TransactionForm({ mode, transaction, visions, goals, onSubmit }: { mode
       <input type="hidden" name="type" value={type} />
       <Field label="Title"><input name="title" defaultValue={transaction?.title || ''} className={inputClass} required /></Field>
       <Field label="Amount"><input name="amount" type="number" min="1" step="0.01" defaultValue={transaction?.amount || ''} className={inputClass} required /></Field>
+      <Field label="Currency"><CurrencySelect defaultValue={transaction?.currency || 'INR'} /></Field>
       <Field label="Category"><FormSelect name="category" defaultValue={transaction?.category || categories[0]} options={categories.map(c => ({ value: c, label: c }))} /></Field>
       <Field label="Date"><input name="transactionDate" type="date" defaultValue={transaction?.transactionDate || today()} className={inputClass} /></Field>
       <Field label="Payment Method"><input name="paymentMethod" defaultValue={transaction?.paymentMethod || ''} className={inputClass} placeholder="UPI, card, cash..." /></Field>
@@ -561,6 +589,7 @@ function GoalForm({ goal, visions, onSubmit }: { goal: FinanceGoal | null; visio
       <Field label="Goal Title"><input name="title" defaultValue={goal?.title || ''} className={inputClass} required /></Field>
       <Field label="Target Amount"><input name="targetAmount" type="number" min="1" step="0.01" defaultValue={goal?.targetAmount || ''} className={inputClass} required /></Field>
       <Field label="Current Amount"><input name="currentAmount" type="number" min="0" step="0.01" defaultValue={goal?.currentAmount || 0} className={inputClass} /></Field>
+      <Field label="Currency"><CurrencySelect defaultValue={goal?.currency || 'INR'} /></Field>
       <Field label="Deadline"><input name="deadline" type="date" defaultValue={goal?.deadline || ''} className={inputClass} /></Field>
       <Field label="Priority"><FormSelect name="priority" defaultValue={goal?.priority || 'medium'} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} /></Field>
       <Field label="Status"><FormSelect name="status" defaultValue={goal?.status || 'active'} options={[{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }, { value: 'completed', label: 'Completed' }, { value: 'archived', label: 'Archived' }]} /></Field>
@@ -585,6 +614,7 @@ function SubscriptionForm({ subscription, visions, onSubmit }: { subscription: F
     <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <Field label="Name"><input name="name" defaultValue={subscription?.name || ''} className={inputClass} required /></Field>
       <Field label="Amount"><input name="amount" type="number" min="1" step="0.01" defaultValue={subscription?.amount || ''} className={inputClass} required /></Field>
+      <Field label="Currency"><CurrencySelect defaultValue={subscription?.currency || 'INR'} /></Field>
       <Field label="Billing Cycle"><FormSelect name="billingCycle" defaultValue={subscription?.billingCycle || 'monthly'} options={[{ value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'yearly', label: 'Yearly' }, { value: 'custom', label: 'Custom' }]} /></Field>
       <Field label="Next Billing"><input name="nextBillingDate" type="date" defaultValue={subscription?.nextBillingDate || ''} className={inputClass} /></Field>
       <Field label="Category"><input name="category" defaultValue={subscription?.category || 'Subscriptions'} className={inputClass} /></Field>
@@ -600,6 +630,7 @@ function BudgetForm({ month, year, onSubmit }: { month: number; year: number; on
     <form onSubmit={onSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <Field label="Category"><FormSelect name="category" defaultValue={expenseCategories[0]} options={expenseCategories.map(c => ({ value: c, label: c }))} /></Field>
       <Field label="Limit"><input name="limitAmount" type="number" min="1" step="0.01" className={inputClass} required /></Field>
+      <Field label="Currency"><CurrencySelect /></Field>
       <Field label="Month"><input name="month" type="number" min="1" max="12" defaultValue={month} className={inputClass} /></Field>
       <Field label="Year"><input name="year" type="number" min="2000" max="2100" defaultValue={year} className={inputClass} /></Field>
       <button className="sm:col-span-2 h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Budget</button>
@@ -626,6 +657,10 @@ function ReviewForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>
 
 function VisionSelect({ name, visions, defaultValue }: { name: string; visions: any[]; defaultValue?: string }) {
   return <FormSelect name={name} defaultValue={defaultValue || ''} options={[{ value: '', label: 'No Vision linked' }, ...visions.map(vision => ({ value: vision.id, label: vision.title }))]} />;
+}
+
+function CurrencySelect({ defaultValue = 'INR' }: { defaultValue?: string }) {
+  return <FormSelect name="currency" defaultValue={defaultValue} options={CURRENCY_OPTIONS} />;
 }
 
 function FormSelect({ name, defaultValue = '', options }: { name: string; defaultValue?: string; options: Array<{ value: string; label: string }> }) {

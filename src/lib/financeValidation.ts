@@ -1,6 +1,7 @@
 import { sanitizePlainText, sanitizeText } from './security';
+import { normalizeCurrencyCode } from './currency';
 
-export const MONEY_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'] as const;
+export const MONEY_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'SGD', 'AED'] as const;
 export const MONEY_TRANSACTION_TYPES = ['income', 'expense', 'transfer', 'saving'] as const;
 export const MONEY_BILLING_CYCLES = ['weekly', 'monthly', 'quarterly', 'yearly', 'custom'] as const;
 export const MONEY_GOAL_STATUSES = ['active', 'completed', 'paused', 'archived'] as const;
@@ -30,7 +31,7 @@ const asOptionalDate = (value: unknown) => {
 
 const asCurrency = (value: unknown) => {
   const currency = sanitizeText(value || 'INR', 3).toUpperCase();
-  return MONEY_CURRENCIES.includes(currency as any) ? currency : 'INR';
+  return normalizeCurrencyCode(currency);
 };
 
 export function validateFinanceTransaction(payload: any) {

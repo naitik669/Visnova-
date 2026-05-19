@@ -34,6 +34,7 @@ import {
 } from '../lib/financeValidation';
 import { getDefaultVisibility, normalizeVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
 import { extractHashtags as extractSocialHashtags, extractMentions as extractSocialMentions } from '../utils/parseSocialText';
+import { normalizeCurrencyCode } from '../lib/currency';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -241,7 +242,7 @@ function formatFinanceTransaction(row: any): FinanceTransaction {
     userId: row.user_id,
     type: row.type,
     amount: Number(row.amount || 0),
-    currency: row.currency || 'INR',
+    currency: normalizeCurrencyCode(row.currency),
     category: row.category,
     title: row.title,
     note: row.note,
@@ -267,7 +268,7 @@ function formatFinanceGoal(row: any): FinanceGoal {
     title: row.title,
     targetAmount: Number(row.target_amount || 0),
     currentAmount: Number(row.current_amount || 0),
-    currency: row.currency || 'INR',
+    currency: normalizeCurrencyCode(row.currency),
     deadline: row.deadline,
     linkedVisionId: row.linked_vision_id,
     priority: row.priority || 'medium',
@@ -288,7 +289,7 @@ function formatFinanceBudget(row: any): FinanceBudget {
     category: row.category,
     limitAmount: Number(row.limit_amount || 0),
     spentAmount: Number(row.spent_amount || 0),
-    currency: row.currency || 'INR',
+    currency: normalizeCurrencyCode(row.currency),
     createdAt,
     updatedAt,
   };
@@ -302,7 +303,7 @@ function formatFinanceSubscription(row: any): FinanceSubscription {
     userId: row.user_id,
     name: row.name,
     amount: Number(row.amount || 0),
-    currency: row.currency || 'INR',
+    currency: normalizeCurrencyCode(row.currency),
     billingCycle: row.billing_cycle || 'monthly',
     nextBillingDate: row.next_billing_date,
     category: row.category,
@@ -602,6 +603,7 @@ function toProfileUser(profile: any, fallbackEmail = ''): AppState['user'] {
     mainGoal: safeString(profile?.main_goal),
     interests: safeArray<string>(profile?.interests),
     verified: safeBoolean(profile?.verified),
+    defaultCurrency: normalizeCurrencyCode(profile?.default_currency),
   };
 }
 
@@ -1122,6 +1124,15 @@ export const useStore = create<AppState>((set, get) => ({
       });
       const monthIncome = monthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
       const monthExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      const currencyBreakdown = monthTransactions.reduce<NonNullable<AppState['moneyOverview']>['currencyBreakdown']>((acc, transaction) => {
+        const currency = normalizeCurrencyCode(transaction.currency);
+        const current = acc?.[currency] || { income: 0, expenses: 0, savings: 0, budgetLeft: 0 };
+        if (transaction.type === 'income') current.income += transaction.amount;
+        if (transaction.type === 'expense') current.expenses += transaction.amount;
+        if (transaction.type === 'saving') current.savings += transaction.amount;
+        current.savings = current.income - current.expenses;
+        return { ...acc, [currency]: current };
+      }, {});
       const categoryTotals = monthTransactions
         .filter(t => t.type === 'expense')
         .reduce<Record<string, number>>((acc, t) => {
@@ -1134,6 +1145,10 @@ export const useStore = create<AppState>((set, get) => ({
         .filter(b => b.month === month + 1 && b.year === year)
         .reduce((sum, budget) => {
           const spent = monthTransactions.filter(t => t.type === 'expense' && t.category === budget.category).reduce((acc, t) => acc + t.amount, 0);
+          const currency = normalizeCurrencyCode(budget.currency);
+          const current = currencyBreakdown?.[currency] || { income: 0, expenses: 0, savings: 0, budgetLeft: 0 };
+          current.budgetLeft += (budget.limitAmount - spent);
+          currencyBreakdown[currency] = current;
           return sum + (budget.limitAmount - spent);
         }, 0);
       const inTwoWeeks = new Date(now);
@@ -1151,6 +1166,7 @@ export const useStore = create<AppState>((set, get) => ({
           monthExpenses,
           monthSavings: monthIncome - monthExpenses,
           budgetLeft,
+          currencyBreakdown,
           topSpendingCategory,
           activeGoals: activeGoals.length,
           upcomingSubscriptions,
@@ -1348,6 +1364,7 @@ export const useStore = create<AppState>((set, get) => ({
       type: 'saving',
       title: title || `Contribution to ${goal.title}`,
       amount,
+      currency: goal.currency,
       category: 'Saving Goal',
       linkedGoalId: goal.id,
       linkedVisionId: goal.linkedVisionId || null,
@@ -2158,6 +2175,10 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.statusNote !== undefined) {
         dbUpdates.status_note = sanitizePlainText(updates.statusNote || '', 300);
         nextUserUpdates.statusNote = dbUpdates.status_note;
+      }
+      if (updates.defaultCurrency !== undefined) {
+        dbUpdates.default_currency = normalizeCurrencyCode(updates.defaultCurrency);
+        nextUserUpdates.defaultCurrency = dbUpdates.default_currency;
       }
       if (updates.interests !== undefined) {
         dbUpdates.interests = Array.isArray(updates.interests) ? updates.interests.map((interest: string) => sanitizeText(interest, 40)).filter(Boolean).slice(0, 20) : [];

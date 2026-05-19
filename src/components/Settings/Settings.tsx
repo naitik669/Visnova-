@@ -39,6 +39,7 @@ import { SelectMenu } from '../ui/SelectMenu';
 import { CookiePreferencesModal } from '../Legal/CookiePreferencesModal';
 import { useCookieConsent } from '../../hooks/useCookieConsent';
 import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
+import { CURRENCY_OPTIONS } from '../../lib/currency';
 
 type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences' | 'privacy';
 
@@ -399,6 +400,16 @@ export default function Settings() {
                       { value: 'circle', label: 'Circle' },
                       { value: 'public', label: 'Public' }
                     ]}
+                  />
+                </SettingsField>
+                <SettingsField label="Default Wallet currency">
+                  <SelectMenu
+                    value={user.defaultCurrency || 'INR'}
+                    onChange={value => {
+                      void updateUser({ defaultCurrency: value as any });
+                      playInteractionSound('click');
+                    }}
+                    options={CURRENCY_OPTIONS}
                   />
                 </SettingsField>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

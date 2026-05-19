@@ -185,13 +185,14 @@ export type FinanceTransactionType = 'income' | 'expense' | 'transfer' | 'saving
 export type FinanceGoalStatus = 'active' | 'completed' | 'paused' | 'archived';
 export type FinanceGoalPriority = 'low' | 'medium' | 'high';
 export type FinanceBillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
+export type CurrencyCode = 'INR' | 'USD' | 'EUR' | 'GBP' | 'JPY' | 'AUD' | 'CAD' | 'SGD' | 'AED';
 
 export interface FinanceTransaction {
   id: string;
   userId: string;
   type: FinanceTransactionType;
   amount: number;
-  currency: string;
+  currency: CurrencyCode;
   category?: string | null;
   title: string;
   note?: string | null;
@@ -213,7 +214,7 @@ export interface FinanceGoal {
   title: string;
   targetAmount: number;
   currentAmount: number;
-  currency: string;
+  currency: CurrencyCode;
   deadline?: string | null;
   linkedVisionId?: string | null;
   priority: FinanceGoalPriority;
@@ -230,7 +231,7 @@ export interface FinanceBudget {
   category: string;
   limitAmount: number;
   spentAmount: number;
-  currency: string;
+  currency: CurrencyCode;
   createdAt: number;
   updatedAt: number;
 }
@@ -240,7 +241,7 @@ export interface FinanceSubscription {
   userId: string;
   name: string;
   amount: number;
-  currency: string;
+  currency: CurrencyCode;
   billingCycle: FinanceBillingCycle;
   nextBillingDate?: string | null;
   category?: string | null;
@@ -270,6 +271,12 @@ export interface MoneyOverview {
   monthExpenses: number;
   monthSavings: number;
   budgetLeft: number;
+  currencyBreakdown?: Partial<Record<CurrencyCode, {
+    income: number;
+    expenses: number;
+    savings: number;
+    budgetLeft: number;
+  }>>;
   topSpendingCategory: string | null;
   activeGoals: number;
   upcomingSubscriptions: FinanceSubscription[];
@@ -437,6 +444,7 @@ export interface AppState {
     mainGoal?: string;
     interests?: string[];
     verified?: boolean;
+    defaultCurrency?: CurrencyCode;
   };
   visions: Vision[];
   sharedVisions: Vision[];
