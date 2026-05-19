@@ -270,7 +270,9 @@ function Sidebar() {
     >
       <div className={cn("p-4 mb-2", !isExpanded && "px-3")}>
         <div className={cn("flex items-center", isExpanded ? "gap-3" : "justify-center")}>
-          <BrandLogo className="w-9 h-9 rounded-xl shadow-lg shadow-accent/10" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/20 shadow-lg shadow-accent/10">
+            <div className="h-2 w-2 rounded-full bg-accent" />
+          </div>
           <span className={cn(
             "text-base font-display font-semibold tracking-tight text-text-main transition-all duration-500 uppercase overflow-hidden whitespace-nowrap",
             isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2"
