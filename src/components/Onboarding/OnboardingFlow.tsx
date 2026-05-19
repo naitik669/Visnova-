@@ -7,12 +7,13 @@ import { cn } from '../../lib/utils';
 import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
 import { trackBetaEvent } from '../../lib/betaAnalytics';
+import { getRandomVisNovaAvatar } from '../../lib/avatarLibrary';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
 
 const DEFAULT_PROFILE_AVATARS: Record<ProfileChoice, string> = {
-  male: 'https://api.dicebear.com/7.x/shapes/svg?seed=neutral-male&backgroundColor=d1d5db&shape1Color=9ca3af&shape2Color=4b5563&shape3Color=1f2937',
-  female: 'https://api.dicebear.com/7.x/shapes/svg?seed=neutral-female&backgroundColor=fce7f3&shape1Color=f472b6&shape2Color=db2777&shape3Color=831843',
+  male: getRandomVisNovaAvatar('visnova-default-male'),
+  female: getRandomVisNovaAvatar('visnova-default-female'),
   custom: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22%3E%3Crect width=%22128%22 height=%22128%22 rx=%2240%22 fill=%22%23f9fafb%22/%3E%3Cpath d=%22M64 40v48M40 64h48%22 stroke=%22%239ca3af%22 stroke-width=%228%22 stroke-linecap=%22round%22/%3E%3C/svg%3E',
 };
 
@@ -440,6 +441,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
       const normalizedEmail = sanitizeText(email, 254).toLowerCase();
       const limit = checkClientRateLimit(normalizedEmail || 'unknown', 'auth_signup', 5, 15);
       if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
+      const defaultAvatar = getRandomVisNovaAvatar(`${normalizedEmail}-${Date.now()}`);
       
       const redirectUrl = `${window.location.origin}/auth/callback`;
       const { data, error: signupError } = await supabase.auth.signUp({
@@ -450,7 +452,8 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
           data: {
             full_name: name,
             display_name: name,
-            username: normalizedEmail.split('@')[0]
+            username: normalizedEmail.split('@')[0],
+            avatar_url: defaultAvatar
           }
         }
       });
@@ -1499,7 +1502,7 @@ export default function OnboardingFlow() {
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState<ProfileChoice>('male');
   const [role, setRole] = useState('');
-  const [avatar, setAvatar] = useState(DEFAULT_PROFILE_AVATARS.male);
+  const [avatar, setAvatar] = useState(() => getRandomVisNovaAvatar());
 
   // Sync state from session
   useEffect(() => {

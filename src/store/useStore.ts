@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { safeFormat, safeTime } from '../lib/dateUtils';
 import { safeArray, safeBoolean, safeNumber, safeString } from '../lib/safeData';
 import { getLevelFromXp, normalizeLegacyXp } from '../lib/progression';
+import { getRandomVisNovaAvatar } from '../lib/avatarLibrary';
 import {
   checkClientRateLimit,
   sanitizePlainText,
@@ -437,7 +438,7 @@ const defaultUser: AppState['user'] = {
   id: undefined,
   name: 'Explorer',
   email: '',
-  avatar: 'https://api.dicebear.com/7.x/shapes/svg?seed=Explorer&backgroundColor=d1d5db',
+  avatar: getRandomVisNovaAvatar('Explorer'),
   gender: 'male',
   rank: 'Explorer',
   level: 1,
@@ -462,7 +463,7 @@ function toProfileUser(profile: any, fallbackEmail = ''): AppState['user'] {
     name: safeString(profile?.display_name || profile?.full_name, 'Explorer'),
     email: safeString(profile?.email, fallbackEmail),
     username: profile?.username || undefined,
-    avatar: safeString(profile?.avatar_url, `https://api.dicebear.com/7.x/shapes/svg?seed=${safeString(profile?.id, 'Explorer')}`),
+    avatar: safeString(profile?.avatar_url, getRandomVisNovaAvatar(safeString(profile?.id, 'Explorer'))),
     rank: safeString(profile?.role, 'Explorer'),
     level: safeNumber(profile?.level, 1),
     xp: safeNumber(profile?.xp),
@@ -3480,7 +3481,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (!profile) {
         const userMetadata = session.user.user_metadata || {};
         const displayName = userMetadata.display_name || userMetadata.full_name || userMetadata.name || 'Explorer';
-        const avatarUrl = userMetadata.avatar_url || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`;
+        const avatarUrl = userMetadata.avatar_url || getRandomVisNovaAvatar(userId || session.user.email || 'Explorer');
         const emailPrefix = (session.user.email || '').split('@')[0] || 'user';
         const usernameSeed = normalizeUsernameInput(userMetadata.preferred_username || userMetadata.user_name || emailPrefix);
         const fallbackUsername = usernameSeed.length >= 3 ? `${usernameSeed.slice(0, 18)}_${userId.slice(0, 4)}` : null;
@@ -4602,7 +4603,7 @@ export const useStore = create<AppState>((set, get) => ({
         display_name: name || 'Explorer',
         username: normalizedUsername,
         bio: bio || '',
-        avatar_url: avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${userId}`,
+        avatar_url: avatar || getRandomVisNovaAvatar(userId),
         role: role || 'Explorer',
         gender: gender || 'custom',
         onboarded: true,

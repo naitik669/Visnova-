@@ -38,6 +38,7 @@ import {
 import { SelectMenu } from '../ui/SelectMenu';
 import { CookiePreferencesModal } from '../Legal/CookiePreferencesModal';
 import { useCookieConsent } from '../../hooks/useCookieConsent';
+import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
 
 type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences' | 'privacy';
 
@@ -216,9 +217,25 @@ export default function Settings() {
                       <Camera size={18} />
                     </div>
                   </div>
-                  <p className="mt-4 max-w-40 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
-                    Avatar upload lives on Profile for now.
+                  <p className="mt-4 max-w-44 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
+                    Choose from VisNova's profile library or upload from Profile.
                   </p>
+                  <div className="mt-4 grid max-w-44 grid-cols-4 gap-2">
+                    {VISNOVA_PROFILE_AVATARS.map(avatarUrl => (
+                      <button
+                        key={avatarUrl}
+                        type="button"
+                        onClick={() => setEditData(data => ({ ...data, avatar: avatarUrl }))}
+                        className={cn(
+                          'aspect-square overflow-hidden rounded-xl border-2 bg-surface-muted transition-all hover:scale-105',
+                          editData.avatar === avatarUrl ? 'border-accent ring-2 ring-accent/20' : 'border-card-border opacity-70 hover:opacity-100'
+                        )}
+                        aria-label="Choose VisNova profile avatar"
+                      >
+                        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
                   <SettingsField label="Display name">

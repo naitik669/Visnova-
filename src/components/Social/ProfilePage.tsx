@@ -52,6 +52,7 @@ import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData'
 import { normalizeVisibility } from '../../lib/appPreferences';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { SelectMenu } from '../ui/SelectMenu';
+import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
 
 type SocialProfile = {
   id: string;
@@ -936,6 +937,25 @@ export default function ProfilePage() {
                                 >
                                   Remove
                                 </button>
+                              </div>
+                              <div className="mt-5">
+                                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-text-secondary/55">VisNova profile library</p>
+                                <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
+                                  {VISNOVA_PROFILE_AVATARS.map(avatarUrl => (
+                                    <button
+                                      key={avatarUrl}
+                                      type="button"
+                                      onClick={() => setEditData(data => ({ ...data, avatar: avatarUrl }))}
+                                      className={cn(
+                                        "aspect-square overflow-hidden rounded-xl border-2 bg-card transition-all hover:scale-105",
+                                        editData.avatar === avatarUrl ? "border-accent ring-2 ring-accent/20" : "border-card-border opacity-70 hover:opacity-100"
+                                      )}
+                                      aria-label="Choose VisNova profile avatar"
+                                    >
+                                      <img src={avatarUrl} className="h-full w-full object-cover" alt="" />
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
                               <input
                                 ref={avatarInputRef}
