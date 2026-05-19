@@ -46,6 +46,7 @@ import { safeFormat } from '../../lib/safeData';
 type GrowthStatus = 'saved' | 'learning' | 'completed' | 'applied' | 'archived';
 type SourceType = 'youtube' | 'article' | 'course' | 'book' | 'podcast' | 'pdf' | 'website' | 'other';
 type GrowthTab = 'library' | 'active' | 'applied' | 'paths' | 'skills';
+type GrowthSection = 'resources' | 'tracker';
 
 const growthTabs: { id: GrowthTab; label: string }[] = [
   { id: 'library', label: 'Learning Library' },
@@ -195,6 +196,7 @@ export default function MindVisualizer() {
   const [resources, setResources] = useState<GrowthResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [growthSection, setGrowthSection] = useState<GrowthSection>((location.state as any)?.section === 'tracker' || (location.state as any)?.fromDashboard ? 'tracker' : 'resources');
   const [activeTab, setActiveTab] = useState<GrowthTab>('library');
   const [statusFilter, setStatusFilter] = useState<GrowthStatus | 'all'>('all');
   const [sourceFilter, setSourceFilter] = useState<SourceType | 'all'>('all');
@@ -236,6 +238,13 @@ export default function MindVisualizer() {
     if (userId) fetchDashboardData().catch(error => console.error('Failed to load Progress Pulse data:', error));
     fetchGrowthResources();
   }, [userId]);
+
+  useEffect(() => {
+    const requestedSection = (location.state as any)?.section;
+    if (requestedSection === 'tracker' || (location.state as any)?.fromDashboard) {
+      setGrowthSection('tracker');
+    }
+  }, [location.state]);
 
   const visionById = useMemo(() => new Map(visions.map(vision => [vision.id, vision])), [visions]);
 
@@ -654,6 +663,29 @@ export default function MindVisualizer() {
 
   return (
     <div className="w-full max-w-[1700px] mx-auto pb-20 animate-in fade-in duration-700 space-y-6">
+      <section className="rounded-[2rem] border border-card-border bg-card p-3 shadow-sm">
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { id: 'resources', label: 'Resources', desc: 'Learning and saved material' },
+            { id: 'tracker', label: 'Tracker', desc: 'Proof, streaks, goals' },
+          ] as const).map(section => (
+            <button
+              key={section.id}
+              onClick={() => setGrowthSection(section.id)}
+              className={cn(
+                'rounded-[1.4rem] px-4 py-3 text-left transition-all',
+                growthSection === section.id ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/15' : 'bg-app-container text-text-secondary hover:text-text-main'
+              )}
+            >
+              <span className="block text-xs font-black uppercase tracking-widest">{section.label}</span>
+              <span className={cn('mt-1 block text-[10px] font-semibold', growthSection === section.id ? 'text-accent-contrast/70' : 'text-text-secondary/55')}>{section.desc}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {growthSection === 'tracker' && (
+      <>
       <section className="relative overflow-hidden rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-6 lg:p-7">
         <div className="absolute right-0 top-0 h-72 w-72 translate-x-1/3 -translate-y-1/3 rounded-full bg-accent/10 blur-3xl" />
         <button
@@ -822,7 +854,11 @@ export default function MindVisualizer() {
           </div>
         </PulsePanel>
       </section>
+      </>
+      )}
 
+      {growthSection === 'resources' && (
+      <>
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent mb-3">Learning to action</p>
@@ -898,6 +934,8 @@ export default function MindVisualizer() {
           </div>
         )}
       </section>
+      </>
+      )}
 
       <AnimatePresence>
         {isResourceModalOpen && (

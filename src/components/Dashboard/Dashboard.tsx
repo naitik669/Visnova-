@@ -621,7 +621,7 @@ export default function Dashboard() {
 
         <button
           type="button"
-          onClick={() => navigate('/growth', { state: { fromDashboard: true } })}
+          onClick={() => navigate('/growth', { state: { fromDashboard: true, section: 'tracker' } })}
           className="w-full rounded-[2rem] border border-card-border bg-card p-4 text-left shadow-sm transition-all active:scale-[0.99]"
         >
           <div className="flex items-center justify-between gap-3">
@@ -1504,7 +1504,7 @@ export default function Dashboard() {
         <div className="min-w-0 w-full lg:w-[300px] shrink-0 flex flex-col gap-4">
           <button
             type="button"
-            onClick={() => navigate('/growth', { state: { fromDashboard: true } })}
+            onClick={() => navigate('/growth', { state: { fromDashboard: true, section: 'tracker' } })}
             className="rounded-[2rem] border border-card-border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-hover active:scale-[0.99]"
           >
             <div className="flex items-center justify-between gap-3">
