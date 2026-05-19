@@ -22,26 +22,16 @@ import {
   Trash2,
   X,
   Youtube,
-  Zap,
   type LucideIcon
 } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis
-} from 'recharts';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { checkClientRateLimit, sanitizePlainText, sanitizeText, validateYouTubeUrl } from '../../lib/security';
 import { SelectMenu } from '../ui/SelectMenu';
 import { formatCurrency } from '../../lib/currency';
-import { safeFormat } from '../../lib/safeData';
+import { ProgressPulsePage } from '../Growth/ProgressPulsePage';
 
 type GrowthStatus = 'saved' | 'learning' | 'completed' | 'applied' | 'archived';
 type SourceType = 'youtube' | 'article' | 'course' | 'book' | 'podcast' | 'pdf' | 'website' | 'other';
@@ -192,6 +182,7 @@ export default function MindVisualizer() {
   } = useStore();
   const userId = session?.user?.id;
   const location = useLocation();
+  const navigate = useNavigate();
   const [resources, setResources] = useState<GrowthResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -320,13 +311,13 @@ export default function MindVisualizer() {
         const progress = Math.min(100, Math.round(vision.progress || 0));
         const daysRemaining = Math.ceil((new Date(`${vision.deadline}T23:59:59`).getTime() - now) / 86400000);
         const tasksRemaining = (vision.tasks || []).filter(task => !task.completed && !task.deletedAt).length;
-        const status = progress >= 100
+        const status = (progress >= 100
           ? 'completed'
           : daysRemaining < 0
             ? 'behind'
             : daysRemaining <= 7 && progress < 70
               ? 'at risk'
-              : 'on track';
+              : 'on track') as 'completed' | 'behind' | 'at risk' | 'on track';
         return { vision, progress, daysRemaining, tasksRemaining, status };
       })
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
@@ -675,192 +666,17 @@ export default function MindVisualizer() {
       </section>
 
       {growthSection === 'tracker' && (
-      <>
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-card-border bg-card p-4 shadow-sm sm:p-5 lg:p-6">
-        <div className="absolute right-0 top-0 h-56 w-56 translate-x-1/3 -translate-y-1/3 rounded-full bg-accent/10 blur-3xl" />
-        <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-accent">Growth Tracker</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-text-main sm:text-3xl">Visible proof, not guesswork.</h1>
-            <p className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-text-secondary sm:text-sm">A compact read on proof logs, streaks, resources, deadlines, and reflection.</p>
-          </div>
-          <div className="rounded-[1.5rem] border border-card-border bg-app-container p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Weekly score</p>
-                <p className="mt-1 text-3xl font-black leading-none text-text-main tabular-nums">{pulse.weeklyScore}%</p>
-              </div>
-              <span className="rounded-full bg-accent/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent">This week</span>
-            </div>
-            <div className="mt-4 flex h-14 items-end gap-1.5">
-              {pulse.activityChart.map(day => {
-                const value = day.logs + day.tasks + day.journal;
-                const height = Math.max(12, Math.min(56, value * 12));
-                return (
-                  <div key={day.day} className="flex flex-1 flex-col items-center gap-1.5">
-                    <span className="w-full rounded-t-xl bg-accent/75" style={{ height }} />
-                    <span className="text-[8px] font-black uppercase text-text-secondary/45">{day.day.slice(0, 1)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="relative z-10 mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <PulseStat label="Total Proof Logs" value={pulse.totalLogs} icon={FileText} />
-          <PulseStat label="Current Streak" value={pulse.currentStreak} icon={Zap} />
-          <PulseStat label="Weekly Score" value={`${pulse.weeklyScore}%`} icon={GraduationCap} />
-          <PulseStat label="Tasks Completed" value={pulse.completedTasks} icon={CheckCircle2} />
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-black text-text-main">Weekly activity</h2>
-              <p className="text-xs font-semibold text-text-secondary">Logs, tasks, and journal activity across the last seven days.</p>
-            </div>
-            <span className="rounded-full bg-accent/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent">{pulse.weeklyScore}% score</span>
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={pulse.activityChart} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid stroke="var(--card-border)" vertical={false} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-secondary)', fontWeight: 800 }} />
-                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} />
-                <Tooltip cursor={{ fill: 'rgba(var(--accent-rgb),0.08)' }} contentStyle={{ borderRadius: 18, border: '1px solid var(--card-border)', background: 'var(--card)', color: 'var(--text-main)' }} />
-                <Bar dataKey="logs" stackId="a" fill="var(--accent)" radius={[10, 10, 0, 0]} />
-                <Bar dataKey="tasks" stackId="a" fill="var(--success)" radius={[10, 10, 0, 0]} />
-                <Bar dataKey="journal" stackId="a" fill="var(--warning)" radius={[10, 10, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-5">
-          <h2 className="text-lg font-black text-text-main">Consistency heatmap</h2>
-          <p className="text-xs font-semibold text-text-secondary">Last 30 days of activity intensity.</p>
-          <div className="mt-5 overflow-x-auto pb-2">
-            <div className="grid w-max grid-flow-col grid-rows-5 gap-2">
-              {pulse.heatmap.map(day => (
-                <div
-                  key={day.key}
-                  title={`${day.label}: ${day.total} activities`}
-                  className={cn(
-                    'h-7 w-7 rounded-lg border border-card-border',
-                    day.total <= 0 ? 'bg-app-container' :
-                      day.total < 2 ? 'bg-accent/20' :
-                        day.total < 4 ? 'bg-accent/45' :
-                          day.total < 7 ? 'bg-accent/70' : 'bg-accent'
-                  )}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <PulsePanel title="Vision progress breakdown" subtitle="Active Visions and their recent proof.">
-          <div className="space-y-3">
-            {pulse.visionBreakdown.length ? pulse.visionBreakdown.map(item => (
-              <div key={item.vision.id} className="rounded-2xl border border-card-border bg-app-container p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="line-clamp-1 text-sm font-black text-text-main">{item.vision.title}</p>
-                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{item.logs} logs - {item.completed}/{item.totalTasks} tasks - last {safeFormat(item.lastActivity, 'MMM d')}</p>
-                  </div>
-                  <span className="text-sm font-black text-accent">{item.vision.progress || 0}%</span>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, item.vision.progress || 0)}%` }} />
-                </div>
-              </div>
-            )) : <EmptyPulseText>No active Vision progress yet.</EmptyPulseText>}
-          </div>
-        </PulsePanel>
-
-        <PulsePanel title="Money/resource goals" subtitle="Vision-linked resource funding, shown without currency conversion.">
-          <div className="space-y-3">
-            {pulse.goals.length ? pulse.goals.map(goal => (
-              <div key={goal.id} className="rounded-2xl border border-card-border bg-app-container p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="line-clamp-1 text-sm font-black text-text-main">{goal.title}</p>
-                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{goal.linkedVision?.title || 'No Vision linked'}</p>
-                  </div>
-                  <span className="text-sm font-black text-accent">{goal.progress}%</span>
-                </div>
-                <p className="mt-3 text-sm font-black text-text-main">{formatCurrency(goal.currentAmount, goal.currency)} / {formatCurrency(goal.targetAmount, goal.currency)}</p>
-                <p className="mt-1 text-xs font-semibold text-text-secondary">You need {formatCurrency(goal.remaining, goal.currency)} more.</p>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${goal.progress}%` }} />
-                </div>
-              </div>
-            )) : <EmptyPulseText>No Vision-linked money goals yet.</EmptyPulseText>}
-          </div>
-        </PulsePanel>
-
-        <PulsePanel title="Deadline tracker" subtitle="Urgency for active Vision deadlines.">
-          <div className="space-y-3">
-            {pulse.deadlines.length ? pulse.deadlines.map(item => (
-              <div key={item.vision.id} className="rounded-2xl border border-card-border bg-app-container p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="line-clamp-1 text-sm font-black text-text-main">{item.vision.title}</p>
-                    <p className="mt-1 text-xs font-semibold text-text-secondary">{safeFormat(item.vision.deadline, 'MMM d, yyyy')} - {item.daysRemaining >= 0 ? `${item.daysRemaining} days left` : `${Math.abs(item.daysRemaining)} days behind`}</p>
-                  </div>
-                  <span className={cn('rounded-full px-3 py-1 text-[8px] font-black uppercase tracking-widest', item.status === 'completed' ? 'bg-success/10 text-success' : item.status === 'behind' ? 'bg-danger/10 text-danger' : item.status === 'at risk' ? 'bg-warning/10 text-warning' : 'bg-accent/10 text-accent')}>{item.status}</span>
-                </div>
-                <p className="mt-3 text-xs font-semibold text-text-secondary">{item.tasksRemaining} tasks remaining</p>
-              </div>
-            )) : <EmptyPulseText>No deadlines set on active Visions.</EmptyPulseText>}
-          </div>
-        </PulsePanel>
-
-        <PulsePanel title="Day 1 vs Now" subtitle="A simple snapshot of how far the system has moved.">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-card-border bg-app-container p-4">
-              <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Day 1</p>
-              <p className="mt-3 text-sm font-black text-text-main">{pulse.firstVision?.title || 'No first Vision yet'}</p>
-              <p className="mt-1 text-xs font-semibold text-text-secondary">{pulse.firstLog ? `First log: ${safeFormat(pulse.firstLog.createdAt, 'MMM d')}` : 'First proof log pending'}</p>
-            </div>
-            <div className="rounded-2xl border border-card-border bg-accent/5 p-4">
-              <p className="text-[9px] font-black uppercase tracking-widest text-accent">Now</p>
-              <p className="mt-3 text-sm font-black text-text-main">{pulse.totalLogs} logs - {pulse.completedTasks} tasks</p>
-              <p className="mt-1 text-xs font-semibold text-text-secondary">{pulse.currentStreak} day streak - {visions.filter(v => v.status !== 'completed').length} active Visions</p>
-            </div>
-          </div>
-        </PulsePanel>
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <PulsePanel title="Recent proof timeline" subtitle="Latest visible progress events.">
-          <div className="space-y-3">
-            {[...progressLogs.slice(0, 5).map(log => ({ id: `log-${log.id}`, title: log.content || 'Progress logged', meta: safeFormat(log.createdAt, 'MMM d, h:mm a') })), ...growthTimelineEvents.slice(0, 3).map(event => ({ id: `event-${event.id}`, title: event.title, meta: safeFormat(event.createdAt, 'MMM d, h:mm a') }))].slice(0, 6).map(item => (
-              <div key={item.id} className="flex gap-3 rounded-2xl border border-card-border bg-app-container p-3">
-                <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
-                <div className="min-w-0">
-                  <p className="line-clamp-2 text-sm font-bold text-text-main">{item.title}</p>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">{item.meta}</p>
-                </div>
-              </div>
-            ))}
-            {progressLogs.length === 0 && growthTimelineEvents.length === 0 && <EmptyPulseText>No proof timeline yet.</EmptyPulseText>}
-          </div>
-        </PulsePanel>
-
-        <PulsePanel title="Smart progress updates" subtitle="Small signals worth acting on.">
-          <div className="space-y-3">
-            {pulse.updates.length ? pulse.updates.map(update => (
-              <div key={update} className="rounded-2xl border border-accent/15 bg-accent/5 p-4 text-sm font-bold leading-5 text-text-main">{update}</div>
-            )) : <EmptyPulseText>No urgent progress updates right now.</EmptyPulseText>}
-          </div>
-        </PulsePanel>
-      </section>
-      </>
+        <ProgressPulsePage
+          pulse={pulse}
+          visions={visions}
+          progressLogs={progressLogs}
+          growthTimelineEvents={growthTimelineEvents}
+          onClose={() => {
+            if ((location.state as any)?.fromDashboard) navigate('/');
+            else if (window.history.length > 1) navigate(-1);
+            else navigate('/');
+          }}
+        />
       )}
 
       {growthSection === 'resources' && (
@@ -993,40 +809,6 @@ export default function MindVisualizer() {
           />
         ))}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function PulseStat({ label, value, icon: Icon }: { label: string; value: number | string; icon: LucideIcon }) {
-  return (
-    <div className="rounded-[1.35rem] border border-card-border bg-app-container p-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.03)]">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 text-accent">
-          <Icon size={15} />
-        </span>
-      </div>
-      <p className="mt-2 text-xl font-black text-text-main tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-function PulsePanel({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
-  return (
-    <section className="rounded-[1.75rem] border border-card-border bg-card p-4 shadow-sm">
-      <div className="mb-3">
-        <h2 className="text-base font-black text-text-main">{title}</h2>
-        <p className="mt-1 text-[11px] font-semibold text-text-secondary">{subtitle}</p>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function EmptyPulseText({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-5 text-center text-sm font-semibold text-text-secondary">
-      {children}
     </div>
   );
 }
