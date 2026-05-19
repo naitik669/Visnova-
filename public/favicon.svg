@@ -1,22 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">VisNova site icon</title>
+  <desc id="desc">A purple V with an orbit and star on a white rounded-square icon.</desc>
   <defs>
-    <linearGradient id="bg" x1="96" y1="56" x2="424" y2="472" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#d9b8ff"/>
-      <stop offset="0.48" stop-color="#a883ff"/>
-      <stop offset="1" stop-color="#8358ff"/>
+    <linearGradient id="mark" x1="142" y1="118" x2="363" y2="390" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e7d7ff"/>
+      <stop offset="0.45" stop-color="#8f6bff"/>
+      <stop offset="1" stop-color="#4b22d8"/>
     </linearGradient>
-    <radialGradient id="shine" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(166 96) rotate(56) scale(330 280)">
-      <stop offset="0" stop-color="#fff" stop-opacity="0.5"/>
-      <stop offset="0.62" stop-color="#fff" stop-opacity="0.05"/>
-      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    <linearGradient id="orbit" x1="112" y1="324" x2="410" y2="178" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#cdb6ff"/>
+      <stop offset="0.5" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#7a4cff"/>
+    </linearGradient>
+    <radialGradient id="tileGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(168 86) rotate(46) scale(370 320)">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.58" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f4efff"/>
     </radialGradient>
+    <filter id="tileShadow" x="-15%" y="-12%" width="130%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#7c4dff" flood-opacity="0.22"/>
+    </filter>
+    <filter id="softMarkShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#4b22d8" flood-opacity="0.18"/>
+    </filter>
   </defs>
-  <rect x="44" y="36" width="424" height="424" rx="96" fill="url(#bg)"/>
-  <rect x="44" y="36" width="424" height="424" rx="96" fill="url(#shine)"/>
-  <g transform="translate(0 -2)">
-    <path d="M122 150h86l68 154 69-154h79L310 381h-68L122 150Z" fill="#fff"/>
-    <path d="M116 327c60 38 179 18 267-49 66-51 79-99 55-116" fill="none" stroke="#fff" stroke-width="15" stroke-linecap="round"/>
-    <path d="M121 328c53 27 148 13 232-38" fill="none" stroke="#8b63ff" stroke-width="7" stroke-linecap="round" opacity="0.78"/>
+
+  <rect x="48" y="34" width="416" height="416" rx="96" fill="url(#tileGlow)" filter="url(#tileShadow)"/>
+  <rect x="48" y="34" width="416" height="416" rx="96" fill="none" stroke="#eee6ff" stroke-width="2"/>
+
+  <g filter="url(#softMarkShadow)">
+    <path d="M130 151h82l64 154 70-154h78L309 386h-66L130 151Z" fill="url(#mark)"/>
+    <path d="M116 333c58 34 176 14 263-54 67-52 85-100 57-121" fill="none" stroke="url(#orbit)" stroke-width="16" stroke-linecap="round"/>
+    <path d="M118 333c52 25 151 8 235-44" fill="none" stroke="#7a4cff" stroke-width="6" stroke-linecap="round" opacity="0.32"/>
   </g>
-  <path d="M414 106c7 29 13 35 42 42-29 7-35 13-42 42-7-29-13-35-42-42 29-7 35-13 42-42Z" fill="#fff"/>
+
+  <path d="M406 104c7 28 14 35 42 42-28 7-35 14-42 42-7-28-14-35-42-42 28-7 35-14 42-42Z" fill="#6f42ff"/>
 </svg>
