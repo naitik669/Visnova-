@@ -20,7 +20,7 @@ const isCommentEnhancementMissing = (error: any) => (
   error?.code === '42703' ||
   error?.code === '42P01' ||
   error?.code === 'PGRST200' ||
-  /comment_likes|is_pinned|pinned_at|pinned_by/i.test(error?.message || '')
+  /comment_likes|comment_mentions|comment_hashtags|hashtags|is_pinned|pinned_at|pinned_by/i.test(error?.message || '')
 );
 
 const mapPostRow = (p: any): Post => ({
@@ -48,6 +48,10 @@ const mapPostRow = (p: any): Post => ({
   editedAt: p?.edited_at || null,
   media: safeArray<any>(p?.media).map((m: any) => ({ id: m.id, url: m.media_url, type: (m.media_type || 'image') as 'image' | 'video' })),
   tags: safeArray<any>(p?.post_tags).map((t: any) => t.tag).filter(Boolean),
+  mentions: safeArray<any>(p?.mentions).map((m: any) => ({
+    userId: m.mentioned_user_id,
+    username: m.user?.username || 'user'
+  })),
   metadata: p?.metadata
 });
 
@@ -69,7 +73,15 @@ const mapCommentRow = (comment: any): Comment => ({
   isLiked: !!comment?.isLiked,
   isPinned: !!comment?.is_pinned,
   pinnedAt: comment?.pinned_at || null,
-  pinnedBy: comment?.pinned_by || null
+  pinnedBy: comment?.pinned_by || null,
+  mentions: safeArray<any>(comment?.mentions).map((m: any) => ({
+    userId: m.mentioned_user_id,
+    username: m.user?.username || 'user'
+  })),
+  tags: safeArray<any>(comment?.comment_hashtags).map((row: any) => {
+    const hashtag = Array.isArray(row.hashtag) ? row.hashtag[0] : row.hashtag;
+    return hashtag?.tag;
+  }).filter(Boolean)
 });
 
 function buildCommentTree(comments: Comment[]) {
@@ -144,7 +156,7 @@ export default function PostThreadPage() {
   const fetchCommentRows = async (from: number, to: number) => {
     const enhanced = await supabase
       .from('comments')
-      .select('*, author:profiles!comments_user_id_fkey(*), likes:comment_likes(count)')
+      .select('*, author:profiles!comments_user_id_fkey(*), likes:comment_likes(count), mentions:comment_mentions(comment_id, mentioned_user_id, user:profiles!comment_mentions_mentioned_user_id_fkey(username)), comment_hashtags(comment_id, hashtag:hashtags(tag))')
       .eq('post_id', postId)
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: true })
@@ -175,7 +187,8 @@ export default function PostThreadPage() {
             saves:saved_posts(count),
             comment_count:comments(count),
             media:post_media(*),
-            post_tags(*)
+            post_tags(*),
+            mentions:post_mentions(*, user:profiles(username))
           `)
           .eq('id', postId)
           .maybeSingle(),
@@ -484,7 +497,7 @@ export default function PostThreadPage() {
                   <p className="text-lg font-black text-text-main leading-snug">
                     {renderSocialText(post.caption, post.mentions, {
                       onMentionClick: userId => useStore.getState().setSelectedProfileId(userId),
-                      onHashtagClick: tag => navigate(`/feed?tag=${encodeURIComponent(tag)}`)
+                      onHashtagClick: tag => navigate(`/feed?tab=explore&tag=${encodeURIComponent(tag)}`)
                     })}
                   </p>
                 )}
@@ -492,7 +505,7 @@ export default function PostThreadPage() {
                   <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
                     {renderSocialText(post.content, post.mentions, {
                       onMentionClick: userId => useStore.getState().setSelectedProfileId(userId),
-                      onHashtagClick: tag => navigate(`/feed?tag=${encodeURIComponent(tag)}`)
+                      onHashtagClick: tag => navigate(`/feed?tab=explore&tag=${encodeURIComponent(tag)}`)
                     })}
                   </p>
                 )}
@@ -662,13 +675,13 @@ function CommentItem({
               <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-text-secondary/40">{comment.timestamp}</span>
             </div>
             <p className={cn('mt-2 text-sm leading-relaxed whitespace-pre-wrap', deleted ? 'italic text-text-secondary/45' : 'text-text-secondary')}>
-              {deleted ? 'Comment deleted' : renderSocialText(comment.content, [], {
+              {deleted ? 'Comment deleted' : renderSocialText(comment.content, comment.mentions || [], {
                 onMentionUsernameClick: async (username) => {
                   const { data } = await supabase.from('profiles').select('id').eq('username', username).maybeSingle();
                   if (data?.id) useStore.getState().setSelectedProfileId(data.id);
                 },
                 onHashtagClick: tag => {
-                  window.location.href = `/feed?tag=${encodeURIComponent(tag)}`;
+                  window.location.href = `/feed?tab=explore&tag=${encodeURIComponent(tag)}`;
                 }
               })}
             </p>

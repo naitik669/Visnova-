@@ -25,6 +25,7 @@ type Props = {
   className?: string;
   textareaClassName?: string;
   onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
+  onBlur?: () => void;
 };
 
 function getActiveToken(value: string, cursor: number): ActiveToken | null {
@@ -58,7 +59,8 @@ export function MentionHashtagTextarea({
   disabled,
   className,
   textareaClassName,
-  onKeyDown
+  onKeyDown,
+  onBlur
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const requestIdRef = useRef(0);
@@ -171,6 +173,7 @@ export function MentionHashtagTextarea({
           requestAnimationFrame(refreshToken);
         }}
         onClick={refreshToken}
+        onBlur={onBlur}
         onKeyUp={refreshToken}
         onKeyDown={(event) => {
           if (dropdownOpen && visibleSuggestions.length > 0) {

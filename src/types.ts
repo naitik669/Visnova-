@@ -661,6 +661,11 @@ export interface Comment {
   isPinned?: boolean;
   pinnedAt?: string | null;
   pinnedBy?: string | null;
+  tags?: string[];
+  mentions?: {
+    userId: string;
+    username: string;
+  }[];
   replies?: Comment[];
 }
 

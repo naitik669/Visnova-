@@ -228,6 +228,13 @@ export default function CommunityFeed() {
   }, [searchParams, activeTab]);
 
   useEffect(() => {
+    const urlTag = searchParams.get('tag');
+    if (urlTag) {
+      setActiveTab('explore');
+      setSearchQuery(`#${normalizeHashtag(urlTag)}`);
+      return;
+    }
+
     const pendingHashtag = sessionStorage.getItem('visnova-feed-hashtag');
     if (pendingHashtag) {
       sessionStorage.removeItem('visnova-feed-hashtag');
@@ -252,7 +259,7 @@ export default function CommunityFeed() {
       window.removeEventListener('nav-explore', handleNavExplore);
       window.removeEventListener('nav-hashtag', handleNavHashtag);
     };
-  }, [setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const load = async () => {
@@ -2004,6 +2011,47 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
         pinnedBy: c.pinned_by || null
       }));
 
+      const commentIds = formatted.map(comment => comment.id).filter(Boolean);
+      if (commentIds.length > 0) {
+        const [mentionsRes, hashtagsRes] = await Promise.all([
+          supabase
+            .from('comment_mentions')
+            .select('comment_id, mentioned_user_id, user:profiles!comment_mentions_mentioned_user_id_fkey(username)')
+            .in('comment_id', commentIds),
+          supabase
+            .from('comment_hashtags')
+            .select('comment_id, hashtag:hashtags(tag)')
+            .in('comment_id', commentIds)
+        ]);
+
+        if (mentionsRes.error) console.warn('Comment mentions lookup failed:', mentionsRes.error);
+        if (hashtagsRes.error) console.warn('Comment hashtags lookup failed:', hashtagsRes.error);
+
+        const mentionsByComment = new Map<string, { userId: string; username: string }[]>();
+        safeArray<any>(mentionsRes.data).forEach(row => {
+          const username = safeString(Array.isArray(row.user) ? row.user[0]?.username : row.user?.username);
+          if (!row.comment_id || !username) return;
+          const next = mentionsByComment.get(row.comment_id) || [];
+          next.push({ userId: row.mentioned_user_id, username });
+          mentionsByComment.set(row.comment_id, next);
+        });
+
+        const tagsByComment = new Map<string, string[]>();
+        safeArray<any>(hashtagsRes.data).forEach(row => {
+          const tag = safeString(Array.isArray(row.hashtag) ? row.hashtag[0]?.tag : row.hashtag?.tag);
+          if (!row.comment_id || !tag) return;
+          const next = tagsByComment.get(row.comment_id) || [];
+          next.push(tag);
+          tagsByComment.set(row.comment_id, next);
+        });
+
+        formatted = formatted.map(comment => ({
+          ...comment,
+          mentions: mentionsByComment.get(comment.id) || [],
+          tags: tagsByComment.get(comment.id) || []
+        }));
+      }
+
       if (session?.user?.id && formatted.length > 0) {
         const { data: likedRows } = await supabase
           .from('comment_likes')
@@ -2261,13 +2309,13 @@ function ModalCommentItem({
               <span className="text-[9px] font-black text-text-secondary/30 uppercase shrink-0">{comment.timestamp}</span>
             </div>
             <p className={cn('text-sm leading-relaxed font-medium whitespace-pre-wrap', deleted ? 'italic text-text-secondary/45' : 'text-text-secondary')}>
-              {deleted ? 'Comment deleted' : renderSocialText(comment.content, [], {
+              {deleted ? 'Comment deleted' : renderSocialText(comment.content, comment.mentions || [], {
                 onMentionUsernameClick: async (username) => {
                   const { data } = await supabase.from('profiles').select('id').eq('username', username).maybeSingle();
                   if (data?.id) useStore.getState().setSelectedProfileId(data.id);
                 },
                 onHashtagClick: tag => {
-                  window.location.href = `/feed?tag=${encodeURIComponent(tag)}`;
+                  window.location.href = `/feed?tab=explore&tag=${encodeURIComponent(tag)}`;
                 }
               })}
             </p>

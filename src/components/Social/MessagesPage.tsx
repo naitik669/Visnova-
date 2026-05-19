@@ -17,7 +17,7 @@ import {
   X
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { SelectMenu } from '../ui/SelectMenu';
 import { supabase } from '../../lib/supabase';
@@ -25,6 +25,8 @@ import { trackBetaEvent } from '../../lib/betaAnalytics';
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
 import { safeDate, safeFormat, safeString } from '../../lib/safeData';
+import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
+import { renderSocialText } from '../../utils/parseSocialText';
 
 type ProfileLite = {
   id: string;
@@ -119,7 +121,8 @@ const previewMessage = (message?: Pick<ChatMessage, 'content' | 'deleted_at'> | 
 };
 
 export default function MessagesPage() {
-  const { session, addToast, reportUser } = useStore();
+  const { session, addToast, reportUser, setSelectedProfileId } = useStore();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const currentUserId = session?.user?.id;
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -178,6 +181,23 @@ export default function MessagesPage() {
     }
     lastTypingSentRef.current = 0;
     sendTypingSignal(false);
+  };
+
+  const handleHashtagClick = (tag: string) => {
+    navigate(`/feed?tab=explore&tag=${encodeURIComponent(tag)}`);
+  };
+
+  const handleMentionUsernameClick = async (username: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username)
+      .maybeSingle();
+    if (error) {
+      console.warn('Message mention lookup failed:', error);
+      return;
+    }
+    if (data?.id) setSelectedProfileId(data.id);
   };
 
   const handleMessageTextChange = (value: string) => {
@@ -736,7 +756,12 @@ export default function MessagesPage() {
                               </div>
                             </Link>
                           ) : (
-                            <p className="whitespace-pre-wrap">{message.content}</p>
+                            <p className="whitespace-pre-wrap">
+                              {renderSocialText(message.content, [], {
+                                onHashtagClick: handleHashtagClick,
+                                onMentionUsernameClick: handleMentionUsernameClick
+                              })}
+                            </p>
                           )}
                           <p className={cn('mt-2 text-[9px] font-black uppercase tracking-widest', isMine ? 'text-accent-contrast/60 text-right' : 'text-text-secondary/40')}>
                             {message.failed ? 'Failed' : formatMessageTime(message.created_at)}
@@ -777,9 +802,9 @@ export default function MessagesPage() {
                   </div>
                 )}
                 <div className="flex items-end gap-3">
-                  <textarea
+                  <MentionHashtagTextarea
                     value={messageText}
-                    onChange={(e) => handleMessageTextChange(e.target.value)}
+                    onChange={handleMessageTextChange}
                     onBlur={stopTyping}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -788,7 +813,8 @@ export default function MessagesPage() {
                       }
                     }}
                     placeholder={`Message @${selected.profile.username || 'user'}...`}
-                    className="flex-1 h-12 max-h-24 overflow-y-auto rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-medium outline-none resize-none focus:border-accent/50"
+                    className="flex-1"
+                    textareaClassName="w-full h-12 max-h-24 overflow-y-auto rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-medium outline-none resize-none focus:border-accent/50"
                   />
                   <button
                     onClick={() => sendMessage()}
