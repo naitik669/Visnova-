@@ -268,9 +268,11 @@ function Sidebar() {
     >
       <div className={cn("p-4 mb-2", !isExpanded && "px-3")}>
         <div className={cn("flex items-center", isExpanded ? "gap-3" : "justify-center")}>
-          <div className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shrink-0 shadow-lg shadow-accent/10">
-             <div className="w-1.5 h-1.5 bg-accent-contrast rounded-full animate-pulse" />
-          </div>
+          <img
+            src="/visnova-logo.svg"
+            alt="VisNova"
+            className="w-9 h-9 rounded-xl shrink-0 shadow-lg shadow-accent/10"
+          />
           <span className={cn(
             "text-base font-display font-semibold tracking-tight text-text-main transition-all duration-500 uppercase overflow-hidden whitespace-nowrap",
             isExpanded ? "w-auto opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2"
@@ -707,10 +709,12 @@ function AppContent() {
   if (authLoading && !isAuthInitialized && !isAuthCallbackPath) {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
-         <motion.div 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-            className="w-12 h-12 border-4 border-accent/10 border-t-accent rounded-full mb-4"
+         <motion.img
+            src="/visnova-logo.svg"
+            alt="VisNova"
+            animate={{ scale: [1, 1.05, 1], opacity: [0.86, 1, 0.86] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+            className="w-16 h-16 rounded-2xl shadow-xl shadow-accent/15 mb-4"
          />
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">VisNova</span>
@@ -725,13 +729,13 @@ function AppContent() {
   if (session && !isProfileReady && !profile) {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
-         <motion.div 
-            animate={{ rotate: 360, scale: [1, 1.1, 1] }}
+         <motion.img
+            src="/visnova-logo.svg"
+            alt="VisNova"
+            animate={{ scale: [1, 1.08, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="w-12 h-12 bg-accent/20 rounded-xl flex items-center justify-center"
-         >
-            <div className="w-2 h-2 bg-accent rounded-full animate-ping" />
-         </motion.div>
+            className="w-16 h-16 rounded-2xl shadow-xl shadow-accent/15"
+         />
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">Loading</span>
             <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-text-secondary opacity-40">Loading your profile data...</span>

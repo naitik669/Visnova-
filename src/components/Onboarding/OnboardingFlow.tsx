@@ -500,7 +500,10 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <h1 className="text-4xl font-extrabold tracking-tight text-text-main mb-2">VisNova</h1>
+          <div className="mb-4 flex items-center gap-3">
+            <img src="/visnova-logo.svg" alt="VisNova" className="h-12 w-12 rounded-2xl shadow-lg shadow-accent/15" />
+            <h1 className="text-4xl font-extrabold tracking-tight text-text-main">VisNova</h1>
+          </div>
           <p className="text-text-secondary font-medium  opacity-70">Your Visionary Planner.</p>
         </motion.div>
 

@@ -1,9 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#f8faf6"/>
-  <circle cx="170" cy="160" r="52" fill="#8fa885"/>
-  <circle cx="170" cy="160" r="14" fill="#f8faf6"/>
-  <text x="120" y="300" font-family="Inter, Arial, sans-serif" font-size="96" font-weight="800" fill="#26342b">VisNova</text>
-  <text x="126" y="370" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="600" fill="#60725f">Turn visions into visible progress.</text>
-  <rect x="122" y="430" width="360" height="64" rx="22" fill="#8fa885"/>
-  <text x="154" y="472" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#f8faf6">Closed beta workspace</text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbf7ff"/>
+      <stop offset="1" stop-color="#efe6ff"/>
+    </linearGradient>
+    <linearGradient id="logoBg" x1="120" y1="95" x2="320" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d9b8ff"/>
+      <stop offset="0.48" stop-color="#a883ff"/>
+      <stop offset="1" stop-color="#8358ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="118" y="92" width="210" height="210" rx="48" fill="url(#logoBg)"/>
+  <path d="M150 148h45l36 82 37-82h42l-61 122h-36L150 148Z" fill="#fff"/>
+  <path d="M151 239c30 21 94 10 140-26 36-28 42-55 29-64" fill="none" stroke="#fff" stroke-width="8.5" stroke-linecap="round"/>
+  <path d="M306 122c4 17 8 21 25 25-17 4-21 8-25 25-4-17-8-21-25-25 17-4 21-8 25-25Z" fill="#fff"/>
+  <text x="120" y="390" font-family="Inter, Arial, sans-serif" font-size="96" font-weight="800" fill="#2d2035">VisNova</text>
+  <text x="126" y="460" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="600" fill="#6c5877">Turn visions into visible progress.</text>
+  <rect x="122" y="512" width="360" height="64" rx="22" fill="#6d4b77"/>
+  <text x="154" y="554" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800" fill="#fff">Closed beta workspace</text>
 </svg>

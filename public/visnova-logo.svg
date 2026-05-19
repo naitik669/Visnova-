@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">VisNova logo</title>
+  <desc id="desc">A white V with an orbit and star on a purple rounded-square background.</desc>
+  <defs>
+    <linearGradient id="bg" x1="96" y1="56" x2="424" y2="472" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d9b8ff"/>
+      <stop offset="0.48" stop-color="#a883ff"/>
+      <stop offset="1" stop-color="#8358ff"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(166 96) rotate(56) scale(330 280)">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="0.62" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="22" flood-color="#6d42de" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <rect x="44" y="36" width="424" height="424" rx="96" fill="url(#bg)" filter="url(#softShadow)"/>
+  <rect x="44" y="36" width="424" height="424" rx="96" fill="url(#shine)"/>
+
+  <path
+    d="M110 150h91l72 162 73-162h83L309 389h-72L110 150Z"
+    fill="#fff"
+  />
+
+  <path
+    d="M112 333c59 42 187 20 279-52 72-57 83-110 57-127"
+    fill="none"
+    stroke="#fff"
+    stroke-width="17"
+    stroke-linecap="round"
+    opacity="0.98"
+  />
+  <path
+    d="M112 333c54 30 154 16 244-41"
+    fill="none"
+    stroke="#8b63ff"
+    stroke-width="8"
+    stroke-linecap="round"
+    opacity="0.78"
+  />
+  <path
+    d="M422 98c8 35 15 42 50 50-35 8-42 15-50 50-8-35-15-42-50-50 35-8 42-15 50-50Z"
+    fill="#fff"
+  />
+</svg>
