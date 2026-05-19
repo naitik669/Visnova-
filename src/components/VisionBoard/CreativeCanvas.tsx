@@ -171,6 +171,11 @@ const normalizeBoardElements = (value: unknown): VisionElement[] => safeArray(va
   .slice(0, 500)
   .map(normalizeBoardElement);
 
+const cloneBoardElements = (items: VisionElement[]): VisionElement[] => items.map(element => ({
+  ...element,
+  metadata: element.metadata ? JSON.parse(JSON.stringify(element.metadata)) : element.metadata
+}));
+
 export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVision, onActiveChange }) => {
   const [elements, setElements] = useState<VisionElement[]>(() => normalizeBoardElements(vision.elements));
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -196,8 +201,14 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingElementsRef = useRef<VisionElement[]>(normalizeBoardElements(vision.elements));
   const interactionModeRef = useRef<InteractionMode>('idle');
+  const [interactionMode, setInteractionModeState] = useState<InteractionMode>('idle');
   const currentVisionIdRef = useRef(vision.id);
   const isDirtyRef = useRef(false);
+  const localVersionRef = useRef(0);
+  const isSavingRef = useRef(false);
+  const resaveAfterCurrentRef = useRef(false);
+  const undoStackRef = useRef<VisionElement[][]>([]);
+  const redoStackRef = useRef<VisionElement[][]>([]);
   const drawingRef = useRef<{ id: string; pointerId: number; points: Array<{ x: number; y: number }>; frame: number | null } | null>(null);
   const { session, addToast, notes, fetchNotes } = useStore();
 
@@ -231,9 +242,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [elements]);
   const setInteractionMode = useCallback((mode: InteractionMode) => {
     interactionModeRef.current = mode;
+    setInteractionModeState(mode);
   }, []);
 
-  const canvasInteractionLocked = isDraggingElement || isResizingElement || isEditingText || activeTool !== 'select' || interactionModeRef.current !== 'idle';
+  const canvasInteractionLocked = isDraggingElement || isResizingElement || isEditingText || activeTool !== 'select' || interactionMode !== 'idle';
   const minZoom = useMemo(() => {
     if (!viewportSize.width || !viewportSize.height) return MIN_ZOOM_FLOOR;
     const fitScale = Math.min(
@@ -250,6 +262,11 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     if (!visionChanged && isDirtyRef.current) return;
     setElements(normalized);
     pendingElementsRef.current = normalized;
+    localVersionRef.current = 0;
+    isSavingRef.current = false;
+    resaveAfterCurrentRef.current = false;
+    undoStackRef.current = [];
+    redoStackRef.current = [];
     if (visionChanged) {
       setSelectedId(null);
       setLinkingFromId(null);
@@ -293,30 +310,49 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     }
   }, [fetchNotes, importPanelOpen]);
 
-  const persistNow = useCallback(async (nextElements?: VisionElement[]) => {
+  const persistNow = useCallback(async (nextElements?: VisionElement[], requestedVersion = localVersionRef.current) => {
     const payload = nextElements || pendingElementsRef.current;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (isSavingRef.current) {
+      resaveAfterCurrentRef.current = true;
+      setSaveStatus('saving');
+      return;
+    }
+    isSavingRef.current = true;
     setSaveStatus('saving');
     try {
       const result = await Promise.resolve(updateVision(vision.id, { elements: payload }));
       if (result === false) throw new Error('Could not save this board change.');
-      isDirtyRef.current = false;
-      setSaveStatus('saved');
-      setLastSavedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      if (requestedVersion === localVersionRef.current) {
+        isDirtyRef.current = false;
+        setSaveStatus('saved');
+        setLastSavedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } else {
+        isDirtyRef.current = true;
+        setSaveStatus('dirty');
+      }
     } catch (error) {
       console.error('Vision Board save failed:', error);
       setSaveStatus('failed');
       addToast({ type: 'error', title: 'Board save failed', description: 'Could not save this board change.' });
+    } finally {
+      isSavingRef.current = false;
+      if (resaveAfterCurrentRef.current || requestedVersion < localVersionRef.current) {
+        resaveAfterCurrentRef.current = false;
+        void persistNow(pendingElementsRef.current, localVersionRef.current);
+      }
     }
   }, [addToast, updateVision, vision.id]);
 
   const scheduleSave = useCallback((nextElements: VisionElement[]) => {
     pendingElementsRef.current = nextElements;
     isDirtyRef.current = true;
+    localVersionRef.current += 1;
+    const versionToSave = localVersionRef.current;
     setSaveStatus('dirty');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      persistNow(nextElements);
+      persistNow(nextElements, versionToSave);
     }, SAVE_DELAY_MS);
   }, [persistNow]);
 
@@ -324,9 +360,30 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setElements(current => {
       const rawNext = typeof updater === 'function' ? updater(current) : updater;
       const next = save ? normalizeBoardElements(rawNext) : rawNext;
+      if (save) {
+        undoStackRef.current = [...undoStackRef.current.slice(-49), cloneBoardElements(current)];
+        redoStackRef.current = [];
+      }
       pendingElementsRef.current = next;
       if (save) scheduleSave(next);
       return next;
+    });
+  }, [scheduleSave]);
+
+  const restoreElementsFromHistory = useCallback((direction: 'undo' | 'redo') => {
+    const source = direction === 'undo' ? undoStackRef.current : redoStackRef.current;
+    const target = direction === 'undo' ? redoStackRef.current : undoStackRef.current;
+    const snapshot = source.pop();
+    if (!snapshot) return;
+
+    setElements(current => {
+      target.push(cloneBoardElements(current));
+      if (target.length > 50) target.shift();
+      const restored = cloneBoardElements(snapshot);
+      pendingElementsRef.current = restored;
+      scheduleSave(restored);
+      setSelectedId(null);
+      return restored;
     });
   }, [scheduleSave]);
 
@@ -415,14 +472,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     centeredVisionRef.current = vision.id;
     window.requestAnimationFrame(() => fitBoardToViewport(1, 0));
   }, [fitBoardToViewport, viewportSize.height, viewportSize.width, vision.id]);
-
-  const handleWheelCapture = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    if (!event.ctrlKey && !event.metaKey) return;
-    if (isEditingText) return;
-    event.preventDefault();
-    event.stopPropagation();
-    zoomByWheelDelta(event.deltaY, 0);
-  }, [isEditingText, zoomByWheelDelta]);
 
   useEffect(() => {
     const node = canvasViewportRef.current;
@@ -722,6 +771,16 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       if (event.ctrlKey || event.metaKey) {
         const key = event.key.toLowerCase();
         const currentScale = (transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state)?.scale || zoomLevel;
+        if (key === 'z') {
+          event.preventDefault();
+          restoreElementsFromHistory(event.shiftKey ? 'redo' : 'undo');
+          return;
+        }
+        if (key === 'y') {
+          event.preventDefault();
+          restoreElementsFromHistory('redo');
+          return;
+        }
         if (key === '+' || key === '=') {
           event.preventDefault();
           zoomAroundViewportCenter(currentScale + (currentScale < 0.2 ? 0.02 : 0.1));
@@ -747,7 +806,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [deleteElement, duplicateElement, fitBoardToViewport, persistNow, selectedId, zoomAroundViewportCenter, zoomLevel]);
+  }, [deleteElement, duplicateElement, fitBoardToViewport, persistNow, restoreElementsFromHistory, selectedId, zoomAroundViewportCenter, zoomLevel]);
 
   const addMenuOptions = (
     <>
@@ -788,7 +847,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       )}
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleCanvasDrop}
-      onWheelCapture={handleWheelCapture}
     >
       <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[165] hidden max-w-[calc(100vw-22rem)] -translate-x-1/2 items-center gap-0.5 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:flex">
         <CanvasQuickButton icon={<Brush size={17} />} label="Pen" onClick={() => setActiveTool(activeTool === 'pen' ? 'select' : 'pen')} active={activeTool === 'pen'} />
@@ -861,7 +919,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         onPanningStart={() => onActiveChange?.(true)}
         doubleClick={{ disabled: true }}
         panning={{ disabled: canvasInteractionLocked, velocityDisabled: true, excluded: ['input', 'textarea', 'button', '[data-no-pan]', '[contenteditable="true"]'] }}
-        wheel={{ disabled: true, step: 0.08, touchPadDisabled: true }}
+        wheel={{ disabled: isEditingText, wheelDisabled: true, touchPadDisabled: false, step: 0.08 }}
         pinch={{ disabled: isEditingText, step: 8, allowPanning: true }}
         trackPadPanning={{ disabled: canvasInteractionLocked, velocityDisabled: true, excluded: ['input', 'textarea', 'button', '[data-no-pan]', '[contenteditable="true"]'] }}
       >
