@@ -32,7 +32,7 @@ export function BrandLogo({ className, title = 'VisNova' }: BrandLogoProps) {
 
       <rect x="44" y="36" width="424" height="424" rx="96" fill={`url(#${gradientId})`} />
       <rect x="54" y="46" width="404" height="404" rx="88" fill="none" stroke={`url(#${edgeId})`} strokeWidth="10" />
-      <g transform="translate(2 8)">
+      <g transform="translate(-10 8)">
         <path d="M126 144h82l67 158 72-158h76L309 378h-67L126 144Z" fill="var(--accent-contrast)" />
         <path
           d="M113 326c60 37 181 16 269-50 66-50 80-96 56-114"
