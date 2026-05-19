@@ -3791,7 +3791,7 @@ export const useStore = create<AppState>((set, get) => ({
           mentions:post_mentions(*, user:profiles(username))
         `)
         .eq('visibility', 'public')
-        .eq('archived', false)
+        .or('archived.is.false,archived.is.null')
         .is('deleted_at', null);
 
       if (userId) {

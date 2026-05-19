@@ -346,7 +346,7 @@ export default function CommunityFeed() {
           mentions:post_mentions(*, user:profiles(username))
         `)
         .eq('visibility', 'public')
-        .eq('archived', false)
+        .or('archived.is.false,archived.is.null')
         .is('deleted_at', null)
         .ilike('post_tags.tag', tag)
         .order('created_at', { ascending: false })

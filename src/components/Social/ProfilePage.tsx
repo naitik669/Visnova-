@@ -249,7 +249,7 @@ export default function ProfilePage() {
         .limit(50);
 
       if (targetId !== session?.user?.id) {
-        postsQuery = postsQuery.eq('visibility', 'public').eq('archived', false).is('deleted_at', null);
+        postsQuery = postsQuery.eq('visibility', 'public').or('archived.is.false,archived.is.null').is('deleted_at', null);
       } else {
         postsQuery = postsQuery.is('deleted_at', null);
       }
