@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet, Plus, User, FileText, BookOpen, PenLine, CheckCircle2 } from 'lucide-react';
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -29,6 +29,7 @@ import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supab
 import { trackBetaEvent } from './lib/betaAnalytics';
 import { XpToast } from './components/ui/XpToast';
 import { BrandLogo } from './components/BrandLogo';
+import { ProgressLogComposer } from './components/Progress/ProgressLogComposer';
 
 const loadVisionBoard = () => import('./components/VisionBoard/VisionBoard');
 const loadNovaClock = () => import('./components/Nova/NovaClock');
@@ -425,44 +426,203 @@ function Sidebar() {
 
 function MobileNav() {
   const location = useLocation();
+  const navigate = useNavigate();
   const unreadMessageCount = useUnreadMessageCount();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isProgressOpen, setIsProgressOpen] = useState(false);
 
   const primaryItems = [
-    { icon: Home, label: 'Dashboard', path: '/' },
+    { icon: Home, label: 'Home', path: '/' },
     { icon: Compass, label: 'Feed', path: '/feed' },
-    { icon: Target, label: 'Visions', path: '/visions' },
-    { icon: LibraryBig, label: 'Library', path: '/library' },
     { icon: Users, label: 'Circle', path: '/circle', badge: unreadMessageCount },
+    { icon: User, label: 'Profile', path: '/profile' },
+  ];
+
+  const closeCreate = () => setIsCreateOpen(false);
+  const go = (path: string) => {
+    closeCreate();
+    navigate(path);
+  };
+
+  const createActions = [
+    {
+      icon: Zap,
+      title: 'Log Progress',
+      description: 'Record what you worked on today.',
+      primary: true,
+      onClick: () => {
+        closeCreate();
+        setIsProgressOpen(true);
+      }
+    },
+    {
+      icon: Target,
+      title: 'Create Vision',
+      description: 'Start a new goal and plan the next steps.',
+      onClick: () => {
+        go('/visions');
+        window.setTimeout(() => window.dispatchEvent(new Event('visnova-create-vision')), 120);
+      }
+    },
+    {
+      icon: CheckCircle2,
+      title: 'Add Task',
+      description: 'Add one action to today or a Vision.',
+      onClick: () => go('/')
+    },
+    {
+      icon: BookOpen,
+      title: 'Write Journal',
+      description: 'Reflect on what changed today.',
+      onClick: () => go('/library?tab=journal')
+    },
+    {
+      icon: FileText,
+      title: 'Add Note',
+      description: 'Capture an idea, resource, or reference.',
+      onClick: () => go('/library')
+    },
+    {
+      icon: PenLine,
+      title: 'Add Resource',
+      description: 'Save learning material for your Vision.',
+      onClick: () => go('/growth')
+    },
+    {
+      icon: Clock,
+      title: 'Create Capsule',
+      description: 'Write something for your future self.',
+      onClick: () => go('/nova-clock')
+    }
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 min-h-[4.75rem] bg-sidebar/95 backdrop-blur-xl border-t border-card-border lg:hidden grid grid-cols-5 gap-1 px-2 pt-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] z-[80] transition-colors duration-500">
-      {primaryItems.map((item) => {
-        const Icon = item.icon;
-        const active = isRouteActive(location.pathname, item.path);
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            onMouseEnter={() => preloadRoute(item.path)}
-            onFocus={() => preloadRoute(item.path)}
-            onTouchStart={() => preloadRoute(item.path)}
-            className={cn(
-              "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
-              active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
-            )}
+    <>
+      <ProgressLogComposer open={isProgressOpen} onClose={() => setIsProgressOpen(false)} />
+
+      <AnimatePresence>
+        {isCreateOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[210] bg-overlay/70 backdrop-blur-sm lg:hidden"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) closeCreate();
+            }}
           >
-            <Icon size={21} />
-            {!!item.badge && (
-              <span className="absolute top-1.5 right-3 min-w-4 h-4 px-1 bg-accent text-accent-contrast text-[8px] font-black rounded-full flex items-center justify-center">
-                {item.badge > 9 ? '9+' : item.badge}
-              </span>
-            )}
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+            <motion.div
+              initial={{ y: 42, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 42, opacity: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="absolute bottom-0 left-0 right-0 max-h-[82dvh] overflow-y-auto rounded-t-[2rem] border-t border-card-border bg-app-container p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"
+            >
+              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-card-border" />
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Create</p>
+                  <h2 className="mt-1 text-xl font-black tracking-tight text-text-main">What do you want to create?</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCreate}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card text-text-secondary"
+                  aria-label="Close create menu"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {createActions.map(action => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.title}
+                      type="button"
+                      onClick={action.onClick}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all active:scale-[0.99]",
+                        action.primary
+                          ? "border-accent bg-accent text-accent-contrast shadow-lg shadow-accent/20"
+                          : "border-card-border bg-card text-text-main"
+                      )}
+                    >
+                      <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl", action.primary ? "bg-accent-contrast/15" : "bg-accent/10 text-accent")}>
+                        <Icon size={19} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-black tracking-tight">{action.title}</span>
+                        <span className={cn("mt-0.5 block text-xs font-semibold", action.primary ? "text-accent-contrast/75" : "text-text-secondary")}>{action.description}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <nav className="fixed bottom-0 left-0 right-0 min-h-[5rem] bg-sidebar/95 backdrop-blur-xl border-t border-card-border lg:hidden grid grid-cols-5 gap-1 px-2 pt-2 pb-[calc(0.6rem+env(safe-area-inset-bottom))] z-[80] transition-colors duration-500">
+        {primaryItems.slice(0, 2).map((item) => {
+          const Icon = item.icon;
+          const active = isRouteActive(location.pathname, item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              onMouseEnter={() => preloadRoute(item.path)}
+              onFocus={() => preloadRoute(item.path)}
+              onTouchStart={() => preloadRoute(item.path)}
+              className={cn(
+                "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
+                active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
+              )}
+            >
+              <Icon size={21} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setIsCreateOpen(true)}
+          className="relative -mt-5 mx-auto flex h-16 w-16 flex-col items-center justify-center rounded-[1.4rem] bg-accent text-accent-contrast shadow-xl shadow-accent/25 ring-4 ring-app-container active:scale-95 transition-transform"
+          aria-label="Create"
+        >
+          <Plus size={26} strokeWidth={2.8} />
+          <span className="mt-0.5 text-[8px] font-black uppercase tracking-widest">Create</span>
+        </button>
+
+        {primaryItems.slice(2).map((item) => {
+          const Icon = item.icon;
+          const active = isRouteActive(location.pathname, item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              onMouseEnter={() => preloadRoute(item.path)}
+              onFocus={() => preloadRoute(item.path)}
+              onTouchStart={() => preloadRoute(item.path)}
+              className={cn(
+                "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
+                active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
+              )}
+            >
+              <Icon size={21} />
+              {!!item.badge && (
+                <span className="absolute top-1.5 right-3 min-w-4 h-4 px-1 bg-accent text-accent-contrast text-[8px] font-black rounded-full flex items-center justify-center">
+                  {item.badge > 9 ? '9+' : item.badge}
+                </span>
+              )}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }
 

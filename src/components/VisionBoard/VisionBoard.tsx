@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -82,7 +82,7 @@ export default function VisionBoard() {
     setIsModalOpen(true);
   };
 
-  const handleAddNew = async () => {
+  const handleAddNew = useCallback(async () => {
     const newVision = await addVision({
       title: 'New Vision',
       description: '',
@@ -95,7 +95,15 @@ export default function VisionBoard() {
       userId: 'me',
       description: `Primary strategic sequence started for New Vision.`,
     });
-  };
+  }, [addActivity, addVision]);
+
+  useEffect(() => {
+    const createFromMobileShortcut = () => {
+      void handleAddNew();
+    };
+    window.addEventListener('visnova-create-vision', createFromMobileShortcut);
+    return () => window.removeEventListener('visnova-create-vision', createFromMobileShortcut);
+  }, [handleAddNew]);
 
   const handleSetupComplete = async (updates: Partial<Vision>) => {
     if (setupVision) {

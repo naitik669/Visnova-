@@ -70,6 +70,7 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
       title="Log Progress"
       subtitle="Turn today’s action into proof connected to a Vision."
       size="md"
+      className="h-[92dvh] rounded-t-[2rem] sm:h-auto sm:rounded-[2rem]"
       footer={
         <>
           <button type="button" onClick={resetAndClose} className="h-11 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary">
@@ -86,7 +87,7 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
         </>
       }
     >
-      <div className="space-y-5 p-5 sm:p-6">
+      <div className="space-y-4 p-4 sm:space-y-5 sm:p-6">
         <div className="rounded-2xl border border-card-border bg-card p-4">
           <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Connected Vision</label>
           <SelectMenu
@@ -146,7 +147,7 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
           })}
         </div>
 
-        <div className="flex items-start gap-3 rounded-2xl border border-success/20 bg-success/5 p-4 text-xs font-semibold text-text-secondary">
+        <div className="hidden items-start gap-3 rounded-2xl border border-success/20 bg-success/5 p-4 text-xs font-semibold text-text-secondary sm:flex">
           <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-success" />
           <p>
             Private logs stay in your Growth Timeline. Circle/Public logs can also become proof in Feed.
