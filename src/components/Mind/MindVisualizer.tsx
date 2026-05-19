@@ -22,13 +22,26 @@ import {
   Trash2,
   X,
   Youtube,
+  Zap,
   type LucideIcon
 } from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { useStore } from '../../store/useStore';
 import { checkClientRateLimit, sanitizePlainText, sanitizeText, validateYouTubeUrl } from '../../lib/security';
 import { SelectMenu } from '../ui/SelectMenu';
+import { formatCurrency } from '../../lib/currency';
+import { safeFormat } from '../../lib/safeData';
 
 type GrowthStatus = 'saved' | 'learning' | 'completed' | 'applied' | 'archived';
 type SourceType = 'youtube' | 'article' | 'course' | 'book' | 'podcast' | 'pdf' | 'website' | 'other';
@@ -159,8 +172,26 @@ const getYouTubeVideoId = (value: string) => {
 };
 
 export default function MindVisualizer() {
-  const { session, visions, fetchVisions, addToast, addNote, addPost } = useStore();
+  const {
+    session,
+    visions,
+    todos,
+    journalEntries,
+    progressLogs,
+    growthTimelineEvents,
+    weeklyActivity,
+    userStreak,
+    user,
+    financeGoals,
+    fetchDashboardData,
+    fetchVisions,
+    addToast,
+    addNote,
+    addPost
+  } = useStore();
   const userId = session?.user?.id;
+  const location = useLocation();
+  const navigate = useNavigate();
   const [resources, setResources] = useState<GrowthResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -202,18 +233,136 @@ export default function MindVisualizer() {
 
   useEffect(() => {
     if (userId && visions.length === 0) fetchVisions();
+    if (userId) fetchDashboardData().catch(error => console.error('Failed to load Progress Pulse data:', error));
     fetchGrowthResources();
   }, [userId]);
 
   const visionById = useMemo(() => new Map(visions.map(vision => [vision.id, vision])), [visions]);
 
-  const stats = useMemo(() => ({
+  const resourceStats = useMemo(() => ({
     learning: resources.filter(item => item.status === 'learning').length,
     saved: resources.filter(item => item.status === 'saved').length,
     completed: resources.filter(item => item.status === 'completed').length,
     applied: resources.filter(item => item.status === 'applied').length,
     linked: resources.filter(item => !!item.linked_vision_id).length
   }), [resources]);
+
+  const pulse = useMemo(() => {
+    const now = Date.now();
+    const weekStart = now - 7 * 86400000;
+    const firstVision = [...visions].sort((a, b) => a.createdAt - b.createdAt)[0] || null;
+    const firstLog = [...progressLogs].sort((a, b) => a.createdAt - b.createdAt)[0] || null;
+    const completedTasks = visions.reduce((sum, vision) => sum + (vision.tasks || []).filter(task => task.completed).length, 0)
+      + todos.filter(todo => todo.completed && !todo.deletedAt).length;
+    const tasksCompletedThisWeek = visions.reduce((sum, vision) => sum + (vision.tasks || []).filter(task => task.completed && task.completedAt && new Date(task.completedAt).getTime() >= weekStart).length, 0)
+      + todos.filter(todo => todo.completed && !todo.deletedAt && todo.completedAt && new Date(todo.completedAt).getTime() >= weekStart).length;
+    const weeklyLogs = progressLogs.filter(log => log.createdAt >= weekStart);
+    const weeklyJournals = journalEntries.filter(entry => entry.createdAt >= weekStart);
+    const weeklyScore = Math.min(100, weeklyLogs.length * 18 + tasksCompletedThisWeek * 10 + weeklyJournals.length * 8 + Math.min(20, (userStreak?.currentStreak || user.streak || 0) * 3));
+    const activityChart = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - index));
+      const key = date.toISOString().slice(0, 10);
+      const activity = weeklyActivity.find(item => item.date === key);
+      return {
+        day: date.toLocaleDateString([], { weekday: 'short' }),
+        logs: weeklyLogs.filter(log => new Date(log.createdAt).toISOString().slice(0, 10) === key).length,
+        tasks: activity ? activity.taskCount + activity.todoCount : 0,
+        journal: activity?.journalCount || weeklyJournals.filter(entry => entry.date === key).length,
+      };
+    });
+    const activitySet = new Set(userStreak?.activityDates || []);
+    const heatmap = Array.from({ length: 30 }, (_, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (29 - index));
+      const key = date.toISOString().slice(0, 10);
+      const activity = weeklyActivity.find(item => item.date === key);
+      const total = activity?.totalCount || (activitySet.has(key) ? 1 : 0);
+      return { key, total, label: date.toLocaleDateString([], { month: 'short', day: 'numeric' }) };
+    });
+    const visionBreakdown = visions
+      .filter(vision => vision.status !== 'completed')
+      .map(vision => {
+        const logs = progressLogs.filter(log => log.visionId === vision.id);
+        const completed = (vision.tasks || []).filter(task => task.completed).length;
+        const lastActivity = Math.max(vision.updatedAt || vision.createdAt, logs[0]?.createdAt || 0);
+        return {
+          vision,
+          logs: logs.length,
+          completed,
+          totalTasks: (vision.tasks || []).length,
+          lastActivity,
+        };
+      })
+      .sort((a, b) => b.lastActivity - a.lastActivity)
+      .slice(0, 5);
+    const goals = financeGoals
+      .filter(goal => goal.status !== 'archived')
+      .map(goal => {
+        const progress = Math.min(100, Math.round((goal.currentAmount / Math.max(1, goal.targetAmount)) * 100));
+        const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
+        const linkedVision = goal.linkedVisionId ? visionById.get(goal.linkedVisionId) : null;
+        return { ...goal, progress, remaining, linkedVision };
+      })
+      .sort((a, b) => b.remaining - a.remaining)
+      .slice(0, 5);
+    const deadlines = visions
+      .filter(vision => !!vision.deadline)
+      .map(vision => {
+        const progress = Math.min(100, Math.round(vision.progress || 0));
+        const daysRemaining = Math.ceil((new Date(`${vision.deadline}T23:59:59`).getTime() - now) / 86400000);
+        const tasksRemaining = (vision.tasks || []).filter(task => !task.completed && !task.deletedAt).length;
+        const status = progress >= 100
+          ? 'completed'
+          : daysRemaining < 0
+            ? 'behind'
+            : daysRemaining <= 7 && progress < 70
+              ? 'at risk'
+              : 'on track';
+        return { vision, progress, daysRemaining, tasksRemaining, status };
+      })
+      .sort((a, b) => a.daysRemaining - b.daysRemaining);
+    const lastProgress = progressLogs[0]?.createdAt || null;
+    const daysSinceLastProgress = lastProgress ? Math.floor((now - lastProgress) / 86400000) : null;
+    const activeCounts = weeklyLogs.reduce<Record<string, number>>((acc, log) => {
+      if (log.visionId) acc[log.visionId] = (acc[log.visionId] || 0) + 1;
+      return acc;
+    }, {});
+    const mostActiveVisionId = Object.entries(activeCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const mostActiveVision = mostActiveVisionId ? visionById.get(mostActiveVisionId) : null;
+    const updates: string[] = [];
+    const topGoal = goals.find(goal => goal.remaining > 0);
+    if (topGoal) updates.push(`You need ${formatCurrency(topGoal.remaining, topGoal.currency)} more to complete ${topGoal.title}.`);
+    const nextDeadline = deadlines.find(item => item.status !== 'completed');
+    if (nextDeadline) updates.push(`${nextDeadline.vision.title} deadline is ${nextDeadline.daysRemaining >= 0 ? `in ${nextDeadline.daysRemaining} days` : `${Math.abs(nextDeadline.daysRemaining)} days behind`}.`);
+    if (daysSinceLastProgress !== null && daysSinceLastProgress >= 2) updates.push(`You have not logged progress for ${daysSinceLastProgress} days.`);
+    if (mostActiveVision) updates.push(`Your most active Vision this week is ${mostActiveVision.title}.`);
+
+    return {
+      totalLogs: progressLogs.length,
+      currentStreak: userStreak?.currentStreak || user.streak || 0,
+      weeklyScore,
+      completedTasks,
+      tasksCompletedThisWeek,
+      activityChart,
+      heatmap,
+      visionBreakdown,
+      goals,
+      deadlines,
+      firstVision,
+      firstLog,
+      updates,
+    };
+  }, [financeGoals, journalEntries, progressLogs, todos, user.streak, userStreak, visionById, visions, weeklyActivity]);
+
+  const closePulse = () => {
+    if ((location.state as any)?.fromDashboard) {
+      navigate('/');
+      return;
+    }
+    if (window.history.length > 1) navigate(-1);
+    else navigate('/');
+  };
 
   const visibleResources = useMemo(() => {
     return resources.filter(resource => {
@@ -505,10 +654,179 @@ export default function MindVisualizer() {
 
   return (
     <div className="w-full max-w-[1700px] mx-auto pb-20 animate-in fade-in duration-700 space-y-6">
+      <section className="relative overflow-hidden rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-6 lg:p-7">
+        <div className="absolute right-0 top-0 h-72 w-72 translate-x-1/3 -translate-y-1/3 rounded-full bg-accent/10 blur-3xl" />
+        <button
+          onClick={closePulse}
+          className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-2xl border border-card-border bg-app-container text-text-secondary shadow-sm transition-colors hover:text-text-main"
+          aria-label="Close Progress Pulse"
+        >
+          <X size={18} />
+        </button>
+        <div className="relative z-10 pr-14">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Progress Pulse</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-5xl">Progress Pulse</h1>
+          <p className="mt-2 max-w-2xl text-sm font-semibold text-text-secondary">Your visible proof of growth across Visions, proof logs, tasks, resources, deadlines, and reflection.</p>
+        </div>
+
+        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <PulseStat label="Total Proof Logs" value={pulse.totalLogs} icon={FileText} />
+          <PulseStat label="Current Streak" value={pulse.currentStreak} icon={Zap} />
+          <PulseStat label="Weekly Score" value={`${pulse.weeklyScore}%`} icon={GraduationCap} />
+          <PulseStat label="Tasks Completed" value={pulse.completedTasks} icon={CheckCircle2} />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black text-text-main">Weekly activity</h2>
+              <p className="text-xs font-semibold text-text-secondary">Logs, tasks, and journal activity across the last seven days.</p>
+            </div>
+            <span className="rounded-full bg-accent/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent">{pulse.weeklyScore}% score</span>
+          </div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={pulse.activityChart} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid stroke="var(--card-border)" vertical={false} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-secondary)', fontWeight: 800 }} />
+                <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-secondary)' }} />
+                <Tooltip cursor={{ fill: 'rgba(var(--accent-rgb),0.08)' }} contentStyle={{ borderRadius: 18, border: '1px solid var(--card-border)', background: 'var(--card)', color: 'var(--text-main)' }} />
+                <Bar dataKey="logs" stackId="a" fill="var(--accent)" radius={[10, 10, 0, 0]} />
+                <Bar dataKey="tasks" stackId="a" fill="var(--success)" radius={[10, 10, 0, 0]} />
+                <Bar dataKey="journal" stackId="a" fill="var(--warning)" radius={[10, 10, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-5">
+          <h2 className="text-lg font-black text-text-main">Consistency heatmap</h2>
+          <p className="text-xs font-semibold text-text-secondary">Last 30 days of activity intensity.</p>
+          <div className="mt-5 overflow-x-auto pb-2">
+            <div className="grid w-max grid-flow-col grid-rows-5 gap-2">
+              {pulse.heatmap.map(day => (
+                <div
+                  key={day.key}
+                  title={`${day.label}: ${day.total} activities`}
+                  className={cn(
+                    'h-7 w-7 rounded-lg border border-card-border',
+                    day.total <= 0 ? 'bg-app-container' :
+                      day.total < 2 ? 'bg-accent/20' :
+                        day.total < 4 ? 'bg-accent/45' :
+                          day.total < 7 ? 'bg-accent/70' : 'bg-accent'
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <PulsePanel title="Vision progress breakdown" subtitle="Active Visions and their recent proof.">
+          <div className="space-y-3">
+            {pulse.visionBreakdown.length ? pulse.visionBreakdown.map(item => (
+              <div key={item.vision.id} className="rounded-2xl border border-card-border bg-app-container p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="line-clamp-1 text-sm font-black text-text-main">{item.vision.title}</p>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{item.logs} logs - {item.completed}/{item.totalTasks} tasks - last {safeFormat(item.lastActivity, 'MMM d')}</p>
+                  </div>
+                  <span className="text-sm font-black text-accent">{item.vision.progress || 0}%</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, item.vision.progress || 0)}%` }} />
+                </div>
+              </div>
+            )) : <EmptyPulseText>No active Vision progress yet.</EmptyPulseText>}
+          </div>
+        </PulsePanel>
+
+        <PulsePanel title="Money/resource goals" subtitle="Vision-linked resource funding, shown without currency conversion.">
+          <div className="space-y-3">
+            {pulse.goals.length ? pulse.goals.map(goal => (
+              <div key={goal.id} className="rounded-2xl border border-card-border bg-app-container p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="line-clamp-1 text-sm font-black text-text-main">{goal.title}</p>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">{goal.linkedVision?.title || 'No Vision linked'}</p>
+                  </div>
+                  <span className="text-sm font-black text-accent">{goal.progress}%</span>
+                </div>
+                <p className="mt-3 text-sm font-black text-text-main">{formatCurrency(goal.currentAmount, goal.currency)} / {formatCurrency(goal.targetAmount, goal.currency)}</p>
+                <p className="mt-1 text-xs font-semibold text-text-secondary">You need {formatCurrency(goal.remaining, goal.currency)} more.</p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${goal.progress}%` }} />
+                </div>
+              </div>
+            )) : <EmptyPulseText>No Vision-linked money goals yet.</EmptyPulseText>}
+          </div>
+        </PulsePanel>
+
+        <PulsePanel title="Deadline tracker" subtitle="Urgency for active Vision deadlines.">
+          <div className="space-y-3">
+            {pulse.deadlines.length ? pulse.deadlines.map(item => (
+              <div key={item.vision.id} className="rounded-2xl border border-card-border bg-app-container p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="line-clamp-1 text-sm font-black text-text-main">{item.vision.title}</p>
+                    <p className="mt-1 text-xs font-semibold text-text-secondary">{safeFormat(item.vision.deadline, 'MMM d, yyyy')} - {item.daysRemaining >= 0 ? `${item.daysRemaining} days left` : `${Math.abs(item.daysRemaining)} days behind`}</p>
+                  </div>
+                  <span className={cn('rounded-full px-3 py-1 text-[8px] font-black uppercase tracking-widest', item.status === 'completed' ? 'bg-success/10 text-success' : item.status === 'behind' ? 'bg-danger/10 text-danger' : item.status === 'at risk' ? 'bg-warning/10 text-warning' : 'bg-accent/10 text-accent')}>{item.status}</span>
+                </div>
+                <p className="mt-3 text-xs font-semibold text-text-secondary">{item.tasksRemaining} tasks remaining</p>
+              </div>
+            )) : <EmptyPulseText>No deadlines set on active Visions.</EmptyPulseText>}
+          </div>
+        </PulsePanel>
+
+        <PulsePanel title="Day 1 vs Now" subtitle="A simple snapshot of how far the system has moved.">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-card-border bg-app-container p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Day 1</p>
+              <p className="mt-3 text-sm font-black text-text-main">{pulse.firstVision?.title || 'No first Vision yet'}</p>
+              <p className="mt-1 text-xs font-semibold text-text-secondary">{pulse.firstLog ? `First log: ${safeFormat(pulse.firstLog.createdAt, 'MMM d')}` : 'First proof log pending'}</p>
+            </div>
+            <div className="rounded-2xl border border-card-border bg-accent/5 p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-accent">Now</p>
+              <p className="mt-3 text-sm font-black text-text-main">{pulse.totalLogs} logs - {pulse.completedTasks} tasks</p>
+              <p className="mt-1 text-xs font-semibold text-text-secondary">{pulse.currentStreak} day streak - {visions.filter(v => v.status !== 'completed').length} active Visions</p>
+            </div>
+          </div>
+        </PulsePanel>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <PulsePanel title="Recent proof timeline" subtitle="Latest visible progress events.">
+          <div className="space-y-3">
+            {[...progressLogs.slice(0, 5).map(log => ({ id: `log-${log.id}`, title: log.content || 'Progress logged', meta: safeFormat(log.createdAt, 'MMM d, h:mm a') })), ...growthTimelineEvents.slice(0, 3).map(event => ({ id: `event-${event.id}`, title: event.title, meta: safeFormat(event.createdAt, 'MMM d, h:mm a') }))].slice(0, 6).map(item => (
+              <div key={item.id} className="flex gap-3 rounded-2xl border border-card-border bg-app-container p-3">
+                <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
+                <div className="min-w-0">
+                  <p className="line-clamp-2 text-sm font-bold text-text-main">{item.title}</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">{item.meta}</p>
+                </div>
+              </div>
+            ))}
+            {progressLogs.length === 0 && growthTimelineEvents.length === 0 && <EmptyPulseText>No proof timeline yet.</EmptyPulseText>}
+          </div>
+        </PulsePanel>
+
+        <PulsePanel title="Smart progress updates" subtitle="Small signals worth acting on.">
+          <div className="space-y-3">
+            {pulse.updates.length ? pulse.updates.map(update => (
+              <div key={update} className="rounded-2xl border border-accent/15 bg-accent/5 p-4 text-sm font-bold leading-5 text-text-main">{update}</div>
+            )) : <EmptyPulseText>No urgent progress updates right now.</EmptyPulseText>}
+          </div>
+        </PulsePanel>
+      </section>
+
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent mb-3">Learning to action</p>
-          <h1 className="text-3xl sm:text-4xl font-black text-text-main tracking-tight font-display uppercase">Growth</h1>
+          <h2 className="text-3xl sm:text-4xl font-black text-text-main tracking-tight font-display uppercase">Growth Resources</h2>
           <p className="text-sm text-text-secondary/70 mt-3 max-w-2xl font-medium">Learn with purpose. Turn resources into action.</p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -522,11 +840,11 @@ export default function MindVisualizer() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        <OverviewCard label="Active Learning" value={stats.learning} icon={PlayCircle} />
-        <OverviewCard label="Resources Saved" value={stats.saved} icon={BookOpen} />
-        <OverviewCard label="Completed" value={stats.completed} icon={CheckCircle2} />
-        <OverviewCard label="Applied" value={stats.applied} icon={Check} />
-        <OverviewCard label="Linked to Visions" value={stats.linked} icon={Target} />
+        <OverviewCard label="Active Learning" value={resourceStats.learning} icon={PlayCircle} />
+        <OverviewCard label="Resources Saved" value={resourceStats.saved} icon={BookOpen} />
+        <OverviewCard label="Completed" value={resourceStats.completed} icon={CheckCircle2} />
+        <OverviewCard label="Applied" value={resourceStats.applied} icon={Check} />
+        <OverviewCard label="Linked to Visions" value={resourceStats.linked} icon={Target} />
       </div>
 
       <section className="bg-card border border-card-border rounded-[2rem] shadow-soft overflow-hidden">
@@ -631,6 +949,38 @@ export default function MindVisualizer() {
           />
         ))}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function PulseStat({ label, value, icon: Icon }: { label: string; value: number | string; icon: LucideIcon }) {
+  return (
+    <div className="rounded-2xl border border-card-border bg-app-container p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
+        <Icon size={16} className="text-accent" />
+      </div>
+      <p className="mt-3 text-2xl font-black text-text-main tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function PulsePanel({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+  return (
+    <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="mb-4">
+        <h2 className="text-lg font-black text-text-main">{title}</h2>
+        <p className="mt-1 text-xs font-semibold text-text-secondary">{subtitle}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyPulseText({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-5 text-center text-sm font-semibold text-text-secondary">
+      {children}
     </div>
   );
 }

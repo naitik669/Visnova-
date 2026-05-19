@@ -392,6 +392,7 @@ export default function Dashboard() {
   }, []);
   const weeklyProgressLogs = progressLogs.filter(log => log.createdAt >= weekStart);
   const weeklyJournalCount = journalEntries.filter(entry => entry.createdAt >= weekStart).length;
+  const weeklyScore = Math.min(100, weeklyProgressLogs.length * 18 + completedTasksThisWeek.length * 10 + weeklyJournalCount * 8 + Math.min(20, currentStreak * 3));
   const weeklyMoneyUpdates = moneyOverview ? (moneyOverview.monthIncome > 0 || moneyOverview.monthExpenses > 0 || moneyOverview.monthSavings > 0 ? 1 : 0) : 0;
   const recentTimeline = growthTimelineEvents.slice(0, 3);
   const visionById = React.useMemo(() => new Map(visions.map(vision => [vision.id, vision])), [visions]);
@@ -617,6 +618,25 @@ export default function Dashboard() {
             <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Done</p>
           </div>
         </section>
+
+        <button
+          type="button"
+          onClick={() => navigate('/growth', { state: { fromDashboard: true } })}
+          className="w-full rounded-[2rem] border border-card-border bg-card p-4 text-left shadow-sm transition-all active:scale-[0.99]"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Progress Pulse</p>
+              <h3 className="mt-1 text-lg font-black text-text-main">Growth tracker</h3>
+            </div>
+            <span className="rounded-full bg-accent/10 px-3 py-1.5 text-[10px] font-black text-accent">{Math.min(100, Math.round(weeklyScore || 0))}%</span>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <span className="rounded-2xl bg-app-container p-3"><strong className="block text-lg text-text-main">{currentStreak}</strong><span className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Streak</span></span>
+            <span className="rounded-2xl bg-app-container p-3"><strong className="block text-lg text-text-main">{progressLogs.length}</strong><span className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Proof</span></span>
+            <span className="rounded-2xl bg-app-container p-3"><strong className="block text-lg text-text-main">{completedTasksThisWeek.length}</strong><span className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Done</span></span>
+          </div>
+        </button>
 
         <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
@@ -1482,134 +1502,40 @@ export default function Dashboard() {
 
         {/* Right Sidebar stats panel */}
         <div className="min-w-0 w-full lg:w-[300px] shrink-0 flex flex-col gap-4">
-          <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
+          <button
+            type="button"
+            onClick={() => navigate('/growth', { state: { fromDashboard: true } })}
+            className="rounded-[2rem] border border-card-border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-hover active:scale-[0.99]"
+          >
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Progress Pulse</p>
-                <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-text-main">This Week</h3>
+                <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-text-main">Growth Tracker</h3>
               </div>
               <Brain size={18} className="text-accent" />
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {[
-                ['Proof', weeklyProgressLogs.length],
-                ['Tasks', completedTasksThisWeek.length],
-                ['Reflect', weeklyJournalCount],
-                ['AI', aiInsights.length],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-2xl border border-card-border bg-app-container p-3">
-                  <p className="text-xl font-black leading-none text-text-main">{value}</p>
-                  <p className="mt-1.5 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
-                </div>
-              ))}
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-2xl border border-card-border bg-app-container p-3">
+                <p className="text-xl font-black leading-none text-warning">{currentStreak}</p>
+                <p className="mt-1.5 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Streak</p>
+              </div>
+              <div className="rounded-2xl border border-card-border bg-app-container p-3">
+                <p className="text-xl font-black leading-none text-text-main">{progressLogs.length}</p>
+                <p className="mt-1.5 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Proof</p>
+              </div>
+              <div className="rounded-2xl border border-card-border bg-app-container p-3">
+                <p className="text-xl font-black leading-none text-accent">{weeklyScore}%</p>
+                <p className="mt-1.5 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Score</p>
+              </div>
             </div>
-            <div className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
-              <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Resources</p>
-              <p className="mt-1 text-xs font-bold leading-5 text-text-main">
-                {activeMoneyGoals.length
-                  ? `${activeMoneyGoals.length} Vision-linked money goals are active.`
-                  : weeklyMoneyUpdates ? 'Wallet activity is active this month.' : 'No Vision resources planned yet.'}
-              </p>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
+              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${weeklyScore}%` }} />
             </div>
-            {activeMoneyGoals.slice(0, 2).map(goal => (
-              <div key={goal.id} className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="line-clamp-1 text-[11px] font-black text-text-main">{goal.title}</p>
-                    <p className="mt-0.5 line-clamp-1 text-[9px] font-bold uppercase tracking-widest text-text-secondary/45">
-                      {goal.linkedVision?.title || 'No Vision linked'}
-                    </p>
-                  </div>
-                  <span className={cn(
-                    'shrink-0 rounded-full px-2 py-1 text-[7px] font-black uppercase tracking-widest',
-                    goal.pulseStatus === 'completed' ? 'bg-success/10 text-success' :
-                      goal.pulseStatus === 'behind' ? 'bg-danger/10 text-danger' :
-                        goal.pulseStatus === 'at risk' ? 'bg-warning/10 text-warning' :
-                          'bg-accent/10 text-accent'
-                  )}>
-                    {goal.pulseStatus}
-                  </span>
-                </div>
-                <div className="mt-3 flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-black text-text-main">{formatMoney(goal.currentAmount, goal.currency)} / {formatMoney(goal.targetAmount, goal.currency)}</p>
-                    <p className="mt-0.5 text-[9px] font-semibold text-text-secondary">{formatMoney(goal.remaining, goal.currency)} remaining</p>
-                  </div>
-                  <span className="text-[10px] font-black text-accent">{goal.progress}%</span>
-                </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${goal.progress}%` }} />
-                </div>
-                {goal.deadline && (
-                  <p className="mt-2 text-[9px] font-bold text-text-secondary/60">Deadline {safeFormat(goal.deadline, 'MMM d, yyyy')}</p>
-                )}
-              </div>
-            ))}
-            {deadlineCards.length > 0 && (
-              <div className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
-                <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Deadlines</p>
-                <div className="mt-2 space-y-2">
-                  {deadlineCards.map(card => (
-                    <div key={card.vision.id} className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="line-clamp-1 text-[11px] font-bold text-text-main">{card.vision.title}</p>
-                        <p className="text-[9px] font-semibold text-text-secondary/55">
-                          {card.daysRemaining >= 0 ? `${card.daysRemaining}d left` : `${Math.abs(card.daysRemaining)}d behind`} - {card.tasksRemaining} tasks
-                        </p>
-                      </div>
-                      <span className={cn(
-                        'rounded-full px-2 py-1 text-[7px] font-black uppercase tracking-widest',
-                        card.status === 'completed' ? 'bg-success/10 text-success' :
-                          card.status === 'behind' ? 'bg-danger/10 text-danger' :
-                            card.status === 'at risk' ? 'bg-warning/10 text-warning' :
-                              'bg-accent/10 text-accent'
-                      )}>
-                        {card.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {resourceReadinessCards.length > 0 && (
-              <div className="mt-3 rounded-2xl border border-card-border bg-app-container p-3">
-                <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Resource readiness</p>
-                <div className="mt-2 space-y-2">
-                  {resourceReadinessCards.map(card => (
-                    <div key={card.vision.id}>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="line-clamp-1 text-[11px] font-bold text-text-main">{card.vision.title}</p>
-                        <span className="text-[10px] font-black text-accent">{card.readiness}%</span>
-                      </div>
-                      <p className="mt-0.5 text-[9px] font-semibold text-text-secondary/55">
-                        {card.planned} planned - {card.saved} saved - {card.purchased} purchased - {card.missing} missing
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {progressUpdates.length > 0 && (
-              <div className="mt-3 rounded-2xl border border-accent/15 bg-accent/5 p-3">
-                <p className="text-[8px] font-black uppercase tracking-widest text-accent">Smart updates</p>
-                <div className="mt-2 space-y-1.5">
-                  {progressUpdates.map(update => (
-                    <p key={update} className="text-[11px] font-semibold leading-4 text-text-main">{update}</p>
-                  ))}
-                </div>
-              </div>
-            )}
-            {recentTimeline.length > 0 && (
-              <div className="mt-3 space-y-1.5">
-                {recentTimeline.map(event => (
-                  <div key={event.id} className="flex items-center gap-2 text-[11px] font-semibold text-text-secondary">
-                    <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                    <span className="line-clamp-1">{event.title}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="text-[10px] font-bold text-text-secondary">Tasks done this week: {completedTasksThisWeek.length}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-accent">View full tracker</span>
+            </div>
+          </button>
 
           <div className="bg-card rounded-[2rem] p-5 flex flex-col shadow-sm relative">
           <div className="flex flex-col gap-4 w-full h-auto">
