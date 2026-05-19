@@ -31,22 +31,22 @@ export function ProgressPulsePage({
   const risk = pulse.deadlines.find(item => item.status === 'behind' || item.status === 'at risk');
 
   return (
-    <div className="rounded-[2.25rem] bg-[#FAF8FF] p-3 sm:p-5">
-      <header className="mb-5 flex flex-col gap-4 rounded-[2rem] border border-[#E7DDFF] bg-white p-5 shadow-[0_18px_60px_rgba(37,22,61,0.07)] sm:flex-row sm:items-center sm:justify-between">
+    <div className="rounded-[2.25rem] bg-app-container p-3 sm:p-5">
+      <header className="mb-5 flex flex-col gap-4 rounded-[2rem] border border-card-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)] sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#8B5CF6]">Progress Pulse</p>
-          <h1 className="mt-1 text-2xl font-black text-[#25163D] sm:text-3xl">Growth Tracker</h1>
-          <p className="mt-2 max-w-2xl text-sm font-semibold text-[#7A6F91]">Your visible proof of growth across Visions, tasks, resources, deadlines, and reflection.</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-accent">Progress Pulse</p>
+          <h1 className="mt-1 text-2xl font-black text-text-main sm:text-3xl">Growth Tracker</h1>
+          <p className="mt-2 max-w-2xl text-sm font-semibold text-text-secondary">Your visible proof of growth across Visions, tasks, resources, deadlines, and reflection.</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-[#F1ECFF] px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[#8B5CF6]">
+          <span className="rounded-full bg-accent/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-accent">
             {pulse.weeklyScore}% weekly
           </span>
           {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[#E7DDFF] bg-[#FAF8FF] text-[#7A6F91] transition-colors hover:text-[#25163D]"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-card-border bg-app-container text-text-secondary transition-colors hover:text-text-main"
               aria-label="Close Growth Tracker"
             >
               <X size={17} />
@@ -83,26 +83,26 @@ export function ProgressPulsePage({
           </div>
 
           <div className="grid gap-5 xl:grid-cols-2">
-            <section className="rounded-[2rem] border border-[#E7DDFF] bg-white p-5 shadow-[0_18px_60px_rgba(37,22,61,0.07)]">
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#7A6F91]">Resources</p>
-              <h2 className="mt-1 text-lg font-black text-[#25163D]">Money goals</h2>
+            <section className="rounded-[2rem] border border-card-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)]">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-text-secondary">Resources</p>
+              <h2 className="mt-1 text-lg font-black text-text-main">Money goals</h2>
               <div className="mt-5 space-y-3">
                 {pulse.goals.length ? pulse.goals.map(goal => (
                   <MoneyGoalProgressCard key={goal.id} goal={goal} />
                 )) : (
-                  <div className="rounded-[1.4rem] border border-dashed border-[#E7DDFF] bg-[#FAF8FF] p-5 text-sm font-semibold text-[#7A6F91]">No Vision-linked money goals yet.</div>
+                  <div className="rounded-[1.4rem] border border-dashed border-card-border bg-app-container p-5 text-sm font-semibold text-text-secondary">No Vision-linked money goals yet.</div>
                 )}
               </div>
             </section>
 
-            <section className="rounded-[2rem] border border-[#E7DDFF] bg-white p-5 shadow-[0_18px_60px_rgba(37,22,61,0.07)]">
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#7A6F91]">Deadlines</p>
-              <h2 className="mt-1 text-lg font-black text-[#25163D]">Upcoming pressure</h2>
+            <section className="rounded-[2rem] border border-card-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)]">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-text-secondary">Deadlines</p>
+              <h2 className="mt-1 text-lg font-black text-text-main">Upcoming pressure</h2>
               <div className="mt-5 space-y-3">
                 {pulse.deadlines.length ? pulse.deadlines.map(item => (
                   <DeadlineTrackerCard key={item.vision.id} item={item} />
                 )) : (
-                  <div className="rounded-[1.4rem] border border-dashed border-[#E7DDFF] bg-[#FAF8FF] p-5 text-sm font-semibold text-[#7A6F91]">No deadlines set on active Visions.</div>
+                  <div className="rounded-[1.4rem] border border-dashed border-card-border bg-app-container p-5 text-sm font-semibold text-text-secondary">No deadlines set on active Visions.</div>
                 )}
               </div>
             </section>
