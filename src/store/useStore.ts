@@ -31,7 +31,7 @@ import {
   validateFinanceSubscription,
   validateFinanceTransaction
 } from '../lib/financeValidation';
-import { getDefaultVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
+import { getDefaultVisibility, normalizeVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -107,7 +107,7 @@ function postPatchFromDb(row: any): Partial<Post> {
     caption: row?.caption || '',
     content: row?.content || '',
     type: row?.type || 'update',
-    visibility: row?.visibility || 'public',
+    visibility: normalizeVisibility(row?.visibility || 'public'),
     archived: !!row?.archived,
     archivedAt: row?.archived_at || null,
     deletedAt: row?.deleted_at || null,
@@ -210,7 +210,7 @@ function normalizeNote(row: any): Note {
     folderId: row?.folder_id || null,
     tags: safeArray<string>(row?.tags),
     linkedVisionId: row?.linked_vision_id || null,
-    visibility: safeString(row?.visibility, 'private') as Note['visibility'],
+    visibility: normalizeVisibility(row?.visibility) as Note['visibility'],
     isPinned: safeBoolean(row?.is_pinned),
     isFavorite: safeBoolean(row?.is_favorite),
     isDeleted: safeBoolean(row?.is_deleted),
@@ -341,7 +341,7 @@ function normalizeProgressLog(row: any): ProgressLog {
     postId: row?.post_id || null,
     logType: safeString(row?.log_type, 'progress') as ProgressLog['logType'],
     content: safeString(row?.content),
-    visibility: safeString(row?.visibility, 'private') as ProgressLog['visibility'],
+    visibility: normalizeVisibility(row?.visibility) as ProgressLog['visibility'],
     attachments: safeArray(row?.attachments),
     linkedItems: row?.linked_items && typeof row.linked_items === 'object' ? row.linked_items : {},
     metadata: row?.metadata && typeof row.metadata === 'object' ? row.metadata : {},
@@ -365,7 +365,7 @@ function normalizeGrowthTimelineEvent(row: any): GrowthTimelineEvent {
     eventType: safeString(row?.event_type, 'progress'),
     title: safeString(row?.title, 'Progress event'),
     summary: row?.summary || null,
-    visibility: safeString(row?.visibility, 'private') as GrowthTimelineEvent['visibility'],
+    visibility: normalizeVisibility(row?.visibility) as GrowthTimelineEvent['visibility'],
     metadata: row?.metadata && typeof row.metadata === 'object' ? row.metadata : {},
     createdAt: safeTime(row?.created_at)
   };
@@ -383,7 +383,7 @@ function normalizeAIInsight(row: any): AIInsight {
     title: safeString(row?.title, 'Insight'),
     content: safeString(row?.content),
     actionSuggestions: safeArray(row?.action_suggestions),
-    visibility: safeString(row?.visibility, 'private') as AIInsight['visibility'],
+    visibility: normalizeVisibility(row?.visibility) as AIInsight['visibility'],
     metadata: row?.metadata && typeof row.metadata === 'object' ? row.metadata : {},
     createdAt,
     updatedAt
@@ -551,7 +551,7 @@ function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
     isLiked: false,
     isSaved: false,
     type: safeString(row?.type || draft?.type, 'update') as Post['type'],
-    visibility: safeString(row?.visibility || draft?.visibility, 'public') as Post['visibility'],
+    visibility: normalizeVisibility(row?.visibility || draft?.visibility || 'public') as Post['visibility'],
     visionId: row?.vision_id || draft?.visionId || draft?.vision_id || null,
     taskId: row?.task_id || draft?.taskId || draft?.task_id || null,
     progressLogId: row?.progress_log_id || draft?.progressLogId || draft?.progress_log_id || null,
@@ -881,7 +881,7 @@ export const useStore = create<AppState>((set, get) => ({
           type: saved.logType === 'milestone' ? 'milestone' : saved.logType === 'win' ? 'achievement' : 'update',
           content: saved.content,
           caption: saved.logType === 'help_request' ? 'Help Request' : 'Progress Log',
-          visibility: saved.visibility === 'public' ? 'public' : 'friends',
+          visibility: saved.visibility === 'public' ? 'public' : 'circle',
           visionId: saved.visionId,
           taskId: saved.taskId,
           progressLogId: saved.id,
@@ -1496,7 +1496,7 @@ export const useStore = create<AppState>((set, get) => ({
           elements: v.elements || [],
           createdAt: safeTime(v.created_at),
           updatedAt: safeTime(v.updated_at, safeTime(v.created_at)),
-          visibility: v.visibility,
+          visibility: normalizeVisibility(v.visibility),
           deadline: v.deadline,
         };
       });
@@ -2401,7 +2401,7 @@ export const useStore = create<AppState>((set, get) => ({
       folderId: safeNote.folderId || null,
       tags: safeNote.tags || [],
       linkedVisionId: safeNote.linkedVisionId || null,
-      visibility: safeNote.visibility || getDefaultVisibility(),
+      visibility: normalizeVisibility(safeNote.visibility || getDefaultVisibility()),
       isPinned: safeNote.isPinned || false,
       isFavorite: safeNote.isFavorite || false,
       isDeleted: false,
@@ -2750,7 +2750,7 @@ export const useStore = create<AppState>((set, get) => ({
           type: safePost.type,
           caption: safePost.caption,
           content: safePost.content || '',
-          visibility: safePost.visibility || toPostVisibility(getDefaultVisibility()),
+          visibility: normalizeVisibility(safePost.visibility || toPostVisibility(getDefaultVisibility())),
           vision_id: post.visionId || post.vision_id || null,
           task_id: post.taskId || post.task_id || null,
           progress_log_id: post.progressLogId || post.progress_log_id || null,
@@ -3168,7 +3168,7 @@ export const useStore = create<AppState>((set, get) => ({
         isLiked: false,
         isSaved: false,
         type: p.type || 'update',
-        visibility: p.visibility || 'public',
+        visibility: normalizeVisibility(p.visibility || 'public'),
         archived: !!p.archived,
         archivedAt: p.archived_at || null,
         deletedAt: p.deleted_at || null,
@@ -3642,7 +3642,7 @@ export const useStore = create<AppState>((set, get) => ({
           isLiked: false,
           isSaved: true,
           type: p.type || 'update',
-          visibility: p.visibility || 'public',
+          visibility: normalizeVisibility(p.visibility || 'public'),
           visionId: p.vision_id || null,
           taskId: p.task_id || null,
           progressLogId: p.progress_log_id || null,
@@ -3782,7 +3782,7 @@ export const useStore = create<AppState>((set, get) => ({
         isLiked: myLikes.includes(p.id),
         isSaved: mySaves.includes(p.id),
         type: p.type,
-        visibility: p.visibility,
+        visibility: normalizeVisibility(p.visibility),
         visionId: p.vision_id || null,
         taskId: p.task_id || null,
         progressLogId: p.progress_log_id || null,

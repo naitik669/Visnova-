@@ -9,6 +9,7 @@ import { Comment, Post } from '../../types';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
+import { normalizeVisibility } from '../../lib/appPreferences';
 import { PostEditModal, PostReportModal } from './CommunityFeed';
 import { SharedPostEmbed } from './SharedPostEmbed';
 
@@ -38,7 +39,7 @@ const mapPostRow = (p: any): Post => ({
   comments: p?.comment_count?.[0]?.count || 0,
   saves: p?.saves?.[0]?.count || 0,
   type: (p?.type || 'update') as Post['type'],
-  visibility: (p?.visibility || 'public') as Post['visibility'],
+  visibility: normalizeVisibility(p?.visibility || 'public') as Post['visibility'],
   archived: !!p?.archived,
   archivedAt: p?.archived_at || null,
   deletedAt: p?.deleted_at || null,

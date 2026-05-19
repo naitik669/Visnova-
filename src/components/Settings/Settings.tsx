@@ -365,7 +365,7 @@ export default function Settings() {
                     onChange={value => updatePreferencePrefs({ ...preferencePrefs, defaultVisibility: value as any })}
                     options={[
                       { value: 'private', label: 'Private' },
-                      { value: 'connections', label: 'Connections' },
+                      { value: 'circle', label: 'Circle' },
                       { value: 'public', label: 'Public' }
                     ]}
                   />

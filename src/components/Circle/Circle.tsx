@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { Post } from '../../types';
 import MessagesPage from '../Social/MessagesPage';
 import { safeFormat, safeString, safeTime } from '../../lib/safeData';
+import { normalizeVisibility } from '../../lib/appPreferences';
 import CommunitySpaces from '../Community/CommunitySpaces';
 
 const relationLabels: Record<string, string> = {
@@ -93,7 +94,7 @@ export default function Circle() {
         isLiked: false,
         isSaved: false,
         type: post.type || 'update',
-        visibility: post.visibility || 'public'
+        visibility: normalizeVisibility(post.visibility || 'public')
       })));
     };
     loadActivity();

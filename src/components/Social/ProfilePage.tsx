@@ -49,6 +49,7 @@ import { SharedPostEmbed } from '../Feed/SharedPostEmbed';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
+import { normalizeVisibility } from '../../lib/appPreferences';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { SelectMenu } from '../ui/SelectMenu';
 
@@ -151,7 +152,7 @@ export default function ProfilePage() {
     isLiked: false,
     isSaved: false,
     type: p?.type || 'update',
-    visibility: p?.visibility || 'public',
+    visibility: normalizeVisibility(p?.visibility || 'public'),
     archived: !!p?.archived,
     archivedAt: p?.archived_at || null,
     deletedAt: p?.deleted_at || null,

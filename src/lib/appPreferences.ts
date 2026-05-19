@@ -1,4 +1,5 @@
-export type DefaultVisibility = 'private' | 'connections' | 'public';
+export type DefaultVisibility = 'private' | 'circle' | 'public';
+type LegacyVisibility = DefaultVisibility | 'connections' | 'friends' | string | null | undefined;
 
 export type NotificationPreferences = {
   product: boolean;
@@ -51,12 +52,24 @@ export const setNotificationPreferences = (value: NotificationPreferences) => {
   window.dispatchEvent(new CustomEvent('visnova:preferences-changed'));
 };
 
-export const getAppPreferences = () =>
-  readJson('visnova-preference-settings', defaultAppPreferences);
+export const normalizeVisibility = (visibility: LegacyVisibility): DefaultVisibility => {
+  if (visibility === 'public') return 'public';
+  if (visibility === 'circle' || visibility === 'connections' || visibility === 'friends') return 'circle';
+  return 'private';
+};
+
+export const getAppPreferences = () => {
+  const prefs = readJson('visnova-preference-settings', defaultAppPreferences);
+  return {
+    ...prefs,
+    defaultVisibility: normalizeVisibility(prefs.defaultVisibility)
+  };
+};
 
 export const setAppPreferences = (value: AppPreferences) => {
-  writeJson('visnova-preference-settings', value);
-  applyAppPreferences(value);
+  const normalized = { ...value, defaultVisibility: normalizeVisibility(value.defaultVisibility) };
+  writeJson('visnova-preference-settings', normalized);
+  applyAppPreferences(normalized);
   window.dispatchEvent(new CustomEvent('visnova:preferences-changed'));
 };
 
@@ -69,15 +82,11 @@ export const applyAppPreferences = (value: AppPreferences = getAppPreferences())
 
 export const getDefaultVisibility = () => getAppPreferences().defaultVisibility;
 
-export const toVisionVisibility = (visibility: DefaultVisibility): 'private' | 'friends' | 'public' => {
-  if (visibility === 'connections') return 'friends';
-  return visibility;
-};
+export const toVisionVisibility = (visibility: LegacyVisibility): 'private' | 'circle' | 'public' =>
+  normalizeVisibility(visibility);
 
-export const toPostVisibility = (visibility: DefaultVisibility): 'private' | 'friends' | 'public' => {
-  if (visibility === 'connections') return 'friends';
-  return visibility;
-};
+export const toPostVisibility = (visibility: LegacyVisibility): 'private' | 'circle' | 'public' =>
+  normalizeVisibility(visibility);
 
 export const playInteractionSound = (kind: 'click' | 'success' | 'error' | 'info' | 'message' = 'click') => {
   if (typeof window === 'undefined') return;

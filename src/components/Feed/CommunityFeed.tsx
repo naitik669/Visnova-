@@ -33,6 +33,7 @@ import {
 import { cn } from '../../lib/utils';
 import { useStore } from '../../store/useStore';
 import { Post, Comment } from '../../types';
+import { normalizeVisibility } from '../../lib/appPreferences';
 import { uploadMedia, supabase } from '../../lib/supabase';
 import VerifiedBadge from '../VerifiedBadge';
 import { notificationService } from '../../services/notificationService';
@@ -298,7 +299,7 @@ export default function CommunityFeed() {
     isLiked: false,
     isSaved: false,
     type: p?.type || 'update',
-    visibility: p?.visibility || 'public',
+    visibility: normalizeVisibility(p?.visibility || 'public'),
     archived: !!p?.archived,
     archivedAt: p?.archived_at || null,
     deletedAt: p?.deleted_at || null,

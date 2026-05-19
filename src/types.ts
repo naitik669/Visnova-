@@ -74,7 +74,7 @@ export interface Vision {
   tags: string[];
   color?: string;
   category?: string;
-  visibility?: 'private' | 'friends' | 'public';
+  visibility?: 'private' | 'circle' | 'public';
   deadline?: string | null;
   createdAt: number;
   updatedAt?: number;
@@ -89,7 +89,7 @@ export interface Vision {
   }[];
   isPublished?: boolean;
   publishSettings?: {
-    visibility: 'private' | 'friends' | 'public';
+    visibility: 'private' | 'circle' | 'public';
     allowComments: boolean;
     allowRemix: boolean;
     showInFeed?: boolean;
@@ -130,7 +130,7 @@ export interface Note {
   folderId: string | null;
   tags: string[];
   linkedVisionId: string | null;
-  visibility: 'private' | 'connections' | 'public';
+  visibility: 'private' | 'circle' | 'public';
   mood?: string;
   isPinned?: boolean;
   isFavorite?: boolean;
@@ -276,7 +276,7 @@ export interface MoneyOverview {
   topGoal: FinanceGoal | null;
 }
 
-export type EcosystemVisibility = 'private' | 'circle' | 'connections' | 'public';
+export type EcosystemVisibility = 'private' | 'circle' | 'public';
 
 export type ProgressLogType =
   | 'progress'
@@ -615,7 +615,7 @@ export interface Post {
   isSaved?: boolean;
   isLiked?: boolean;
   type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement' | 'status';
-  visibility: 'public' | 'private' | 'friends';
+  visibility: 'public' | 'private' | 'circle';
   visionId?: string | null;
   taskId?: string | null;
   progressLogId?: string | null;
