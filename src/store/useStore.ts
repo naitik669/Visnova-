@@ -33,6 +33,7 @@ import {
   validateFinanceTransaction
 } from '../lib/financeValidation';
 import { getDefaultVisibility, normalizeVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
+import { extractHashtags as extractSocialHashtags, extractMentions as extractSocialMentions } from '../utils/parseSocialText';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -404,7 +405,7 @@ async function notifyMentionedUsers({
   mentions: Array<{ userId?: string; username?: string }>;
   message: string;
 }) {
-  const mentionedIds = new Set(mentions.map(mention => mention.userId).filter(Boolean) as string[]);
+  const mentionedIds = new Set((mentions.map(mention => mention.userId).filter(Boolean) as string[]).filter(id => id !== actorId));
   const missingUsernames = Array.from(new Set(
     mentions
       .filter(mention => !mention.userId && mention.username)
@@ -420,7 +421,9 @@ async function notifyMentionedUsers({
     if (error) {
       console.error('Failed to resolve mention notifications:', error);
     } else {
-      (data || []).forEach((profile: any) => mentionedIds.add(profile.id));
+      (data || []).forEach((profile: any) => {
+        if (profile.id !== actorId) mentionedIds.add(profile.id);
+      });
     }
   }
 
@@ -432,6 +435,130 @@ async function notifyMentionedUsers({
     commentId,
     message
   })));
+}
+
+async function resolveMentionProfiles(mentions: Array<{ userId?: string; username?: string }>, actorId: string) {
+  const byId = new Map<string, { userId: string; username: string }>();
+  const directIds = Array.from(new Set(mentions.map(mention => mention.userId).filter(Boolean) as string[]))
+    .filter(userId => userId !== actorId);
+
+  if (directIds.length > 0) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', directIds);
+    if (error) console.error('Failed to resolve mention ids:', error);
+    (data || []).forEach((profile: any) => {
+      if (profile.id !== actorId) byId.set(profile.id, { userId: profile.id, username: safeString(profile.username, 'user') });
+    });
+  }
+
+  const usernames = Array.from(new Set(
+    mentions
+      .map(mention => normalizeUsernameInput(mention.username || ''))
+      .filter(Boolean)
+  ));
+
+  if (usernames.length > 0) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('username', usernames);
+    if (error) console.error('Failed to resolve mention usernames:', error);
+    (data || []).forEach((profile: any) => {
+      if (profile.id !== actorId) byId.set(profile.id, { userId: profile.id, username: safeString(profile.username, 'user') });
+    });
+  }
+
+  return Array.from(byId.values());
+}
+
+async function savePostSocialLinks(postId: string, tags: string[], mentions: Array<{ userId: string; username: string }>, actorId: string) {
+  const uniqueTags = Array.from(new Set(tags.map(normalizePostTag).filter(Boolean))).slice(0, 10);
+
+  if (uniqueTags.length > 0) {
+    const now = new Date().toISOString();
+    const { error: hashtagError } = await supabase
+      .from('hashtags')
+      .upsert(uniqueTags.map(tag => ({ tag, updated_at: now })), { onConflict: 'tag', ignoreDuplicates: true });
+    if (hashtagError) console.error('Hashtag upsert failed:', hashtagError);
+
+    const { data: hashtagRows, error: hashtagRowsError } = await supabase
+      .from('hashtags')
+      .select('id, tag, usage_count')
+      .in('tag', uniqueTags);
+    if (hashtagRowsError) console.error('Hashtag lookup failed:', hashtagRowsError);
+
+    const { error: postTagError } = await supabase
+      .from('post_tags')
+      .upsert(uniqueTags.map(tag => ({ post_id: postId, tag })), { onConflict: 'post_id,tag', ignoreDuplicates: true });
+    if (postTagError) console.error('Post tag save failed:', postTagError);
+
+    const hashtagRowsSafe = safeArray<any>(hashtagRows);
+    if (hashtagRowsSafe.length > 0) {
+      const { error: postHashtagError } = await supabase
+        .from('post_hashtags')
+        .upsert(hashtagRowsSafe.map(row => ({ post_id: postId, hashtag_id: row.id })), { onConflict: 'post_id,hashtag_id', ignoreDuplicates: true });
+      if (postHashtagError) console.error('Post hashtag link failed:', postHashtagError);
+
+      await Promise.allSettled(hashtagRowsSafe.map(row =>
+        supabase
+          .from('hashtags')
+          .update({ usage_count: safeNumber(row.usage_count) + 1, updated_at: now })
+          .eq('id', row.id)
+      ));
+    }
+  }
+
+  if (mentions.length > 0) {
+    const { error: mentionsError } = await supabase
+      .from('post_mentions')
+      .upsert(mentions.map(mention => ({
+        post_id: postId,
+        mentioned_user_id: mention.userId,
+        mentioned_by_user_id: actorId
+      })), { onConflict: 'post_id,mentioned_user_id', ignoreDuplicates: true });
+    if (mentionsError) console.error('Mentions insertion error:', mentionsError);
+  }
+}
+
+async function saveCommentSocialLinks(commentId: string, tags: string[], mentions: Array<{ userId: string; username: string }>, actorId: string) {
+  const uniqueTags = Array.from(new Set(tags.map(normalizePostTag).filter(Boolean))).slice(0, 10);
+  if (uniqueTags.length > 0) {
+    const now = new Date().toISOString();
+    await supabase
+      .from('hashtags')
+      .upsert(uniqueTags.map(tag => ({ tag, updated_at: now })), { onConflict: 'tag', ignoreDuplicates: true });
+
+    const { data: hashtagRows } = await supabase
+      .from('hashtags')
+      .select('id, tag, usage_count')
+      .in('tag', uniqueTags);
+
+    const hashtagRowsSafe = safeArray<any>(hashtagRows);
+    if (hashtagRowsSafe.length > 0) {
+      await supabase
+        .from('comment_hashtags')
+        .upsert(hashtagRowsSafe.map(row => ({ comment_id: commentId, hashtag_id: row.id })), { onConflict: 'comment_id,hashtag_id', ignoreDuplicates: true });
+      await Promise.allSettled(hashtagRowsSafe.map(row =>
+        supabase
+          .from('hashtags')
+          .update({ usage_count: safeNumber(row.usage_count) + 1, updated_at: now })
+          .eq('id', row.id)
+      ));
+    }
+  }
+
+  if (mentions.length > 0) {
+    const { error } = await supabase
+      .from('comment_mentions')
+      .upsert(mentions.map(mention => ({
+        comment_id: commentId,
+        mentioned_user_id: mention.userId,
+        mentioned_by_user_id: actorId
+      })), { onConflict: 'comment_id,mentioned_user_id', ignoreDuplicates: true });
+    if (error) console.error('Comment mentions insertion error:', error);
+  }
 }
 
 const defaultUser: AppState['user'] = {
@@ -2814,58 +2941,25 @@ export const useStore = create<AppState>((set, get) => ({
         }
       }
 
-      // 3. Insert Tags
-      if (safePost.tags && safePost.tags.length > 0) {
-        const uniqueTags = Array.from(new Set(safePost.tags.map((t: string) => normalizePostTag(t)).filter(Boolean)));
-        if (uniqueTags.length > 0) {
-          const { error: tagsError } = await withTimeout<any>(
-            supabase
-              .from('post_tags')
-              .insert(uniqueTags.map((t: string) => ({
-                post_id: postId,
-                tag: t
-              }))),
-            10000,
-            'Saving hashtags'
-          );
-          if (tagsError) {
-            console.error('Tags insertion error:', tagsError);
-             // Not critical, but good to know
-          }
-        }
-      }
+      const text = `${safePost.caption || ''} ${safePost.content || ''}`;
+      const socialTags = Array.from(new Set([...(safePost.tags || []), ...extractSocialHashtags(text)].map(normalizePostTag).filter(Boolean)));
+      const resolvedMentions = await resolveMentionProfiles([
+        ...(safePost.mentions || []),
+        ...extractSocialMentions(text).map(username => ({ username }))
+      ], userId);
 
-      const textMentions = extractMentionUsernames(`${safePost.caption || ''} ${safePost.content || ''}`)
-        .map(username => ({ username }));
-      const notificationMentions = [...(safePost.mentions || []), ...textMentions];
+      await savePostSocialLinks(postId, socialTags, resolvedMentions, userId);
 
-      // 4. Insert Mentions
-      if (safePost.mentions && safePost.mentions.length > 0) {
-        const { error: mentionsError } = await withTimeout<any>(
-          supabase
-            .from('post_mentions')
-            .insert(safePost.mentions.map((m: any) => ({
-              post_id: postId,
-              mentioned_user_id: m.userId
-            }))),
-          10000,
-          'Saving mentions'
-        );
-        if (mentionsError) {
-          console.error('Mentions insertion error:', mentionsError);
-        }
-      }
-
-      if (notificationMentions.length > 0) {
+      if (resolvedMentions.length > 0) {
         await notifyMentionedUsers({
           actorId: userId,
           postId,
-          mentions: notificationMentions,
+          mentions: resolvedMentions,
           message: 'mentioned you in a post'
         });
       }
 
-      const localPost = toLocalPost(postData, { ...safePost, metadata: postMetadata }, get().user);
+      const localPost = toLocalPost(postData, { ...safePost, tags: socialTags, mentions: resolvedMentions, metadata: postMetadata }, get().user);
       set((state) => ({
         posts: [localPost, ...state.posts.filter(p => p.id !== localPost.id)]
       }));
@@ -2914,10 +3008,15 @@ export const useStore = create<AppState>((set, get) => ({
       get().addToast({ type: 'error', title: 'Update blocked', description: err.message || 'This post update is invalid.' });
       return false;
     }
-    const nextTags: string[] = Array.from(new Set<string>((safeUpdates.tags || []).map(normalizePostTag).filter(Boolean)));
-    const nextMentions = Array.from(
-      new Map<string, any>((safeUpdates.mentions || []).filter((m: any) => m.userId).map((m: any) => [m.userId, m])).values()
-    );
+    const mergedText = `${safeUpdates.caption || ''} ${safeUpdates.content || ''}`;
+    const nextTags: string[] = Array.from(new Set<string>([
+      ...(safeUpdates.tags || []),
+      ...extractSocialHashtags(mergedText)
+    ].map(normalizePostTag).filter(Boolean)));
+    const nextMentions = await resolveMentionProfiles([
+      ...(safeUpdates.mentions || []),
+      ...extractSocialMentions(mergedText).map(username => ({ username }))
+    ], userId);
     const now = new Date().toISOString();
     const postUpdates: any = {
       updated_at: now,
@@ -2964,30 +3063,25 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.tags !== undefined) {
         const { error: deleteTagsError } = await supabase.from('post_tags').delete().eq('post_id', id);
         if (deleteTagsError) throw deleteTagsError;
-        if (nextTags.length > 0) {
-          const { error: insertTagsError } = await supabase
-            .from('post_tags')
-            .insert(nextTags.map(tag => ({ post_id: id, tag })));
-          if (insertTagsError) throw insertTagsError;
-        }
+        await supabase.from('post_hashtags').delete().eq('post_id', id);
+        await savePostSocialLinks(id, nextTags, [], userId);
       }
 
       if (updates.mentions !== undefined) {
+        const { data: existingMentionRows } = await supabase
+          .from('post_mentions')
+          .select('mentioned_user_id')
+          .eq('post_id', id);
+        const existingMentionIds = new Set(safeArray<any>(existingMentionRows).map(row => row.mentioned_user_id));
         const { error: deleteMentionsError } = await supabase.from('post_mentions').delete().eq('post_id', id);
         if (deleteMentionsError) throw deleteMentionsError;
-        if (nextMentions.length > 0) {
-          const { error: insertMentionsError } = await supabase
-            .from('post_mentions')
-            .insert(nextMentions.map(mention => ({ post_id: id, mentioned_user_id: mention.userId })));
-          if (insertMentionsError) throw insertMentionsError;
-        }
+        await savePostSocialLinks(id, [], nextMentions, userId);
 
-        const textMentions = extractMentionUsernames(`${updates.caption || ''} ${updates.content || ''}`)
-          .map(username => ({ username }));
+        const newMentions = nextMentions.filter(mention => !existingMentionIds.has(mention.userId));
         await notifyMentionedUsers({
           actorId: userId,
           postId: id,
-          mentions: [...nextMentions, ...textMentions],
+          mentions: newMentions,
           message: 'mentioned you in an updated post'
         });
       }
@@ -4454,13 +4548,19 @@ export const useStore = create<AppState>((set, get) => ({
         });
       }
 
-      const mentionUsernames = extractMentionUsernames(trimmedContent);
-      if (mentionUsernames.length > 0) {
+      const commentTags = extractSocialHashtags(trimmedContent);
+      const commentMentions = await resolveMentionProfiles(
+        extractSocialMentions(trimmedContent).map(username => ({ username })),
+        userId
+      );
+      await saveCommentSocialLinks(data.id, commentTags, commentMentions, userId);
+
+      if (commentMentions.length > 0) {
         await notifyMentionedUsers({
           actorId: userId,
           postId,
           commentId: data.id,
-          mentions: mentionUsernames.map(username => ({ username })),
+          mentions: commentMentions,
           message: 'mentioned you in a comment'
         });
       }

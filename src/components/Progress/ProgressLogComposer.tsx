@@ -5,6 +5,7 @@ import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import type { EcosystemVisibility, ProgressLogType } from '../../types';
 import { SelectMenu } from '../ui/SelectMenu';
+import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
 
 const LOG_TYPES: Array<{ value: ProgressLogType; label: string }> = [
   { value: 'progress', label: 'Progress Log' },
@@ -114,13 +115,13 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
           ))}
         </div>
 
-        <textarea
+        <MentionHashtagTextarea
           value={content}
-          onChange={(event) => setContent(event.target.value)}
+          onChange={setContent}
           placeholder="What did you prove today? Mention the task, blocker, lesson, or win."
           rows={7}
           maxLength={8000}
-          className="w-full resize-none rounded-[1.5rem] border border-card-border bg-card p-4 text-sm font-semibold leading-6 text-text-main outline-none placeholder:text-text-secondary/45 focus:border-accent focus:ring-4 focus:ring-accent/10"
+          textareaClassName="w-full resize-none rounded-[1.5rem] border border-card-border bg-card p-4 text-sm font-semibold leading-6 text-text-main outline-none placeholder:text-text-secondary/45 focus:border-accent focus:ring-4 focus:ring-accent/10"
         />
 
         <div className="grid grid-cols-3 gap-2">

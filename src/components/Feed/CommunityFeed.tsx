@@ -43,6 +43,8 @@ import { TrendingTopicsSection } from './TrendingTopicsSection';
 import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';
 import { SelectMenu } from '../ui/SelectMenu';
 import { SharedPostEmbed } from './SharedPostEmbed';
+import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
+import { renderSocialText } from '../../utils/parseSocialText';
 
 const normalizeHashtag = (tag: string) => tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 const extractHashtags = (text: string) => {
@@ -1008,11 +1010,11 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
             {type !== 'status' && (
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 ml-2">Caption</label>
-              <textarea
+              <MentionHashtagTextarea
                 value={caption}
-                onChange={(e) => handleTextChange(e, 'caption')}
+                onChange={setCaption}
                 placeholder="A catchy hook for your update..."
-                className="w-full h-20 bg-card border border-card-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
+                textareaClassName="w-full h-20 bg-card border border-card-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
               />
             </div>
             )}
@@ -1028,12 +1030,12 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
                   </span>
                 )}
               </div>
-              <textarea
+              <MentionHashtagTextarea
                 value={content}
-                onChange={(e) => handleTextChange(e, 'content')}
+                onChange={setContent}
                 maxLength={type === 'status' ? statusLimit : undefined}
                 placeholder={type === 'status' ? "What's your current status?" : "Expand on your progress, insights, or plans..."}
-                className={cn(
+                textareaClassName={cn(
                   "w-full bg-card border border-card-border p-4 text-sm font-medium focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20",
                   type === 'status' ? "h-28 rounded-[2rem] rounded-tl-md text-base font-bold bg-accent/5 border-accent/15" : "h-40 rounded-2xl"
                 )}
@@ -1217,17 +1219,17 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
             ))}
           </div>
 
-          <textarea
+          <MentionHashtagTextarea
             value={caption}
-            onChange={(e) => setCaption(e.target.value)}
+            onChange={setCaption}
             placeholder="Post caption"
-            className="w-full h-24 bg-card border border-card-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
+            textareaClassName="w-full h-24 bg-card border border-card-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
           />
-          <textarea
+          <MentionHashtagTextarea
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={setContent}
             placeholder="Post content"
-            className="w-full h-44 bg-card border border-card-border rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
+            textareaClassName="w-full h-44 bg-card border border-card-border rounded-2xl p-4 text-sm font-medium focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
           />
 
           <div className="flex justify-end gap-3 pt-4 border-t border-card-border/50">
@@ -1396,38 +1398,9 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
   };
   
   const renderInteractiveText = (text: string, mentions?: Post['mentions']) => {
-    const parts = text.split(/(@\w+|#[a-zA-Z0-9_-]+)/g);
-    return parts.map((part, i) => {
-      const mention = mentions?.find(m => `@${m.username}`.toLowerCase() === part.toLowerCase());
-      if (mention) {
-        return (
-          <button
-            key={i}
-            onClick={(e) => {
-              e.stopPropagation();
-              useStore.getState().setSelectedProfileId(mention.userId);
-            }}
-            className="text-accent hover:underline font-bold transition-all"
-          >
-            {part}
-          </button>
-        );
-      }
-      if (part.startsWith('#') && normalizeHashtag(part)) {
-        return (
-          <button
-            key={i}
-            onClick={(e) => {
-              e.stopPropagation();
-              onHashtagClick?.(part);
-            }}
-            className="text-accent hover:underline font-bold transition-all"
-          >
-            {part}
-          </button>
-        );
-      }
-      return part;
+    return renderSocialText(text, mentions, {
+      onHashtagClick: tag => onHashtagClick?.(tag),
+      onMentionClick: userId => useStore.getState().setSelectedProfileId(userId)
     });
   };
   
@@ -2205,11 +2178,11 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
              </div>
            )}
            <div className="relative">
-              <textarea 
+              <MentionHashtagTextarea
                  value={commentText}
-                 onChange={e => setCommentText(e.target.value)}
+                 onChange={setCommentText}
                  placeholder={replyTo ? `Reply to ${replyTo.author.name}...` : 'Write a comment...'}
-                 className="w-full bg-surface-muted border border-card-border rounded-2xl p-5 pr-16 text-sm font-medium focus:outline-none focus:border-accent transition-all resize-none h-24"
+                 textareaClassName="w-full bg-surface-muted border border-card-border rounded-2xl p-5 pr-16 text-sm font-medium focus:outline-none focus:border-accent transition-all resize-none h-24"
               />
               <button 
                  onClick={handleAddComment}
@@ -2288,7 +2261,15 @@ function ModalCommentItem({
               <span className="text-[9px] font-black text-text-secondary/30 uppercase shrink-0">{comment.timestamp}</span>
             </div>
             <p className={cn('text-sm leading-relaxed font-medium whitespace-pre-wrap', deleted ? 'italic text-text-secondary/45' : 'text-text-secondary')}>
-              {deleted ? 'Comment deleted' : comment.content}
+              {deleted ? 'Comment deleted' : renderSocialText(comment.content, [], {
+                onMentionUsernameClick: async (username) => {
+                  const { data } = await supabase.from('profiles').select('id').eq('username', username).maybeSingle();
+                  if (data?.id) useStore.getState().setSelectedProfileId(data.id);
+                },
+                onHashtagClick: tag => {
+                  window.location.href = `/feed?tag=${encodeURIComponent(tag)}`;
+                }
+              })}
             </p>
           </div>
           <div className="flex flex-wrap gap-4 mt-2 ml-4">

@@ -12,6 +12,8 @@ import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData'
 import { normalizeVisibility } from '../../lib/appPreferences';
 import { PostEditModal, PostReportModal } from './CommunityFeed';
 import { SharedPostEmbed } from './SharedPostEmbed';
+import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
+import { renderSocialText } from '../../utils/parseSocialText';
 
 const COMMENTS_PAGE_SIZE = 50;
 const isCommentEnhancementMissing = (error: any) => (
@@ -478,8 +480,22 @@ export default function PostThreadPage() {
 
             {(post.caption || post.content) && (
               <div className="space-y-3">
-                {post.caption && <p className="text-lg font-black text-text-main leading-snug">{post.caption}</p>}
-                {post.content && <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{post.content}</p>}
+                {post.caption && (
+                  <p className="text-lg font-black text-text-main leading-snug">
+                    {renderSocialText(post.caption, post.mentions, {
+                      onMentionClick: userId => useStore.getState().setSelectedProfileId(userId),
+                      onHashtagClick: tag => navigate(`/feed?tag=${encodeURIComponent(tag)}`)
+                    })}
+                  </p>
+                )}
+                {post.content && (
+                  <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
+                    {renderSocialText(post.content, post.mentions, {
+                      onMentionClick: userId => useStore.getState().setSelectedProfileId(userId),
+                      onHashtagClick: tag => navigate(`/feed?tag=${encodeURIComponent(tag)}`)
+                    })}
+                  </p>
+                )}
               </div>
             )}
 
@@ -556,11 +572,12 @@ export default function PostThreadPage() {
               </div>
             )}
             <div className="flex items-end gap-3">
-              <textarea
+              <MentionHashtagTextarea
                 value={commentText}
-                onChange={(event) => setCommentText(event.target.value)}
+                onChange={setCommentText}
                 placeholder={replyTo ? `Reply to ${replyTo.author.name}...` : 'Write a comment...'}
-                className="flex-1 min-h-12 max-h-32 resize-none rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm outline-none focus:border-accent/50"
+                className="flex-1"
+                textareaClassName="w-full min-h-12 max-h-32 resize-none rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm outline-none focus:border-accent/50"
               />
               <button
                 onClick={submitComment}
@@ -645,7 +662,15 @@ function CommentItem({
               <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-text-secondary/40">{comment.timestamp}</span>
             </div>
             <p className={cn('mt-2 text-sm leading-relaxed whitespace-pre-wrap', deleted ? 'italic text-text-secondary/45' : 'text-text-secondary')}>
-              {deleted ? 'Comment deleted' : comment.content}
+              {deleted ? 'Comment deleted' : renderSocialText(comment.content, [], {
+                onMentionUsernameClick: async (username) => {
+                  const { data } = await supabase.from('profiles').select('id').eq('username', username).maybeSingle();
+                  if (data?.id) useStore.getState().setSelectedProfileId(data.id);
+                },
+                onHashtagClick: tag => {
+                  window.location.href = `/feed?tag=${encodeURIComponent(tag)}`;
+                }
+              })}
             </p>
           </div>
           <div className="flex flex-wrap gap-4 mt-2 ml-2">
