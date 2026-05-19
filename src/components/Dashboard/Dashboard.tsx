@@ -210,6 +210,25 @@ export default function Dashboard() {
     [dateKey, todos],
   );
   const selectedDayLabel = selectedDate.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  const calendarActivityByDate = React.useMemo(() => {
+    const activity: Record<string, { task: boolean; note: boolean; journal: boolean }> = {};
+    const ensureDay = (key: string) => {
+      activity[key] ||= { task: false, note: false, journal: false };
+      return activity[key];
+    };
+
+    todos.forEach(todo => {
+      if (!todo.deletedAt && todo.scheduledDate) ensureDay(todo.scheduledDate).task = true;
+    });
+    notes.forEach(note => {
+      if (!note.isDeleted && note.note_type === "normal") ensureDay(keyForTimestamp(note.createdAt)).note = true;
+    });
+    journalEntries.forEach(entry => {
+      if (entry.date) ensureDay(entry.date).journal = true;
+    });
+
+    return activity;
+  }, [journalEntries, keyForTimestamp, notes, todos]);
 
   const createCalendarTask = React.useCallback(() => {
     const text = dayTaskText.trim();
@@ -758,40 +777,49 @@ export default function Dashboard() {
 
           {/* Middle Row: Schedule Log */}
           <div className="bg-card rounded-[2.5rem] p-4 sm:p-6 shadow-sm grid grid-cols-1 xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)] gap-6 items-stretch">
-            <div className="w-full bg-app-container rounded-[2rem] p-5 sm:p-6 flex flex-col gap-4 min-w-0">
-              <div className="flex items-center justify-between px-2 text-text-main pb-2">
+            <div className="w-full bg-app-container rounded-[2rem] p-4 sm:p-5 flex flex-col gap-4 min-w-0 border border-card-border/50 shadow-inner shadow-accent/5">
+              <div className="flex items-center justify-between gap-3 text-text-main">
                 <button
                   onClick={() => {
                     const newDate = new Date(selectedDate);
                     newDate.setMonth(newDate.getMonth() - 1);
                     setSelectedDate(newDate);
                   }}
-                  className="hover:text-accent transition-colors"
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-card-border bg-card text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+                  aria-label="Previous month"
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className="text-sm font-bold capitalize tracking-wide">
-                  {selectedDate.toLocaleString("default", {
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </span>
+                <div className="flex min-w-0 items-center justify-center gap-2">
+                  <span className="rounded-2xl border border-card-border bg-card px-4 py-2 text-xs font-black uppercase tracking-widest text-text-main shadow-sm">
+                    {selectedDate.toLocaleString("default", { month: "short" })}
+                  </span>
+                  <span className="rounded-2xl border border-card-border bg-card px-4 py-2 text-xs font-black uppercase tracking-widest text-text-main shadow-sm">
+                    {selectedDate.getFullYear()}
+                  </span>
+                </div>
                 <button
                   onClick={() => {
                     const newDate = new Date(selectedDate);
                     newDate.setMonth(newDate.getMonth() + 1);
                     setSelectedDate(newDate);
                   }}
-                  className="hover:text-accent transition-colors"
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-card-border bg-card text-text-secondary transition-colors hover:border-accent/40 hover:text-accent"
+                  aria-label="Next month"
                 >
                   <ChevronRight size={16} />
                 </button>
               </div>
-              <div className="grid grid-cols-7 gap-y-3 gap-x-2 text-center text-xs mt-2 relative">
-                {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+              <div className="flex flex-wrap items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-success" />Task</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-accent" />Note</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-warning" />Journal</span>
+              </div>
+              <div className="grid grid-cols-7 gap-1.5 text-center text-xs relative">
+                {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d, i) => (
                   <span
                     key={`header-${i}`}
-                    className="font-semibold text-text-secondary/60 mb-2"
+                    className="mb-1 text-[10px] font-black uppercase tracking-widest text-text-secondary/45"
                   >
                     {d}
                   </span>
@@ -799,7 +827,7 @@ export default function Dashboard() {
                 {(() => {
                   const year = selectedDate.getFullYear();
                   const month = selectedDate.getMonth();
-                  const firstDay = new Date(year, month, 1).getDay();
+                  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
                   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
                   const days = [];
@@ -811,37 +839,39 @@ export default function Dashboard() {
                   for (let i = 1; i <= daysInMonth; i++) {
                     const dateObj = new Date(year, month, i);
                     const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
-                    const hasJournal = journalEntries.some(
-                      (e) => e.date === dateKey,
-                    );
-                    const hasNote = notes.some(
-                      (note) => !note.isDeleted && note.note_type === "normal" && keyForTimestamp(note.createdAt) === dateKey,
-                    );
-                    const hasTask = todos.some(
-                      (todo) => !todo.deletedAt && todo.scheduledDate === dateKey,
-                    );
+                    const dayActivity = calendarActivityByDate[dateKey];
+                    const hasTask = !!dayActivity?.task;
+                    const hasNote = !!dayActivity?.note;
+                    const hasJournal = !!dayActivity?.journal;
+                    const hasActivity = hasTask || hasNote || hasJournal;
                     const isSelected = selectedDate.getDate() === i;
+                    const isToday = new Date().toDateString() === dateObj.toDateString();
 
                     days.push(
-                      <div
+                      <button
                         key={i}
+                        type="button"
                         onClick={() => setSelectedDate(dateObj)}
                         className={cn(
-                          "relative aspect-square flex items-center justify-center font-bold rounded-full cursor-pointer transition-all text-sm",
+                          "relative aspect-square rounded-xl border text-sm font-black transition-all focus:outline-none focus:ring-2 focus:ring-accent/30",
                           isSelected
-                            ? "bg-accent text-accent-contrast shadow-md shadow-accent/30 scale-110"
-                            : "text-text-main hover:bg-surface-muted",
+                            ? "border-accent bg-accent text-accent-contrast shadow-lg shadow-accent/20"
+                            : "border-card-border bg-card text-text-main hover:-translate-y-0.5 hover:border-accent/35 hover:bg-surface-muted",
+                          !isSelected && hasTask && !hasNote && !hasJournal && "border-success/35 bg-success/10",
+                          !isSelected && hasNote && !hasTask && !hasJournal && "border-accent/35 bg-accent/10",
+                          !isSelected && hasJournal && !hasTask && !hasNote && "border-warning/35 bg-warning/10",
+                          isToday && !isSelected && "ring-1 ring-accent/30",
                         )}
                       >
-                        {i}
-                        {(hasJournal || hasNote || hasTask) && !isSelected && (
-                          <div className="absolute top-1 right-1.5 flex gap-0.5">
-                            {hasTask && <span className="w-1.5 h-1.5 bg-success rounded-full border border-card" />}
-                            {hasNote && <span className="w-1.5 h-1.5 bg-accent rounded-full border border-card" />}
-                            {hasJournal && <span className="w-1.5 h-1.5 bg-warning rounded-full border border-card" />}
+                        <span className="relative z-10">{i}</span>
+                        {hasActivity && (
+                          <div className={cn("absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-0.5", isSelected && "opacity-90")}>
+                            {hasTask && <span className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-accent-contrast" : "bg-success")} />}
+                            {hasNote && <span className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-accent-contrast" : "bg-accent")} />}
+                            {hasJournal && <span className={cn("h-1.5 w-1.5 rounded-full", isSelected ? "bg-accent-contrast" : "bg-warning")} />}
                           </div>
                         )}
-                      </div>,
+                      </button>,
                     );
                   }
                   return days;

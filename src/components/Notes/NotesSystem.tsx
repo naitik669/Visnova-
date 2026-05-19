@@ -1047,6 +1047,13 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
       end: endOfWeek(selectedDate)
     });
   }, [selectedDate]);
+  const journalEntryDateSet = useMemo(() => {
+    return new Set(
+      safeArray<Note>(journalEntries)
+        .map(entry => entry.journal_date || safeFormat(entry.createdAt, 'yyyy-MM-dd', ''))
+        .filter(Boolean)
+    );
+  }, [journalEntries]);
 
   const prompt = useMemo(() => getDailyPrompt(selectedDate), [selectedDate]);
 
@@ -1224,6 +1231,8 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                 {weekDays.map((date, i) => {
                   const isActive = isSameDay(date, selectedDate);
                   const isDayToday = isToday(date);
+                  const dateKey = format(date, 'yyyy-MM-dd');
+                  const hasJournalEntry = journalEntryDateSet.has(dateKey);
                   return (
                     <button
                       key={i}
@@ -1236,14 +1245,17 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                       }}
                       disabled={isAfter(startOfDay(date), today)}
                       className={cn(
-                        "flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-xl transition-all min-w-10 sm:min-w-[50px]",
-                        isActive ? "bg-card-elevated shadow-md text-accent scale-105" : "text-text-secondary/40 hover:text-text-main hover:bg-card/70",
+                        "relative flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-xl border transition-all min-w-10 sm:min-w-[50px]",
+                        isActive ? "border-accent bg-accent text-accent-contrast shadow-md shadow-accent/20 scale-105" : "border-transparent text-text-secondary/40 hover:text-text-main hover:bg-card/70",
+                        hasJournalEntry && !isActive && "border-warning/30 bg-warning/10 text-text-main",
                         isAfter(startOfDay(date), today) && "cursor-not-allowed opacity-30 hover:bg-transparent hover:text-text-secondary/40"
                       )}
                     >
                       <span className="text-[8px] font-black uppercase tracking-widest">{format(date, 'EEE')}</span>
                       <span className="text-xs font-bold">{format(date, 'd')}</span>
-                      {isDayToday && !isActive && <div className="w-1 h-1 rounded-full bg-accent/40" />}
+                      {(isDayToday || hasJournalEntry) && !isActive && (
+                        <div className={cn("h-1.5 w-1.5 rounded-full", hasJournalEntry ? "bg-warning" : "bg-accent/40")} />
+                      )}
                     </button>
                   );
                 })}
