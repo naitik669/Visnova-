@@ -47,8 +47,9 @@ type InteractionMode = 'idle' | 'canvas-pan' | 'element-drag' | 'resize' | 'text
 
 const CANVAS_SIZE = 9000;
 const LEGACY_CANVAS_CENTER = 2600;
-const MIN_ZOOM_FLOOR = 0.04;
+const MIN_ZOOM_FLOOR = 0.08;
 const MAX_ZOOM = 2.5;
+const FIT_CONTENT_PADDING = 260;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -216,9 +217,19 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     () => elements.find(element => element.id === selectedId) || null,
     [elements, selectedId]
   );
-  const boardFocusCenter = useMemo(() => {
+  const boardContentBounds = useMemo(() => {
     const visibleElements = elements.filter(element => element.type !== 'connector' && element.type !== 'drawing');
-    if (visibleElements.length === 0) return { x: LEGACY_CANVAS_CENTER, y: LEGACY_CANVAS_CENTER };
+    if (visibleElements.length === 0) {
+      return {
+        minX: LEGACY_CANVAS_CENTER - 600,
+        minY: LEGACY_CANVAS_CENTER - 360,
+        maxX: LEGACY_CANVAS_CENTER + 600,
+        maxY: LEGACY_CANVAS_CENTER + 360,
+        width: 1200,
+        height: 720,
+        center: { x: LEGACY_CANVAS_CENTER, y: LEGACY_CANVAS_CENTER }
+      };
+    }
 
     const bounds = visibleElements.reduce(
       (acc, element) => {
@@ -235,11 +246,25 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       { minX: Number.POSITIVE_INFINITY, minY: Number.POSITIVE_INFINITY, maxX: Number.NEGATIVE_INFINITY, maxY: Number.NEGATIVE_INFINITY }
     );
 
+    const width = Math.max(360, bounds.maxX - bounds.minX);
+    const height = Math.max(260, bounds.maxY - bounds.minY);
     return {
-      x: Math.min(CANVAS_SIZE, Math.max(0, (bounds.minX + bounds.maxX) / 2)),
-      y: Math.min(CANVAS_SIZE, Math.max(0, (bounds.minY + bounds.maxY) / 2))
+      ...bounds,
+      width,
+      height,
+      center: {
+        x: Math.min(CANVAS_SIZE, Math.max(0, (bounds.minX + bounds.maxX) / 2)),
+        y: Math.min(CANVAS_SIZE, Math.max(0, (bounds.minY + bounds.maxY) / 2))
+      }
     };
   }, [elements]);
+
+  const boardFocusCenter = useMemo(() => {
+    return {
+      x: boardContentBounds.center.x,
+      y: boardContentBounds.center.y
+    };
+  }, [boardContentBounds.center.x, boardContentBounds.center.y]);
   const setInteractionMode = useCallback((mode: InteractionMode) => {
     interactionModeRef.current = mode;
     setInteractionModeState(mode);
@@ -449,9 +474,20 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setTransformAroundPoint(currentCenter, nextScale, animationTime);
   }, [setTransformAroundPoint, zoomLevel]);
 
-  const fitBoardToViewport = useCallback((nextScale = minZoom, animationTime = 120) => {
-    setTransformAroundPoint(boardFocusCenter, nextScale, animationTime);
-  }, [boardFocusCenter, minZoom, setTransformAroundPoint]);
+  const getContentFitScale = useCallback(() => {
+    const bounds = canvasViewportRef.current?.getBoundingClientRect();
+    const availableWidth = Math.max(320, (bounds?.width || window.innerWidth) - FIT_CONTENT_PADDING);
+    const availableHeight = Math.max(240, (bounds?.height || window.innerHeight) - FIT_CONTENT_PADDING);
+    const contentScale = Math.min(
+      availableWidth / Math.max(1, boardContentBounds.width),
+      availableHeight / Math.max(1, boardContentBounds.height)
+    );
+    return Math.min(1, Math.max(minZoom, contentScale));
+  }, [boardContentBounds.height, boardContentBounds.width, minZoom]);
+
+  const fitBoardToViewport = useCallback((nextScale?: number, animationTime = 120) => {
+    setTransformAroundPoint(boardFocusCenter, nextScale ?? getContentFitScale(), animationTime);
+  }, [boardFocusCenter, getContentFitScale, setTransformAroundPoint]);
 
   const zoomByWheelDelta = useCallback((deltaY: number, animationTime = 0) => {
     const transformState = transformWrapperRef.current?.instance?.transformState || transformWrapperRef.current?.state;
@@ -470,7 +506,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     if (!viewportSize.width || !viewportSize.height) return;
     if (centeredVisionRef.current === vision.id) return;
     centeredVisionRef.current = vision.id;
-    window.requestAnimationFrame(() => fitBoardToViewport(1, 0));
+    window.requestAnimationFrame(() => fitBoardToViewport(undefined, 0));
   }, [fitBoardToViewport, viewportSize.height, viewportSize.width, vision.id]);
 
   useEffect(() => {
@@ -947,6 +983,15 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
                   createElement('text', 'New idea', { fontSize: '22px' }, point.x, point.y);
                 }}
               >
+                <div
+                  className="pointer-events-none absolute rounded-[64px] border-2 border-dashed border-accent/18 bg-card/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)]"
+                  style={{
+                    left: LEGACY_CANVAS_CENTER - 1800,
+                    top: LEGACY_CANVAS_CENTER - 1200,
+                    width: 3600,
+                    height: 2400
+                  }}
+                />
                 <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible z-0">
                   <defs>
                     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orientation="auto">
@@ -1025,7 +1070,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
               </div>
               <div className="mt-2 flex items-center justify-end gap-2 px-1">
                 <ControlButton onClick={() => fitBoardToViewport(1)} icon={<RotateCcw size={14} />} label="Reset View" compact />
-                <ControlButton onClick={() => fitBoardToViewport(minZoom)} icon={<Maximize2 size={14} />} label="Fit Board" compact />
+                <ControlButton onClick={() => fitBoardToViewport()} icon={<Maximize2 size={14} />} label="Fit Board" compact />
               </div>
             </div>
           </>
