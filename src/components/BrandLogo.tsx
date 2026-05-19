@@ -9,7 +9,7 @@ type BrandLogoProps = {
 export function BrandLogo({ className, title = 'VisNova' }: BrandLogoProps) {
   const id = useId().replace(/:/g, '');
   const gradientId = `visnova-logo-gradient-${id}`;
-  const shineId = `visnova-logo-shine-${id}`;
+  const edgeId = `visnova-logo-edge-${id}`;
 
   return (
     <svg
@@ -19,40 +19,39 @@ export function BrandLogo({ className, title = 'VisNova' }: BrandLogoProps) {
       className={cn('shrink-0', className)}
     >
       <defs>
-        <linearGradient id={gradientId} x1="96" y1="56" x2="424" y2="472" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="color-mix(in srgb, var(--accent) 58%, white)" />
-          <stop offset="0.55" stopColor="var(--accent)" />
-          <stop offset="1" stopColor="color-mix(in srgb, var(--accent) 78%, black)" />
+        <linearGradient id={gradientId} x1="88" y1="58" x2="418" y2="450" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="color-mix(in srgb, var(--accent) 62%, white)" />
+          <stop offset="0.58" stopColor="var(--accent)" />
+          <stop offset="1" stopColor="color-mix(in srgb, var(--accent) 68%, black)" />
         </linearGradient>
-        <radialGradient id={shineId} cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(166 96) rotate(56) scale(330 280)">
-          <stop offset="0" stopColor="white" stopOpacity="0.42" />
-          <stop offset="0.62" stopColor="white" stopOpacity="0.06" />
-          <stop offset="1" stopColor="white" stopOpacity="0" />
-        </radialGradient>
+        <linearGradient id={edgeId} x1="88" y1="58" x2="398" y2="434" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="white" stopOpacity="0.22" />
+          <stop offset="1" stopColor="white" stopOpacity="0.04" />
+        </linearGradient>
       </defs>
 
       <rect x="44" y="36" width="424" height="424" rx="96" fill={`url(#${gradientId})`} />
-      <rect x="44" y="36" width="424" height="424" rx="96" fill={`url(#${shineId})`} />
-      <g transform="translate(0 -2)">
-        <path d="M122 150h86l68 154 69-154h79L310 381h-68L122 150Z" fill="var(--accent-contrast)" />
+      <rect x="54" y="46" width="404" height="404" rx="88" fill="none" stroke={`url(#${edgeId})`} strokeWidth="10" />
+      <g transform="translate(2 8)">
+        <path d="M126 144h82l67 158 72-158h76L309 378h-67L126 144Z" fill="var(--accent-contrast)" />
         <path
-          d="M116 327c60 38 179 18 267-49 66-51 79-99 55-116"
+          d="M113 326c60 37 181 16 269-50 66-50 80-96 56-114"
           fill="none"
           stroke="var(--accent-contrast)"
-          strokeWidth="15"
+          strokeWidth="14"
           strokeLinecap="round"
         />
         <path
-          d="M121 328c53 27 148 13 232-38"
+          d="M119 327c54 27 151 11 235-40"
           fill="none"
           stroke="color-mix(in srgb, var(--accent) 70%, black)"
-          strokeWidth="7"
+          strokeWidth="6"
           strokeLinecap="round"
-          opacity="0.62"
+          opacity="0.42"
         />
       </g>
       <path
-        d="M414 106c7 29 13 35 42 42-29 7-35 13-42 42-7-29-13-35-42-42 29-7 35-13 42-42Z"
+        d="M410 98c7 28 14 35 42 42-28 7-35 14-42 42-7-28-14-35-42-42 28-7 35-14 42-42Z"
         fill="var(--accent-contrast)"
       />
     </svg>
