@@ -42,11 +42,17 @@ export default function AuthCallback() {
             const code = searchParams.get('code');
             const hashAccessToken = hashParams.get('access_token');
             const hashRefreshToken = hashParams.get('refresh_token');
+            let shouldContinueToLogin = false;
 
             if (code) {
               setStatus('Completing secure sign-in...');
               const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-              if (exchangeError) throw exchangeError;
+              if (exchangeError) {
+                const message = exchangeError.message || '';
+                const isMissingVerifier = /code verifier|verifier.*storage|pkce/i.test(message);
+                if (!isMissingVerifier) throw exchangeError;
+                shouldContinueToLogin = true;
+              }
             } else if (hashAccessToken && hashRefreshToken) {
               setStatus('Restoring secure session...');
               const { error: setSessionError } = await supabase.auth.setSession({
@@ -61,7 +67,7 @@ export default function AuthCallback() {
             if (sessionError) throw sessionError;
 
             const session = data.session;
-            if (!session) {
+            if (!session || shouldContinueToLogin) {
               if (!mounted) return;
               setStatus('Email verified. Please log in.');
               addToast({
