@@ -8,6 +8,7 @@ import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
 import { trackBetaEvent } from '../../lib/betaAnalytics';
 import { getRandomVisNovaAvatar } from '../../lib/avatarLibrary';
+import { BrandLogo } from '../BrandLogo';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
 
@@ -501,7 +502,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
           transition={{ delay: 0.1 }}
         >
           <div className="mb-4 flex items-center gap-3">
-            <img src="/visnova-logo.svg" alt="VisNova" className="h-12 w-12 rounded-2xl shadow-lg shadow-accent/15" />
+            <BrandLogo className="h-12 w-12 rounded-2xl shadow-lg shadow-accent/15" />
             <h1 className="text-4xl font-extrabold tracking-tight text-text-main">VisNova</h1>
           </div>
           <p className="text-text-secondary font-medium  opacity-70">Your Visionary Planner.</p>
