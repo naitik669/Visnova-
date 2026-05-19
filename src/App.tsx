@@ -617,18 +617,18 @@ export function DeletedContentPage({ label = 'content' }: { label?: string }) {
 }
 
 function AppContent() {
-  const { 
-    theme, 
-    isFocusMode, 
-    hasCompletedOnboarding, 
-    profile,
-    authLoading, 
-    isProfileReady,
-    isAuthInitialized,
-    initializeAuth, 
-    tutorialCompleted, 
-    session 
-  } = useStore();
+  const theme = useStore(state => state.theme);
+  const isFocusMode = useStore(state => state.isFocusMode);
+  const hasCompletedOnboarding = useStore(state => state.hasCompletedOnboarding);
+  const profile = useStore(state => state.profile);
+  const authLoading = useStore(state => state.authLoading);
+  const isProfileReady = useStore(state => state.isProfileReady);
+  const isAuthInitialized = useStore(state => state.isAuthInitialized);
+  const initializeAuth = useStore(state => state.initializeAuth);
+  const tutorialCompleted = useStore(state => state.tutorialCompleted);
+  const session = useStore(state => state.session);
+  const signOut = useStore(state => state.signOut);
+  const [profileWaitTimedOut, setProfileWaitTimedOut] = useState(false);
   const location = useLocation();
   
   const isPasswordRecovery = sessionStorage.getItem('visnova-auth-link-mode') === 'recovery' || new URLSearchParams(window.location.search).get('mode') === 'reset-password';
@@ -642,6 +642,16 @@ function AppContent() {
   useEffect(() => {
     if (isSupabaseConfigured()) initializeAuth();
   }, [initializeAuth]);
+
+  useEffect(() => {
+    if (!session || isProfileReady || profile) {
+      setProfileWaitTimedOut(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setProfileWaitTimedOut(true), 15000);
+    return () => window.clearTimeout(timer);
+  }, [isProfileReady, profile, session]);
 
   useEffect(() => {
     if (!session?.user?.id || !isSupabaseConfigured()) return;
@@ -724,6 +734,22 @@ function AppContent() {
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">Loading</span>
             <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-text-secondary opacity-40">Loading your profile data...</span>
+            {profileWaitTimedOut && (
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                <button
+                  onClick={() => initializeAuth()}
+                  className="rounded-2xl bg-accent px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-accent/20"
+                >
+                  Retry
+                </button>
+                <button
+                  onClick={() => signOut()}
+                  className="rounded-2xl border border-card-border bg-card px-5 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
          </div>
       </div>
     );

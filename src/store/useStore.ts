@@ -684,8 +684,18 @@ export const useStore = create<AppState>((set, get) => ({
         set({ ...privateStateReset(), authLoading: false, profileLoading: false, isProfileReady: true, isAuthInitialized: true });
       } else {
         set({ session, authUser: session.user, isAuthInitialized: true, isProfileReady: false });
-        await get().ensureCurrentUserProfile();
-        await get().loadUserProfile(session.user.id);
+        try {
+          await withTimeout(get().ensureCurrentUserProfile(), PROFILE_QUERY_TIMEOUT_MS, 'Preparing your profile');
+          await get().loadUserProfile(session.user.id);
+        } catch (profileError) {
+          console.error('Initial profile bootstrap failed:', profileError);
+          set({ profileLoading: false, isProfileReady: true });
+          get().addToast({
+            type: 'error',
+            title: 'Profile loaded in safe mode',
+            description: 'Some profile details may refresh after you retry.'
+          });
+        }
       }
       
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
@@ -1500,7 +1510,6 @@ export const useStore = create<AppState>((set, get) => ({
       if (ownedError) throw ownedError;
 
       let safeVisionRows = Array.isArray(ownedVisions) ? ownedVisions : [];
-      set({ visions: formatRows(safeVisionRows, []) });
 
       if (userEmail) {
         try {
@@ -1517,7 +1526,6 @@ export const useStore = create<AppState>((set, get) => ({
               if (row?.id) merged.set(row.id, row);
             });
             safeVisionRows = Array.from(merged.values()).sort((a, b) => safeTime(b.created_at, 0) - safeTime(a.created_at, 0));
-            set({ visions: formatRows(safeVisionRows, []) });
           }
         } catch (legacyError) {
           console.warn('Legacy vision ownership lookup skipped:', legacyError);
