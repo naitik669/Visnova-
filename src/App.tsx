@@ -551,10 +551,12 @@ function RouteFallback() {
   return (
     <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
       <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }}
-        className="h-10 w-10 rounded-full border-4 border-accent/10 border-t-accent"
-      />
+        animate={{ rotate: 360, scale: [1, 1.1, 1] }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20"
+      >
+        <div className="h-2 w-2 animate-ping rounded-full bg-accent" />
+      </motion.div>
       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50">Loading workspace</p>
     </div>
   );
@@ -707,11 +709,11 @@ function AppContent() {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
          <motion.div
-            animate={{ scale: [1, 1.05, 1], opacity: [0.86, 1, 0.86] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-            className="mb-4"
+            animate={{ rotate: 360, scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20"
          >
-            <BrandLogo className="w-16 h-16 rounded-2xl shadow-xl shadow-accent/15" />
+            <div className="h-2 w-2 animate-ping rounded-full bg-accent" />
          </motion.div>
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">VisNova</span>
@@ -727,10 +729,11 @@ function AppContent() {
     return (
       <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
          <motion.div
-            animate={{ scale: [1, 1.08, 1] }}
+            animate={{ rotate: 360, scale: [1, 1.1, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20"
          >
-            <BrandLogo className="w-16 h-16 rounded-2xl shadow-xl shadow-accent/15" />
+            <div className="h-2 w-2 animate-ping rounded-full bg-accent" />
          </motion.div>
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">Loading</span>

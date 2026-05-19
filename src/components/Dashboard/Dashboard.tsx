@@ -268,7 +268,6 @@ export default function Dashboard() {
     .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
   const pendingTasks = [...scheduledTodos, ...pendingVisionTasks];
   const displayedTasks = showAllTasks ? pendingTasks : pendingTasks.slice(0, 3);
-  const activeVisionPendingTasks = pendingVisionTasks.filter(task => !activeVision || task.visionId === activeVision.id).slice(0, 3);
   const sevenDaysAgo = React.useMemo(() => {
     const date = new Date();
     date.setDate(date.getDate() - 7);
@@ -444,11 +443,11 @@ export default function Dashboard() {
           )}
 
           {/* Today's Focus Section */}
-          <div className="bg-card rounded-[1.6rem] sm:rounded-[2.5rem] p-4 sm:p-6 shadow-sm relative overflow-hidden group">
+          <div className="bg-card rounded-[1.6rem] sm:rounded-[2.5rem] p-4 sm:p-5 shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
             
-            <div className="relative z-10 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(180px,210px)_minmax(150px,170px)] 2xl:grid-cols-[minmax(0,1fr)_220px_190px] items-start">
-              <div className="min-w-0 flex-1 space-y-4">
+            <div className="relative z-10 grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(170px,200px)_minmax(145px,165px)] 2xl:grid-cols-[minmax(0,1fr)_210px_180px] items-start">
+              <div className="min-w-0 flex-1 space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
                   <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-text-secondary opacity-60">
@@ -477,9 +476,10 @@ export default function Dashboard() {
                       <p className="text-[10px] text-text-secondary opacity-50 uppercase tracking-widest">Press Enter to lock trajectory</p>
                     </div>
                   ) : (
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div 
                       onClick={() => setIsEditingFocus(true)}
-                      className="cursor-pointer group/focus"
+                      className="min-w-0 flex-1 cursor-pointer group/focus"
                     >
                       <h2 className="text-xl lg:text-3xl font-display font-medium text-text-main leading-tight group-hover/focus:text-accent transition-colors">
                         {user.statusNote || activeVision?.title || "Choose today’s proof of progress"}
@@ -490,37 +490,19 @@ export default function Dashboard() {
                           : "Create a Vision so tasks, notes, journals, proof, and Circle activity connect in one loop."}
                       </p>
                     </div>
-                  )}
-                </div>
-
-                <div className="grid gap-2 pt-1 sm:grid-cols-3">
-                  {(activeVisionPendingTasks.length > 0 ? activeVisionPendingTasks : pendingTasks.slice(0, 3)).map(task => (
                     <button
-                      key={task.reactKey}
                       type="button"
-                      onClick={() => navigate('/visions')}
-                      className="rounded-2xl border border-card-border bg-app-container/80 p-3 text-left transition-colors hover:border-accent/40"
+                      onClick={() => setShowProgressComposer(true)}
+                      className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[9px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/15"
                     >
-                      <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/45 line-clamp-1">{task.vision}</p>
-                      <p className="mt-1.5 line-clamp-2 text-xs font-bold text-text-main">{task.text}</p>
+                      <Plus size={13} />
+                      Log Progress
                     </button>
-                  ))}
-                  {pendingTasks.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-card-border bg-app-container/80 p-3 text-xs font-semibold text-text-secondary sm:col-span-3">
-                      Add tasks to a Vision so the command center can suggest your next action.
                     </div>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowProgressComposer(true)}
-                    className="flex h-10 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[9px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/15"
-                  >
-                    <Plus size={13} />
-                    Log Progress
-                  </button>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest opacity-40">Trajectory</span>
                     <span className="text-sm font-bold text-text-main">Day {user.streak || 1} - {user.rank || 'Explorer'}</span>
