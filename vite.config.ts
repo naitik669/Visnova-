@@ -28,7 +28,7 @@ export default defineConfig(() => {
             if (id.includes('react-zoom-pan-pinch') || id.includes('@dnd-kit')) return 'canvas';
             if (id.includes('lucide-react')) return 'icons';
             if (id.includes('react-markdown')) return 'markdown';
-            return 'vendor';
+            return undefined;
           },
         },
       },
