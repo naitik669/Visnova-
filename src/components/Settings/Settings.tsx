@@ -45,11 +45,13 @@ type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'pr
 
 const themes = [
   { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main', preview: { bg: '#f8f5f1', card: '#ffffff', accent: '#111827', text: '#1f2937', muted: '#e7e2da' } },
+  { id: 'ember', icon: Zap, label: 'Ember', desc: 'Clean light orange accent', color: 'bg-[#fb5a12] text-white', preview: { bg: '#f6f4f1', card: '#ffffff', accent: '#fb5a12', text: '#1f130c', muted: '#f3f0eb' } },
   { id: 'dark', icon: Moon, label: 'Dark', desc: 'Optimized for deep work', color: 'bg-[#18191C] text-[#fafaf9]', preview: { bg: '#101114', card: '#18191c', accent: '#818cf8', text: '#fafaf9', muted: '#292b31' } },
   { id: 'midnight', icon: Moon, label: 'Midnight', desc: 'Deep navy focus', color: 'bg-[#0f172a] text-[#38bdf8]', preview: { bg: '#07111f', card: '#0f172a', accent: '#38bdf8', text: '#dbeafe', muted: '#1e293b' } },
   { id: 'graphite', icon: Palette, label: 'Graphite', desc: 'Neutral dark workspace', color: 'bg-[#262626] text-[#fafaf9]', preview: { bg: '#171717', card: '#262626', accent: '#f5f5f4', text: '#fafaf9', muted: '#404040' } },
   { id: 'forest-dark', icon: Sparkles, label: 'Forest', desc: 'Dark green calm', color: 'bg-[#102719] text-[#86efac]', preview: { bg: '#07150d', card: '#102719', accent: '#86efac', text: '#dcfce7', muted: '#1c3b28' } },
   { id: 'plum-dark', icon: Palette, label: 'Plum', desc: 'Soft creative mode', color: 'bg-[#2f173d] text-[#f0abfc]', preview: { bg: '#1d1026', card: '#2f173d', accent: '#f0abfc', text: '#fae8ff', muted: '#4a255f' } },
+  { id: 'flare', icon: Zap, label: 'Flare', desc: 'Dark orange focus', color: 'bg-[#2a1810] text-[#fb5a12]', preview: { bg: '#140b07', card: '#2a1810', accent: '#fb5a12', text: '#fff7ed', muted: '#4a2716' } },
   { id: 'green', icon: Sparkles, label: 'Green', desc: 'Organic growth focus', color: 'bg-[#4ade80] text-[#064e3b]', preview: { bg: '#edfdf3', card: '#ffffff', accent: '#4ade80', text: '#064e3b', muted: '#bbf7d0' } },
   { id: 'yellow', icon: Zap, label: 'Yellow', desc: 'Optimistic energy', color: 'bg-[#eab308] text-[#422006]', preview: { bg: '#fff8db', card: '#fffdf2', accent: '#eab308', text: '#422006', muted: '#fde68a' } },
   { id: 'pastel', icon: Palette, label: 'Pastel', desc: 'Creative soft mood', color: 'bg-[#5D4361] text-[#FFF7F0]', preview: { bg: '#f3edf4', card: '#fff7f0', accent: '#5d4361', text: '#2f2033', muted: '#ded0df' } },

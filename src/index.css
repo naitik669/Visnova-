@@ -38,7 +38,8 @@ select {
 [data-theme='midnight'] select,
 [data-theme='graphite'] select,
 [data-theme='forest-dark'] select,
-[data-theme='plum-dark'] select {
+[data-theme='plum-dark'] select,
+[data-theme='flare'] select {
   color-scheme: dark;
 }
 
@@ -224,6 +225,29 @@ select option {
   --overlay: rgba(22, 5, 31, 0.78);
 }
 
+[data-theme='flare'] {
+  --accent: #fb5a12;
+  --accent-rgb: 251, 90, 18;
+  --accent-contrast: #fff7ed;
+  --accent-soft: rgba(251, 90, 18, 0.16);
+  --success: #34d399;
+  --warning: #f59e0b;
+  --danger: #fb7185;
+  --bg-base: #140b07;
+  --app-container: #1f120c;
+  --card: #2a1810;
+  --card-dark: #4a2716;
+  --card-elevated: #351d12;
+  --card-border: rgba(251, 90, 18, 0.18);
+  --text-main: #fff7ed;
+  --text-secondary: #f5b991;
+  --sidebar: #170d08;
+  --sidebar-text: #ffedd5;
+  --surface-muted: rgba(251, 90, 18, 0.09);
+  --surface-strong: rgba(255, 247, 237, 0.12);
+  --overlay: rgba(20, 11, 7, 0.78);
+}
+
 [data-theme='light'] {
   --accent: #111827;
   --accent-rgb: 17, 24, 39;
@@ -245,6 +269,29 @@ select option {
   --surface-muted: rgba(17, 24, 39, 0.04);
   --surface-strong: rgba(17, 24, 39, 0.08);
   --overlay: rgba(17, 24, 39, 0.42);
+}
+
+[data-theme='ember'] {
+  --accent: #fb5a12;
+  --accent-rgb: 251, 90, 18;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(251, 90, 18, 0.11);
+  --success: #15803d;
+  --warning: #c2410c;
+  --danger: #dc2626;
+  --bg-base: #f6f4f1;
+  --app-container: #ffffff;
+  --card: #ffffff;
+  --card-dark: #f3f0eb;
+  --card-elevated: #ffffff;
+  --card-border: rgba(124, 45, 18, 0.11);
+  --text-main: #1f130c;
+  --text-secondary: #6b5f56;
+  --sidebar: #ffffff;
+  --sidebar-text: #1f130c;
+  --surface-muted: rgba(124, 45, 18, 0.045);
+  --surface-strong: rgba(31, 19, 12, 0.08);
+  --overlay: rgba(31, 19, 12, 0.42);
 }
 
 [data-theme='sage'] {
@@ -368,7 +415,8 @@ select option {
   [data-theme='midnight'] .system-card,
   [data-theme='graphite'] .system-card,
   [data-theme='forest-dark'] .system-card,
-  [data-theme='plum-dark'] .system-card {
+  [data-theme='plum-dark'] .system-card,
+  [data-theme='flare'] .system-card {
     box-shadow: 0 18px 42px rgb(0 0 0 / 0.22);
   }
 
@@ -415,7 +463,8 @@ select option {
   [data-theme='midnight'] .visnova-menu,
   [data-theme='graphite'] .visnova-menu,
   [data-theme='forest-dark'] .visnova-menu,
-  [data-theme='plum-dark'] .visnova-menu {
+  [data-theme='plum-dark'] .visnova-menu,
+  [data-theme='flare'] .visnova-menu {
     border-color: color-mix(in srgb, var(--accent) 18%, var(--card-border));
     box-shadow: 0 24px 60px rgb(0 0 0 / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.06);
   }
@@ -429,7 +478,9 @@ select option {
   [data-theme='forest-dark'] .visnova-select-trigger,
   [data-theme='forest-dark'] .settings-input,
   [data-theme='plum-dark'] .visnova-select-trigger,
-  [data-theme='plum-dark'] .settings-input {
+  [data-theme='plum-dark'] .settings-input,
+  [data-theme='flare'] .visnova-select-trigger,
+  [data-theme='flare'] .settings-input {
     background-color: color-mix(in srgb, var(--card-elevated) 72%, var(--accent) 8%);
     border-color: color-mix(in srgb, var(--accent) 16%, var(--card-border));
   }
