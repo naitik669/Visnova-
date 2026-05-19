@@ -3831,14 +3831,88 @@ export const useStore = create<AppState>((set, get) => ({
         query = query.order('created_at', { ascending: false }).limit(50);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
       if (error) {
         if (error.message.includes('public.posts') || error.code === 'PGRST116') {
           console.warn('Posts table not found in schema cache. Feed might be empty.');
           set({ posts: [] });
           return;
         }
-        throw error;
+        console.warn('Rich posts query failed; retrying with basic post payload.', error);
+
+        let fallbackQuery = supabase
+          .from('posts')
+          .select('id, user_id, caption, content, type, visibility, vision_id, task_id, progress_log_id, proof_summary, archived, archived_at, deleted_at, edited_at, created_at, stats, metadata')
+          .eq('visibility', 'public')
+          .or('archived.is.false,archived.is.null')
+          .is('deleted_at', null);
+
+        if (userId) {
+          const { data: mutedUsers } = await supabase
+            .from('blocked_users')
+            .select('blocked_id')
+            .eq('blocker_id', userId);
+          const mutedIds = mutedUsers?.map((block: any) => block.blocked_id).filter(Boolean) || [];
+          if (mutedIds.length > 0) {
+            fallbackQuery = fallbackQuery.not('user_id', 'in', `(${mutedIds.join(',')})`);
+          }
+        }
+
+        if (tab === 'following') {
+          if (!userId) {
+            set({ posts: [] });
+            return;
+          }
+
+          let followingIds = get().followingIds;
+          if (followingIds.length === 0) {
+            await get().fetchFeedContext();
+            followingIds = get().followingIds;
+          }
+
+          if (followingIds.length > 0) {
+            fallbackQuery = fallbackQuery.in('user_id', followingIds).order('created_at', { ascending: false }).limit(20);
+          } else {
+            set({ posts: [] });
+            return;
+          }
+        } else {
+          fallbackQuery = fallbackQuery.order('created_at', { ascending: false }).limit(tab === 'latest' ? 20 : 50);
+        }
+
+        const fallbackResult = await fallbackQuery;
+        if (fallbackResult.error) throw fallbackResult.error;
+
+        const fallbackRows = fallbackResult.data || [];
+        const authorIds = Array.from(new Set(fallbackRows.map((post: any) => post.user_id).filter(Boolean)));
+        let authorMap: Record<string, any> = {};
+
+        if (authorIds.length > 0) {
+          const { data: authors, error: authorsError } = await supabase
+            .from('profiles')
+            .select('id, display_name, full_name, username, avatar_url, verified')
+            .in('id', authorIds);
+
+          if (authorsError) {
+            console.warn('Post author fallback lookup failed:', authorsError);
+          } else {
+            authorMap = (authors || []).reduce((acc: Record<string, any>, author: any) => {
+              acc[author.id] = author;
+              return acc;
+            }, {});
+          }
+        }
+
+        data = fallbackRows.map((post: any) => ({
+          ...post,
+          author: authorMap[post.user_id] || null,
+          likes: [],
+          saves: [],
+          comment_count: [],
+          media: [],
+          post_tags: [],
+          mentions: []
+        }));
       }
 
       let myLikes: string[] = [];
