@@ -33,24 +33,26 @@ export function BrandLogo({ className, title = 'VisNova' }: BrandLogoProps) {
 
       <rect x="44" y="36" width="424" height="424" rx="96" fill={`url(#${gradientId})`} />
       <rect x="44" y="36" width="424" height="424" rx="96" fill={`url(#${shineId})`} />
-      <path d="M110 150h91l72 162 73-162h83L309 389h-72L110 150Z" fill="var(--accent-contrast)" />
+      <g transform="translate(0 -2)">
+        <path d="M122 150h86l68 154 69-154h79L310 381h-68L122 150Z" fill="var(--accent-contrast)" />
+        <path
+          d="M116 327c60 38 179 18 267-49 66-51 79-99 55-116"
+          fill="none"
+          stroke="var(--accent-contrast)"
+          strokeWidth="15"
+          strokeLinecap="round"
+        />
+        <path
+          d="M121 328c53 27 148 13 232-38"
+          fill="none"
+          stroke="color-mix(in srgb, var(--accent) 70%, black)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          opacity="0.62"
+        />
+      </g>
       <path
-        d="M112 333c59 42 187 20 279-52 72-57 83-110 57-127"
-        fill="none"
-        stroke="var(--accent-contrast)"
-        strokeWidth="17"
-        strokeLinecap="round"
-      />
-      <path
-        d="M112 333c54 30 154 16 244-41"
-        fill="none"
-        stroke="color-mix(in srgb, var(--accent) 70%, black)"
-        strokeWidth="8"
-        strokeLinecap="round"
-        opacity="0.62"
-      />
-      <path
-        d="M422 98c8 35 15 42 50 50-35 8-42 15-50 50-8-35-15-42-50-50 35-8 42-15 50-50Z"
+        d="M414 106c7 29 13 35 42 42-29 7-35 13-42 42-7-29-13-35-42-42 29-7 35-13 42-42Z"
         fill="var(--accent-contrast)"
       />
     </svg>
