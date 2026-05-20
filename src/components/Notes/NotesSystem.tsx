@@ -141,7 +141,7 @@ export default function NotesSystem() {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'board'>('grid');
   const [isLibrarySidebarHovered, setIsLibrarySidebarHovered] = useState(false);
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('all');
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
@@ -670,6 +670,12 @@ export default function NotesSystem() {
                             >
                               <Layout size={16} />
                             </button>
+                            <button 
+                              onClick={() => setViewMode('board')}
+                              className={cn("p-2 rounded-lg transition-all", viewMode === 'board' ? "bg-card shadow-sm text-accent" : "text-text-secondary/40 hover:text-text-main")}
+                            >
+                              <SidebarIcon size={16} />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -723,6 +729,20 @@ export default function NotesSystem() {
                           {activeTab === 'audio' ? 'Record Audio Note' : 'Create First Note'}
                         </button>
                       </div>
+                    ) : viewMode === 'board' ? (
+                      <NotesKanbanBoard
+                        notes={safeArray<Note>(filteredNotes)}
+                        folders={safeArray<FolderType>(folders)}
+                        selectedFolder={selectedFolder}
+                        onOpenNote={setSelectedNoteId}
+                        onMove={handleMoveNote}
+                        onPost={requestPostNoteToProfile}
+                        onDragStart={setDraggingNoteId}
+                        onDragEnd={() => {
+                          setDraggingNoteId(null);
+                          setDragOverFolderId(null);
+                        }}
+                      />
                     ) : (
                       <div className={cn(
                         "grid",
@@ -2293,6 +2313,110 @@ function NewAudioNoteModal({ isOpen, selectedFolder, onClose, onSaved }: {
   );
 }
 
+function NotesKanbanBoard({
+  notes,
+  folders,
+  selectedFolder,
+  onOpenNote,
+  onMove,
+  onPost,
+  onDragStart,
+  onDragEnd
+}: {
+  notes: Note[];
+  folders: FolderType[];
+  selectedFolder: string | null;
+  onOpenNote: (noteId: string) => void;
+  onMove: (noteId: string, folderId: string | null) => void;
+  onPost: (note: Note) => void;
+  onDragStart: (noteId: string) => void;
+  onDragEnd: () => void;
+}) {
+  const columns = useMemo(() => {
+    const safeNotes = safeArray<Note>(notes);
+    const base = [
+      {
+        id: UNFILED_FOLDER_ID,
+        title: 'Unfiled',
+        subtitle: 'Quick captures',
+        color: 'rgba(var(--accent-rgb), 0.10)',
+        notes: safeNotes.filter(note => !note.folderId)
+      },
+      ...safeArray<FolderType>(folders).map(folder => ({
+        id: folder.id,
+        title: safeString(folder.name, 'Folder'),
+        subtitle: 'Notebook',
+        color: folder.color || 'rgba(var(--accent-rgb), 0.10)',
+        notes: safeNotes.filter(note => note.folderId === folder.id)
+      }))
+    ];
+
+    if (!selectedFolder) return base;
+    return base.filter(column => column.id === selectedFolder);
+  }, [folders, notes, selectedFolder]);
+
+  return (
+    <div className="rounded-[2rem] border border-card-border bg-card p-3 shadow-sm">
+      <div className="mb-3 flex flex-col gap-3 border-b border-card-border/50 px-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Notes Board</p>
+          <h3 className="text-lg font-black text-text-main">Folder Kanban</h3>
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">Drag notes between folders</p>
+      </div>
+      <div className="flex min-h-[440px] gap-4 overflow-x-auto pb-2 custom-scrollbar">
+        {columns.map(column => (
+          <div
+            key={column.id}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const noteId = event.dataTransfer.getData('text/plain');
+              if (noteId) onMove(noteId, column.id === UNFILED_FOLDER_ID ? null : column.id);
+            }}
+            className="min-w-[270px] max-w-[290px] flex-1 rounded-[1.5rem] border border-card-border bg-bg-base/55 p-3"
+          >
+            <div className="mb-3 flex items-center justify-between gap-2 px-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="h-3 w-3 shrink-0 rounded-full border border-card-border" style={{ background: column.color }} />
+                <div className="min-w-0">
+                  <h4 className="truncate text-[12px] font-black text-text-main">{column.title}</h4>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40">{column.subtitle}</p>
+                </div>
+              </div>
+              <span className="rounded-full bg-card px-2 py-1 text-[9px] font-black text-text-secondary">{column.notes.length}</span>
+            </div>
+            <div className="space-y-3">
+              {column.notes.map(note => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  folders={folders}
+                  folderName={column.title}
+                  onClick={() => onOpenNote(note.id)}
+                  onMove={onMove}
+                  onDragStart={() => onDragStart(note.id)}
+                  onDragEnd={onDragEnd}
+                  onPost={() => onPost(note)}
+                  viewMode="board"
+                />
+              ))}
+              {column.notes.length === 0 && (
+                <div className="rounded-[1.25rem] border border-dashed border-card-border bg-card/55 p-5 text-center text-[9px] font-black uppercase tracking-widest text-text-secondary/35">
+                  Drop notes here
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function NoteCard({
   note,
   folders,
@@ -2312,7 +2436,7 @@ function NoteCard({
   onDragStart: () => void;
   onDragEnd: () => void;
   onPost: () => void;
-  viewMode?: 'grid' | 'list';
+  viewMode?: 'grid' | 'list' | 'board';
 }) {
   if (!note?.id) return null;
   const isAudioNote = note.note_type === 'audio' || !!note.audio_path;
@@ -2510,7 +2634,10 @@ function NoteCard({
     <div 
       {...dragProps}
       onClick={handleCardClick}
-      className="group relative flex min-h-[268px] cursor-pointer flex-col overflow-hidden rounded-[2rem] border border-card-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5"
+      className={cn(
+        "group relative flex cursor-pointer flex-col overflow-hidden border border-card-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5",
+        viewMode === 'board' ? "min-h-[210px] rounded-[1.35rem]" : "min-h-[268px] rounded-[2rem]"
+      )}
     >
       <div
         className="absolute inset-x-0 top-0 h-28 opacity-90"
@@ -2528,7 +2655,7 @@ function NoteCard({
             <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary/45">
               {createdOrUpdated} - {folderName || 'Unfiled'}
             </p>
-            <h4 className="line-clamp-2 text-[18px] font-black leading-tight tracking-tight text-text-main transition-colors group-hover:text-accent">
+            <h4 className={cn("line-clamp-2 font-black leading-tight tracking-tight text-text-main transition-colors group-hover:text-accent", viewMode === 'board' ? "text-[14px]" : "text-[18px]")}>
               {safeString(note.title, 'Untitled Note')}
             </h4>
           </div>
@@ -2551,7 +2678,7 @@ function NoteCard({
           className="mb-3 h-1.5 w-14 rounded-full"
           style={{ background: visualStyle.ink }}
         />
-        <p className="line-clamp-6 text-[14px] font-semibold leading-relaxed text-text-secondary/85">
+        <p className={cn("font-semibold leading-relaxed text-text-secondary/85", viewMode === 'board' ? "line-clamp-3 text-[12px]" : "line-clamp-6 text-[14px]")}>
           {preview}
         </p>
       </div>
@@ -2568,16 +2695,18 @@ function NoteCard({
           ))}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <div onClick={(event) => event.stopPropagation()} className="w-24 sm:w-28">
-            <SelectMenu
-              value={currentFolderValue}
-              onChange={handleMoveChange}
-              options={folderOptions}
-              placeholder="Move"
-              triggerClassName="h-8 rounded-lg px-2 text-[9px]"
-              menuClassName="sm:w-48"
-            />
-          </div>
+          {viewMode !== 'board' && (
+            <div onClick={(event) => event.stopPropagation()} className="w-24 sm:w-28">
+              <SelectMenu
+                value={currentFolderValue}
+                onChange={handleMoveChange}
+                options={folderOptions}
+                placeholder="Move"
+                triggerClassName="h-8 rounded-lg px-2 text-[9px]"
+                menuClassName="sm:w-48"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-accent transition-transform group-hover:translate-x-1">
             Open <ChevronRight size={12} />
           </div>

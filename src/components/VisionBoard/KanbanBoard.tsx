@@ -29,8 +29,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Vision } from '../../types';
 import { useStore } from '../../store/useStore';
-import VisionCard from './VisionCard';
-import { Plus, MoreHorizontal } from 'lucide-react';
+import { Plus, MoreHorizontal, CheckCircle2, Circle, Filter } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const COLUMNS: { id: Vision['status']; label: string }[] = [
@@ -61,6 +60,18 @@ function KanbanCard({ vision, onClick }: { vision: Vision, onClick: () => void }
     transition,
     opacity: isDragging ? 0 : 1,
   };
+  const completedTasks = vision.tasks.filter(task => task.completed).length;
+  const totalTasks = vision.tasks.length;
+  const progress = Math.max(0, Math.min(100, vision.progress || (totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0)));
+  const palette = [
+    'bg-[#E7F0FF] border-[#C8DAFF] text-[#315A9C]',
+    'bg-[#FFF0D8] border-[#F5D8A5] text-[#8A5A13]',
+    'bg-[#E4F8EF] border-[#BEEAD3] text-[#236B4A]',
+    'bg-[#F3E9FF] border-[#DDC8FF] text-[#6D3C9B]',
+    'bg-[#FFE4E5] border-[#F6C4C8] text-[#9B3C45]'
+  ];
+  const colorClass = palette[vision.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % palette.length];
+  const progressDots = Array.from({ length: 10 }, (_, index) => index < Math.round(progress / 10));
 
   return (
     <div 
@@ -80,18 +91,61 @@ function KanbanCard({ vision, onClick }: { vision: Vision, onClick: () => void }
           opacity: { duration: 0.2 }
         }}
       >
-        <VisionCard
-          vision={vision}
-          onClick={onClick}
-          className="mb-1"
-          gridSpan="small"
-        />
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onClick();
+          }}
+          className={cn(
+            "mb-3 w-full rounded-[1.35rem] border p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg",
+            colorClass
+          )}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap gap-1">
+              {(vision.tags.length ? vision.tags : [vision.category || 'vision']).slice(0, 2).map(tag => (
+                <span key={tag} className="rounded-md bg-white/55 px-2 py-1 text-[8px] font-black uppercase tracking-widest">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+            <MoreHorizontal size={14} className="shrink-0 opacity-45" />
+          </div>
+          <h4 className="mt-3 line-clamp-2 text-[14px] font-black leading-tight text-current">{vision.title}</h4>
+          <p className="mt-2 line-clamp-2 text-[10px] font-semibold leading-relaxed opacity-70">{vision.description || vision.notes || 'Build this Vision one move at a time.'}</p>
+          {vision.tasks.length > 0 && (
+            <div className="mt-3 space-y-1.5">
+              {vision.tasks.slice(0, 3).map(task => (
+                <div key={task.id} className="flex items-center gap-2 text-[10px] font-bold opacity-80">
+                  {task.completed ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+                  <span className={cn("line-clamp-1", task.completed && "line-through opacity-60")}>{task.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between text-[9px] font-black uppercase tracking-widest opacity-70">
+              <span>Progress</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="flex gap-1">
+              {progressDots.map((filled, index) => (
+                <span key={index} className={cn("h-2 flex-1 rounded-full bg-white/50", filled && "bg-current")} />
+              ))}
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[9px] font-black uppercase tracking-widest opacity-65">
+            <span>{completedTasks}/{totalTasks || 0} tasks</span>
+            <span>{vision.deadline ? 'Deadline set' : 'No deadline'}</span>
+          </div>
+        </button>
       </motion.div>
     </div>
   );
 }
 
-function Column({ id, label, visions, onCardClick, isDraggingSomething }: KanbanColumnProps & { isDraggingSomething: boolean }) {
+function Column({ id, label, visions, onCardClick, isDraggingSomething, onAddVision }: KanbanColumnProps & { isDraggingSomething: boolean; onAddVision: (status: Vision['status']) => void }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: {
@@ -103,15 +157,15 @@ function Column({ id, label, visions, onCardClick, isDraggingSomething }: Kanban
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-full min-w-[340px] h-full rounded-[2.5rem] bg-card border border-card-border p-4 overflow-hidden relative shadow-sm transition-all duration-300",
+        "flex flex-col w-full min-w-[260px] max-w-[292px] h-full rounded-[1.5rem] bg-card border border-card-border p-3 overflow-hidden relative shadow-sm transition-all duration-300",
         isOver && "bg-accent/5 ring-2 ring-accent/20 border-accent/30 shadow-xl -translate-y-1",
         isDraggingSomething && !isOver && "opacity-70 grayscale-[0.2]"
       )}
     >
-      <div className="flex items-center justify-between p-6 mb-4">
-        <div className="flex items-center gap-4">
+      <div className="mb-3 flex items-center justify-between px-2 py-2">
+        <div className="flex items-center gap-2">
           <div className={cn(
-            "w-2.5 h-2.5 rounded-full transition-all duration-500",
+            "h-2 w-2 rounded-full transition-all duration-500",
             isOver ? "bg-accent scale-125 shadow-[0_0_10px_rgba(var(--accent-rgb),0.5)]" : "bg-accent/40"
           )} />
           <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-text-main">{label}</h3>
@@ -119,13 +173,13 @@ function Column({ id, label, visions, onCardClick, isDraggingSomething }: Kanban
             {visions.length}
           </span>
         </div>
-        <button className="text-text-secondary/40 hover:text-text-main p-2 hover:bg-surface-muted rounded-full transition-all border border-transparent">
-          <MoreHorizontal size={18} />
+        <button onClick={() => onAddVision(id)} className="text-text-secondary/40 hover:text-text-main p-1.5 hover:bg-surface-muted rounded-full transition-all border border-transparent">
+          <Plus size={14} />
         </button>
       </div>
 
       <div className={cn(
-        "flex-1 overflow-y-auto px-2 custom-scrollbar space-y-4 pb-20 transition-colors duration-300",
+        "flex-1 overflow-y-auto px-1 custom-scrollbar space-y-3 pb-12 transition-colors duration-300",
         isOver && "bg-accent/[0.02]"
       )}>
         <SortableContext items={visions.map(v => v.id)} strategy={verticalListSortingStrategy}>
@@ -140,7 +194,7 @@ function Column({ id, label, visions, onCardClick, isDraggingSomething }: Kanban
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-card-border rounded-[2rem] p-8 opacity-40 text-center bg-surface-muted/20"
+            className="flex h-40 flex-col items-center justify-center rounded-[1.35rem] border border-dashed border-card-border bg-surface-muted/20 p-6 text-center opacity-45"
           >
              <div className="w-10 h-10 rounded-full bg-accent/5 flex items-center justify-center text-accent mb-4">
                 <Plus size={20} />
@@ -154,7 +208,7 @@ function Column({ id, label, visions, onCardClick, isDraggingSomething }: Kanban
 }
 
 export default function KanbanBoard({ onCardClick }: { onCardClick: (vision: Vision) => void }) {
-  const { visions, moveVision, reorderVisions } = useStore();
+  const { visions, moveVision, reorderVisions, addVision, addToast } = useStore();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeVision, setActiveVision] = useState<Vision | null>(null);
 
@@ -224,8 +278,43 @@ export default function KanbanBoard({ onCardClick }: { onCardClick: (vision: Vis
     }
   };
 
+  const handleAddVision = async (status: Vision['status']) => {
+    try {
+      const created = await addVision({
+        title: 'New Vision',
+        description: 'Shape this into your next move.',
+        status,
+        tags: ['vision']
+      });
+      addToast({ type: 'success', title: 'Vision created', description: 'Open it to add tasks, board items, and proof.' });
+      onCardClick(created);
+    } catch (error) {
+      console.error('Kanban vision create failed:', error);
+    }
+  };
+
   return (
-    <div className="h-[calc(100vh-250px)] flex gap-6 overflow-x-auto pb-4 custom-scrollbar px-1">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-[1.75rem] border border-card-border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-accent">Board</p>
+          <h3 className="text-lg font-black text-text-main">Daily Vision Tasks</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center -space-x-2 sm:flex">
+            {visions.slice(0, 5).map(vision => (
+              <img key={vision.id} src={`https://api.dicebear.com/7.x/shapes/svg?seed=${vision.id}`} className="h-7 w-7 rounded-full border-2 border-card bg-surface-muted" alt="" />
+            ))}
+          </div>
+          <button className="flex h-10 items-center gap-2 rounded-xl border border-card-border bg-bg-base px-3 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+            <Filter size={13} /> Filters
+          </button>
+          <button onClick={() => handleAddVision('planning')} className="flex h-10 items-center gap-2 rounded-xl bg-text-main px-3 text-[10px] font-black uppercase tracking-widest text-bg-base">
+            <Plus size={13} /> Create Vision
+          </button>
+        </div>
+      </div>
+      <div className="flex h-[calc(100vh-310px)] gap-4 overflow-x-auto pb-4 custom-scrollbar px-1">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -241,6 +330,7 @@ export default function KanbanBoard({ onCardClick }: { onCardClick: (vision: Vis
             visions={visions.filter(v => v.status === column.id)}
             onCardClick={onCardClick}
             isDraggingSomething={!!activeId}
+            onAddVision={handleAddVision}
           />
         ))}
 
@@ -254,12 +344,15 @@ export default function KanbanBoard({ onCardClick }: { onCardClick: (vision: Vis
           }),
         }}>
           {activeVision ? (
-            <div className="w-[320px] pointer-events-none rotate-3 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)]">
-              <VisionCard vision={activeVision} onClick={() => {}} gridSpan="small" className="border-accent/40" />
+            <div className="w-[270px] pointer-events-none rotate-3 rounded-[1.35rem] border border-accent/30 bg-card p-4 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)]">
+              <p className="text-[9px] font-black uppercase tracking-widest text-accent">Moving Vision</p>
+              <h4 className="mt-2 line-clamp-2 text-sm font-black text-text-main">{activeVision.title}</h4>
+              <p className="mt-2 text-xs font-semibold text-text-secondary/65">{activeVision.progress}% complete</p>
             </div>
           ) : null}
         </DragOverlay>
       </DndContext>
+      </div>
     </div>
   );
 }

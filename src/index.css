@@ -384,6 +384,30 @@ select option {
     border-radius: 1.25rem;
   }
 
+  html[data-ui-density="compact"] {
+    --workspace-card-radius: 1.35rem;
+    --workspace-card-padding: 1rem;
+  }
+
+  html[data-ui-density="comfortable"] {
+    --workspace-card-radius: 2rem;
+    --workspace-card-padding: 1.5rem;
+  }
+
+  html[data-ui-density="compact"] .system-card {
+    padding: var(--workspace-card-padding);
+  }
+
+  html[data-ui-density="compact"] .density-panel {
+    border-radius: var(--workspace-card-radius);
+    padding: var(--workspace-card-padding);
+  }
+
+  html[data-ui-density="compact"] .density-text-xl {
+    font-size: 1.5rem;
+    line-height: 1.9rem;
+  }
+
   html[data-compact-cards="true"] .system-card:hover {
     transform: none;
   }

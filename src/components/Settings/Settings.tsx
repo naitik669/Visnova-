@@ -414,9 +414,31 @@ export default function Settings() {
                     options={CURRENCY_OPTIONS}
                   />
                 </SettingsField>
+                <SettingsField label="Workspace scale">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {[
+                      { id: 'compact', label: 'Compact', desc: 'Smaller cards and tighter boards. Best for daily use.' },
+                      { id: 'comfortable', label: 'Comfortable', desc: 'Larger cards with more breathing room.' }
+                    ].map(option => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => updatePreferencePrefs({ ...preferencePrefs, workspaceScale: option.id as any, compactCards: option.id === 'compact' })}
+                        className={cn(
+                          "rounded-3xl border p-4 text-left transition-all",
+                          preferencePrefs.workspaceScale === option.id
+                            ? "border-accent bg-accent/10 shadow-lg shadow-accent/10"
+                            : "border-card-border bg-card hover:border-accent/35"
+                        )}
+                      >
+                        <span className="text-sm font-black text-text-main">{option.label}</span>
+                        <span className="mt-1 block text-xs font-semibold leading-relaxed text-text-secondary/65">{option.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </SettingsField>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <ToggleRow label="Reduce motion" desc="Lower animation intensity." checked={preferencePrefs.reduceMotion} onChange={value => updatePreferencePrefs({ ...preferencePrefs, reduceMotion: value })} />
-                  <ToggleRow label="Compact cards" desc="Use denser surfaces where supported." checked={preferencePrefs.compactCards} onChange={value => updatePreferencePrefs({ ...preferencePrefs, compactCards: value })} />
                   <ToggleRow label="Beta tips" desc="Show guidance for unfinished beta flows." checked={preferencePrefs.betaTips} onChange={value => updatePreferencePrefs({ ...preferencePrefs, betaTips: value })} />
                 </div>
                 <div className="flex flex-wrap gap-3 border-t border-card-border pt-5">

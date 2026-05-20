@@ -12,6 +12,7 @@ export type AppPreferences = {
   defaultVisibility: DefaultVisibility;
   reduceMotion: boolean;
   compactCards: boolean;
+  workspaceScale: 'compact' | 'comfortable';
   betaTips: boolean;
 };
 
@@ -25,7 +26,8 @@ export const defaultNotificationPreferences: NotificationPreferences = {
 export const defaultAppPreferences: AppPreferences = {
   defaultVisibility: 'private',
   reduceMotion: false,
-  compactCards: false,
+  compactCards: true,
+  workspaceScale: 'compact',
   betaTips: true
 };
 
@@ -60,14 +62,23 @@ export const normalizeVisibility = (visibility: LegacyVisibility): DefaultVisibi
 
 export const getAppPreferences = () => {
   const prefs = readJson('visnova-preference-settings', defaultAppPreferences);
+  const workspaceScale = prefs.workspaceScale || (prefs.compactCards ? 'compact' : 'comfortable');
   return {
     ...prefs,
+    compactCards: workspaceScale === 'compact',
+    workspaceScale,
     defaultVisibility: normalizeVisibility(prefs.defaultVisibility)
   };
 };
 
 export const setAppPreferences = (value: AppPreferences) => {
-  const normalized = { ...value, defaultVisibility: normalizeVisibility(value.defaultVisibility) };
+  const workspaceScale = value.workspaceScale || (value.compactCards ? 'compact' : 'comfortable');
+  const normalized = {
+    ...value,
+    compactCards: workspaceScale === 'compact',
+    workspaceScale,
+    defaultVisibility: normalizeVisibility(value.defaultVisibility)
+  };
   writeJson('visnova-preference-settings', normalized);
   applyAppPreferences(normalized);
   window.dispatchEvent(new CustomEvent('visnova:preferences-changed'));
@@ -76,7 +87,8 @@ export const setAppPreferences = (value: AppPreferences) => {
 export const applyAppPreferences = (value: AppPreferences = getAppPreferences()) => {
   if (typeof document === 'undefined') return;
   document.documentElement.dataset.reduceMotion = value.reduceMotion ? 'true' : 'false';
-  document.documentElement.dataset.compactCards = value.compactCards ? 'true' : 'false';
+  document.documentElement.dataset.uiDensity = value.workspaceScale || (value.compactCards ? 'compact' : 'comfortable');
+  document.documentElement.dataset.compactCards = (value.workspaceScale === 'compact' || value.compactCards) ? 'true' : 'false';
   document.documentElement.dataset.betaTips = value.betaTips ? 'true' : 'false';
 };
 
