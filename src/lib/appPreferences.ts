@@ -3,6 +3,8 @@ type LegacyVisibility = DefaultVisibility | 'connections' | 'friends' | string |
 
 export type ProfileVisibility = 'public' | 'circle' | 'minimal';
 export type PermissionAudience = 'everyone' | 'circle' | 'none';
+export type CircleMomentumVisibility = 'circle' | 'public' | 'hidden';
+export type CircleMomentumDetail = 'score' | 'counts';
 
 export type NotificationPreferences = {
   product: boolean;
@@ -17,6 +19,8 @@ export type AppPreferences = {
   profileVisibility: ProfileVisibility;
   messagePermissions: PermissionAudience;
   mentionPermissions: PermissionAudience;
+  circleMomentumVisibility: CircleMomentumVisibility;
+  circleMomentumDetail: CircleMomentumDetail;
   personalizedRecommendations: boolean;
   reduceMotion: boolean;
   compactCards: boolean;
@@ -37,6 +41,8 @@ export const defaultAppPreferences: AppPreferences = {
   profileVisibility: 'public',
   messagePermissions: 'circle',
   mentionPermissions: 'everyone',
+  circleMomentumVisibility: 'circle',
+  circleMomentumDetail: 'counts',
   personalizedRecommendations: false,
   reduceMotion: false,
   compactCards: true,
@@ -91,6 +97,15 @@ const normalizePermissionAudience = (value: AppPreferences['messagePermissions']
   return 'circle';
 };
 
+const normalizeCircleMomentumVisibility = (value: AppPreferences['circleMomentumVisibility'] | string | null | undefined): CircleMomentumVisibility => {
+  if (value === 'public' || value === 'hidden') return value;
+  return 'circle';
+};
+
+const normalizeCircleMomentumDetail = (value: AppPreferences['circleMomentumDetail'] | string | null | undefined): CircleMomentumDetail => (
+  value === 'score' ? 'score' : 'counts'
+);
+
 export const getAppPreferences = () => {
   const prefs = readJson('visnova-preference-settings', defaultAppPreferences);
   const workspaceScale = prefs.workspaceScale || (prefs.compactCards ? 'compact' : 'comfortable');
@@ -103,6 +118,8 @@ export const getAppPreferences = () => {
     profileVisibility: normalizeProfileVisibility(prefs.profileVisibility),
     messagePermissions: normalizePermissionAudience(prefs.messagePermissions),
     mentionPermissions: normalizePermissionAudience(prefs.mentionPermissions),
+    circleMomentumVisibility: normalizeCircleMomentumVisibility(prefs.circleMomentumVisibility),
+    circleMomentumDetail: normalizeCircleMomentumDetail(prefs.circleMomentumDetail),
     personalizedRecommendations: prefs.personalizedRecommendations === true
   };
 };
@@ -118,6 +135,8 @@ export const setAppPreferences = (value: AppPreferences) => {
     profileVisibility: normalizeProfileVisibility(value.profileVisibility),
     messagePermissions: normalizePermissionAudience(value.messagePermissions),
     mentionPermissions: normalizePermissionAudience(value.mentionPermissions),
+    circleMomentumVisibility: normalizeCircleMomentumVisibility(value.circleMomentumVisibility),
+    circleMomentumDetail: normalizeCircleMomentumDetail(value.circleMomentumDetail),
     personalizedRecommendations: value.personalizedRecommendations === true
   };
   writeJson('visnova-preference-settings', normalized);

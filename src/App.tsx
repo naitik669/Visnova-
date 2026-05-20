@@ -35,6 +35,7 @@ const loadVisionBoard = () => import('./components/VisionBoard/VisionBoard');
 const loadNovaClock = () => import('./components/Nova/NovaClock');
 const loadMindVisualizer = () => import('./components/Mind/MindVisualizer');
 const loadCommunityFeed = () => import('./components/Feed/CommunityFeed');
+const loadCircleMomentumPage = () => import('./components/Circle/CircleMomentumPage');
 const loadPostThreadPage = () => import('./components/Feed/PostThreadPage');
 const loadNotesSystem = () => import('./components/Notes/NotesSystem');
 const loadTasksPage = () => import('./components/Tasks/TasksPage');
@@ -47,6 +48,7 @@ const VisionBoard = lazy(loadVisionBoard);
 const NovaClock = lazy(loadNovaClock);
 const MindVisualizer = lazy(loadMindVisualizer);
 const CommunityFeed = lazy(loadCommunityFeed);
+const CircleMomentumPage = lazy(loadCircleMomentumPage);
 const PostThreadPage = lazy(loadPostThreadPage);
 const NotesSystem = lazy(loadNotesSystem);
 const TasksPage = lazy(loadTasksPage);
@@ -57,6 +59,7 @@ const MoneyPage = lazy(loadMoneyPage);
 
 const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Promise<unknown> }> = [
   { match: path => path === '/feed', load: loadCommunityFeed },
+  { match: path => path === '/circle/momentum', load: loadCircleMomentumPage },
   { match: path => path.startsWith('/post/'), load: loadPostThreadPage },
   { match: path => path === '/visions' || path === '/vision', load: loadVisionBoard },
   { match: path => path === '/tasks', load: loadTasksPage },
@@ -642,6 +645,7 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/notes': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/journal': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/circle': { title: 'Circle', subtitle: 'Messages, connections, communities, requests, and activity' },
+  '/circle/momentum': { title: 'Circle Momentum', subtitle: 'Friendly progress across your accountability circle' },
   '/communities': { title: 'Circle', subtitle: 'Messages, connections, communities, requests, and activity' },
   '/growth': { title: 'Growth', subtitle: 'Learn with purpose and turn resources into action' },
   '/money': { title: 'Wallet', subtitle: 'Track spending, subscriptions, and savings for your Visions' },
@@ -1010,6 +1014,7 @@ function AppContent() {
                       <Route path="/visions" element={<VisionBoard />} />
                       <Route path="/vision" element={<Navigate to="/visions" replace />} />
                       <Route path="/tasks" element={<TasksPage />} />
+                      <Route path="/circle/momentum" element={<CircleMomentumPage />} />
                       <Route path="/circle" element={<Circle />} />
                       <Route path="/communities" element={<Navigate to="/circle?tab=communities" replace />} />
                       <Route path="/messages" element={<MessagesRedirect />} />

@@ -10,7 +10,6 @@
 
 import { motion } from "motion/react";
 import {
-  MessageCircle,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -19,7 +18,6 @@ import {
   Zap,
   Play,
   CheckCircle2,
-  Users,
   Search,
   BookOpen,
   Plus,
@@ -36,6 +34,7 @@ import { safeArray, safeFormat } from "../../lib/safeData";
 import { ProgressLogComposer } from "../Progress/ProgressLogComposer";
 import { formatCurrency } from "../../lib/currency";
 import { DashboardProgressPulseCard } from "../Growth/DashboardProgressPulseCard";
+import { DashboardCircleMomentumCard } from "../Circle/DashboardCircleMomentumCard";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -380,7 +379,6 @@ export default function Dashboard() {
     }
   }, [addNote, dateKey, dayNoteText, dayNoteTitle, selectedDayLabel]);
 
-  const [showAllCircle, setShowAllCircle] = React.useState(false);
   const [showAllTasks, setShowAllTasks] = React.useState(false);
 
   const activeVisions = visions.filter((v) => v.status === "in-progress");
@@ -427,7 +425,6 @@ export default function Dashboard() {
   const totalXp = normalizeLegacyXp(user.level, user.xp);
   const levelProgress = getLevelProgress(totalXp);
 
-  const displayedCircle = showAllCircle ? circle : circle.slice(0, 3);
   const currentStreak = userStreak?.currentStreak ?? user.streak ?? 0;
   const longestStreak = userStreak?.longestStreak ?? currentStreak;
   const activityDateSet = React.useMemo(() => new Set(userStreak?.activityDates || []), [userStreak?.activityDates]);
@@ -1021,91 +1018,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Top Row: Linked Teachers / Events */}
+          {/* Top Row: Circle momentum / Events */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Linked Circle (Teachers in the image) */}
-            <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col gap-4">
-              <h3 className="text-[15px] font-semibold text-text-secondary mb-2">
-                Linked Circle
-              </h3>
-              <div className="space-y-4">
-                {displayedCircle.length > 0 ? (
-                  displayedCircle.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between"
-                    >
-                      <div
-                        className="flex items-center gap-3 cursor-pointer group"
-                        onClick={() =>
-                          useStore.getState().setSelectedProfileId(member.id)
-                        }
-                      >
-                        <div className="relative">
-                          <img
-                            src={member.avatar || undefined}
-                            alt={member.name}
-                            className="w-10 h-10 rounded-full object-cover transition-transform group-hover:scale-105"
-                          />
-                          {member.isGrinding && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-card" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-text-main leading-tight group-hover:text-accent transition-colors">
-                            {member.name}
-                          </p>
-                          <p className="text-[11px] text-text-secondary mt-0.5">
-                            {member.role ||
-                              (member.isGrinding ? "Active now" : "Offline")}
-                          </p>
-                        </div>
-                      </div>
-                      <div 
-                        className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent cursor-pointer hover:bg-accent hover:text-accent-contrast transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          useStore.getState().setSelectedProfileId(member.id);
-                        }}
-                      >
-                        <MessageCircle
-                          size={14}
-                          className="fill-current bg-transparent"
-                        />
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-6 text-center">
-                    <Users
-                      size={24}
-                      className="text-text-secondary opacity-20 mb-2"
-                    />
-                    <p className="text-xs font-semibold text-text-secondary opacity-60">
-                      No connections yet.
-                    </p>
-                    <p className="text-[10px] text-accent font-bold mt-1 uppercase tracking-widest cursor-pointer hover:underline">
-                      Try making new connections!
-                    </p>
-                  </div>
-                )}
-              </div>
-              {circle.length > 3 && (
-                <button
-                  onClick={() => setShowAllCircle(!showAllCircle)}
-                  className="text-[11px] font-semibold text-text-main text-right mt-2 hover:text-accent transition-colors flex items-center justify-end gap-1 underline underline-offset-2 opacity-60"
-                >
-                  {showAllCircle ? "Show less" : "See more"}{" "}
-                  <ChevronRight
-                    size={12}
-                    className={cn(
-                      "transition-transform",
-                      showAllCircle && "rotate-90",
-                    )}
-                  />
-                </button>
-              )}
-            </div>
+            <DashboardCircleMomentumCard />
 
             {/* Upcoming Events / Tasks */}
             <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col gap-4">

@@ -528,6 +528,30 @@ export default function Settings() {
                         ]}
                       />
                     </SettingsField>
+                    <SettingsField label="Circle Momentum">
+                      <SelectMenu
+                        value={preferencePrefs.circleMomentumVisibility}
+                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, circleMomentumVisibility: value as any })}
+                        options={[
+                          { value: 'circle', label: 'On - Circle only' },
+                          { value: 'public', label: 'On - Public profile too' },
+                          { value: 'hidden', label: 'Hidden from board' }
+                        ]}
+                      />
+                      <p className="mt-2 text-[11px] font-semibold text-text-secondary/60">
+                        Circle Momentum only uses progress you choose to share with your Circle. Private logs stay yours only.
+                      </p>
+                    </SettingsField>
+                    <SettingsField label="Momentum detail">
+                      <SelectMenu
+                        value={preferencePrefs.circleMomentumDetail}
+                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, circleMomentumDetail: value as any })}
+                        options={[
+                          { value: 'counts', label: 'Score + visible activity counts' },
+                          { value: 'score', label: 'Score only' }
+                        ]}
+                      />
+                    </SettingsField>
                     <ToggleRow
                       label="Personalized recommendations"
                       desc="Use allowed interests, public/circle vision categories, and saved resources. Private messages, journals, notes, and logs are never used."
