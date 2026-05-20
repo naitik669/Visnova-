@@ -48,6 +48,18 @@ type BoardTemplateId = 'classic' | 'project' | 'creator' | 'study' | 'custom';
 
 const CANVAS_SIZE = 6500;
 const CANVAS_CENTER = 3250;
+const BOARD_SURFACE = {
+  x: CANVAS_CENTER - 1950,
+  y: CANVAS_CENTER - 1320,
+  width: 3900,
+  height: 2640
+};
+const BOARD_INNER_SURFACE = {
+  x: CANVAS_CENTER - 1800,
+  y: CANVAS_CENTER - 1200,
+  width: 3600,
+  height: 2400
+};
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 2.5;
 const SAVE_DELAY_MS = 850;
@@ -187,20 +199,20 @@ const sectionElement = (
 } as VisionElement['metadata']);
 
 const createTemplateElements = (template: BoardTemplateId, vision: Vision): VisionElement[] => {
-  const left = CANVAS_CENTER - 1300;
-  const top = CANVAS_CENTER - 900;
+  const left = template === 'classic' ? CANVAS_CENTER - 1280 : CANVAS_CENTER - 1300;
+  const top = template === 'classic' ? CANVAS_CENTER - 610 : CANVAS_CENTER - 900;
   const visionTitle = safeString(vision.title, 'My Vision');
   const baseSections = {
     classic: [
-      sectionElement('Step 1', left, top, 360, 245, 'cream', 10, 'Set the stage and name the real outcome.'),
-      sectionElement('Step 2', left, top + 285, 360, 245, 'cream', 11, 'Demonstrate by doing. Choose the smallest visible action.'),
-      sectionElement('Step 3', left, top + 570, 360, 245, 'cream', 12, 'Fill in the proof map with wins, blockers, and receipts.'),
-      sectionElement('Think and feel?', left + 410, top, 1320, 620, 'cobalt', 13, 'Collect the ideas, visuals, resources, and emotions behind this Vision.', 'hero'),
-      sectionElement('Step 4', left + 1780, top, 360, 245, 'cream', 14, 'Present progress and share what changed.'),
-      sectionElement('Step 5', left + 1780, top + 285, 360, 245, 'cream', 15, 'Determine next steps and turn clarity into action.'),
-      sectionElement('Pain', left + 410, top + 680, 630, 360, 'rose', 16, 'What is hard, risky, confusing, or slowing this down?'),
-      sectionElement('Gain', left + 1090, top + 680, 640, 360, 'gold', 17, 'What improves when this Vision becomes real?'),
-      sectionElement('Thoughts, comments, actions', left + 1780, top + 570, 360, 470, 'cream', 18, 'Small decisions, notes, and next actions.')
+      sectionElement('Step 1', left, top, 410, 280, 'cream', 10, 'Set the stage and name the real outcome.'),
+      sectionElement('Step 2', left, top + 330, 410, 280, 'cream', 11, 'Demonstrate by doing. Choose the smallest visible action.'),
+      sectionElement('Step 3', left, top + 660, 410, 280, 'cream', 12, 'Fill in the proof map with wins, blockers, and receipts.'),
+      sectionElement('Think and feel?', left + 470, top, 1570, 720, 'cobalt', 13, 'Collect the ideas, visuals, resources, and emotions behind this Vision.', 'hero'),
+      sectionElement('Step 4', left + 2100, top, 410, 280, 'cream', 14, 'Present progress and share what changed.'),
+      sectionElement('Step 5', left + 2100, top + 330, 410, 280, 'cream', 15, 'Determine next steps and turn clarity into action.'),
+      sectionElement('Pain', left + 470, top + 790, 750, 420, 'rose', 16, 'What is hard, risky, confusing, or slowing this down?'),
+      sectionElement('Gain', left + 1280, top + 790, 760, 420, 'gold', 17, 'What improves when this Vision becomes real?'),
+      sectionElement('Thoughts, comments, actions', left + 2100, top + 660, 410, 550, 'cream', 18, 'Small decisions, notes, and next actions.')
     ],
     project: [
       sectionElement('Big Goal', left + 420, top, 760, 350, 'lavender', 10),
@@ -235,26 +247,26 @@ const createTemplateElements = (template: BoardTemplateId, vision: Vision): Visi
 
   const sections = baseSections[template];
   const starterCards: VisionElement[] = [
-    templateElement('text', visionTitle, left + 720, top + 88, 700, 84, 1200, { fontSize: '38px', fontWeight: '900', textAlign: 'center' }),
-    templateElement('sticky', 'What does success feel like?', left + 605, top + 215, 250, 150, 1201, { color: '#fef3c7' }),
-    templateElement('sticky', 'What habits will this require?', left + 905, top + 165, 245, 145, 1202, { color: '#fce7f3' }),
-    templateElement('sticky', 'Who is helped by this?', left + 1195, top + 260, 245, 145, 1203, { color: '#ede9fe' }),
-    templateElement('sticky', 'What must I learn?', left + 1460, top + 160, 220, 145, 1204, { color: '#dcfce7' }),
-    templateElement('checklist', 'First moves', left + 75, top + 590, 265, 205, 1205, {
+    templateElement('text', visionTitle, left + 820, top + 105, 840, 92, 1200, { fontSize: '42px', fontWeight: '900', textAlign: 'center' }),
+    templateElement('sticky', 'What does success feel like?', left + 700, top + 250, 285, 170, 1201, { color: '#fef3c7' }),
+    templateElement('sticky', 'What habits will this require?', left + 1060, top + 190, 280, 165, 1202, { color: '#fce7f3' }),
+    templateElement('sticky', 'Who is helped by this?', left + 1390, top + 310, 280, 165, 1203, { color: '#ede9fe' }),
+    templateElement('sticky', 'What must I learn?', left + 1710, top + 190, 250, 165, 1204, { color: '#dcfce7' }),
+    templateElement('checklist', 'First moves', left + 85, top + 690, 305, 230, 1205, {
       checklist: [
         { id: newId('item'), text: 'Define the next milestone', completed: false },
         { id: newId('item'), text: 'Collect one strong reference', completed: false },
         { id: newId('item'), text: 'Log first proof', completed: false }
       ]
     }),
-    templateElement('link', 'https://example.com', left + 1825, top + 855, 270, 150, 1206, {
+    templateElement('link', 'https://example.com', left + 2150, top + 1015, 310, 170, 1206, {
       url: 'https://example.com',
       title: 'Resource or reference',
       description: 'Drop tools, courses, products, docs, or inspiration here.',
       provider: 'Resource'
     }),
-    templateElement('task', 'Next concrete task', left + 1845, top + 370, 270, 105, 1207, { title: 'Next concrete task', description: 'Turn one board idea into execution.' } as VisionElement['metadata']),
-    templateElement('shape', 'Proof goes here', left + 535, top + 785, 245, 135, 1208, {
+    templateElement('task', 'Next concrete task', left + 2168, top + 430, 310, 120, 1207, { title: 'Next concrete task', description: 'Turn one board idea into execution.' } as VisionElement['metadata']),
+    templateElement('shape', 'Proof goes here', left + 610, top + 910, 290, 155, 1208, {
       title: 'Proof goes here',
       description: 'Screenshots, wins, updates, and receipts of progress.',
       shapeType: 'rectangle',
@@ -262,10 +274,10 @@ const createTemplateElements = (template: BoardTemplateId, vision: Vision): Visi
       strokeColor: 'rgba(244, 114, 182, 0.35)',
       source: 'proof'
     }),
-    templateElement('sticky', 'Big blocker', left + 825, top + 780, 185, 130, 1209, { color: '#fee2e2' }),
-    templateElement('sticky', 'New capability', left + 1235, top + 785, 190, 130, 1210, { color: '#fef9c3' }),
-    templateElement('sticky', 'Lovely memory / win', left + 1480, top + 785, 190, 130, 1211, { color: '#fef9c3' }),
-    templateElement('sticky', 'Share one proof update', left + 1845, top + 650, 260, 110, 1212, { color: '#dbeafe' })
+    templateElement('sticky', 'Big blocker', left + 960, top + 905, 220, 145, 1209, { color: '#fee2e2' }),
+    templateElement('sticky', 'New capability', left + 1455, top + 910, 225, 145, 1210, { color: '#fef9c3' }),
+    templateElement('sticky', 'Lovely memory / win', left + 1745, top + 910, 225, 145, 1211, { color: '#fef9c3' }),
+    templateElement('sticky', 'Share one proof update', left + 2170, top + 760, 300, 130, 1212, { color: '#dbeafe' })
   ];
 
   return [...sections, ...starterCards];
@@ -276,6 +288,49 @@ const cloneElements = (items: VisionElement[]) => items.map(item => ({
   ...item,
   metadata: item.metadata ? JSON.parse(JSON.stringify(item.metadata)) : item.metadata
 }));
+
+const centerClassicTemplate = (items: VisionElement[]) => {
+  const hero = items.find(item => item.type === 'section' && item.metadata?.source === 'hero');
+  if (!hero || hero.metadata?.provider === 'classic-centered-v3') return items;
+  const visible = items.filter(item => item.type !== 'connector' && item.type !== 'drawing');
+  if (visible.length === 0 || visible.length > 40) return items;
+  const bounds = visible.reduce((acc, element) => {
+    const size = defaultSize(element.type);
+    const width = element.width || size.width;
+    const height = element.height || size.height;
+    return {
+      minX: Math.min(acc.minX, element.x),
+      minY: Math.min(acc.minY, element.y),
+      maxX: Math.max(acc.maxX, element.x + width),
+      maxY: Math.max(acc.maxY, element.y + height)
+    };
+  }, { minX: Number.POSITIVE_INFINITY, minY: Number.POSITIVE_INFINITY, maxX: Number.NEGATIVE_INFINITY, maxY: Number.NEGATIVE_INFINITY });
+  const currentCenter = {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2
+  };
+  const scaleUp = 1.12;
+  return items.map(item => {
+    if (item.type === 'connector' || item.type === 'drawing') return item;
+    const width = item.width || defaultSize(item.type).width;
+    const height = item.height || defaultSize(item.type).height;
+    const nextWidth = width * scaleUp;
+    const nextHeight = height * scaleUp;
+    const itemCenter = {
+      x: item.x + width / 2,
+      y: item.y + height / 2
+    };
+    return {
+      ...item,
+      x: CANVAS_CENTER + (itemCenter.x - currentCenter.x) * scaleUp - nextWidth / 2,
+      y: CANVAS_CENTER + (itemCenter.y - currentCenter.y) * scaleUp - nextHeight / 2,
+      width: nextWidth,
+      height: nextHeight,
+      updatedAt: Date.now(),
+      metadata: item.id === hero.id ? { ...(item.metadata || {}), provider: 'classic-centered-v3' } : item.metadata
+    };
+  });
+};
 
 const centerOf = (element: VisionElement) => ({
   x: element.x + (element.width || defaultSize(element.type).width) / 2,
@@ -657,7 +712,8 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [updateElement]);
 
   useEffect(() => {
-    const normalized = normalizeElements(vision.elements);
+    const rawNormalized = normalizeElements(vision.elements);
+    const normalized = centerClassicTemplate(rawNormalized);
     const visionChanged = currentVisionIdRef.current !== vision.id;
     currentVisionIdRef.current = vision.id;
     if (!visionChanged && dirtyRef.current) return;
@@ -678,7 +734,12 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       setMoreToolsOpen(false);
     }
     setSaveStatus('saved');
-  }, [vision.elements, vision.id]);
+    if (normalized !== rawNormalized) {
+      localVersionRef.current = 1;
+      dirtyRef.current = true;
+      scheduleSave(normalized);
+    }
+  }, [scheduleSave, vision.elements, vision.id]);
 
   useEffect(() => {
     const persistedElements = normalizeElements(vision.elements);
@@ -1006,17 +1067,17 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(120,120,120,0.18)_1px,transparent_1px)] [background-size:24px_24px]" />
         <div
           className="pointer-events-none absolute rounded-[72px] border border-card-border/60 bg-card/45 shadow-2xl shadow-accent/10"
-          style={{ left: CANVAS_CENTER - 1950, top: CANVAS_CENTER - 1320, width: 3900, height: 2640 }}
+          style={{ left: BOARD_SURFACE.x, top: BOARD_SURFACE.y, width: BOARD_SURFACE.width, height: BOARD_SURFACE.height }}
         />
         <div
           className="pointer-events-none absolute overflow-hidden rounded-[72px]"
-          style={{ left: CANVAS_CENTER - 1950, top: CANVAS_CENTER - 1320, width: 3900, height: 2640 }}
+          style={{ left: BOARD_SURFACE.x, top: BOARD_SURFACE.y, width: BOARD_SURFACE.width, height: BOARD_SURFACE.height }}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(139,92,246,0.12),transparent_30%),radial-gradient(circle_at_85%_22%,rgba(96,165,250,0.10),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.62),rgba(241,236,255,0.34))]" />
         </div>
         <div
           className="pointer-events-none absolute rounded-[64px] border-2 border-dashed border-accent/18 bg-card/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)]"
-          style={{ left: CANVAS_CENTER - 1800, top: CANVAS_CENTER - 1200, width: 3600, height: 2400 }}
+          style={{ left: BOARD_INNER_SURFACE.x, top: BOARD_INNER_SURFACE.y, width: BOARD_INNER_SURFACE.width, height: BOARD_INNER_SURFACE.height }}
         />
 
         <svg className="absolute inset-0 h-full w-full overflow-visible pointer-events-none">
