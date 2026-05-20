@@ -13,7 +13,6 @@ import Circle from './components/Circle/Circle';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import AuthCallback from './components/Auth/AuthCallback';
 import { InteractiveTour } from './components/Onboarding/InteractiveTour';
-import VisionAssistant from './components/AI/VisionAssistant';
 import FloatingTimer from './components/Dashboard/FloatingTimer';
 import UserProfileModal from './components/Social/UserProfileModal';
 import NotificationCenter from './components/Social/NotificationCenter';
@@ -1001,7 +1000,6 @@ function AppContent() {
               {!tutorialCompleted && hasCompletedOnboarding && !isPasswordRecovery && <InteractiveTour />}
               <Sidebar />
               <FloatingTimer />
-              <VisionAssistant />
               <main className="flex-1 min-w-0 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
                 <PageContextHeader />
                 <div className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
