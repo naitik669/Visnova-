@@ -34,7 +34,7 @@ import {
 } from '../lib/financeValidation';
 import { getDefaultVisibility, normalizeVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
 import { extractHashtags as extractSocialHashtags, extractMentions as extractSocialMentions } from '../utils/parseSocialText';
-import { normalizeCurrencyCode } from '../lib/currency';
+import { convertCurrencyAmount, normalizeCurrencyCode } from '../lib/currency';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -608,6 +608,11 @@ function toProfileUser(profile: any, fallbackEmail = ''): AppState['user'] {
   };
 }
 
+function isMissingColumnError(error: any, columnName: string) {
+  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return text.includes(columnName.toLowerCase()) && (text.includes('schema cache') || text.includes('column'));
+}
+
 function privateStateReset() {
   return {
     authUser: null,
@@ -1118,6 +1123,7 @@ export const useStore = create<AppState>((set, get) => ({
       ]);
 
       const { financeTransactions, financeGoals, financeBudgets, financeSubscriptions } = get();
+      const overviewCurrency = normalizeCurrencyCode(get().user.defaultCurrency);
       const now = new Date();
       const month = now.getMonth();
       const year = now.getFullYear();
@@ -1125,8 +1131,8 @@ export const useStore = create<AppState>((set, get) => ({
         const date = new Date(`${transaction.transactionDate}T00:00:00`);
         return date.getMonth() === month && date.getFullYear() === year && !transaction.deletedAt;
       });
-      const monthIncome = monthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-      const monthExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      const monthIncome = monthTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + convertCurrencyAmount(t.amount, t.currency, overviewCurrency), 0);
+      const monthExpenses = monthTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + convertCurrencyAmount(t.amount, t.currency, overviewCurrency), 0);
       const currencyBreakdown = monthTransactions.reduce<NonNullable<AppState['moneyOverview']>['currencyBreakdown']>((acc, transaction) => {
         const currency = normalizeCurrencyCode(transaction.currency);
         const current = acc?.[currency] || { income: 0, expenses: 0, savings: 0, budgetLeft: 0 };
@@ -1140,19 +1146,19 @@ export const useStore = create<AppState>((set, get) => ({
         .filter(t => t.type === 'expense')
         .reduce<Record<string, number>>((acc, t) => {
           const key = t.category || 'Other';
-          acc[key] = (acc[key] || 0) + t.amount;
+          acc[key] = (acc[key] || 0) + convertCurrencyAmount(t.amount, t.currency, overviewCurrency);
           return acc;
         }, {});
       const topSpendingCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
       const budgetLeft = financeBudgets
         .filter(b => b.month === month + 1 && b.year === year)
         .reduce((sum, budget) => {
-          const spent = monthTransactions.filter(t => t.type === 'expense' && t.category === budget.category).reduce((acc, t) => acc + t.amount, 0);
+          const spent = monthTransactions.filter(t => t.type === 'expense' && t.category === budget.category && normalizeCurrencyCode(t.currency) === normalizeCurrencyCode(budget.currency)).reduce((acc, t) => acc + t.amount, 0);
           const currency = normalizeCurrencyCode(budget.currency);
           const current = currencyBreakdown?.[currency] || { income: 0, expenses: 0, savings: 0, budgetLeft: 0 };
           current.budgetLeft += (budget.limitAmount - spent);
           currencyBreakdown[currency] = current;
-          return sum + (budget.limitAmount - spent);
+          return sum + convertCurrencyAmount(budget.limitAmount - spent, budget.currency, overviewCurrency);
         }, 0);
       const inTwoWeeks = new Date(now);
       inTwoWeeks.setDate(now.getDate() + 14);
@@ -1893,30 +1899,57 @@ export const useStore = create<AppState>((set, get) => ({
     }));
 
     try {
-      const { data, error } = await supabase
+      const insertPayload = {
+        user_id: userId,
+        vision_id: visionId,
+        text: newTask.text,
+        description: newTask.description || null,
+        completed: false,
+        status: newTask.status,
+        priority: newTask.priority,
+        due_date: newTask.dueDate,
+        progress_percent: newTask.progressPercent,
+        tags: newTask.tags,
+        checklist: newTask.checklist,
+        sort_order: newTask.sortOrder,
+        visibility: newTask.visibility,
+        sub_tasks: newTask.checklist,
+        metadata: { source: 'tasks_board' },
+        created_at: now,
+        updated_at: now
+      };
+      let { data, error } = await supabase
         .from('tasks')
-        .insert({
-          user_id: userId,
-          vision_id: visionId,
-          text: newTask.text,
-          description: newTask.description || null,
-          completed: false,
-          status: newTask.status,
-          priority: newTask.priority,
-          due_date: newTask.dueDate,
-          progress_percent: newTask.progressPercent,
-          tags: newTask.tags,
-          checklist: newTask.checklist,
-          sort_order: newTask.sortOrder,
-          visibility: newTask.visibility,
-          sub_tasks: newTask.checklist,
-          metadata: { source: 'tasks_board' },
-          created_at: now,
-          updated_at: now
-        })
+        .insert(insertPayload)
         .select('*')
         .single();
-      if (error) throw error;
+      if (error) {
+        const missingRichTaskColumn = ['status', 'description', 'due_date', 'progress_percent', 'tags', 'checklist', 'visibility', 'metadata']
+          .some(column => isMissingColumnError(error, column));
+        if (!missingRichTaskColumn) throw error;
+        const legacyResult = await supabase
+          .from('tasks')
+          .insert({
+            user_id: userId,
+            vision_id: visionId,
+            text: newTask.text,
+            completed: false,
+            priority: newTask.priority,
+            sub_tasks: newTask.checklist,
+            created_at: now,
+            updated_at: now
+          })
+          .select('*')
+          .single();
+        data = legacyResult.data;
+        error = legacyResult.error;
+        if (error) throw error;
+        get().addToast({
+          type: 'info',
+          title: 'Task created in compatibility mode',
+          description: 'Run the latest task-board SQL so board status fields persist fully.'
+        });
+      }
       const savedTask: Task = { ...newTask, id: data.id };
       set(state => ({
         visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: v.tasks.map(t => t.id === tempId ? savedTask : t) } : v)
@@ -1993,7 +2026,29 @@ export const useStore = create<AppState>((set, get) => ({
         .update(dbUpdates)
         .eq('id', taskId)
         .eq('user_id', userId);
-      if (error) throw error;
+      if (error) {
+        const missingRichTaskColumn = ['status', 'description', 'due_date', 'progress_percent', 'tags', 'checklist', 'visibility', 'completed_at', 'deleted_at', 'metadata']
+          .some(column => isMissingColumnError(error, column));
+        if (!missingRichTaskColumn) throw error;
+
+        const legacyUpdates: any = {
+          updated_at: dbUpdates.updated_at,
+          completed: safeUpdates.completed ?? task.completed,
+          priority: safeUpdates.priority ?? task.priority,
+          sub_tasks: safeUpdates.checklist ?? task.checklist ?? task.subTasks ?? [],
+        };
+        await supabase
+          .from('tasks')
+          .update(legacyUpdates)
+          .eq('id', taskId)
+          .eq('user_id', userId)
+          .throwOnError();
+        get().addToast({
+          type: 'info',
+          title: 'Task saved in compatibility mode',
+          description: 'Run the latest task-board SQL so status columns persist fully.'
+        });
+      }
       await supabase.from('visions').update({ progress }).eq('id', visionId).eq('user_id', userId);
       if (safeUpdates.status === 'done' && !task.completed) {
         get().recordDailyActivity('task');
@@ -2026,7 +2081,15 @@ export const useStore = create<AppState>((set, get) => ({
         .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq('id', taskId)
         .eq('user_id', userId);
-      if (error) throw error;
+      if (error) {
+        if (!isMissingColumnError(error, 'deleted_at')) throw error;
+        await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', taskId)
+          .eq('user_id', userId)
+          .throwOnError();
+      }
       await supabase.from('visions').update({ progress }).eq('id', visionId).eq('user_id', userId);
       get().addToast({ type: 'success', title: 'Task deleted', description: 'Removed from this Vision.' });
       return true;
@@ -2397,7 +2460,22 @@ export const useStore = create<AppState>((set, get) => ({
       }));
 
       const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', userId);
-      if (error) throw error;
+      if (error) {
+        if (updates.defaultCurrency !== undefined && isMissingColumnError(error, 'default_currency')) {
+          const { default_currency: _defaultCurrency, ...fallbackUpdates } = dbUpdates;
+          if (Object.keys(fallbackUpdates).length > 1) {
+            const { error: retryError } = await supabase.from('profiles').update(fallbackUpdates).eq('id', userId);
+            if (retryError) throw retryError;
+          }
+          get().addToast({
+            type: 'info',
+            title: 'Currency saved locally',
+            description: 'Run the latest profile currency SQL so this preference syncs across devices.'
+          });
+          return true;
+        }
+        throw error;
+      }
 
       await get().loadUserProfile(userId);
       get().addToast({ type: 'success', title: 'Profile updated', description: 'Your profile changes were saved.' });

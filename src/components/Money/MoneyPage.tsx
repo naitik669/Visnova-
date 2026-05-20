@@ -15,7 +15,7 @@ import { SelectMenu } from '../ui/SelectMenu';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import { FinanceBillingCycle, FinanceBudget, FinanceGoal, FinanceGoalPriority, FinanceGoalStatus, FinanceSubscription, FinanceTransaction, FinanceTransactionType } from '../../types';
-import { CURRENCY_OPTIONS, formatCurrency, normalizeCurrencyCode } from '../../lib/currency';
+import { CURRENCY_OPTIONS, convertCurrencyAmount, formatCurrency, normalizeCurrencyCode } from '../../lib/currency';
 
 type MoneyTab = 'overview' | 'transactions' | 'goals' | 'subscriptions' | 'budgets' | 'review';
 type MoneyModal = 'income' | 'expense' | 'goal' | 'subscription' | 'budget' | 'review' | null;
@@ -83,8 +83,11 @@ export default function MoneyPage() {
     updateFinanceSubscription,
     deleteFinanceSubscription,
     createFinanceBudget,
+    updateFinanceBudget,
     deleteFinanceBudget,
-    createFinanceReview
+    createFinanceReview,
+    updateUser,
+    addToast
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<MoneyTab>('overview');
@@ -94,6 +97,7 @@ export default function MoneyPage() {
   const [editingSubscription, setEditingSubscription] = useState<FinanceSubscription | null>(null);
   const [contributionGoal, setContributionGoal] = useState<FinanceGoal | null>(null);
   const [transactionFilter, setTransactionFilter] = useState<'all' | 'income' | 'expense' | 'saving'>('all');
+  const [isConvertingCurrency, setIsConvertingCurrency] = useState(false);
 
   useEffect(() => {
     fetchMoneyOverview();
@@ -114,7 +118,7 @@ export default function MoneyPage() {
   const activeSubscriptions = financeSubscriptions.filter(sub => sub.active);
   const monthlySubscriptionTotal = activeSubscriptions.reduce((sum, sub) => {
     const multiplier = sub.billingCycle === 'weekly' ? 4 : sub.billingCycle === 'yearly' ? 1 / 12 : sub.billingCycle === 'quarterly' ? 1 / 3 : 1;
-    return sum + (sub.amount * multiplier);
+    return sum + (convertCurrencyAmount(sub.amount, sub.currency, defaultCurrency) * multiplier);
   }, 0);
 
   const closeModal = () => {
@@ -123,6 +127,56 @@ export default function MoneyPage() {
     setEditingGoal(null);
     setEditingSubscription(null);
     setContributionGoal(null);
+  };
+
+  const handleDefaultCurrencyChange = async (nextCurrencyValue: string) => {
+    const nextCurrency = normalizeCurrencyCode(nextCurrencyValue);
+    const currentCurrency = normalizeCurrencyCode(defaultCurrency);
+    if (nextCurrency === currentCurrency || isConvertingCurrency) return;
+
+    setIsConvertingCurrency(true);
+    try {
+      const updateResults: boolean[] = [];
+      for (const transaction of financeTransactions) {
+        updateResults.push(await updateFinanceTransaction(transaction.id, {
+          amount: convertCurrencyAmount(transaction.amount, transaction.currency, nextCurrency),
+          currency: nextCurrency
+        }));
+      }
+      for (const goal of financeGoals) {
+        updateResults.push(await updateFinanceGoal(goal.id, {
+          targetAmount: convertCurrencyAmount(goal.targetAmount, goal.currency, nextCurrency),
+          currentAmount: convertCurrencyAmount(goal.currentAmount, goal.currency, nextCurrency),
+          currency: nextCurrency
+        }));
+      }
+      for (const budget of financeBudgets) {
+        updateResults.push(await updateFinanceBudget(budget.id, {
+          limitAmount: convertCurrencyAmount(budget.limitAmount, budget.currency, nextCurrency),
+          spentAmount: convertCurrencyAmount(budget.spentAmount, budget.currency, nextCurrency),
+          currency: nextCurrency
+        }));
+      }
+      for (const subscription of financeSubscriptions) {
+        updateResults.push(await updateFinanceSubscription(subscription.id, {
+          amount: convertCurrencyAmount(subscription.amount, subscription.currency, nextCurrency),
+          currency: nextCurrency
+        }));
+      }
+      const profileSaved = await updateUser({ defaultCurrency: nextCurrency });
+      await fetchMoneyOverview();
+      if (updateResults.every(Boolean)) {
+        addToast({
+          type: profileSaved ? 'success' : 'info',
+          title: 'Wallet currency updated',
+          description: profileSaved
+            ? `Existing Wallet values were converted to ${nextCurrency}.`
+            : `Wallet values were converted to ${nextCurrency}. Run the profile currency SQL to persist the default.`
+        });
+      }
+    } finally {
+      setIsConvertingCurrency(false);
+    }
   };
 
   const handleTransactionSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -239,6 +293,16 @@ export default function MoneyPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <div className="min-w-56 rounded-2xl border border-card-border bg-bg-base p-2">
+              <p className="px-2 pb-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">Wallet Currency</p>
+              <SelectMenu
+                value={defaultCurrency}
+                onChange={handleDefaultCurrencyChange}
+                options={CURRENCY_OPTIONS}
+                triggerClassName="h-10 rounded-xl bg-card"
+              />
+              {isConvertingCurrency && <p className="px-2 pt-1 text-[9px] font-black uppercase tracking-widest text-accent">Converting values...</p>}
+            </div>
             <button onClick={() => setModal('income')} className="h-11 px-4 rounded-2xl bg-success text-white text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
               <Plus size={16} /> Add Income
             </button>
@@ -374,7 +438,7 @@ export default function MoneyPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
             <div>
               <h2 className="text-xl font-black text-text-main">Subscriptions</h2>
-              <p className="text-xs font-medium text-text-secondary">Estimated monthly total: {formatMoney(monthlySubscriptionTotal)}</p>
+              <p className="text-xs font-medium text-text-secondary">Estimated monthly total: {formatMoney(monthlySubscriptionTotal, defaultCurrency)}</p>
             </div>
             <button onClick={() => setModal('subscription')} className="h-10 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest">Add Subscription</button>
           </div>
