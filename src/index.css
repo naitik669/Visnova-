@@ -387,20 +387,34 @@ select option {
   html[data-ui-density="compact"] {
     --workspace-card-radius: 1.35rem;
     --workspace-card-padding: 1rem;
+    font-size: 15px;
   }
 
   html[data-ui-density="comfortable"] {
     --workspace-card-radius: 2rem;
     --workspace-card-padding: 1.5rem;
+    font-size: 16px;
+  }
+
+  html[data-ui-density="compact"] body {
+    --density-scale-note: "compact";
   }
 
   html[data-ui-density="compact"] .system-card {
     padding: var(--workspace-card-padding);
   }
 
+  html[data-ui-density="compact"] .bg-app-container {
+    background-size: 92%;
+  }
+
   html[data-ui-density="compact"] .density-panel {
     border-radius: var(--workspace-card-radius);
     padding: var(--workspace-card-padding);
+  }
+
+  html[data-ui-density="compact"] .density-compact-shell {
+    gap: 0.75rem;
   }
 
   html[data-ui-density="compact"] .density-text-xl {

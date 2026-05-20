@@ -431,7 +431,8 @@ export default function Settings() {
                             : "border-card-border bg-card hover:border-accent/35"
                         )}
                       >
-                        <span className="text-sm font-black text-text-main">{option.label}</span>
+                        <WorkspaceScalePreview scale={option.id as 'compact' | 'comfortable'} active={preferencePrefs.workspaceScale === option.id} />
+                        <span className="mt-4 block text-sm font-black text-text-main">{option.label}</span>
                         <span className="mt-1 block text-xs font-semibold leading-relaxed text-text-secondary/65">{option.desc}</span>
                       </button>
                     ))}
@@ -545,6 +546,47 @@ function SettingsPanel({ title, subtitle, children }: { title: string; subtitle:
       </div>
       {children}
     </motion.section>
+  );
+}
+
+function WorkspaceScalePreview({ scale, active }: { scale: 'compact' | 'comfortable'; active: boolean }) {
+  const compact = scale === 'compact';
+  return (
+    <div className={cn(
+      "overflow-hidden rounded-2xl border bg-bg-base shadow-inner transition-all",
+      active ? "border-accent/40" : "border-card-border"
+    )}>
+      <div className="flex h-28">
+        <div className={cn(
+          "border-r border-card-border bg-surface-muted/70",
+          compact ? "w-12 p-1.5" : "w-16 p-2"
+        )}>
+          <div className={cn("rounded-lg bg-accent", compact ? "mb-3 h-6 w-6" : "mb-4 h-8 w-8")} />
+          <div className="space-y-1.5">
+            {[0, 1, 2].map(item => (
+              <div key={item} className={cn("rounded-full bg-text-secondary/20", compact ? "h-1.5 w-7" : "h-2 w-10")} />
+            ))}
+          </div>
+        </div>
+        <div className={cn("flex-1", compact ? "p-2" : "p-3")}>
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <div className={cn("rounded-full bg-text-main", compact ? "mb-1 h-2 w-16" : "mb-1.5 h-2.5 w-20")} />
+              <div className={cn("rounded-full bg-text-secondary/20", compact ? "h-1.5 w-10" : "h-2 w-12")} />
+            </div>
+            <div className={cn("rounded-lg bg-accent/20", compact ? "h-5 w-12" : "h-7 w-16")} />
+          </div>
+          <div className={cn("grid gap-1.5", compact ? "grid-cols-3" : "grid-cols-2")}>
+            {(compact ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3]).map(item => (
+              <div key={item} className={cn("rounded-xl border border-card-border bg-card", compact ? "h-8 p-1" : "h-12 p-1.5")}>
+                <div className={cn("mb-1 rounded-full bg-accent/35", compact ? "h-1.5 w-7" : "h-2 w-10")} />
+                <div className={cn("rounded-full bg-text-secondary/15", compact ? "h-1 w-10" : "h-1.5 w-14")} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
