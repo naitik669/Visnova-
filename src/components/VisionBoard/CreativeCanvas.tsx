@@ -59,8 +59,11 @@ const RESIZABLE_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky
 const SECTION_COLORS = {
   lavender: { fill: 'rgba(139, 92, 246, 0.11)', border: 'rgba(139, 92, 246, 0.32)' },
   blue: { fill: 'rgba(96, 165, 250, 0.12)', border: 'rgba(96, 165, 250, 0.32)' },
+  cobalt: { fill: 'rgba(59, 87, 214, 0.92)', border: 'rgba(255, 255, 255, 0.35)' },
   pink: { fill: 'rgba(244, 114, 182, 0.12)', border: 'rgba(244, 114, 182, 0.30)' },
+  rose: { fill: 'rgba(252, 165, 165, 0.42)', border: 'rgba(248, 113, 113, 0.35)' },
   yellow: { fill: 'rgba(250, 204, 21, 0.13)', border: 'rgba(202, 138, 4, 0.26)' },
+  gold: { fill: 'rgba(250, 204, 21, 0.72)', border: 'rgba(202, 138, 4, 0.32)' },
   mint: { fill: 'rgba(52, 211, 153, 0.12)', border: 'rgba(16, 185, 129, 0.30)' },
   cream: { fill: 'rgba(255, 247, 237, 0.72)', border: 'rgba(251, 191, 36, 0.30)' }
 };
@@ -178,13 +181,15 @@ const sectionElement = (
   height: number,
   color: keyof typeof SECTION_COLORS,
   zIndex: number,
-  description?: string
+  description?: string,
+  source?: string
 ) => templateElement('section', title, x, y, width, height, zIndex, {
   title,
   description,
   fillColor: SECTION_COLORS[color].fill,
   strokeColor: SECTION_COLORS[color].border,
-  color
+  color,
+  source
 } as VisionElement['metadata']);
 
 const createTemplateElements = (template: BoardTemplateId, vision: Vision): VisionElement[] => {
@@ -193,12 +198,15 @@ const createTemplateElements = (template: BoardTemplateId, vision: Vision): Visi
   const visionTitle = safeString(vision.title, 'My Vision');
   const baseSections = {
     classic: [
-      sectionElement('My Vision', left + 420, top, 760, 360, 'lavender', 10, 'The clear picture of what you are building.'),
-      sectionElement('Inspirations', left, top + 420, 600, 450, 'blue', 11),
-      sectionElement('Goals', left + 660, top + 420, 610, 450, 'mint', 12),
-      sectionElement('Resources', left + 1330, top + 420, 600, 450, 'yellow', 13),
-      sectionElement('Progress Proof', left + 330, top + 930, 760, 420, 'pink', 14),
-      sectionElement('Notes', left + 1150, top + 930, 620, 420, 'cream', 15)
+      sectionElement('Step 1', left, top, 360, 245, 'cream', 10, 'Set the stage and name the real outcome.'),
+      sectionElement('Step 2', left, top + 285, 360, 245, 'cream', 11, 'Demonstrate by doing. Choose the smallest visible action.'),
+      sectionElement('Step 3', left, top + 570, 360, 245, 'cream', 12, 'Fill in the proof map with wins, blockers, and receipts.'),
+      sectionElement('Think and feel?', left + 410, top, 1320, 620, 'cobalt', 13, 'Collect the ideas, visuals, resources, and emotions behind this Vision.', 'hero'),
+      sectionElement('Step 4', left + 1780, top, 360, 245, 'cream', 14, 'Present progress and share what changed.'),
+      sectionElement('Step 5', left + 1780, top + 285, 360, 245, 'cream', 15, 'Determine next steps and turn clarity into action.'),
+      sectionElement('Pain', left + 410, top + 680, 630, 360, 'rose', 16, 'What is hard, risky, confusing, or slowing this down?'),
+      sectionElement('Gain', left + 1090, top + 680, 640, 360, 'gold', 17, 'What improves when this Vision becomes real?'),
+      sectionElement('Thoughts, comments, actions', left + 1780, top + 570, 360, 470, 'cream', 18, 'Small decisions, notes, and next actions.')
     ],
     project: [
       sectionElement('Big Goal', left + 420, top, 760, 350, 'lavender', 10),
@@ -233,30 +241,37 @@ const createTemplateElements = (template: BoardTemplateId, vision: Vision): Visi
 
   const sections = baseSections[template];
   const starterCards: VisionElement[] = [
-    templateElement('text', visionTitle, left + 610, top + 88, 470, 96, 1200, { fontSize: '44px', fontWeight: '900', textAlign: 'center' }),
-    templateElement('sticky', 'What does this Vision look like when it is real?', left + 700, top + 210, 300, 170, 1201, { color: '#fef3c7' }),
-    templateElement('checklist', 'First moves', left + 740, top + 515, 330, 230, 1202, {
+    templateElement('text', visionTitle, left + 720, top + 88, 700, 84, 1200, { fontSize: '38px', fontWeight: '900', textAlign: 'center' }),
+    templateElement('sticky', 'What does success feel like?', left + 605, top + 215, 250, 150, 1201, { color: '#fef3c7' }),
+    templateElement('sticky', 'What habits will this require?', left + 905, top + 165, 245, 145, 1202, { color: '#fce7f3' }),
+    templateElement('sticky', 'Who is helped by this?', left + 1195, top + 260, 245, 145, 1203, { color: '#ede9fe' }),
+    templateElement('sticky', 'What must I learn?', left + 1460, top + 160, 220, 145, 1204, { color: '#dcfce7' }),
+    templateElement('checklist', 'First moves', left + 75, top + 590, 265, 205, 1205, {
       checklist: [
         { id: newId('item'), text: 'Define the next milestone', completed: false },
         { id: newId('item'), text: 'Collect one strong reference', completed: false },
         { id: newId('item'), text: 'Log first proof', completed: false }
       ]
     }),
-    templateElement('link', 'https://example.com', left + 1460, top + 555, 330, 210, 1203, {
+    templateElement('link', 'https://example.com', left + 1825, top + 855, 270, 150, 1206, {
       url: 'https://example.com',
       title: 'Resource or reference',
       description: 'Drop tools, courses, products, docs, or inspiration here.',
       provider: 'Resource'
     }),
-    templateElement('task', 'Next concrete task', left + 112, top + 520, 330, 118, 1204, { title: 'Next concrete task', description: 'Turn one board idea into execution.' } as VisionElement['metadata']),
-    templateElement('shape', 'Proof goes here', left + 520, top + 1040, 330, 150, 1205, {
+    templateElement('task', 'Next concrete task', left + 1845, top + 370, 270, 105, 1207, { title: 'Next concrete task', description: 'Turn one board idea into execution.' } as VisionElement['metadata']),
+    templateElement('shape', 'Proof goes here', left + 535, top + 785, 245, 135, 1208, {
       title: 'Proof goes here',
       description: 'Screenshots, wins, updates, and receipts of progress.',
       shapeType: 'rectangle',
       fillColor: 'rgba(244, 114, 182, 0.16)',
       strokeColor: 'rgba(244, 114, 182, 0.35)',
       source: 'proof'
-    })
+    }),
+    templateElement('sticky', 'Big blocker', left + 825, top + 780, 185, 130, 1209, { color: '#fee2e2' }),
+    templateElement('sticky', 'New capability', left + 1235, top + 785, 190, 130, 1210, { color: '#fef9c3' }),
+    templateElement('sticky', 'Lovely memory / win', left + 1480, top + 785, 190, 130, 1211, { color: '#fef9c3' }),
+    templateElement('sticky', 'Share one proof update', left + 1845, top + 650, 260, 110, 1212, { color: '#dbeafe' })
   ];
 
   return [...sections, ...starterCards];
@@ -1261,6 +1276,7 @@ function ElementContent({
   );
 
   if (element.type === 'section') {
+    const isHeroSection = element.metadata?.source === 'hero';
     return (
       <div
         className={cn(
@@ -1272,12 +1288,19 @@ function ElementContent({
           borderColor: element.metadata?.strokeColor || SECTION_COLORS.lavender.border
         }}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18px_18px,rgba(255,255,255,0.55)_1px,transparent_1px)] [background-size:28px_28px]" />
+        <div className={cn('absolute inset-0 bg-[radial-gradient(circle_at_18px_18px,rgba(255,255,255,0.55)_1px,transparent_1px)] [background-size:28px_28px]', isHeroSection && 'opacity-30')} />
+        {isHeroSection && (
+          <>
+            <div className="absolute left-1/2 top-0 h-full w-px -rotate-[28deg] bg-white/12" />
+            <div className="absolute left-1/2 top-0 h-full w-px rotate-[28deg] bg-white/12" />
+            <div className="absolute left-0 top-1/2 h-px w-full bg-white/10" />
+          </>
+        )}
         <div className="relative z-10 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-text-secondary/70">Board Section</p>
+            <p className={cn('text-[10px] font-black uppercase tracking-[0.35em] text-text-secondary/70', isHeroSection && 'text-white/70')}>Board Section</p>
             <EditableBlock
-              className="mt-1 min-h-10 w-full resize-none bg-transparent p-0 text-2xl font-black leading-tight text-text-main outline-none"
+              className={cn('mt-1 min-h-10 w-full resize-none bg-transparent p-0 text-2xl font-black leading-tight text-text-main outline-none', isHeroSection && 'text-white')}
               value={element.content || element.metadata?.title || 'Board Section'}
               editing={editing}
               onEdit={onEdit}
@@ -1287,10 +1310,10 @@ function ElementContent({
               }}
             />
             {element.metadata?.description && (
-              <p className="mt-2 max-w-sm text-sm font-semibold leading-relaxed text-text-secondary">{element.metadata.description}</p>
+              <p className={cn('mt-2 max-w-sm text-sm font-semibold leading-relaxed text-text-secondary', isHeroSection && 'text-white/75')}>{element.metadata.description}</p>
             )}
           </div>
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-card/70 text-accent shadow-sm">
+          <span className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-card/70 text-accent shadow-sm', isHeroSection && 'bg-white/18 text-white')}>
             <Layers3 size={18} />
           </span>
         </div>
