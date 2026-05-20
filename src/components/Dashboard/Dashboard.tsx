@@ -213,6 +213,49 @@ function DashboardSkeleton() {
   );
 }
 
+function NextMoveCard({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  compact = false,
+}: {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <section className={cn(
+      "rounded-[1.6rem] border border-accent/20 bg-accent/[0.06] shadow-sm",
+      compact ? "p-3" : "p-4"
+    )}>
+      <div className={cn("flex gap-3", compact ? "items-center" : "items-start")}>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-lg shadow-accent/15">
+          <Zap size={17} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Next move</p>
+          <h3 className={cn("mt-1 font-black tracking-tight text-text-main", compact ? "text-base" : "text-lg")}>{title}</h3>
+          <p className={cn("mt-1 font-semibold leading-5 text-text-secondary", compact ? "text-xs" : "text-sm")}>{description}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onAction}
+        className={cn(
+          "mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/15 active:scale-[0.99]",
+          compact ? "h-10" : "h-12"
+        )}
+      >
+        <Plus size={14} />
+        {actionLabel}
+      </button>
+    </section>
+  );
+}
+
 export default function Dashboard() {
   const {
     visions,
@@ -565,6 +608,56 @@ export default function Dashboard() {
     }
     return updates.slice(0, 4);
   }, [activeMoneyGoals, daysSinceLastProgress, deadlineCards, formatMoney, mostActiveVision]);
+  const hasLoggedProgressToday = progressLogs.some(log => log.createdAt >= dayStart);
+  const nextMove = React.useMemo(() => {
+    if (!activeVision) {
+      return {
+        title: "Create your first Vision",
+        description: "Pick one thing you want to build, learn, or improve. Everything else can connect after that.",
+        actionLabel: "Create Vision",
+        onAction: () => navigate('/visions'),
+      };
+    }
+
+    if (!hasLoggedProgressToday) {
+      return {
+        title: "Log today's proof",
+        description: `Add one update for ${activeVision.title}. Private is fine; visible progress starts with the record.`,
+        actionLabel: "Log Progress",
+        onAction: () => setShowProgressComposer(true),
+      };
+    }
+
+    const task = pendingTasks[0];
+    if (task) {
+      return {
+        title: "Finish the next task",
+        description: task.text,
+        actionLabel: "Mark Done",
+        onAction: () => {
+          if (task.sourceType === "todo") toggleTodo(task.id || "");
+          else toggleVisionTask(task.visionId, task.id || "");
+        },
+      };
+    }
+
+    const moneyGoal = activeMoneyGoals.find(goal => goal.pulseStatus !== 'completed');
+    if (moneyGoal) {
+      return {
+        title: "Update your resources",
+        description: `You need ${formatMoney(moneyGoal.remaining, moneyGoal.currency)} more for ${moneyGoal.title}.`,
+        actionLabel: "Open Resources",
+        onAction: () => navigate('/growth', { state: { section: 'resources' } }),
+      };
+    }
+
+    return {
+      title: "Review your growth",
+      description: "Your proof is recorded. Check the tracker and decide tomorrow's next move.",
+      actionLabel: "View Tracker",
+      onAction: () => navigate('/growth', { state: { section: 'tracker' } }),
+    };
+  }, [activeMoneyGoals, activeVision, formatMoney, hasLoggedProgressToday, navigate, pendingTasks, toggleTodo, toggleVisionTask]);
 
   if (isDashboardLoading && !hasAnyDashboardData) {
     return <DashboardSkeleton />;
@@ -611,6 +704,13 @@ export default function Dashboard() {
             <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, activeVision?.progress || globalProgress)}%` }} />
           </div>
         </button>
+
+        <NextMoveCard
+          title={nextMove.title}
+          description={nextMove.description}
+          actionLabel={nextMove.actionLabel}
+          onAction={nextMove.onAction}
+        />
 
         <button
           type="button"
@@ -824,6 +924,14 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
+
+                <NextMoveCard
+                  title={nextMove.title}
+                  description={nextMove.description}
+                  actionLabel={nextMove.actionLabel}
+                  onAction={nextMove.onAction}
+                  compact
+                />
 
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   <div className="flex flex-col">
