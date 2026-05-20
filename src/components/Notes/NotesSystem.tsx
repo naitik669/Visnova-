@@ -2439,16 +2439,12 @@ function NoteCard({
     <div 
       {...dragProps}
       onClick={handleCardClick}
-      className="group relative flex min-h-[230px] cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-card-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5"
+      className="group relative flex min-h-[188px] cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-card-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5"
     >
-       <div
-         className="absolute inset-x-4 top-4 h-24 rounded-[1.5rem] border shadow-inner"
-         style={{ background: visualStyle.background, borderColor: visualStyle.border }}
-       />
-       <div className="relative z-10 flex items-start gap-3">
+       <div className="flex items-start gap-3">
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card/85 shadow-sm"
-            style={{ color: visualStyle.ink }}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm"
+            style={{ background: visualStyle.background, borderColor: visualStyle.border, color: visualStyle.ink }}
           >
             <NoteIcon size={19} />
           </div>
@@ -2471,13 +2467,16 @@ function NoteCard({
           </button>
        </div>
 
-       <div className="relative z-10 mt-10 min-w-0 flex-1 space-y-3 rounded-[1.35rem] border border-card-border/60 bg-card/90 p-4 shadow-sm">
-          <p className="min-h-14 text-[13px] font-semibold leading-relaxed text-text-secondary/80 line-clamp-3">
+       <div
+         className="mt-4 min-w-0 flex-1 rounded-[1.35rem] border p-4"
+         style={{ background: visualStyle.background, borderColor: visualStyle.border }}
+       >
+          <p className="text-[13px] font-semibold leading-relaxed text-text-secondary/85 line-clamp-4">
             {preview}
           </p>
        </div>
 
-       <div className="relative z-10 mt-4 flex items-center justify-between gap-3 border-t border-card-border/40 pt-3">
+       <div className="mt-4 flex items-center justify-between gap-3 border-t border-card-border/40 pt-3">
           <div className="flex items-center gap-1 min-w-0">
             {sourceBadge && (
               <span className="rounded-full bg-danger/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-danger">
