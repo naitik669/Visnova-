@@ -73,6 +73,38 @@ function getTranscriptLabel(note: Note) {
   return 'Transcript not generated yet';
 }
 
+const NOTE_TILE_STYLES = [
+  { background: 'rgba(var(--accent-rgb), 0.12)', border: 'rgba(var(--accent-rgb), 0.22)', ink: 'var(--accent)' },
+  { background: 'color-mix(in srgb, var(--warning) 18%, transparent)', border: 'color-mix(in srgb, var(--warning) 26%, transparent)', ink: 'var(--warning)' },
+  { background: 'color-mix(in srgb, var(--success) 12%, transparent)', border: 'color-mix(in srgb, var(--success) 22%, transparent)', ink: 'var(--success)' },
+  { background: 'color-mix(in srgb, var(--info) 12%, transparent)', border: 'color-mix(in srgb, var(--info) 22%, transparent)', ink: 'var(--info)' },
+  { background: 'color-mix(in srgb, var(--danger) 10%, transparent)', border: 'color-mix(in srgb, var(--danger) 20%, transparent)', ink: 'var(--danger)' },
+];
+
+function noteStyleFor(note: Note) {
+  const source = `${note.id || ''}${note.title || ''}`;
+  const seed = source.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return NOTE_TILE_STYLES[seed % NOTE_TILE_STYLES.length];
+}
+
+function WaveformPreview({ active = false }: { active?: boolean }) {
+  const bars = [10, 16, 8, 22, 14, 28, 18, 12, 24, 30, 17, 11, 21, 15, 26, 13, 19, 25, 9, 20, 14, 27, 12, 18];
+  return (
+    <div className="flex h-9 flex-1 items-center gap-1 overflow-hidden" aria-hidden="true">
+      {bars.map((height, index) => (
+        <span
+          key={index}
+          className={cn(
+            "w-1 shrink-0 rounded-full bg-current opacity-20",
+            active && index % 5 === 0 && "opacity-50"
+          )}
+          style={{ height }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function NotesSystem() {
   const { notes, folders, visions, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, moveNoteToFolder, addPost, user, session, addToast } = useStore();
   const location = useLocation();
@@ -2240,6 +2272,7 @@ function NoteCard({
   const safeFolders = safeArray<FolderType>(folders);
   const sourceBadge = /youtube|youtu\.be/i.test(safeString(note.content)) || /youtube|youtu\.be/i.test(safeString(note.title)) ? 'YouTube' : null;
   const currentFolderValue = note.folderId || '';
+  const visualStyle = noteStyleFor(note);
 
   const handleCardClick = () => {
     if (dragStartedRef.current) return;
@@ -2276,51 +2309,128 @@ function NoteCard({
       <div 
         {...dragProps}
         onClick={handleCardClick}
-        className="group cursor-pointer rounded-2xl border border-card-border/70 bg-card hover:border-accent/35 hover:-translate-y-0.5 transition-all flex flex-col sm:flex-row sm:items-center gap-4 p-4"
+        className="group cursor-pointer rounded-[1.75rem] border border-card-border/70 bg-card p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5 sm:p-4"
       >
-        <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all shrink-0">
-          <NoteIcon size={20} />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div
+            className="flex h-20 w-full shrink-0 items-center justify-center rounded-[1.35rem] border shadow-sm sm:w-24"
+            style={{ background: visualStyle.background, borderColor: visualStyle.border, color: visualStyle.ink }}
+          >
+            <NoteIcon size={24} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h4 className="truncate text-base font-black tracking-tight text-text-main transition-colors group-hover:text-accent">{safeString(note.title, 'Untitled Note')}</h4>
+                <p className="mt-1 line-clamp-1 text-[12px] font-semibold text-text-secondary/70">{preview}</p>
+                <p className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-text-secondary/45">
+                  {safeFormat(note.updatedAt || note.createdAt, 'MMM dd, h:mm a')} - {folderName || 'Unfiled'}
+                </p>
+              </div>
+              <ChevronRight size={16} className="mt-1 shrink-0 text-text-secondary/20 transition-all group-hover:translate-x-1 group-hover:text-accent" />
+            </div>
+            {isAudioNote && (
+              <div onClick={(event) => event.stopPropagation()} className="mt-3 rounded-2xl border border-card-border bg-surface-muted/60 p-2">
+                <div className="flex items-center gap-3 text-accent">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card shadow-sm">
+                    <Volume2 size={15} />
+                  </span>
+                  <WaveformPreview active={!!cardAudioUrl} />
+                  <span className="text-[10px] font-black text-text-secondary/55">{formatDuration(note.audio_duration)}</span>
+                </div>
+                {cardAudioUrl && <audio src={cardAudioUrl} controls className="mt-2 h-8 w-full" />}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                onPost();
+              }}
+              className="h-9 rounded-xl border border-accent/20 bg-accent/10 px-3 text-[9px] font-black uppercase tracking-widest text-accent transition-all hover:bg-accent hover:text-accent-contrast"
+            >
+              Post
+            </button>
+            {noteTags.slice(0, 2).map((t, i) => (
+              <span key={i} className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-accent">#{t}</span>
+            ))}
+            <div onClick={(event) => event.stopPropagation()} className="min-w-32">
+              <SelectMenu
+                value={currentFolderValue}
+                onChange={handleMoveChange}
+                options={folderOptions}
+                placeholder="Move"
+                triggerClassName="h-9 rounded-xl bg-bg-base px-3 text-[10px]"
+                menuClassName="sm:w-48"
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-black text-text-main group-hover:text-accent transition-colors truncate tracking-tight">{safeString(note.title, 'Untitled Note')}</h4>
-          <p className="mt-1 text-[11px] text-text-secondary/65 line-clamp-1">{preview}</p>
-          <p className="mt-2 text-[10px] text-text-secondary font-bold uppercase tracking-wider opacity-60">
-            Updated {safeFormat(note.updatedAt || note.createdAt, 'MMM dd, h:mm a')} - {folderName || 'Unfiled'}
-          </p>
-          {isAudioNote && cardAudioUrl && (
-            <audio
-              src={cardAudioUrl}
-              controls
-              onClick={(event) => event.stopPropagation()}
-              className="mt-2 h-8 w-full max-w-sm"
-            />
+      </div>
+    );
+  }
+
+  if (isAudioNote) {
+    return (
+      <div
+        {...dragProps}
+        onClick={handleCardClick}
+        className="group relative flex min-h-40 cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-card-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5"
+      >
+        <div className="absolute inset-x-0 top-0 h-1 bg-accent/60" />
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent shadow-sm">
+            <Volume2 size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-accent/70">Audio Note</p>
+            <h4 className="mt-1 line-clamp-1 text-[15px] font-black leading-tight tracking-tight text-text-main group-hover:text-accent">{safeString(note.title, 'Untitled Audio')}</h4>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
+              {createdOrUpdated} - {folderName || 'Unfiled'}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Post audio note to profile"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPost();
+            }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-text-secondary/45 hover:bg-accent/10 hover:text-accent"
+          >
+            <Send size={14} />
+          </button>
+        </div>
+
+        <div onClick={(event) => event.stopPropagation()} className="mt-4 rounded-[1.35rem] border border-card-border bg-surface-muted/70 p-3">
+          <div className="flex items-center gap-3 text-accent">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card shadow-sm">
+              <Volume2 size={16} />
+            </span>
+            <WaveformPreview active={!!cardAudioUrl} />
+            <span className="min-w-9 text-right text-[10px] font-black text-text-secondary/60">{formatDuration(note.audio_duration)}</span>
+          </div>
+          {cardAudioUrl ? (
+            <audio src={cardAudioUrl} controls className="mt-3 h-8 w-full" />
+          ) : (
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-text-secondary/40">Preparing audio preview...</p>
           )}
         </div>
-        <div className="flex items-center gap-3 sm:px-4">
-           <button
-             onClick={(event) => {
-               event.stopPropagation();
-               onPost();
-             }}
-             className="h-9 rounded-xl border border-accent/20 bg-accent/10 px-3 text-[9px] font-black uppercase tracking-widest text-accent hover:bg-accent hover:text-accent-contrast transition-all"
-           >
-             Post
-           </button>
-           {noteTags.slice(0, 2).map((t, i) => (
-             <span key={i} className="rounded-full bg-accent/10 px-2 py-1 text-[9px] font-black text-accent uppercase tracking-widest">#{t}</span>
-           ))}
-           <div onClick={(event) => event.stopPropagation()} className="min-w-32">
-             <SelectMenu
-               value={currentFolderValue}
-               onChange={handleMoveChange}
-               options={folderOptions}
-               placeholder="Move"
-               triggerClassName="h-9 rounded-xl bg-bg-base px-3 text-[10px]"
-               menuClassName="sm:w-48"
-             />
-           </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-card-border/40 pt-3">
+          <p className="min-w-0 truncate text-[9px] font-black uppercase tracking-widest text-text-secondary/45">{getTranscriptLabel(note)}</p>
+          <div onClick={(event) => event.stopPropagation()} className="w-24 shrink-0 sm:w-28">
+            <SelectMenu
+              value={currentFolderValue}
+              onChange={handleMoveChange}
+              options={folderOptions}
+              placeholder="Move"
+              triggerClassName="h-8 rounded-lg px-2 text-[9px]"
+              menuClassName="sm:w-48"
+            />
+          </div>
         </div>
-        <ChevronRight size={16} className="text-text-secondary/20 group-hover:text-accent group-hover:translate-x-1 transition-all" />
       </div>
     );
   }
@@ -2329,16 +2439,23 @@ function NoteCard({
     <div 
       {...dragProps}
       onClick={handleCardClick}
-      className="min-h-40 rounded-2xl border border-card-border/70 bg-card p-4 hover:border-accent/35 hover:-translate-y-0.5 hover:shadow-sm transition-all group cursor-pointer flex flex-col relative overflow-hidden"
+      className="group relative flex min-h-[230px] cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-card-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5"
     >
-       <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-accent-contrast transition-all shadow-sm shrink-0">
+       <div
+         className="absolute inset-x-4 top-4 h-24 rounded-[1.5rem] border shadow-inner"
+         style={{ background: visualStyle.background, borderColor: visualStyle.border }}
+       />
+       <div className="relative z-10 flex items-start gap-3">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card/85 shadow-sm"
+            style={{ color: visualStyle.ink }}
+          >
             <NoteIcon size={19} />
           </div>
           <div className="min-w-0 flex-1">
             <h4 className="text-[15px] font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight line-clamp-1">{safeString(note.title, 'Untitled Note')}</h4>
             <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45 truncate">
-              {createdOrUpdated} - {folderName || 'Unfiled'}{isAudioNote && note.audio_duration ? ` - ${formatDuration(note.audio_duration)}` : ''}
+              {createdOrUpdated} - {folderName || 'Unfiled'}
             </p>
           </div>
           <button
@@ -2354,19 +2471,13 @@ function NoteCard({
           </button>
        </div>
 
-       <div className="flex-1 mt-4 space-y-3 min-w-0">
-          <p className="text-[12px] text-text-secondary/75 font-medium line-clamp-2 leading-relaxed">
+       <div className="relative z-10 mt-10 min-w-0 flex-1 space-y-3 rounded-[1.35rem] border border-card-border/60 bg-card/90 p-4 shadow-sm">
+          <p className="min-h-14 text-[13px] font-semibold leading-relaxed text-text-secondary/80 line-clamp-3">
             {preview}
           </p>
-          {isAudioNote && cardAudioUrl && (
-            <div onClick={(event) => event.stopPropagation()} className="rounded-xl border border-accent/10 bg-accent/5 px-3 py-2">
-              <audio src={cardAudioUrl} controls className="h-8 w-full" />
-              <p className="mt-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/45">{getTranscriptLabel(note)}</p>
-            </div>
-          )}
        </div>
 
-       <div className="mt-4 pt-3 border-t border-card-border/40 flex items-center justify-between gap-3">
+       <div className="relative z-10 mt-4 flex items-center justify-between gap-3 border-t border-card-border/40 pt-3">
           <div className="flex items-center gap-1 min-w-0">
             {sourceBadge && (
               <span className="rounded-full bg-danger/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-danger">

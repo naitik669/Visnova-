@@ -29,7 +29,7 @@ import { supabase } from '../../lib/supabase';
 import { safeArray, safeFormat } from '../../lib/safeData';
 
 export default function VisionBoard() {
-  const { visions, addVision, updateVision, addActivity, addToast, session, fetchVisions } = useStore();
+  const { visions, addVision, updateVision, addActivity, addToast, session, fetchVisions, isVisionsLoading } = useStore();
   const [selectedVision, setSelectedVision] = useState<Vision | null>(null);
   const [setupVision, setSetupVision] = useState<Vision | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,6 +44,7 @@ export default function VisionBoard() {
       .slice(0, 4);
   }, [visions]);
   const repositoryVisions = useMemo(() => visions, [visions]);
+  const showVisionSkeleton = isVisionsLoading && visions.length === 0;
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -202,7 +203,9 @@ export default function VisionBoard() {
         </div>
       </header>
 
-      <AnimatePresence mode="wait">
+      {showVisionSkeleton && <VisionBoardSkeleton />}
+
+      {!showVisionSkeleton && <AnimatePresence mode="wait">
         {viewMode === 'grid' ? (
           <motion.div
             key="grid"
@@ -318,7 +321,7 @@ export default function VisionBoard() {
              <KanbanBoard onCardClick={handleCardClick} />
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>}
 
 
       <VisionDetailModal
@@ -337,6 +340,61 @@ export default function VisionBoard() {
         )}
         {setupVision && <VisionHints />}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function VisionBoardSkeleton() {
+  return (
+    <div className="space-y-12" aria-label="Loading Vision Boards">
+      <section className="relative overflow-hidden rounded-[2.25rem] border border-accent/10 bg-accent/[0.025] p-5 shadow-inner sm:p-7 lg:p-8">
+        <div className="relative z-10 mb-6 flex items-center gap-4">
+          <div className="h-11 w-11 shrink-0 animate-pulse rounded-2xl bg-accent/15" />
+          <div className="space-y-2">
+            <div className="h-3 w-32 animate-pulse rounded-full bg-accent/15" />
+            <div className="h-7 w-56 animate-pulse rounded-full bg-surface-muted" />
+          </div>
+          <div className="h-px flex-1 bg-accent/10" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="min-h-[168px] rounded-[1.6rem] border border-card-border bg-card/80 p-4 shadow-sm">
+              <div className="h-20 rounded-2xl border border-card-border bg-bg-base/45 animate-pulse" />
+              <div className="mt-5 space-y-3">
+                <div className="h-3 w-20 animate-pulse rounded-full bg-surface-muted" />
+                <div className="h-5 w-3/4 animate-pulse rounded-full bg-surface-muted" />
+                <div className="h-3 w-1/2 animate-pulse rounded-full bg-surface-muted" />
+                <div className="h-2 w-full animate-pulse rounded-full bg-surface-muted" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-8 pb-20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="h-12 w-12 animate-pulse rounded-2xl bg-surface-muted" />
+            <div className="space-y-2">
+              <div className="h-3 w-28 animate-pulse rounded-full bg-surface-muted" />
+              <div className="h-7 w-48 animate-pulse rounded-full bg-surface-muted" />
+            </div>
+          </div>
+          <div className="hidden h-10 w-32 animate-pulse rounded-xl bg-surface-muted sm:block" />
+        </div>
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          {Array.from({ length: 10 }).map((_, index) => (
+            <div key={index} className="aspect-square rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
+              <div className="h-1/2 rounded-[1.5rem] bg-surface-muted animate-pulse" />
+              <div className="mt-5 space-y-3">
+                <div className="h-4 w-3/4 animate-pulse rounded-full bg-surface-muted" />
+                <div className="h-3 w-1/2 animate-pulse rounded-full bg-surface-muted" />
+                <div className="h-2 w-full animate-pulse rounded-full bg-surface-muted" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

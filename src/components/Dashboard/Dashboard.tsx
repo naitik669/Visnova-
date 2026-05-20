@@ -137,6 +137,82 @@ function FirstVisionPrompt({ onCreate, onFeed }: { onCreate: () => void; onFeed:
   );
 }
 
+function SkeletonLine({ className = "" }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded-full bg-surface-muted", className)} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="w-full max-w-[1440px] mx-auto space-y-5 sm:space-y-8 pb-20 px-0 sm:px-4 overflow-hidden">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="rounded-[2rem] sm:rounded-[3rem] border border-card-border bg-card p-5 sm:p-8 shadow-sm">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px_260px]">
+            <div className="space-y-5">
+              <SkeletonLine className="h-3 w-40 bg-accent/15" />
+              <SkeletonLine className="h-12 w-72 max-w-full" />
+              <div className="space-y-3">
+                <SkeletonLine className="h-4 w-full max-w-md" />
+                <SkeletonLine className="h-4 w-3/4 max-w-sm" />
+              </div>
+              <div className="grid max-w-lg grid-cols-2 gap-4 pt-2">
+                <SkeletonLine className="h-12 rounded-2xl" />
+                <SkeletonLine className="h-12 rounded-2xl" />
+              </div>
+              <div className="h-16 rounded-[1.5rem] border border-card-border bg-surface-muted/60 p-4">
+                <SkeletonLine className="h-3 w-28" />
+                <SkeletonLine className="mt-3 h-2 w-full" />
+              </div>
+            </div>
+            <div className="rounded-[2rem] border border-card-border bg-surface-muted/70 p-5">
+              <SkeletonLine className="h-3 w-28" />
+              <SkeletonLine className="mt-4 h-11 w-16" />
+              <div className="mt-6 grid grid-cols-7 gap-2">
+                {Array.from({ length: 14 }).map((_, index) => (
+                  <div key={index} className="h-8 rounded-xl bg-card animate-pulse" />
+                ))}
+              </div>
+              <SkeletonLine className="mt-6 h-3 w-40" />
+            </div>
+            <div className="rounded-[2rem] border border-card-border bg-surface-muted/70 p-5">
+              <SkeletonLine className="h-3 w-36" />
+              <SkeletonLine className="mt-5 h-14 w-28" />
+              <SkeletonLine className="mt-6 h-3 w-full" />
+              <SkeletonLine className="mt-4 h-3 w-2/3" />
+            </div>
+          </div>
+          <div className="mt-7 h-20 rounded-[1.5rem] border border-card-border bg-surface-muted/60 p-4">
+            <SkeletonLine className="h-3 w-24" />
+            <SkeletonLine className="mt-4 h-2 w-full" />
+          </div>
+        </section>
+
+        <aside className="space-y-5">
+          <div className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm">
+            <SkeletonLine className="h-3 w-32 bg-accent/15" />
+            <SkeletonLine className="mt-4 h-8 w-52" />
+            <SkeletonLine className="mt-4 h-3 w-44" />
+            <div className="mt-5 h-16 rounded-2xl bg-surface-muted animate-pulse" />
+          </div>
+          <div className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <SkeletonLine className="h-6 w-32" />
+              <SkeletonLine className="h-4 w-16" />
+            </div>
+            <div className="mt-6 space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <div className="h-6 w-6 rounded-full border border-card-border bg-surface-muted animate-pulse" />
+                  <SkeletonLine className="h-4 flex-1" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const {
     visions,
@@ -491,25 +567,7 @@ export default function Dashboard() {
   }, [activeMoneyGoals, daysSinceLastProgress, deadlineCards, formatMoney, mostActiveVision]);
 
   if (isDashboardLoading && !hasAnyDashboardData) {
-    return (
-      <div className="max-w-[1400px] mx-auto space-y-5 sm:space-y-8 p-2 sm:p-6 lg:p-10">
-        <div className="h-10 w-64 bg-card-dark rounded-xl animate-pulse" />
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex-1 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <div className="h-36 sm:h-48 bg-card rounded-[1.5rem] sm:rounded-[2.5rem] animate-pulse" />
-              <div className="h-36 sm:h-48 bg-card rounded-[1.5rem] sm:rounded-[2.5rem] animate-pulse" />
-            </div>
-            <div className="h-56 sm:h-64 bg-card rounded-[1.5rem] sm:rounded-[2.5rem] animate-pulse" />
-          </div>
-          <div className="w-full lg:w-80 space-y-4">
-             <div className="h-32 bg-card rounded-[2rem] animate-pulse" />
-             <div className="h-32 bg-card rounded-[2rem] animate-pulse" />
-             <div className="h-32 bg-card rounded-[2rem] animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

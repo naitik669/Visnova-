@@ -475,6 +475,7 @@ export interface AppState {
   financeReviews: FinanceReview[];
   moneyOverview: MoneyOverview | null;
   isMoneyLoading: boolean;
+  isVisionsLoading: boolean;
   notifications: any[];
   unreadNotificationCount: number;
   authLoading: boolean;

@@ -641,6 +641,7 @@ function privateStateReset() {
     financeReviews: [],
     moneyOverview: null,
     isMoneyLoading: false,
+    isVisionsLoading: false,
     notifications: [],
     unreadNotificationCount: 0,
   };
@@ -758,6 +759,7 @@ export const useStore = create<AppState>((set, get) => ({
   financeReviews: [],
   moneyOverview: null,
   isMoneyLoading: false,
+  isVisionsLoading: false,
   notifications: [],
   unreadNotificationCount: 0,
   achievements: [],
@@ -1610,6 +1612,7 @@ export const useStore = create<AppState>((set, get) => ({
     const userEmail = get().session?.user?.email?.toLowerCase();
     if (!userId) return;
 
+    set({ isVisionsLoading: true });
     try {
       const formatRows = (rows: any[], tasksData: any[] = []): Vision[] => rows.map((v: any) => {
         const visionTasks = tasksData
@@ -1708,6 +1711,8 @@ export const useStore = create<AppState>((set, get) => ({
         title: 'Vision Boards failed to load',
         description: 'Refresh the page or check your Supabase session.'
       });
+    } finally {
+      set({ isVisionsLoading: false });
     }
   },
 
