@@ -46,9 +46,9 @@ type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
 type ChecklistItem = NonNullable<NonNullable<VisionElement['metadata']>['checklist']>[number];
 type BoardTemplateId = 'classic' | 'project' | 'creator' | 'study' | 'custom';
 
-const CANVAS_SIZE = 9000;
-const CANVAS_CENTER = 4500;
-const MIN_ZOOM = 0.12;
+const CANVAS_SIZE = 6500;
+const CANVAS_CENTER = 3250;
+const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 2.5;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -67,6 +67,8 @@ const SECTION_COLORS = {
   mint: { fill: 'rgba(52, 211, 153, 0.12)', border: 'rgba(16, 185, 129, 0.30)' },
   cream: { fill: 'rgba(255, 247, 237, 0.72)', border: 'rgba(251, 191, 36, 0.30)' }
 };
+
+const ELEMENT_COLORS = ['#fef3c7', '#fce7f3', '#ede9fe', '#dbeafe', '#dcfce7', '#fee2e2', '#ffffff', '#8b5cf6'];
 
 const newId = (prefix = 'el') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -343,6 +345,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const [linkPanelOpen, setLinkPanelOpen] = useState(false);
   const [linkDraft, setLinkDraft] = useState('');
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [penColor, setPenColor] = useState('var(--accent)');
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -562,8 +565,17 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [applyElements, elements]);
 
   const moveLayer = useCallback((id: string, direction: 'forward' | 'backward') => {
-    updateElement(id, { zIndex: direction === 'forward' ? Date.now() : -Date.now() });
-  }, [updateElement]);
+    const target = elements.find(element => element.id === id);
+    if (!target) return;
+    const layerFloor = target.type === 'section' ? 1 : 1000;
+    const layerCeiling = elements.reduce((max, element) => Math.max(max, safeNumber(element.zIndex, 1)), layerFloor);
+    const currentLayer = Math.max(layerFloor, safeNumber(target.zIndex, layerFloor));
+    updateElement(id, {
+      zIndex: direction === 'forward'
+        ? layerCeiling + 25
+        : Math.max(layerFloor, currentLayer - 25)
+    });
+  }, [elements, updateElement]);
 
   const restoreHistory = useCallback((direction: 'undo' | 'redo') => {
     const source = direction === 'undo' ? undoStackRef.current : redoStackRef.current;
@@ -705,6 +717,20 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [vision.id, viewportSize.width, viewportSize.height]);
 
   useEffect(() => {
+    const node = viewportRef.current;
+    if (!node) return;
+    const onNativeWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const factor = Math.exp(-event.deltaY * 0.0018);
+      zoomTo(scale * factor);
+    };
+    node.addEventListener('wheel', onNativeWheel, { passive: false });
+    return () => node.removeEventListener('wheel', onNativeWheel);
+  }, [scale, zoomTo]);
+
+  useEffect(() => {
     if (importPanelOpen) fetchNotes().catch(error => console.error('Failed to load notes for Vision Board import:', error));
   }, [fetchNotes, importPanelOpen]);
 
@@ -777,7 +803,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       zIndex: now,
       createdAt: now,
       updatedAt: now,
-      metadata: { strokeColor: 'var(--accent)' }
+      metadata: { strokeColor: penColor }
     };
     drawingRef.current = { id: drawing.id, pointerId: event.pointerId, points: [point] };
     setIsDraggingElement(true);
@@ -856,13 +882,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     }
   };
 
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    if (!event.ctrlKey && !event.metaKey) return;
-    event.preventDefault();
-    const factor = Math.exp(-event.deltaY * 0.0018);
-    zoomTo(scale * factor);
-  };
-
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const file = Array.from(event.dataTransfer.files || []).find(item => item.type.startsWith('image/'));
@@ -913,7 +932,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       onPointerMove={handleViewportPointerMove}
       onPointerUp={handleViewportPointerUp}
       onPointerCancel={handleViewportPointerUp}
-      onWheel={handleWheel}
       onDragOver={(event) => event.preventDefault()}
       onDrop={handleDrop}
     >
@@ -935,7 +953,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="absolute left-1/2 top-[5.5rem] z-[170] hidden -translate-x-1/2 grid-cols-3 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl md:grid"
+            className="absolute left-1/2 top-[5.5rem] z-[170] hidden w-[360px] -translate-x-1/2 grid-cols-3 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl md:grid"
             data-no-pan
           >
             <CanvasToolButton icon={<Layers3 size={18} />} label="Add Section" onClick={() => createElement('section', 'New Section', { title: 'New Section', fillColor: SECTION_COLORS.blue.fill, strokeColor: SECTION_COLORS.blue.border } as VisionElement['metadata'])} />
@@ -943,6 +961,22 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#8b5cf622', strokeColor: 'var(--accent)' })} />
             <CanvasToolButton icon={<Upload size={18} />} label="Import" onClick={() => setImportPanelOpen(true)} />
             <CanvasToolButton icon={<Maximize2 size={18} />} label="Fit" onClick={() => fitToContent(true)} />
+            <div className="col-span-3 rounded-2xl bg-bg-base/60 p-3">
+              <p className="mb-2 text-[8px] font-black uppercase tracking-widest text-text-secondary">Pen color</p>
+              <div className="flex flex-wrap gap-2">
+                {ELEMENT_COLORS.map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setPenColor(color)}
+                    className={cn('h-7 w-7 rounded-full border-2 shadow-sm transition-transform hover:scale-110', penColor === color ? 'border-text-main' : 'border-card')}
+                    style={{ background: color }}
+                    aria-label={`Use pen color ${color}`}
+                    data-no-pan
+                  />
+                ))}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1329,7 +1363,8 @@ function ElementContent({
         style={{
           fontSize: element.metadata?.fontSize || '22px',
           fontWeight: element.metadata?.fontWeight || '800',
-          textAlign: element.metadata?.textAlign || 'center'
+          textAlign: element.metadata?.textAlign || 'center',
+          color: element.metadata?.color || undefined
         }}
         value={element.content || 'Write anything'}
         editing={editing}
@@ -1347,7 +1382,7 @@ function ElementContent({
     const completed = Boolean(metadata.completed);
     const toggleComplete = () => onUpdate({ metadata: { completed: !completed } as VisionElement['metadata'] }, true, true);
     return (
-      <div className={cn(baseClass, 'flex items-center gap-4 p-4')}>
+      <div className={cn(baseClass, 'flex items-center gap-4 p-4')} style={{ background: metadata.color || undefined }}>
         <button
           type="button"
           onClick={toggleComplete}
@@ -1684,6 +1719,24 @@ function ElementEditor({
   onAddChecklistItem: (text: string) => void;
 }) {
   const [itemText, setItemText] = useState('');
+  const applyElementColor = (color: string) => {
+    if (element.type === 'section') {
+      onUpdate({ metadata: { fillColor: color, strokeColor: color } });
+      return;
+    }
+    if (element.type === 'sticky' || element.type === 'task') {
+      onUpdate({ metadata: { color } });
+      return;
+    }
+    if (element.type === 'shape') {
+      onUpdate({ metadata: { fillColor: color, strokeColor: color } });
+      return;
+    }
+    if (element.type === 'text') {
+      onUpdate({ metadata: { color } });
+    }
+  };
+  const canColorElement = ['section', 'sticky', 'task', 'shape', 'text'].includes(element.type);
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -1703,8 +1756,26 @@ function ElementEditor({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <button onClick={() => onUpdate({ zIndex: Date.now() })} className="rounded-2xl bg-surface-muted px-3 py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary">Bring forward</button>
-        <button onClick={() => onUpdate({ zIndex: -Date.now() })} className="rounded-2xl bg-surface-muted px-3 py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary">Send back</button>
+        <button onClick={() => onUpdate({ zIndex: element.type === 'section' ? 1 : 1000 })} className="rounded-2xl bg-surface-muted px-3 py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary">Send back</button>
       </div>
+      {canColorElement && (
+        <div className="mt-3 rounded-2xl bg-bg-base/60 p-3">
+          <p className="mb-2 text-[8px] font-black uppercase tracking-widest text-text-secondary">Color</p>
+          <div className="flex flex-wrap gap-2">
+            {ELEMENT_COLORS.map(color => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => applyElementColor(color)}
+                className="h-8 w-8 rounded-full border-2 border-card shadow-sm transition-transform hover:scale-110"
+                style={{ background: color }}
+                aria-label={`Apply color ${color}`}
+                data-control
+              />
+            ))}
+          </div>
+        </div>
+      )}
       {element.type === 'checklist' && (
         <div className="mt-3 flex gap-2">
           <input
