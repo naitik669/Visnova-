@@ -8,7 +8,14 @@ export interface Task {
   text: string;
   description?: string;
   completed: boolean;
+  status?: 'planned' | 'today' | 'in_progress' | 'proof_needed' | 'done';
   priority?: 'low' | 'medium' | 'high';
+  dueDate?: string | null;
+  progressPercent?: number;
+  tags?: string[];
+  checklist?: { id: string; text: string; completed: boolean }[];
+  sortOrder?: number;
+  visibility?: 'private' | 'circle' | 'public';
   subTasks?: Task[];
   completedAt?: string | null;
   xpAwarded?: boolean;
@@ -596,6 +603,9 @@ export interface AppState {
   milestones: Milestone[];
   shareVision: (visionId: string, receiverEmail: string) => Promise<void>;
   toggleVisionTask: (visionId: string, taskId: string) => void;
+  addVisionTask: (visionId: string, task: Partial<Task> & { text: string }) => Promise<Task | false>;
+  updateVisionTask: (visionId: string, taskId: string, updates: Partial<Task>) => Promise<boolean>;
+  deleteVisionTask: (visionId: string, taskId: string) => Promise<boolean>;
   acceptVision: (visionId: string) => Promise<void>;
   fetchUser: () => Promise<void>;
   completeOnboarding: (data: { name: string, email: string, interests: string[], intent: string, commitment: string, username?: string, gender?: 'male' | 'female' | 'custom', bio?: string, tags?: string[], avatar?: string, role?: string, password?: string, hasInitialVision?: boolean }) => Promise<void>;

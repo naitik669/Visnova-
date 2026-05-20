@@ -1628,7 +1628,18 @@ export const useStore = create<AppState>((set, get) => ({
             completedAt: t.completed_at || null,
             xpAwarded: !!t.xp_awarded,
             xpAwardedAt: t.xp_awarded_at || null,
-            deletedAt: t.deleted_at || null
+            deletedAt: t.deleted_at || null,
+            status: t.status || (t.completed ? 'done' : t.metadata?.status || 'planned'),
+            dueDate: t.due_date || t.metadata?.due_date || null,
+            progressPercent: Number.isFinite(t.progress_percent) ? t.progress_percent : (t.completed ? 100 : t.metadata?.progress_percent || 0),
+            tags: Array.isArray(t.tags) ? t.tags : (Array.isArray(t.metadata?.tags) ? t.metadata.tags : []),
+            checklist: Array.isArray(t.checklist) ? t.checklist : (Array.isArray(t.sub_tasks) ? t.sub_tasks.map((sub: any, idx: number) => ({
+              id: sub.id || `sub_${idx}`,
+              text: sub.text || String(sub),
+              completed: !!sub.completed
+            })) : []),
+            sortOrder: t.sort_order || 0,
+            visibility: normalizeVisibility(t.visibility)
           }));
 
         return {
@@ -1841,6 +1852,191 @@ export const useStore = create<AppState>((set, get) => ({
         visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: vision.tasks, progress: vision.progress } : v)
       }));
       get().addToast({ type: 'error', title: 'Task failed', description: 'Could not save progress.' });
+    }
+  },
+
+  addVisionTask: async (visionId, task) => {
+    const userId = get().session?.user?.id;
+    const vision = get().visions.find(v => v.id === visionId);
+    if (!userId || !vision) {
+      get().addToast({ type: 'error', title: 'Vision required', description: 'Choose a Vision before adding this task.' });
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    const tempId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const newTask: Task = {
+      id: tempId,
+      text: sanitizeText(task.text, 500) || 'New task',
+      description: sanitizePlainText(task.description || '', 1500),
+      completed: false,
+      status: task.status || 'planned',
+      priority: task.priority || 'medium',
+      dueDate: task.dueDate || null,
+      progressPercent: Math.max(0, Math.min(100, Number(task.progressPercent || 0))),
+      tags: safeArray<string>(task.tags).map(tag => sanitizeText(tag, 30)).filter(Boolean).slice(0, 8),
+      checklist: safeArray<any>(task.checklist).map((item, index) => ({
+        id: item.id || `check_${index}`,
+        text: sanitizeText(item.text || '', 200),
+        completed: !!item.completed
+      })).filter(item => item.text),
+      sortOrder: task.sortOrder || vision.tasks.length,
+      visibility: normalizeVisibility(task.visibility),
+      completedAt: null,
+      xpAwarded: false,
+      xpAwardedAt: null,
+      deletedAt: null
+    };
+
+    set(state => ({
+      visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: [...v.tasks, newTask], updatedAt: Date.now() } : v)
+    }));
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+          user_id: userId,
+          vision_id: visionId,
+          text: newTask.text,
+          description: newTask.description || null,
+          completed: false,
+          status: newTask.status,
+          priority: newTask.priority,
+          due_date: newTask.dueDate,
+          progress_percent: newTask.progressPercent,
+          tags: newTask.tags,
+          checklist: newTask.checklist,
+          sort_order: newTask.sortOrder,
+          visibility: newTask.visibility,
+          sub_tasks: newTask.checklist,
+          metadata: { source: 'tasks_board' },
+          created_at: now,
+          updated_at: now
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+      const savedTask: Task = { ...newTask, id: data.id };
+      set(state => ({
+        visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: v.tasks.map(t => t.id === tempId ? savedTask : t) } : v)
+      }));
+      trackBetaEvent(userId, 'task_created', { source: 'tasks_board', vision_id: visionId }, data.id);
+      get().addToast({ type: 'success', title: 'Task created', description: `Added to ${vision.title}.` });
+      return savedTask;
+    } catch (error) {
+      console.error('Failed to add Vision task:', error);
+      set(state => ({
+        visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: v.tasks.filter(t => t.id !== tempId) } : v)
+      }));
+      get().addToast({ type: 'error', title: 'Task failed', description: 'Could not create this task.' });
+      return false;
+    }
+  },
+
+  updateVisionTask: async (visionId, taskId, updates) => {
+    const userId = get().session?.user?.id;
+    const vision = get().visions.find(v => v.id === visionId);
+    const task = vision?.tasks.find(t => t.id === taskId);
+    if (!userId || !vision || !task) return false;
+
+    const safeUpdates: Partial<Task> = {
+      ...updates,
+      text: updates.text !== undefined ? sanitizeText(updates.text, 500) : undefined,
+      description: updates.description !== undefined ? sanitizePlainText(updates.description, 1500) : undefined,
+      tags: updates.tags !== undefined ? safeArray<string>(updates.tags).map(tag => sanitizeText(tag, 30)).filter(Boolean).slice(0, 8) : undefined,
+      checklist: updates.checklist !== undefined ? safeArray<any>(updates.checklist).map((item, index) => ({
+        id: item.id || `check_${index}`,
+        text: sanitizeText(item.text || '', 200),
+        completed: !!item.completed
+      })).filter(item => item.text) : undefined,
+      progressPercent: updates.progressPercent !== undefined ? Math.max(0, Math.min(100, Number(updates.progressPercent || 0))) : undefined,
+      visibility: updates.visibility !== undefined ? normalizeVisibility(updates.visibility) : undefined
+    };
+    const requestedStatus = updates.status;
+    if (requestedStatus === 'done') {
+      safeUpdates.completed = true;
+      safeUpdates.completedAt = safeUpdates.completedAt || new Date().toISOString();
+      safeUpdates.progressPercent = 100;
+    } else if (requestedStatus) {
+      safeUpdates.completed = false;
+      safeUpdates.completedAt = null;
+    }
+
+    const previousTasks = vision.tasks;
+    const nextTasks = vision.tasks.map(t => t.id === taskId ? { ...t, ...safeUpdates } : t);
+    const progress = nextTasks.length ? Math.round((nextTasks.filter(t => t.completed).length / nextTasks.length) * 100) : 0;
+    set(state => ({
+      visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: nextTasks, progress, updatedAt: Date.now() } : v)
+    }));
+
+    const dbUpdates: any = { updated_at: new Date().toISOString() };
+    if (safeUpdates.text !== undefined) dbUpdates.text = safeUpdates.text;
+    if (safeUpdates.description !== undefined) dbUpdates.description = safeUpdates.description || null;
+    if (safeUpdates.status !== undefined) dbUpdates.status = safeUpdates.status;
+    if (safeUpdates.priority !== undefined) dbUpdates.priority = safeUpdates.priority;
+    if (safeUpdates.dueDate !== undefined) dbUpdates.due_date = safeUpdates.dueDate || null;
+    if (safeUpdates.progressPercent !== undefined) dbUpdates.progress_percent = safeUpdates.progressPercent;
+    if (safeUpdates.tags !== undefined) dbUpdates.tags = safeUpdates.tags;
+    if (safeUpdates.checklist !== undefined) {
+      dbUpdates.checklist = safeUpdates.checklist;
+      dbUpdates.sub_tasks = safeUpdates.checklist;
+    }
+    if (safeUpdates.sortOrder !== undefined) dbUpdates.sort_order = safeUpdates.sortOrder;
+    if (safeUpdates.visibility !== undefined) dbUpdates.visibility = safeUpdates.visibility;
+    if (safeUpdates.completed !== undefined) dbUpdates.completed = safeUpdates.completed;
+    if (safeUpdates.completedAt !== undefined) dbUpdates.completed_at = safeUpdates.completedAt;
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update(dbUpdates)
+        .eq('id', taskId)
+        .eq('user_id', userId);
+      if (error) throw error;
+      await supabase.from('visions').update({ progress }).eq('id', visionId).eq('user_id', userId);
+      if (safeUpdates.status === 'done' && !task.completed) {
+        get().recordDailyActivity('task');
+        trackBetaEvent(userId, 'task_completed', { source: 'tasks_board', vision_id: visionId }, taskId);
+      }
+      return true;
+    } catch (error) {
+      console.error('Failed to update Vision task:', error);
+      set(state => ({
+        visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: previousTasks, progress: vision.progress } : v)
+      }));
+      get().addToast({ type: 'error', title: 'Task failed', description: 'Could not save this task change.' });
+      return false;
+    }
+  },
+
+  deleteVisionTask: async (visionId, taskId) => {
+    const userId = get().session?.user?.id;
+    const vision = get().visions.find(v => v.id === visionId);
+    if (!userId || !vision) return false;
+    const previousTasks = vision.tasks;
+    const nextTasks = vision.tasks.filter(t => t.id !== taskId);
+    const progress = nextTasks.length ? Math.round((nextTasks.filter(t => t.completed).length / nextTasks.length) * 100) : 0;
+    set(state => ({
+      visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: nextTasks, progress, updatedAt: Date.now() } : v)
+    }));
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', taskId)
+        .eq('user_id', userId);
+      if (error) throw error;
+      await supabase.from('visions').update({ progress }).eq('id', visionId).eq('user_id', userId);
+      get().addToast({ type: 'success', title: 'Task deleted', description: 'Removed from this Vision.' });
+      return true;
+    } catch (error) {
+      console.error('Failed to delete Vision task:', error);
+      set(state => ({
+        visions: state.visions.map(v => v.id === visionId ? { ...v, tasks: previousTasks, progress: vision.progress } : v)
+      }));
+      get().addToast({ type: 'error', title: 'Delete failed', description: 'Could not delete this task.' });
+      return false;
     }
   },
 

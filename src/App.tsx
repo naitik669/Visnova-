@@ -37,6 +37,7 @@ const loadMindVisualizer = () => import('./components/Mind/MindVisualizer');
 const loadCommunityFeed = () => import('./components/Feed/CommunityFeed');
 const loadPostThreadPage = () => import('./components/Feed/PostThreadPage');
 const loadNotesSystem = () => import('./components/Notes/NotesSystem');
+const loadTasksPage = () => import('./components/Tasks/TasksPage');
 const loadProfilePage = () => import('./components/Social/ProfilePage');
 const loadSettings = () => import('./components/Settings/Settings');
 const loadFeedbackPage = () => import('./components/Support/FeedbackPage');
@@ -48,6 +49,7 @@ const MindVisualizer = lazy(loadMindVisualizer);
 const CommunityFeed = lazy(loadCommunityFeed);
 const PostThreadPage = lazy(loadPostThreadPage);
 const NotesSystem = lazy(loadNotesSystem);
+const TasksPage = lazy(loadTasksPage);
 const ProfilePage = lazy(loadProfilePage);
 const Settings = lazy(loadSettings);
 const FeedbackPage = lazy(loadFeedbackPage);
@@ -57,6 +59,7 @@ const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Pro
   { match: path => path === '/feed', load: loadCommunityFeed },
   { match: path => path.startsWith('/post/'), load: loadPostThreadPage },
   { match: path => path === '/visions' || path === '/vision', load: loadVisionBoard },
+  { match: path => path === '/tasks', load: loadTasksPage },
   { match: path => path === '/library' || path === '/notes' || path === '/journal', load: loadNotesSystem },
   { match: path => path === '/profile' || path.startsWith('/profile/'), load: loadProfilePage },
   { match: path => path === '/settings', load: loadSettings },
@@ -159,6 +162,7 @@ const mainNavBase: NavItem[] = [
   { icon: Compass, label: 'Feed', path: '/feed' },
   { icon: Users, label: 'Circle', path: '/circle' },
   { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
+  { icon: CheckCircle2, label: 'Tasks', path: '/tasks' },
   { icon: LibraryBig, label: 'Library', path: '/library' },
   { icon: GraduationCap, label: 'Growth', path: '/growth' },
   { icon: Wallet, label: 'Wallet', path: '/wallet' },
@@ -470,7 +474,7 @@ function MobileNav() {
       icon: CheckCircle2,
       title: 'Add Task',
       description: 'Add one action to today or a Vision.',
-      onClick: () => go('/')
+      onClick: () => go('/tasks')
     },
     {
       icon: BookOpen,
@@ -633,6 +637,7 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/feed': { title: 'Feed', subtitle: 'Share progress and support others' },
   '/visions': { title: 'Visions', subtitle: 'Plan goals and move tasks forward' },
   '/vision': { title: 'Visions', subtitle: 'Plan goals and move tasks forward' },
+  '/tasks': { title: 'Tasks', subtitle: 'Plan next moves and turn them into proof' },
   '/library': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/notes': { title: 'Library', subtitle: 'Notes, audio, and journal' },
   '/journal': { title: 'Library', subtitle: 'Notes, audio, and journal' },
@@ -1004,6 +1009,7 @@ function AppContent() {
                       <Route path="/post/:postId" element={<PostThreadPage />} />
                       <Route path="/visions" element={<VisionBoard />} />
                       <Route path="/vision" element={<Navigate to="/visions" replace />} />
+                      <Route path="/tasks" element={<TasksPage />} />
                       <Route path="/circle" element={<Circle />} />
                       <Route path="/communities" element={<Navigate to="/circle?tab=communities" replace />} />
                       <Route path="/messages" element={<MessagesRedirect />} />
