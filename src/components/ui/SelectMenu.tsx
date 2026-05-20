@@ -86,7 +86,7 @@ export function SelectMenu({
             onClick={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             className={cn(
-              'visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] max-h-[55dvh] overflow-y-auto p-1.5 sm:absolute sm:inset-x-0 sm:bottom-auto sm:top-full sm:mt-2 sm:max-h-72',
+              'visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[360] max-h-[55dvh] overflow-y-auto p-1.5 sm:absolute sm:inset-x-0 sm:bottom-auto sm:top-full sm:mt-2 sm:max-h-72',
               menuClassName
             )}
           >

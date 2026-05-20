@@ -1944,11 +1944,6 @@ export const useStore = create<AppState>((set, get) => ({
         data = legacyResult.data;
         error = legacyResult.error;
         if (error) throw error;
-        get().addToast({
-          type: 'info',
-          title: 'Task created in compatibility mode',
-          description: 'Run the latest task-board SQL so board status fields persist fully.'
-        });
       }
       const savedTask: Task = { ...newTask, id: data.id };
       set(state => ({
@@ -2043,11 +2038,6 @@ export const useStore = create<AppState>((set, get) => ({
           .eq('id', taskId)
           .eq('user_id', userId)
           .throwOnError();
-        get().addToast({
-          type: 'info',
-          title: 'Task saved in compatibility mode',
-          description: 'Run the latest task-board SQL so status columns persist fully.'
-        });
       }
       await supabase.from('visions').update({ progress }).eq('id', visionId).eq('user_id', userId);
       if (safeUpdates.status === 'done' && !task.completed) {
@@ -2467,11 +2457,6 @@ export const useStore = create<AppState>((set, get) => ({
             const { error: retryError } = await supabase.from('profiles').update(fallbackUpdates).eq('id', userId);
             if (retryError) throw retryError;
           }
-          get().addToast({
-            type: 'info',
-            title: 'Currency saved locally',
-            description: 'Run the latest profile currency SQL so this preference syncs across devices.'
-          });
           return true;
         }
         throw error;

@@ -163,15 +163,13 @@ export default function MoneyPage() {
           currency: nextCurrency
         }));
       }
-      const profileSaved = await updateUser({ defaultCurrency: nextCurrency });
+      await updateUser({ defaultCurrency: nextCurrency });
       await fetchMoneyOverview();
-      if (updateResults.every(Boolean)) {
+      if (updateResults.some(result => !result)) {
         addToast({
-          type: profileSaved ? 'success' : 'info',
-          title: 'Wallet currency updated',
-          description: profileSaved
-            ? `Existing Wallet values were converted to ${nextCurrency}.`
-            : `Wallet values were converted to ${nextCurrency}. Run the profile currency SQL to persist the default.`
+          type: 'error',
+          title: 'Currency partially updated',
+          description: 'Some Wallet rows could not be converted. Refresh and try again.'
         });
       }
     } finally {
@@ -293,13 +291,14 @@ export default function MoneyPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <div className="min-w-56 rounded-2xl border border-card-border bg-bg-base p-2">
+            <div className="relative z-[260] min-w-56 overflow-visible rounded-2xl border border-card-border bg-bg-base p-2">
               <p className="px-2 pb-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">Wallet Currency</p>
               <SelectMenu
                 value={defaultCurrency}
                 onChange={handleDefaultCurrencyChange}
                 options={CURRENCY_OPTIONS}
                 triggerClassName="h-10 rounded-xl bg-card"
+                menuClassName="z-[360] sm:w-72"
               />
               {isConvertingCurrency && <p className="px-2 pt-1 text-[9px] font-black uppercase tracking-widest text-accent">Converting values...</p>}
             </div>

@@ -48,7 +48,6 @@ export default function TasksPage() {
   const addVisionTask = useStore(state => state.addVisionTask);
   const updateVisionTask = useStore(state => state.updateVisionTask);
   const deleteVisionTask = useStore(state => state.deleteVisionTask);
-  const addToast = useStore(state => state.addToast);
   const [query, setQuery] = useState('');
   const [visionFilter, setVisionFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -106,10 +105,6 @@ export default function TasksPage() {
   }, [filteredTasks]);
 
   const handleStatusChange = async (task: BoardTask, status: TaskStatus) => {
-    if (status === 'done' && !task.completed) {
-      setDetailTask(task);
-      addToast({ type: 'info', title: 'Proof check', description: 'Use Log Proof if this completed task has visible progress.' });
-    }
     await updateVisionTask(task.visionId, task.id, { status });
   };
 

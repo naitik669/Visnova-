@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 
 const icons = {
@@ -11,19 +11,20 @@ const icons = {
 
 export default function ToastViewport() {
   const { toasts, removeToast } = useStore();
+  const visibleToasts = useMemo(() => toasts.slice(-2), [toasts]);
 
   useEffect(() => {
-    if (!toasts.length) return;
-    const timers = toasts.map((toast) =>
-      window.setTimeout(() => removeToast(toast.id), 4500)
+    if (!visibleToasts.length) return;
+    const timers = visibleToasts.map((toast) =>
+      window.setTimeout(() => removeToast(toast.id), toast.type === 'error' ? 5200 : 2600)
     );
     return () => timers.forEach(window.clearTimeout);
-  }, [toasts, removeToast]);
+  }, [visibleToasts, removeToast]);
 
   return (
-    <div className="fixed top-6 right-6 z-[300] flex w-[min(380px,calc(100vw-3rem))] flex-col gap-3 pointer-events-none">
+    <div className="fixed right-4 top-4 z-[300] flex w-[min(340px,calc(100vw-2rem))] flex-col gap-2 pointer-events-none sm:right-6 sm:top-6">
       <AnimatePresence initial={false}>
-        {toasts.map((toast) => {
+        {visibleToasts.map((toast) => {
           const Icon = icons[toast.type] || Info;
           return (
             <motion.div
@@ -31,7 +32,7 @@ export default function ToastViewport() {
               initial={{ opacity: 0, y: -12, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -12, scale: 0.96 }}
-              className="pointer-events-auto rounded-2xl border border-card-border bg-card/95 p-4 shadow-2xl backdrop-blur-xl"
+              className="pointer-events-auto rounded-2xl border border-card-border bg-card/95 p-3 shadow-xl backdrop-blur-xl"
             >
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 rounded-xl bg-accent/10 p-2 text-accent">
