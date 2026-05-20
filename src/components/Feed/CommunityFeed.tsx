@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -79,6 +80,10 @@ type ConfirmAction = {
   run: () => Promise<void>;
 };
 const FEED_POST_PREVIEW_LIMIT = 420;
+const renderModalPortal = (node: ReactNode) => {
+  if (typeof document === 'undefined') return node;
+  return createPortal(node, document.body);
+};
 
 const editedLabel = (editedAt?: string | null) => editedAt ? `Edited ${safeFormat(editedAt, 'MMM d, h:mm a')}` : '';
 
@@ -1184,7 +1189,7 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
     if (success) onClose();
   };
 
-  return (
+  return renderModalPortal(
     <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div
         initial={{ opacity: 0 }}
@@ -1271,7 +1276,7 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
 }
 
 export function ImageLightbox({ src, alt, onClose }: { src: string, alt: string, onClose: () => void }) {
-  return (
+  return renderModalPortal(
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0 }}
@@ -1819,7 +1824,7 @@ export function PostReportModal({ onClose, reason, setReason, details, setDetail
     setIsSubmitting(false);
   };
 
-  return (
+  return renderModalPortal(
     <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/80 backdrop-blur-md" />
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-md max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl p-5 sm:p-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
@@ -1956,7 +1961,7 @@ function SharePostModal({ post, onClose }: { post: Post, onClose: () => void }) 
     }
   };
 
-  return (
+  return renderModalPortal(
     <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-overlay/70 backdrop-blur-md" />
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-lg max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl overflow-y-auto custom-scrollbar">
@@ -2222,7 +2227,7 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
 
   const threadComments = buildModalCommentTree(comments);
 
-  return (
+  return renderModalPortal(
     <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div
         initial={{ opacity: 0 }}

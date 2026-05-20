@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, Loader2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../lib/utils';
 
 type ConfirmTone = 'danger' | 'warning' | 'info';
@@ -33,7 +34,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel
 }: ConfirmDialogProps) {
-  return (
+  const dialog = (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[320] flex items-end justify-center p-0 sm:items-center sm:p-4">
@@ -106,4 +107,7 @@ export function ConfirmDialog({
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') return dialog;
+  return createPortal(dialog, document.body);
 }
