@@ -68,14 +68,6 @@ const SECTION_COLORS = {
   cream: { fill: 'rgba(255, 247, 237, 0.72)', border: 'rgba(251, 191, 36, 0.30)' }
 };
 
-const TEMPLATE_LABELS: Record<BoardTemplateId, { title: string; description: string }> = {
-  classic: { title: 'Classic Vision Board', description: 'Vision, inspiration, goals, resources, proof, and notes.' },
-  project: { title: 'Project Launch Board', description: 'Tasks, deadlines, resources, blockers, and proof logs.' },
-  creator: { title: 'Creator Board', description: 'Ideas, references, scripts, assets, progress, and publish plan.' },
-  study: { title: 'Study Board', description: 'Subjects, weak areas, deadlines, resources, and exam progress.' },
-  custom: { title: 'Custom Board', description: 'A clean structured board you can shape yourself.' }
-};
-
 const newId = (prefix = 'el') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -355,6 +347,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const viewportRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const currentVisionIdRef = useRef(vision.id);
+  const autoTemplateVisionRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingElementsRef = useRef<VisionElement[]>(normalizeElements(vision.elements));
   const localVersionRef = useRef(0);
@@ -675,6 +668,14 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setSaveStatus('saved');
   }, [vision.elements, vision.id]);
 
+  useEffect(() => {
+    const persistedElements = normalizeElements(vision.elements);
+    if (persistedElements.length > 0 || elements.length > 0) return;
+    if (autoTemplateVisionRef.current === vision.id) return;
+    autoTemplateVisionRef.current = vision.id;
+    applyTemplate('classic', 'replace');
+  }, [applyTemplate, elements.length, vision.elements, vision.id]);
+
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
   }, []);
@@ -942,7 +943,6 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#8b5cf622', strokeColor: 'var(--accent)' })} />
             <CanvasToolButton icon={<Upload size={18} />} label="Import" onClick={() => setImportPanelOpen(true)} />
             <CanvasToolButton icon={<Maximize2 size={18} />} label="Fit" onClick={() => fitToContent(true)} />
-            <CanvasToolButton icon={<FileText size={18} />} label="Classic Layout" onClick={() => applyTemplate('classic', elements.length ? 'append' : 'replace')} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1057,34 +1057,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       </div>
 
       {elements.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-5 py-20 text-center">
-          <div className="pointer-events-auto w-full max-w-5xl rounded-[2rem] border border-card-border bg-card/90 p-5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/60 backdrop-blur-xl sm:p-7">
-            <div className="mx-auto max-w-2xl space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent">Vision Board</p>
-              <h2 className="text-2xl font-black tracking-tight text-text-main sm:text-4xl">Start with a real board, not a blank whiteboard.</h2>
-              <p className="text-sm font-semibold text-text-secondary sm:text-base">Pick a layout and VisNova will create structured zones for your goals, inspiration, resources, tasks, and progress proof. Every card is editable and saved to this Vision.</p>
-            </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {(Object.keys(TEMPLATE_LABELS) as BoardTemplateId[]).map((template) => (
-                <button
-                  key={template}
-                  type="button"
-                  onClick={() => applyTemplate(template)}
-                  className="group rounded-3xl border border-card-border bg-bg-base/50 p-4 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-accent/40 hover:bg-accent/10 hover:shadow-xl hover:shadow-accent/10"
-                >
-                  <span className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-contrast">
-                    <Layers3 size={18} />
-                  </span>
-                  <span className="block text-sm font-black text-text-main">{TEMPLATE_LABELS[template].title}</span>
-                  <span className="mt-2 block text-xs font-semibold leading-relaxed text-text-secondary">{TEMPLATE_LABELS[template].description}</span>
-                </button>
-              ))}
-            </div>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <QuickStartAction label="Just add text" onClick={() => createElement('text', 'Main Goal', { fontSize: '46px', fontWeight: '900' })} />
-              <QuickStartAction label="Upload image" onClick={() => imageInputRef.current?.click()} />
-              <QuickStartAction label="Add sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
-            </div>
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center px-5 text-center">
+          <div className="rounded-[2rem] border border-card-border bg-card/90 px-6 py-5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/60 backdrop-blur-xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent">Vision Board</p>
+            <p className="mt-2 text-sm font-bold text-text-secondary">Preparing your Classic Vision Board...</p>
           </div>
         </div>
       )}
