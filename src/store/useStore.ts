@@ -210,6 +210,7 @@ function normalizeNote(row: any): Note {
     title: safeString(row?.title, 'Untitled Note'),
     content: safeString(row?.content),
     note_type: normalizeNoteType(row?.note_type),
+    icon: safeString(row?.note_icon).slice(0, 8) || undefined,
     folderId: row?.folder_id || null,
     tags: safeArray<string>(row?.tags),
     linkedVisionId: row?.linked_vision_id || null,
@@ -2552,6 +2553,7 @@ export const useStore = create<AppState>((set, get) => ({
       title: safeNote.title,
       content: safeNote.content,
       note_type: safeNote.note_type,
+      icon: safeString(safeNote.icon).slice(0, 8) || undefined,
       folderId: safeNote.folderId || null,
       tags: safeNote.tags || [],
       linkedVisionId: safeNote.linkedVisionId || null,
@@ -2584,6 +2586,7 @@ export const useStore = create<AppState>((set, get) => ({
         title: noteData.title,
         content: noteData.content,
         note_type: noteData.note_type,
+        note_icon: noteData.icon,
         folder_id: noteData.folderId,
         tags: noteData.tags,
         visibility: noteData.visibility,
@@ -2626,6 +2629,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (safeUpdates.title !== undefined) safeUpdates.title = sanitizeText(safeUpdates.title, 120) || 'Untitled Note';
     if (safeUpdates.content !== undefined) safeUpdates.content = sanitizePlainText(safeUpdates.content, 50000);
     if (safeUpdates.tags !== undefined) safeUpdates.tags = Array.isArray(safeUpdates.tags) ? safeUpdates.tags.map((tag: string) => sanitizeText(tag, 30)).filter(Boolean).slice(0, 20) : [];
+    if (safeUpdates.icon !== undefined) safeUpdates.icon = safeString(safeUpdates.icon).slice(0, 8) || undefined;
     set((state) => ({
       notes: state.notes.map((n) => (n.id === id ? { ...n, ...safeUpdates, updatedAt: Date.now() } : n)),
     }));
@@ -2634,6 +2638,7 @@ export const useStore = create<AppState>((set, get) => ({
       const dbUpdates: any = {};
       if (updates.title !== undefined) dbUpdates.title = safeUpdates.title;
       if (updates.content !== undefined) dbUpdates.content = safeUpdates.content;
+      if (updates.icon !== undefined) dbUpdates.note_icon = safeUpdates.icon || null;
       if (updates.folderId !== undefined) dbUpdates.folder_id = updates.folderId;
       if (updates.tags !== undefined) dbUpdates.tags = safeUpdates.tags;
       if (updates.isPinned !== undefined) dbUpdates.is_pinned = updates.isPinned;

@@ -81,6 +81,8 @@ const NOTE_TILE_STYLES = [
   { background: 'color-mix(in srgb, var(--danger) 10%, transparent)', border: 'color-mix(in srgb, var(--danger) 20%, transparent)', ink: 'var(--danger)' },
 ];
 
+const NOTE_ICON_OPTIONS = ['📝', '💡', '🎯', '📌', '📚', '🔗', '✨', '🚀', '🧠', '✅', '🎧', '📷', '💭', '🔥', '🌱', '⭐'];
+
 function noteStyleFor(note: Note) {
   const source = `${note.id || ''}${note.title || ''}`;
   const seed = source.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -102,6 +104,14 @@ function WaveformPreview({ active = false }: { active?: boolean }) {
         />
       ))}
     </div>
+  );
+}
+
+function NoteIconGlyph({ note, fallback: FallbackIcon, size = 19 }: { note: Note; fallback: typeof FileText; size?: number }) {
+  return note.icon ? (
+    <span className="text-xl leading-none" aria-hidden="true">{note.icon}</span>
+  ) : (
+    <FallbackIcon size={size} />
   );
 }
 
@@ -2316,7 +2326,7 @@ function NoteCard({
             className="flex h-20 w-full shrink-0 items-center justify-center rounded-[1.35rem] border shadow-sm sm:w-24"
             style={{ background: visualStyle.background, borderColor: visualStyle.border, color: visualStyle.ink }}
           >
-            <NoteIcon size={24} />
+            <NoteIconGlyph note={note} fallback={NoteIcon} size={24} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
@@ -2381,7 +2391,7 @@ function NoteCard({
         <div className="absolute inset-x-0 top-0 h-1 bg-accent/60" />
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent shadow-sm">
-            <Volume2 size={20} />
+            <NoteIconGlyph note={note} fallback={Volume2} size={20} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[9px] font-black uppercase tracking-[0.22em] text-accent/70">Audio Note</p>
@@ -2446,7 +2456,7 @@ function NoteCard({
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm"
             style={{ background: visualStyle.background, borderColor: visualStyle.border, color: visualStyle.ink }}
           >
-            <NoteIcon size={19} />
+            <NoteIconGlyph note={note} fallback={NoteIcon} size={19} />
           </div>
           <div className="min-w-0 flex-1">
             <h4 className="text-[15px] font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight line-clamp-1">{safeString(note.title, 'Untitled Note')}</h4>
@@ -2536,6 +2546,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   const audioInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -2638,6 +2649,17 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
            </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+           <button
+             onClick={() => setIsIconPickerOpen(open => !open)}
+             className={cn(
+               "h-10 min-w-10 rounded-xl border px-3 text-lg transition-all",
+               isIconPickerOpen || note.icon ? "border-accent/30 bg-accent/10 text-accent" : "border-card-border bg-transparent text-text-secondary/45 hover:text-text-main"
+             )}
+             aria-label="Choose note icon"
+             title="Choose note icon"
+           >
+             {note.icon || '📝'}
+           </button>
            <button 
              onClick={() => updateNote(note.id, { isFavorite: !note.isFavorite })}
              className={cn("w-10 h-10 rounded-xl border flex items-center justify-center transition-all", note.isFavorite ? "bg-accent/10 border-accent/30 text-accent" : "bg-transparent border-card-border text-text-secondary/45 hover:text-text-main")}
@@ -2682,6 +2704,57 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
           {note.note_type === 'journal' && (
             <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{safeFormat(note.createdAt, 'EEEE, MMM dd')}</h4>
           )}
+
+          <AnimatePresence initial={false}>
+            {isIconPickerOpen && (
+              <motion.section
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm"
+              >
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-[1.4rem] border border-card-border bg-surface-muted text-3xl shadow-sm">
+                      {note.icon || '📝'}
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Note Icon</p>
+                      <h3 className="mt-1 text-xl font-black tracking-tight text-text-main">Choose the note symbol</h3>
+                      <p className="mt-1 text-xs font-semibold text-text-secondary">This icon appears on your Library cards.</p>
+                    </div>
+                  </div>
+                  {note.icon && (
+                    <button
+                      onClick={() => updateNote(note.id, { icon: undefined })}
+                      className="h-10 rounded-xl border border-card-border px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-danger"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="mt-5 grid grid-cols-4 gap-3 sm:grid-cols-8">
+                  {NOTE_ICON_OPTIONS.map(icon => (
+                    <button
+                      key={icon}
+                      type="button"
+                      onClick={() => {
+                        updateNote(note.id, { icon });
+                        setIsIconPickerOpen(false);
+                      }}
+                      className={cn(
+                        "flex h-14 items-center justify-center rounded-2xl border bg-app-container text-2xl shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/40",
+                        note.icon === icon ? "border-accent bg-accent/10 ring-2 ring-accent/20" : "border-card-border"
+                      )}
+                      aria-label={`Use ${icon} as note icon`}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
 
           <input
             value={note.title}

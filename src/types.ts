@@ -127,6 +127,7 @@ export interface Note {
   title: string;
   content: string;
   note_type: 'normal' | 'audio' | 'journal';
+  icon?: string;
   folderId: string | null;
   tags: string[];
   linkedVisionId: string | null;
