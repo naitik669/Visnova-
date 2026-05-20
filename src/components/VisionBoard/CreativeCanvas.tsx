@@ -13,6 +13,7 @@ import {
   Link as LinkIcon,
   ListChecks,
   Loader2,
+  Layers3,
   Maximize2,
   Minus,
   MoreHorizontal,
@@ -21,6 +22,7 @@ import {
   Save,
   Square,
   StickyNote,
+  Target,
   Trash2,
   Type,
   Upload,
@@ -42,6 +44,7 @@ type SaveStatus = 'saved' | 'dirty' | 'saving' | 'failed';
 type BoardTool = 'select' | 'pen' | 'eraser';
 type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
 type ChecklistItem = NonNullable<NonNullable<VisionElement['metadata']>['checklist']>[number];
+type BoardTemplateId = 'classic' | 'project' | 'creator' | 'study' | 'custom';
 
 const CANVAS_SIZE = 9000;
 const CANVAS_CENTER = 4500;
@@ -50,27 +53,49 @@ const MAX_ZOOM = 2.5;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const STABLE_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'connector', 'link', 'drawing', 'heading', 'flowchartNode']);
-const RESIZABLE_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'link']);
+const STABLE_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'connector', 'link', 'drawing', 'heading', 'flowchartNode', 'section', 'task', 'note', 'quote']);
+const RESIZABLE_TYPES = new Set<VisionElement['type']>(['text', 'image', 'sticky', 'checklist', 'shape', 'link', 'section', 'task', 'note', 'quote']);
+
+const SECTION_COLORS = {
+  lavender: { fill: 'rgba(139, 92, 246, 0.11)', border: 'rgba(139, 92, 246, 0.32)' },
+  blue: { fill: 'rgba(96, 165, 250, 0.12)', border: 'rgba(96, 165, 250, 0.32)' },
+  pink: { fill: 'rgba(244, 114, 182, 0.12)', border: 'rgba(244, 114, 182, 0.30)' },
+  yellow: { fill: 'rgba(250, 204, 21, 0.13)', border: 'rgba(202, 138, 4, 0.26)' },
+  mint: { fill: 'rgba(52, 211, 153, 0.12)', border: 'rgba(16, 185, 129, 0.30)' },
+  cream: { fill: 'rgba(255, 247, 237, 0.72)', border: 'rgba(251, 191, 36, 0.30)' }
+};
+
+const TEMPLATE_LABELS: Record<BoardTemplateId, { title: string; description: string }> = {
+  classic: { title: 'Classic Vision Board', description: 'Vision, inspiration, goals, resources, proof, and notes.' },
+  project: { title: 'Project Launch Board', description: 'Tasks, deadlines, resources, blockers, and proof logs.' },
+  creator: { title: 'Creator Board', description: 'Ideas, references, scripts, assets, progress, and publish plan.' },
+  study: { title: 'Study Board', description: 'Subjects, weak areas, deadlines, resources, and exam progress.' },
+  custom: { title: 'Custom Board', description: 'A clean structured board you can shape yourself.' }
+};
 
 const newId = (prefix = 'el') => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const defaultSize = (type: VisionElement['type']) => {
+  if (type === 'section') return { width: 780, height: 470 };
   if (type === 'image') return { width: 360, height: 240 };
   if (type === 'sticky') return { width: 260, height: 220 };
   if (type === 'checklist') return { width: 320, height: 260 };
   if (type === 'link') return { width: 330, height: 210 };
+  if (type === 'task') return { width: 320, height: 118 };
+  if (type === 'note' || type === 'quote') return { width: 300, height: 180 };
   if (type === 'shape' || type === 'flowchartNode') return { width: 170, height: 120 };
   if (type === 'heading') return { width: 420, height: 100 };
   return { width: 280, height: 100 };
 };
 
 const minSize = (type: VisionElement['type']) => {
+  if (type === 'section') return { width: 340, height: 220 };
   if (type === 'image') return { width: 120, height: 90 };
   if (type === 'sticky') return { width: 160, height: 120 };
   if (type === 'checklist') return { width: 190, height: 150 };
   if (type === 'link') return { width: 230, height: 145 };
+  if (type === 'task') return { width: 230, height: 90 };
   if (type === 'shape') return { width: 80, height: 80 };
   return { width: 120, height: 60 };
 };
@@ -99,7 +124,7 @@ const normalizeElement = (raw: unknown, index: number): VisionElement => {
   return {
     id: safeString(row.id, newId(`board-${index}`)),
     type,
-    content: safeString(row.content, type === 'sticky' ? 'Idea or reminder' : type === 'checklist' ? 'Checklist' : ''),
+    content: safeString(row.content, type === 'sticky' ? 'Idea or reminder' : type === 'checklist' ? 'Checklist' : type === 'section' ? 'Board Section' : type === 'task' ? 'Next task' : ''),
     x: safeNumber(row.x, CANVAS_CENTER + (index % 4) * 140),
     y: safeNumber(row.y, CANVAS_CENTER + Math.floor(index / 4) * 140),
     width: Math.max(48, safeNumber(row.width, size.width)),
@@ -116,6 +141,125 @@ const normalizeElement = (raw: unknown, index: number): VisionElement => {
       shapeType: type === 'shape' ? (metadata.shapeType || 'rectangle') : metadata.shapeType
     }
   };
+};
+
+const templateElement = (
+  type: VisionElement['type'],
+  content: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  zIndex: number,
+  metadata: VisionElement['metadata'] = {}
+): VisionElement => {
+  const now = Date.now();
+  return {
+    id: newId(type),
+    type,
+    content,
+    x,
+    y,
+    width,
+    height,
+    rotation: 0,
+    zIndex,
+    createdAt: now,
+    updatedAt: now,
+    metadata
+  };
+};
+
+const sectionElement = (
+  title: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  color: keyof typeof SECTION_COLORS,
+  zIndex: number,
+  description?: string
+) => templateElement('section', title, x, y, width, height, zIndex, {
+  title,
+  description,
+  fillColor: SECTION_COLORS[color].fill,
+  strokeColor: SECTION_COLORS[color].border,
+  color
+} as VisionElement['metadata']);
+
+const createTemplateElements = (template: BoardTemplateId, vision: Vision): VisionElement[] => {
+  const left = CANVAS_CENTER - 1300;
+  const top = CANVAS_CENTER - 900;
+  const visionTitle = safeString(vision.title, 'My Vision');
+  const baseSections = {
+    classic: [
+      sectionElement('My Vision', left + 420, top, 760, 360, 'lavender', 10, 'The clear picture of what you are building.'),
+      sectionElement('Inspirations', left, top + 420, 600, 450, 'blue', 11),
+      sectionElement('Goals', left + 660, top + 420, 610, 450, 'mint', 12),
+      sectionElement('Resources', left + 1330, top + 420, 600, 450, 'yellow', 13),
+      sectionElement('Progress Proof', left + 330, top + 930, 760, 420, 'pink', 14),
+      sectionElement('Notes', left + 1150, top + 930, 620, 420, 'cream', 15)
+    ],
+    project: [
+      sectionElement('Big Goal', left + 420, top, 760, 350, 'lavender', 10),
+      sectionElement('Tasks', left, top + 420, 620, 760, 'mint', 11),
+      sectionElement('Deadlines', left + 680, top + 420, 560, 360, 'yellow', 12),
+      sectionElement('Resources', left + 1300, top + 420, 620, 360, 'blue', 13),
+      sectionElement('Blockers', left + 680, top + 840, 560, 340, 'pink', 14),
+      sectionElement('Proof Logs', left + 1300, top + 840, 620, 340, 'cream', 15)
+    ],
+    creator: [
+      sectionElement('Content Ideas', left, top, 620, 520, 'yellow', 10),
+      sectionElement('References', left + 680, top, 620, 520, 'blue', 11),
+      sectionElement('Scripts', left + 1360, top, 620, 520, 'cream', 12),
+      sectionElement('Assets', left, top + 590, 620, 520, 'pink', 13),
+      sectionElement('Progress', left + 680, top + 590, 620, 520, 'mint', 14),
+      sectionElement('Publish Plan', left + 1360, top + 590, 620, 520, 'lavender', 15)
+    ],
+    study: [
+      sectionElement('Exam Goal', left + 420, top, 760, 340, 'lavender', 10),
+      sectionElement('Subjects', left, top + 410, 620, 470, 'blue', 11),
+      sectionElement('Weak Areas', left + 680, top + 410, 620, 470, 'pink', 12),
+      sectionElement('Resources', left + 1360, top + 410, 620, 470, 'yellow', 13),
+      sectionElement('Deadlines', left + 340, top + 950, 620, 390, 'cream', 14),
+      sectionElement('Progress Logs', left + 1020, top + 950, 620, 390, 'mint', 15)
+    ],
+    custom: [
+      sectionElement('Main Vision', left + 360, top + 80, 820, 420, 'lavender', 10),
+      sectionElement('Plan', left + 80, top + 580, 700, 460, 'mint', 11),
+      sectionElement('Proof', left + 860, top + 580, 700, 460, 'blue', 12)
+    ]
+  } satisfies Record<BoardTemplateId, VisionElement[]>;
+
+  const sections = baseSections[template];
+  const starterCards: VisionElement[] = [
+    templateElement('text', visionTitle, left + 610, top + 88, 470, 96, 1200, { fontSize: '44px', fontWeight: '900', textAlign: 'center' }),
+    templateElement('sticky', 'What does this Vision look like when it is real?', left + 700, top + 210, 300, 170, 1201, { color: '#fef3c7' }),
+    templateElement('checklist', 'First moves', left + 740, top + 515, 330, 230, 1202, {
+      checklist: [
+        { id: newId('item'), text: 'Define the next milestone', completed: false },
+        { id: newId('item'), text: 'Collect one strong reference', completed: false },
+        { id: newId('item'), text: 'Log first proof', completed: false }
+      ]
+    }),
+    templateElement('link', 'https://example.com', left + 1460, top + 555, 330, 210, 1203, {
+      url: 'https://example.com',
+      title: 'Resource or reference',
+      description: 'Drop tools, courses, products, docs, or inspiration here.',
+      provider: 'Resource'
+    }),
+    templateElement('task', 'Next concrete task', left + 112, top + 520, 330, 118, 1204, { title: 'Next concrete task', description: 'Turn one board idea into execution.' } as VisionElement['metadata']),
+    templateElement('shape', 'Proof goes here', left + 520, top + 1040, 330, 150, 1205, {
+      title: 'Proof goes here',
+      description: 'Screenshots, wins, updates, and receipts of progress.',
+      shapeType: 'rectangle',
+      fillColor: 'rgba(244, 114, 182, 0.16)',
+      strokeColor: 'rgba(244, 114, 182, 0.35)',
+      source: 'proof'
+    })
+  ];
+
+  return [...sections, ...starterCards];
 };
 
 const normalizeElements = (value: unknown): VisionElement[] => safeArray(value).slice(0, 500).map(normalizeElement);
@@ -359,7 +503,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       width: size.width,
       height: size.height,
       rotation: 0,
-      zIndex: now,
+      zIndex: type === 'section' ? 20 : now,
       createdAt: now,
       updatedAt: now,
       metadata
@@ -372,6 +516,15 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setImportPanelOpen(false);
     return element;
   }, [applyElements, viewportToCanvas]);
+
+  const applyTemplate = useCallback((template: BoardTemplateId, mode: 'replace' | 'append' = 'replace') => {
+    const templateElements = createTemplateElements(template, vision);
+    applyElements(current => mode === 'append' ? [...current, ...templateElements] : templateElements, true, true);
+    setSelectedId(null);
+    setMoreToolsOpen(false);
+    setMobileToolsOpen(false);
+    window.setTimeout(() => fitToContent(true), 50);
+  }, [applyElements, fitToContent, vision]);
 
   const deleteElement = useCallback((id: string) => {
     applyElements(current => current.filter(element => (
@@ -704,9 +857,11 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
 
   const addMenuOptions = (
     <>
+      <CanvasToolButton icon={<Layers3 size={18} />} label="Section" onClick={() => createElement('section', 'New Section', { title: 'New Section', fillColor: SECTION_COLORS.lavender.fill, strokeColor: SECTION_COLORS.lavender.border } as VisionElement['metadata'])} />
       <CanvasToolButton icon={<Type size={18} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} />
       <CanvasToolButton icon={<StickyNote size={18} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
       <CanvasToolButton icon={<FileText size={18} />} label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
+      <CanvasToolButton icon={<Target size={18} />} label="Task" onClick={() => createElement('task', 'Next task', { title: 'Next task', description: 'Move this Vision forward.' } as VisionElement['metadata'])} />
       <CanvasToolButton icon={<ImageIcon size={18} />} label="Image" onClick={() => imageInputRef.current?.click()} loading={isUploading} />
       <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#8b5cf622', strokeColor: 'var(--accent)' })} />
       <CanvasToolButton icon={<LinkIcon size={18} />} label="Link" onClick={() => { setMobileToolsOpen(false); setLinkPanelOpen(true); }} />
@@ -719,6 +874,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       <CanvasQuickButton icon={<Brush size={17} />} label="Pen" onClick={() => setActiveTool(activeTool === 'pen' ? 'select' : 'pen')} active={activeTool === 'pen'} />
       <CanvasQuickButton icon={<Eraser size={17} />} label="Eraser" onClick={() => setActiveTool(activeTool === 'eraser' ? 'select' : 'eraser')} active={activeTool === 'eraser'} />
       <div className="mx-1 h-7 w-px shrink-0 bg-card-border" />
+      <CanvasQuickButton icon={<Layers3 size={17} />} label="Section" onClick={() => createElement('section', 'New Section', { title: 'New Section', fillColor: SECTION_COLORS.lavender.fill, strokeColor: SECTION_COLORS.lavender.border } as VisionElement['metadata'])} />
       <CanvasQuickButton icon={<Type size={17} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} />
       <CanvasQuickButton icon={<StickyNote size={17} />} label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
       <CanvasQuickButton icon={<FileText size={17} />} label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
@@ -766,9 +922,12 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
             className="absolute left-1/2 top-[5.5rem] z-[170] hidden -translate-x-1/2 grid-cols-3 gap-2 rounded-3xl border border-card-border bg-card/95 p-3 shadow-2xl backdrop-blur-xl md:grid"
             data-no-pan
           >
+            <CanvasToolButton icon={<Layers3 size={18} />} label="Add Section" onClick={() => createElement('section', 'New Section', { title: 'New Section', fillColor: SECTION_COLORS.blue.fill, strokeColor: SECTION_COLORS.blue.border } as VisionElement['metadata'])} />
+            <CanvasToolButton icon={<Target size={18} />} label="Task Card" onClick={() => createElement('task', 'Next task', { title: 'Next task', description: 'Move this Vision forward.' } as VisionElement['metadata'])} />
             <CanvasToolButton icon={<Square size={18} />} label="Shape" onClick={() => createElement('shape', 'Label', { shapeType: 'rectangle', fillColor: '#8b5cf622', strokeColor: 'var(--accent)' })} />
             <CanvasToolButton icon={<Upload size={18} />} label="Import" onClick={() => setImportPanelOpen(true)} />
             <CanvasToolButton icon={<Maximize2 size={18} />} label="Fit" onClick={() => fitToContent(true)} />
+            <CanvasToolButton icon={<FileText size={18} />} label="Classic Layout" onClick={() => applyTemplate('classic', elements.length ? 'append' : 'replace')} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -795,7 +954,17 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
           height: CANVAS_SIZE
         }}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(120,120,120,0.23)_1px,transparent_1px)] [background-size:24px_24px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(120,120,120,0.18)_1px,transparent_1px)] [background-size:24px_24px]" />
+        <div
+          className="pointer-events-none absolute rounded-[72px] border border-card-border/60 bg-card/45 shadow-2xl shadow-accent/10"
+          style={{ left: CANVAS_CENTER - 1950, top: CANVAS_CENTER - 1320, width: 3900, height: 2640 }}
+        />
+        <div
+          className="pointer-events-none absolute overflow-hidden rounded-[72px]"
+          style={{ left: CANVAS_CENTER - 1950, top: CANVAS_CENTER - 1320, width: 3900, height: 2640 }}
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(139,92,246,0.12),transparent_30%),radial-gradient(circle_at_85%_22%,rgba(96,165,250,0.10),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.62),rgba(241,236,255,0.34))]" />
+        </div>
         <div
           className="pointer-events-none absolute rounded-[64px] border-2 border-dashed border-accent/18 bg-card/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.34)]"
           style={{ left: CANVAS_CENTER - 1800, top: CANVAS_CENTER - 1200, width: 3600, height: 2400 }}
@@ -873,16 +1042,34 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       </div>
 
       {elements.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-6 px-6 text-center">
-          <div className="max-w-md space-y-3">
-            <h2 className="text-3xl font-black tracking-tight text-text-main/25 sm:text-5xl">Start building your vision.</h2>
-            <p className="text-sm font-semibold text-text-secondary/50 sm:text-base">Add text, images, shapes, or a checklist. Everything saves back to this Vision Board.</p>
-          </div>
-          <div className="pointer-events-auto flex flex-wrap justify-center gap-2">
-            <QuickStartAction label="Text" onClick={() => createElement('text', 'Main Goal', { fontSize: '46px', fontWeight: '900' })} />
-            <QuickStartAction label="Image" onClick={() => imageInputRef.current?.click()} />
-            <QuickStartAction label="Checklist" onClick={() => createElement('checklist', 'Checklist', { checklist: [{ id: newId('item'), text: 'First item', completed: false }] })} />
-            <QuickStartAction label="Sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-5 py-20 text-center">
+          <div className="pointer-events-auto w-full max-w-5xl rounded-[2rem] border border-card-border bg-card/90 p-5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/60 backdrop-blur-xl sm:p-7">
+            <div className="mx-auto max-w-2xl space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent">Vision Board</p>
+              <h2 className="text-2xl font-black tracking-tight text-text-main sm:text-4xl">Start with a real board, not a blank whiteboard.</h2>
+              <p className="text-sm font-semibold text-text-secondary sm:text-base">Pick a layout and VisNova will create structured zones for your goals, inspiration, resources, tasks, and progress proof. Every card is editable and saved to this Vision.</p>
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {(Object.keys(TEMPLATE_LABELS) as BoardTemplateId[]).map((template) => (
+                <button
+                  key={template}
+                  type="button"
+                  onClick={() => applyTemplate(template)}
+                  className="group rounded-3xl border border-card-border bg-bg-base/50 p-4 text-left shadow-sm transition-all hover:-translate-y-1 hover:border-accent/40 hover:bg-accent/10 hover:shadow-xl hover:shadow-accent/10"
+                >
+                  <span className="mb-4 grid h-11 w-11 place-items-center rounded-2xl bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-contrast">
+                    <Layers3 size={18} />
+                  </span>
+                  <span className="block text-sm font-black text-text-main">{TEMPLATE_LABELS[template].title}</span>
+                  <span className="mt-2 block text-xs font-semibold leading-relaxed text-text-secondary">{TEMPLATE_LABELS[template].description}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <QuickStartAction label="Just add text" onClick={() => createElement('text', 'Main Goal', { fontSize: '46px', fontWeight: '900' })} />
+              <QuickStartAction label="Upload image" onClick={() => imageInputRef.current?.click()} />
+              <QuickStartAction label="Add sticky" onClick={() => createElement('sticky', 'Idea or reminder', { color: '#fef08a' })} />
+            </div>
           </div>
         </div>
       )}
@@ -1030,7 +1217,7 @@ const BoardElement = React.memo(({
       }}
       onDoubleClick={(event) => {
         event.stopPropagation();
-        if (['text', 'sticky', 'checklist', 'shape', 'link'].includes(element.type)) onEdit();
+        if (['text', 'sticky', 'checklist', 'shape', 'link', 'section', 'task', 'note', 'quote'].includes(element.type)) onEdit();
       }}
       data-no-pan
     >
@@ -1072,6 +1259,44 @@ function ElementContent({
     'h-full w-full overflow-hidden rounded-2xl border bg-card shadow-xl transition-colors',
     selected ? 'border-accent ring-4 ring-accent/10' : 'border-card-border'
   );
+
+  if (element.type === 'section') {
+    return (
+      <div
+        className={cn(
+          'relative h-full w-full overflow-hidden rounded-[2rem] border-2 p-5 shadow-[0_24px_70px_rgba(37,22,61,0.10)] backdrop-blur-sm',
+          selected && 'ring-4 ring-accent/12'
+        )}
+        style={{
+          background: element.metadata?.fillColor || SECTION_COLORS.lavender.fill,
+          borderColor: element.metadata?.strokeColor || SECTION_COLORS.lavender.border
+        }}
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18px_18px,rgba(255,255,255,0.55)_1px,transparent_1px)] [background-size:28px_28px]" />
+        <div className="relative z-10 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-text-secondary/70">Board Section</p>
+            <EditableBlock
+              className="mt-1 min-h-10 w-full resize-none bg-transparent p-0 text-2xl font-black leading-tight text-text-main outline-none"
+              value={element.content || element.metadata?.title || 'Board Section'}
+              editing={editing}
+              onEdit={onEdit}
+              onDone={(value) => {
+                onUpdate({ content: value || 'Board Section', metadata: { title: value || 'Board Section' } }, true, true);
+                onDone();
+              }}
+            />
+            {element.metadata?.description && (
+              <p className="mt-2 max-w-sm text-sm font-semibold leading-relaxed text-text-secondary">{element.metadata.description}</p>
+            )}
+          </div>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-card/70 text-accent shadow-sm">
+            <Layers3 size={18} />
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (element.type === 'image') {
     const src = element.metadata?.imageUrl || element.content;
@@ -1115,6 +1340,38 @@ function ElementContent({
           onDone();
         }}
       />
+    );
+  }
+
+  if (element.type === 'task') {
+    const metadata = safeObject<any>(element.metadata);
+    const completed = Boolean(metadata.completed);
+    const toggleComplete = () => onUpdate({ metadata: { completed: !completed } as VisionElement['metadata'] }, true, true);
+    return (
+      <div className={cn(baseClass, 'flex items-center gap-4 p-4')}>
+        <button
+          type="button"
+          onClick={toggleComplete}
+          className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-2xl border-2 transition-colors', completed ? 'border-accent bg-accent text-accent-contrast' : 'border-card-border bg-bg-base text-text-secondary')}
+          data-control
+          aria-label={completed ? 'Mark task incomplete' : 'Mark task complete'}
+        >
+          {completed && <Check size={16} />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <EditableBlock
+            className={cn('min-h-7 w-full bg-transparent p-0 text-base font-black leading-tight text-text-main outline-none', completed && 'line-through opacity-60')}
+            value={element.content || metadata.title || 'Next task'}
+            editing={editing}
+            onEdit={onEdit}
+            onDone={(value) => {
+              onUpdate({ content: value || 'Next task', metadata: { title: value || 'Next task' } }, true, true);
+              onDone();
+            }}
+          />
+          <p className="mt-1 line-clamp-2 text-xs font-semibold text-text-secondary">{metadata.description || 'Move this Vision forward.'}</p>
+        </div>
+      </div>
     );
   }
 
@@ -1184,6 +1441,23 @@ function ElementContent({
 
   if (element.type === 'shape') {
     const isCircle = element.metadata?.shapeType === 'circle';
+    if (element.metadata?.source === 'proof') {
+      return (
+        <div
+          className={cn(baseClass, 'flex flex-col justify-between p-4')}
+          style={{
+            background: element.metadata?.fillColor || 'rgba(244,114,182,0.13)',
+            borderColor: element.metadata?.strokeColor || 'rgba(244,114,182,0.35)'
+          }}
+        >
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-text-secondary">Progress Proof</p>
+            <p className="mt-2 text-lg font-black text-text-main">{element.content || 'Proof goes here'}</p>
+          </div>
+          <p className="text-xs font-semibold text-text-secondary">Drop screenshots, wins, updates, and receipts of progress here.</p>
+        </div>
+      );
+    }
     return (
       <EditableBlock
         className={cn(
