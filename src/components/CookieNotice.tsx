@@ -28,7 +28,7 @@ export default function CookieNotice() {
           <div className="space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Cookie choices</p>
             <p className="text-sm font-semibold leading-relaxed text-text-main">
-              VisNova uses essential cookies/storage to keep the app secure and working. With your permission, we may also use analytics and personalization to improve the app and recommend useful resources for your goals. Private messages are never used for recommendations.
+              VisNova uses essential cookies/storage to keep the app secure and working. With your permission, we may also use analytics and personalization to improve the app and recommend useful resources. Private messages, journals, notes, and private logs are never used for recommendations.
             </p>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">

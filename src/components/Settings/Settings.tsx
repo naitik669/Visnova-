@@ -30,6 +30,7 @@ import {
   defaultAppPreferences,
   defaultNotificationPreferences,
   getAppPreferences,
+  getVisibilityLabel,
   getNotificationPreferences,
   playInteractionSound,
   setAppPreferences,
@@ -112,7 +113,7 @@ export default function Settings() {
     { id: 'security' as const, icon: Shield, label: 'Security', desc: 'Password and session' },
     { id: 'notifications' as const, icon: Bell, label: 'Notifications', desc: 'Alerts and reminders' },
     { id: 'preferences' as const, icon: SettingsIcon, label: 'Preferences', desc: 'Defaults and beta tools' },
-    { id: 'privacy' as const, icon: Cookie, label: 'Privacy', desc: 'Cookies and legal links' },
+    { id: 'privacy' as const, icon: Cookie, label: 'Privacy & Security', desc: 'Sharing, cookies, and legal links' },
   ], []);
 
   const handleSaveProfile = async () => {
@@ -455,8 +456,87 @@ export default function Settings() {
           )}
 
           {activeSection === 'privacy' && (
-            <SettingsPanel title="Privacy & Cookies" subtitle="Control optional analytics and personalization storage.">
+            <SettingsPanel title="Privacy & Security" subtitle="Private is the default. You choose what becomes Circle or Public.">
               <div className="space-y-5">
+                <div className="rounded-3xl border border-card-border bg-app-container p-5">
+                  <div className="mb-5 flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                      <Lock size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-text-main">Sharing defaults</h3>
+                      <p className="mt-1 text-xs font-semibold leading-relaxed text-text-secondary/65">
+                        Private notes, journals, progress logs, money/resource entries, and messages stay private unless you intentionally share them.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <SettingsField label="Default visibility">
+                      <SelectMenu
+                        value={preferencePrefs.defaultVisibility}
+                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, defaultVisibility: value as any })}
+                        options={[
+                          { value: 'private', label: 'Private · Only you' },
+                          { value: 'circle', label: 'Circle · People you choose' },
+                          { value: 'public', label: 'Public · Feed and profile' }
+                        ]}
+                      />
+                      <p className="mt-2 text-[11px] font-semibold text-text-secondary/60">{getVisibilityLabel(preferencePrefs.defaultVisibility)}</p>
+                    </SettingsField>
+                    <SettingsField label="Progress log default">
+                      <SelectMenu
+                        value={preferencePrefs.progressLogVisibility}
+                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, progressLogVisibility: value as any })}
+                        options={[
+                          { value: 'private', label: 'Private · Only you' },
+                          { value: 'circle', label: 'Circle · People you choose' },
+                          { value: 'public', label: 'Public · Feed and profile' }
+                        ]}
+                      />
+                      <p className="mt-2 text-[11px] font-semibold text-text-secondary/60">Private logs do not appear in Feed, public profile, recommendations, or analytics.</p>
+                    </SettingsField>
+                    <SettingsField label="Profile visibility">
+                      <SelectMenu
+                        value={preferencePrefs.profileVisibility}
+                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, profileVisibility: value as any })}
+                        options={[
+                          { value: 'public', label: 'Public profile' },
+                          { value: 'circle', label: 'Circle only' },
+                          { value: 'minimal', label: 'Minimal/private' }
+                        ]}
+                      />
+                    </SettingsField>
+                    <SettingsField label="Message permissions">
+                      <SelectMenu
+                        value={preferencePrefs.messagePermissions}
+                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, messagePermissions: value as any })}
+                        options={[
+                          { value: 'circle', label: 'Circle only' },
+                          { value: 'everyone', label: 'Everyone' },
+                          { value: 'none', label: 'Requests only' }
+                        ]}
+                      />
+                    </SettingsField>
+                    <SettingsField label="Mention permissions">
+                      <SelectMenu
+                        value={preferencePrefs.mentionPermissions}
+                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, mentionPermissions: value as any })}
+                        options={[
+                          { value: 'everyone', label: 'Everyone' },
+                          { value: 'circle', label: 'Circle only' },
+                          { value: 'none', label: 'No one' }
+                        ]}
+                      />
+                    </SettingsField>
+                    <ToggleRow
+                      label="Personalized recommendations"
+                      desc="Use allowed interests, public/circle vision categories, and saved resources. Private messages, journals, notes, and logs are never used."
+                      checked={preferencePrefs.personalizedRecommendations}
+                      onChange={value => updatePreferencePrefs({ ...preferencePrefs, personalizedRecommendations: value })}
+                    />
+                  </div>
+                </div>
+
                 <div className="rounded-3xl border border-card-border bg-app-container p-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -496,12 +576,14 @@ export default function Settings() {
                 </div>
 
                 <div className="rounded-3xl border border-card-border bg-card p-5">
-                  <h3 className="text-sm font-black text-text-main">Legal links</h3>
-                  <p className="mt-1 text-xs font-semibold text-text-secondary/60">Cookie choices can be changed anytime. Private messages are never used for recommendations.</p>
+                  <h3 className="text-sm font-black text-text-main">Legal and data controls</h3>
+                  <p className="mt-1 text-xs font-semibold text-text-secondary/60">Cookie choices can be changed anytime. Export and delete-account requests are handled through support during beta.</p>
                   <div className="mt-4 flex flex-wrap gap-3">
                     <Link to="/cookie-policy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
                     <Link to="/privacy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy Policy</Link>
                     <Link to="/terms" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms of Service</Link>
+                    <a href="mailto:naitik.business69@gmail.com?subject=VisNova%20data%20export%20request" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Export my data</a>
+                    <a href="mailto:naitik.business69@gmail.com?subject=VisNova%20account%20deletion%20request" className="rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-danger">Delete account request</a>
                   </div>
                 </div>
               </div>

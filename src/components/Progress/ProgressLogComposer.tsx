@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils';
 import type { EcosystemVisibility, ProgressLogType } from '../../types';
 import { SelectMenu } from '../ui/SelectMenu';
 import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
+import { getAppPreferences, getVisibilityLabel } from '../../lib/appPreferences';
 
 const LOG_TYPES: Array<{ value: ProgressLogType; label: string }> = [
   { value: 'progress', label: 'Progress Log' },
@@ -18,17 +19,17 @@ const LOG_TYPES: Array<{ value: ProgressLogType; label: string }> = [
   { value: 'blocker', label: 'Blocker' }
 ];
 
-const VISIBILITY_OPTIONS: Array<{ value: EcosystemVisibility; label: string; icon: typeof Lock }> = [
-  { value: 'private', label: 'Private', icon: Lock },
-  { value: 'circle', label: 'Circle', icon: Link2 },
-  { value: 'public', label: 'Public', icon: Radio }
+const VISIBILITY_OPTIONS: Array<{ value: EcosystemVisibility; label: string; helper: string; icon: typeof Lock }> = [
+  { value: 'private', label: 'Private', helper: 'Only you', icon: Lock },
+  { value: 'circle', label: 'Circle', helper: 'People you choose', icon: Link2 },
+  { value: 'public', label: 'Public', helper: 'Feed and profile', icon: Radio }
 ];
 
 export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: boolean; onClose: () => void; defaultVisionId?: string | null }) {
   const { visions, createProgressLog } = useStore();
   const [visionId, setVisionId] = useState(defaultVisionId || '');
   const [logType, setLogType] = useState<ProgressLogType>('progress');
-  const [visibility, setVisibility] = useState<EcosystemVisibility>('private');
+  const [visibility, setVisibility] = useState<EcosystemVisibility>(() => getAppPreferences().progressLogVisibility as EcosystemVisibility);
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -41,7 +42,7 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
   const resetAndClose = () => {
     setContent('');
     setLogType('progress');
-    setVisibility('private');
+    setVisibility(getAppPreferences().progressLogVisibility as EcosystemVisibility);
     setVisionId(defaultVisionId || '');
     onClose();
   };
@@ -134,23 +135,23 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
                 type="button"
                 onClick={() => setVisibility(option.value)}
                 className={cn(
-                  'flex h-12 items-center justify-center gap-2 rounded-2xl border text-[9px] font-black uppercase tracking-widest',
-                  visibility === option.value
-                    ? 'border-accent bg-accent/10 text-accent'
-                    : 'border-card-border bg-card text-text-secondary'
-                )}
-              >
-                <Icon size={14} />
-                {option.label}
+                'flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl border px-2 text-center transition-colors',
+                visibility === option.value
+                  ? 'border-accent bg-accent/10 text-accent'
+                  : 'border-card-border bg-card text-text-secondary'
+              )}
+            >
+                <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest"><Icon size={14} /> {option.label}</span>
+                <span className="text-[9px] font-bold normal-case tracking-normal opacity-65">{option.helper}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="hidden items-start gap-3 rounded-2xl border border-success/20 bg-success/5 p-4 text-xs font-semibold text-text-secondary sm:flex">
+        <div className="flex items-start gap-3 rounded-2xl border border-success/20 bg-success/5 p-4 text-xs font-semibold text-text-secondary">
           <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-success" />
           <p>
-            Private logs stay in your Growth Timeline. Circle/Public logs can also become proof in Feed.
+            This progress log will be visible to: <span className="font-black text-text-main">{getVisibilityLabel(visibility)}</span>. Private logs stay yours only and do not appear in Feed, public profiles, recommendations, or analytics.
           </p>
         </div>
 

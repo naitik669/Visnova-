@@ -1,6 +1,9 @@
 export type DefaultVisibility = 'private' | 'circle' | 'public';
 type LegacyVisibility = DefaultVisibility | 'connections' | 'friends' | string | null | undefined;
 
+export type ProfileVisibility = 'public' | 'circle' | 'minimal';
+export type PermissionAudience = 'everyone' | 'circle' | 'none';
+
 export type NotificationPreferences = {
   product: boolean;
   social: boolean;
@@ -10,6 +13,11 @@ export type NotificationPreferences = {
 
 export type AppPreferences = {
   defaultVisibility: DefaultVisibility;
+  progressLogVisibility: DefaultVisibility;
+  profileVisibility: ProfileVisibility;
+  messagePermissions: PermissionAudience;
+  mentionPermissions: PermissionAudience;
+  personalizedRecommendations: boolean;
   reduceMotion: boolean;
   compactCards: boolean;
   workspaceScale: 'compact' | 'comfortable';
@@ -25,6 +33,11 @@ export const defaultNotificationPreferences: NotificationPreferences = {
 
 export const defaultAppPreferences: AppPreferences = {
   defaultVisibility: 'private',
+  progressLogVisibility: 'private',
+  profileVisibility: 'public',
+  messagePermissions: 'circle',
+  mentionPermissions: 'everyone',
+  personalizedRecommendations: false,
   reduceMotion: false,
   compactCards: true,
   workspaceScale: 'compact',
@@ -60,6 +73,24 @@ export const normalizeVisibility = (visibility: LegacyVisibility): DefaultVisibi
   return 'private';
 };
 
+export const getVisibilityLabel = (visibility: LegacyVisibility) => {
+  const normalized = normalizeVisibility(visibility);
+  if (normalized === 'public') return 'Public · Feed and profile';
+  if (normalized === 'circle') return 'Circle · People you choose';
+  return 'Private · Only you';
+};
+
+const normalizeProfileVisibility = (visibility: AppPreferences['profileVisibility'] | string | null | undefined): ProfileVisibility => {
+  if (visibility === 'circle') return 'circle';
+  if (visibility === 'minimal' || visibility === 'private') return 'minimal';
+  return 'public';
+};
+
+const normalizePermissionAudience = (value: AppPreferences['messagePermissions'] | string | null | undefined): PermissionAudience => {
+  if (value === 'everyone' || value === 'none') return value;
+  return 'circle';
+};
+
 export const getAppPreferences = () => {
   const prefs = readJson('visnova-preference-settings', defaultAppPreferences);
   const workspaceScale = prefs.workspaceScale || (prefs.compactCards ? 'compact' : 'comfortable');
@@ -67,7 +98,12 @@ export const getAppPreferences = () => {
     ...prefs,
     compactCards: workspaceScale === 'compact',
     workspaceScale,
-    defaultVisibility: normalizeVisibility(prefs.defaultVisibility)
+    defaultVisibility: normalizeVisibility(prefs.defaultVisibility),
+    progressLogVisibility: normalizeVisibility(prefs.progressLogVisibility),
+    profileVisibility: normalizeProfileVisibility(prefs.profileVisibility),
+    messagePermissions: normalizePermissionAudience(prefs.messagePermissions),
+    mentionPermissions: normalizePermissionAudience(prefs.mentionPermissions),
+    personalizedRecommendations: prefs.personalizedRecommendations === true
   };
 };
 
@@ -77,7 +113,12 @@ export const setAppPreferences = (value: AppPreferences) => {
     ...value,
     compactCards: workspaceScale === 'compact',
     workspaceScale,
-    defaultVisibility: normalizeVisibility(value.defaultVisibility)
+    defaultVisibility: normalizeVisibility(value.defaultVisibility),
+    progressLogVisibility: normalizeVisibility(value.progressLogVisibility),
+    profileVisibility: normalizeProfileVisibility(value.profileVisibility),
+    messagePermissions: normalizePermissionAudience(value.messagePermissions),
+    mentionPermissions: normalizePermissionAudience(value.mentionPermissions),
+    personalizedRecommendations: value.personalizedRecommendations === true
   };
   writeJson('visnova-preference-settings', normalized);
   applyAppPreferences(normalized);

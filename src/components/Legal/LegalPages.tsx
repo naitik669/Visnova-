@@ -26,16 +26,19 @@ export function PrivacyPolicyPage() {
     <LegalShell title="Privacy Policy">
       <section className="space-y-4">
         <h2 className="text-xl font-black text-text-main">What VisNova Collects</h2>
-        <p>VisNova stores account profile details, visions, tasks, notes, journal entries, audio note metadata, posts, comments, follows, messages, Growth resources, NovaCapsules, and app activity needed to run the product.</p>
-        <p>Notes, journals, audio notes, private visions, private NovaCapsules, and Growth resources are private by default. Public posts, public profiles, public communities, and intentionally shared/public notes may be visible to other users.</p>
+        <p>VisNova stores account profile details, visions, tasks, progress logs, notes, journal entries, audio note metadata, posts, comments, follows, messages, Growth resources, NovaCapsules, and app activity needed to run the product.</p>
+        <p>VisNova is private by default. Private logs, private notes, private journals, private visions, private boards, private money/resource entries, private NovaCapsules, and private messages are visible only to you unless you intentionally choose Circle or Public sharing where supported.</p>
+        <p>Circle sharing means people you choose. Public sharing means the item may appear on your profile, Feed, or public areas of VisNova.</p>
       </section>
       <section className="space-y-4">
         <h2 className="text-xl font-black text-text-main">How Data Is Used</h2>
-        <p>We use your data to authenticate your account, sync your workspace, show your social activity, protect the app from abuse, and provide support. We do not sell private workspace content.</p>
+        <p>We use your data to authenticate your account, sync your workspace, show your chosen social activity, protect the app from abuse, and provide support. We do not sell private workspace content.</p>
+        <p>Private messages are not used for recommendations. Private notes, private journals, private progress logs, and private message content are not used for optional analytics or recommendations.</p>
+        <p>VisNova uses account access controls, database security rules, and privacy settings to protect private content. We do not claim end-to-end encryption.</p>
       </section>
       <section className="space-y-4">
         <h2 className="text-xl font-black text-text-main">Private Media</h2>
-        <p>Audio notes and NovaCapsule media are stored in private Supabase buckets and loaded through signed URLs. Avatars and post images are treated as public media because they are displayed in social areas.</p>
+        <p>Audio notes, journal media, NovaCapsule media, and private proof files should be stored in private Supabase buckets and loaded through signed URLs. Avatars and public post images are treated as public media because they are displayed in social areas.</p>
       </section>
       <section className="space-y-4">
         <h2 className="text-xl font-black text-text-main">Data Deletion</h2>
@@ -92,12 +95,12 @@ export function CookiePolicyPage() {
         <h3 className="text-base font-black text-text-main">C. Analytics cookies and similar technologies</h3>
         <p>With your permission, we may use analytics tools to understand how people use VisNova.</p>
         <p>Analytics may help us learn which features are used most, where users face errors, which pages load slowly, which flows need improvement, and how beta users interact with the app.</p>
-        <p>Analytics should not include private messages, private journals, private notes, private wallet entries, private goals, or private files.</p>
+        <p>Analytics should not include private messages, private journals, private notes, private progress logs, private wallet/resource entries, private goals, or private files.</p>
 
         <h3 className="text-base font-black text-text-main">D. Recommendation-related storage</h3>
         <p>VisNova may provide resource or product recommendations based on user-controlled settings.</p>
-        <p>If enabled, recommendations may use signals such as selected interests, vision categories, task tags, saved resources, wallet/resource goals, store activity, and product interactions.</p>
-        <p className="font-bold text-text-main">Private messages are never used for recommendations.</p>
+        <p>If enabled, recommendations may use signals such as selected interests, public or Circle vision categories, task tags, saved resources, wallet/resource goals, store activity, and product interactions.</p>
+        <p className="font-bold text-text-main">Private messages, private journals, private notes, and private progress logs are never used for recommendations.</p>
 
         <h3 className="text-base font-black text-text-main">E. Third-party cookies and services</h3>
         <p>VisNova may use third-party services to operate the app, such as authentication providers, hosting providers, database/storage providers, analytics providers, payment providers, and store or affiliate partners in the future.</p>
@@ -110,7 +113,7 @@ export function CookiePolicyPage() {
       <section className="space-y-4">
         <h2 className="text-xl font-black text-text-main">4. What we do not use cookies for</h2>
         <p>VisNova does not use private messages for product/resource recommendations.</p>
-        <p>We do not intentionally use private journals, private notes, private wallet entries, or private goals for analytics or recommendations unless the user has clearly allowed related personalization settings.</p>
+        <p>We do not use private journals, private notes, private progress logs, or private wallet/resource entries for optional analytics or recommendations.</p>
       </section>
       <section className="space-y-4">
         <h2 className="text-xl font-black text-text-main">5. User choices</h2>

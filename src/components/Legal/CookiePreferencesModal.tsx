@@ -123,7 +123,7 @@ export function CookiePreferencesModal({ open, onClose, onSaved }: CookiePrefere
         />
         <ToggleRow
           title="Resource recommendations"
-          description="Helps suggest useful resources/products based on selected interests, goals, wallet/resource settings, saved resources, and store activity."
+          description="Helps suggest useful resources/products from allowed interests, public or Circle goals, saved resources, and store activity."
           checked={resourceRecommendations}
           onChange={setResourceRecommendations}
         />
@@ -135,11 +135,11 @@ export function CookiePreferencesModal({ open, onClose, onSaved }: CookiePrefere
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-black text-[#2B1B48]">Private messages</h3>
+                <h3 className="text-sm font-black text-[#2B1B48]">Private workspace content</h3>
                 <span className="rounded-full bg-[#F0E7FF] px-3 py-1 text-[9px] font-black uppercase tracking-widest text-[#8B5CF6]">Never used</span>
               </div>
               <p className="mt-1 text-xs font-semibold leading-relaxed text-[#7A6F91]">
-                Private messages are never used for recommendations or product personalization.
+                Private messages, private journals, private notes, and private progress logs are never used for recommendations or product personalization.
               </p>
             </div>
           </div>

@@ -32,7 +32,7 @@ import {
   validateFinanceSubscription,
   validateFinanceTransaction
 } from '../lib/financeValidation';
-import { getDefaultVisibility, normalizeVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
+import { getAppPreferences, getDefaultVisibility, normalizeVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
 import { extractHashtags as extractSocialHashtags, extractMentions as extractSocialMentions } from '../utils/parseSocialText';
 import { convertCurrencyAmount, normalizeCurrencyCode } from '../lib/currency';
 
@@ -970,7 +970,7 @@ export const useStore = create<AppState>((set, get) => ({
         task_id: log.taskId || null,
         log_type: log.logType || 'progress',
         content,
-        visibility: log.visibility || 'private',
+        visibility: normalizeVisibility(log.visibility || getAppPreferences().progressLogVisibility || getDefaultVisibility()),
         attachments: safeArray(log.attachments),
         linked_items: log.linkedItems || {},
         metadata: log.metadata || {},
@@ -1037,12 +1037,12 @@ export const useStore = create<AppState>((set, get) => ({
       }
 
       get().recordDailyActivity('post');
-      trackBetaEvent(userId, 'progress_log_created', {
-        log_type: saved.logType,
-        visibility: saved.visibility,
-        linked_to_vision: Boolean(saved.visionId)
-      }, saved.id);
       if (saved.visibility !== 'private') {
+        trackBetaEvent(userId, 'progress_log_created', {
+          log_type: saved.logType,
+          visibility: saved.visibility,
+          linked_to_vision: Boolean(saved.visionId)
+        }, saved.id);
         trackBetaEvent(userId, 'progress_log_shared', {
           visibility: saved.visibility,
           linked_to_vision: Boolean(saved.visionId)
