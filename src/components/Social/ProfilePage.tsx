@@ -52,6 +52,7 @@ import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData'
 import { normalizeVisibility } from '../../lib/appPreferences';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { SelectMenu } from '../ui/SelectMenu';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
 
 type SocialProfile = {
@@ -62,6 +63,13 @@ type SocialProfile = {
   avatar_url?: string;
   bio?: string;
   verified?: boolean;
+};
+type ConfirmAction = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  tone?: 'danger' | 'warning' | 'info';
+  run: () => Promise<void>;
 };
 
 const profileReportReasons = [
@@ -1165,6 +1173,8 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
   const [reportReason, setReportReason] = useState('spam');
   const [reportDetails, setReportDetails] = useState('');
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const isOwnPost = post.userId === session?.user?.id;
   const currentUserId = session?.user?.id;
 
@@ -1294,10 +1304,18 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                       </button>
                       {!post.archived && (
                         <button
-                          onClick={async () => {
+                          onClick={() => {
                             setIsMenuOpen(false);
-                            const archived = await archivePost(post.id);
-                            if (archived) onArchived?.(post.id);
+                            setConfirmAction({
+                              title: 'Archive this post?',
+                              description: 'This removes the post from your public profile and feeds, but keeps it in your archive.',
+                              confirmLabel: 'Archive',
+                              tone: 'warning',
+                              run: async () => {
+                                const archived = await archivePost(post.id);
+                                if (archived) onArchived?.(post.id);
+                              }
+                            });
                           }}
                           className="visnova-menu-item"
                         >
@@ -1317,11 +1335,18 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                         </button>
                       )}
                       <button
-                        onClick={async () => {
-                          if (!confirm('Delete this post? This will remove it from your profile and feeds.')) return;
+                        onClick={() => {
                           setIsMenuOpen(false);
-                          const deleted = await deletePost(post.id);
-                          if (deleted) onDeleted?.(post.id);
+                          setConfirmAction({
+                            title: 'Delete this post?',
+                            description: 'This removes the post from your profile, feed, saved views, and thread. This action cannot be undone.',
+                            confirmLabel: 'Delete',
+                            tone: 'danger',
+                            run: async () => {
+                              const deleted = await deletePost(post.id);
+                              if (deleted) onDeleted?.(post.id);
+                            }
+                          });
                         }}
                         className="visnova-menu-item visnova-menu-item-danger"
                       >
@@ -1517,6 +1542,27 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
           />
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.description || ''}
+        confirmLabel={confirmAction?.confirmLabel || 'Confirm'}
+        tone={confirmAction?.tone || 'danger'}
+        isLoading={isConfirmingAction}
+        onCancel={() => {
+          if (!isConfirmingAction) setConfirmAction(null);
+        }}
+        onConfirm={async () => {
+          if (!confirmAction) return;
+          setIsConfirmingAction(true);
+          try {
+            await confirmAction.run();
+            setConfirmAction(null);
+          } finally {
+            setIsConfirmingAction(false);
+          }
+        }}
+      />
     </div>
   );
 }

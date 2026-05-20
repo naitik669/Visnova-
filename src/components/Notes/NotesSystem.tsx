@@ -43,6 +43,7 @@ import { getAudioNoteUrl, uploadAudioNote, uploadJournalImage } from '../../lib/
 import { safeDate, safeFormat } from '../../lib/dateUtils';
 import { safeArray, safeString } from '../../lib/safeData';
 import { SelectMenu } from '../ui/SelectMenu';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 
 const UNFILED_FOLDER_ID = '__unfiled__';
@@ -102,6 +103,7 @@ export default function NotesSystem() {
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('all');
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [pendingProfilePostNote, setPendingProfilePostNote] = useState<Note | null>(null);
   const libraryNoteTypes: Note['note_type'][] = ['normal', 'audio'];
 
   useEffect(() => {
@@ -278,6 +280,10 @@ export default function NotesSystem() {
     if (posted) {
       addToast({ type: 'success', title: 'Posted to profile', description: kind === 'journal' ? 'Your notebook-style journal post is live.' : 'Your note embed is live.' });
     }
+  };
+
+  const requestPostNoteToProfile = (note: Note) => {
+    setPendingProfilePostNote(note);
   };
 
   return (
@@ -615,7 +621,7 @@ export default function NotesSystem() {
                         addToast={addToast}
                         onPostJournal={() => {
                           if (journalEntry) {
-                            postNoteToProfile(journalEntry);
+                            requestPostNoteToProfile(journalEntry);
                           } else {
                             addToast({ type: 'info', title: 'Save first', description: 'Save this journal entry before posting it.' });
                           }
@@ -668,7 +674,7 @@ export default function NotesSystem() {
                                 setDraggingNoteId(null);
                                 setDragOverFolderId(null);
                               }}
-                              onPost={() => postNoteToProfile(note)}
+                              onPost={() => requestPostNoteToProfile(note)}
                               viewMode={viewMode}
                             />
                           </SafeItemBoundary>
@@ -726,6 +732,19 @@ export default function NotesSystem() {
           const link = `${window.location.origin}/library?folder=${folderViewer?.id || ''}`;
           await navigator.clipboard.writeText(link);
           addToast({ type: 'success', title: 'Folder link ready', description: 'Selected folder notes are public and the link was copied.' });
+        }}
+      />
+      <ConfirmDialog
+        open={!!pendingProfilePostNote}
+        title={`Post this ${pendingProfilePostNote?.note_type === 'journal' ? 'journal' : 'note'}?`}
+        description="This will publish an embed to your profile and feed. People who can see the post will see the shared preview."
+        confirmLabel="Post"
+        tone="info"
+        onCancel={() => setPendingProfilePostNote(null)}
+        onConfirm={async () => {
+          const note = pendingProfilePostNote;
+          setPendingProfilePostNote(null);
+          if (note) await postNoteToProfile(note);
         }}
       />
     </div>
@@ -2406,6 +2425,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   const { deleteNote, session, addToast } = useStore();
   const audioInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -2643,12 +2663,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 <span>Type: {note.note_type === 'normal' ? 'normal note' : note.note_type === 'audio' ? 'audio note' : note.note_type}</span>
               </div>
               <button 
-                onClick={() => {
-                  if (window.confirm('Permanent deletion confirmed?')) {
-                    onClose();
-                    deleteNote(note.id);
-                  }
-                }}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="text-red-400 hover:text-red-600 transition-colors flex items-center gap-2"
               >
                     <Trash2 size={12} /> Delete Note
@@ -2657,6 +2672,19 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title={`Delete this ${note.note_type === 'journal' ? 'journal' : note.note_type === 'audio' ? 'audio note' : 'note'}?`}
+        description="This moves the item out of your Library and removes it from linked views. Make sure you do not need this record before continuing."
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          onClose();
+          deleteNote(note.id);
+        }}
+      />
     </motion.div>
   );
 }

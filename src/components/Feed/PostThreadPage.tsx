@@ -14,6 +14,7 @@ import { PostEditModal, PostReportModal } from './CommunityFeed';
 import { SharedPostEmbed } from './SharedPostEmbed';
 import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
 import { renderSocialText } from '../../utils/parseSocialText';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 const COMMENTS_PAGE_SIZE = 50;
 const isCommentEnhancementMissing = (error: any) => (
@@ -22,6 +23,13 @@ const isCommentEnhancementMissing = (error: any) => (
   error?.code === 'PGRST200' ||
   /comment_likes|comment_mentions|comment_hashtags|hashtags|is_pinned|pinned_at|pinned_by/i.test(error?.message || '')
 );
+type ConfirmAction = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  tone?: 'danger' | 'warning' | 'info';
+  run: () => Promise<void>;
+};
 
 const mapPostRow = (p: any): Post => ({
   id: safeString(p?.id),
@@ -125,6 +133,8 @@ export default function PostThreadPage() {
   const [reportReason, setReportReason] = useState('spam');
   const [reportDetails, setReportDetails] = useState('');
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
 
   const firstImage = useMemo(() => post?.media?.find(item => item.type === 'image'), [post]);
   const threadComments = useMemo(() => buildCommentTree(comments), [comments]);
@@ -291,11 +301,18 @@ export default function PostThreadPage() {
   };
 
   const handleDeleteComment = async (comment: Comment) => {
-    if (!confirm('Delete this comment? Replies will stay in the thread.')) return;
-    const ok = await deleteComment(comment.id);
-    if (ok) {
-      setComments(current => current.map(item => item.id === comment.id ? { ...item, content: '', deletedAt: new Date().toISOString() } : item));
-    }
+    setConfirmAction({
+      title: 'Delete this comment?',
+      description: 'The comment text will be removed from the thread. Replies can stay visible so the conversation still makes sense.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+      run: async () => {
+        const ok = await deleteComment(comment.id);
+        if (ok) {
+          setComments(current => current.map(item => item.id === comment.id ? { ...item, content: '', deletedAt: new Date().toISOString() } : item));
+        }
+      }
+    });
   };
 
   const handleReportComment = async (comment: Comment) => {
@@ -469,11 +486,11 @@ export default function PostThreadPage() {
                           <>
                             <button onClick={() => { setIsMenuOpen(false); setIsEditOpen(true); }} className="visnova-menu-item"><Edit3 size={14} /> Edit Post</button>
                             {!post.archived ? (
-                              <button onClick={async () => { setIsMenuOpen(false); const ok = await archivePost(post.id); if (ok) setPost(current => current ? { ...current, archived: true, archivedAt: new Date().toISOString() } : current); }} className="visnova-menu-item"><Archive size={14} /> Archive Post</button>
+                              <button onClick={() => { setIsMenuOpen(false); setConfirmAction({ title: 'Archive this post?', description: 'This removes the post from public feeds and profile posts, but keeps it available in your archive.', confirmLabel: 'Archive', tone: 'warning', run: async () => { const ok = await archivePost(post.id); if (ok) setPost(current => current ? { ...current, archived: true, archivedAt: new Date().toISOString() } : current); } }); }} className="visnova-menu-item"><Archive size={14} /> Archive Post</button>
                             ) : (
                               <button onClick={async () => { setIsMenuOpen(false); const ok = await restorePost(post.id); if (ok) setPost(current => current ? { ...current, archived: false, archivedAt: null } : current); }} className="visnova-menu-item"><Archive size={14} /> Restore Post</button>
                             )}
-                            <button onClick={async () => { if (!confirm('Delete this post? This will remove it from your profile and feeds.')) return; setIsMenuOpen(false); const ok = await deletePost(post.id); if (ok) goBackToSource(); }} className="visnova-menu-item visnova-menu-item-danger"><Trash2 size={14} /> Delete Post</button>
+                            <button onClick={() => { setIsMenuOpen(false); setConfirmAction({ title: 'Delete this post?', description: 'This removes the post from your profile, feed, saved views, and thread. This action cannot be undone.', confirmLabel: 'Delete', tone: 'danger', run: async () => { const ok = await deletePost(post.id); if (ok) goBackToSource(); } }); }} className="visnova-menu-item visnova-menu-item-danger"><Trash2 size={14} /> Delete Post</button>
                           </>
                         ) : (
                           <button onClick={() => { setIsMenuOpen(false); setIsReportOpen(true); }} className="visnova-menu-item visnova-menu-item-danger"><Flag size={14} /> Report Post</button>
@@ -632,6 +649,27 @@ export default function PostThreadPage() {
           />
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.description || ''}
+        confirmLabel={confirmAction?.confirmLabel || 'Confirm'}
+        tone={confirmAction?.tone || 'danger'}
+        isLoading={isConfirmingAction}
+        onCancel={() => {
+          if (!isConfirmingAction) setConfirmAction(null);
+        }}
+        onConfirm={async () => {
+          if (!confirmAction) return;
+          setIsConfirmingAction(true);
+          try {
+            await confirmAction.run();
+            setConfirmAction(null);
+          } finally {
+            setIsConfirmingAction(false);
+          }
+        }}
+      />
     </>
   );
 }

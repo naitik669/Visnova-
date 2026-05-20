@@ -209,7 +209,7 @@ export function MentionHashtagTextarea({
       />
 
       {dropdownOpen && (
-        <div className="absolute left-3 right-3 top-[calc(100%+0.5rem)] z-[260] max-h-72 overflow-y-auto rounded-2xl border border-card-border bg-card p-2 shadow-2xl">
+        <div className="absolute bottom-[calc(100%+0.5rem)] left-3 right-3 z-[260] max-h-72 overflow-y-auto rounded-2xl border border-card-border bg-card p-2 shadow-2xl">
           <div className="flex items-center gap-2 border-b border-card-border px-3 py-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/55">
             {activeToken?.kind === 'hashtag' ? <Hash size={13} /> : <AtSign size={13} />}
             {activeToken?.kind === 'hashtag' ? 'Hashtag suggestions' : 'Mention profiles'}

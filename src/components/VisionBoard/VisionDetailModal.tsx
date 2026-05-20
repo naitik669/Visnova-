@@ -66,6 +66,7 @@ import CollaborateModal from './CollaborateModal';
 import { supabase, uploadVisionBoardImage } from '../../lib/supabase';
 import { safeArray } from '../../lib/safeData';
 import { formatCurrency } from '../../lib/currency';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface VisionDetailModalProps {
   vision: Vision | null;
@@ -307,6 +308,8 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showPostConfirm, setShowPostConfirm] = useState(false);
   const [history, setHistory] = useState<VisionElement[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
@@ -604,10 +607,10 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                    <HeaderAction key="header-expand" icon={isCollapsed ? <Minimize2 size={16} /> : <ChevronDown size={16} />} onClick={() => setIsCollapsed(!isCollapsed)} label={isCollapsed ? "Expand" : "Collapse"} />
                    <HeaderAction key="header-focus" icon={isFullscreen ? <Box size={16} /> : <Maximize2 size={16} />} onClick={() => setIsFullscreen(!isFullscreen)} label="Focus" />
                    <div className="w-px h-6 bg-card-border" />
-                   <HeaderAction key="header-post-profile" icon={<Share2 size={16} />} onClick={postVisionBoardToProfile} label="Post to profile" />
+                   <HeaderAction key="header-post-profile" icon={<Share2 size={16} />} onClick={() => setShowPostConfirm(true)} label="Post to profile" />
                    <HeaderAction key="header-publish" icon={<Globe size={16} />} onClick={() => setShowPublishModal(true)} label="Publish" />
                    <HeaderAction key="header-collab" icon={<UserPlus size={16} />} onClick={() => setShowCollaborateModal(true)} label="Collaborate" />
-                   <HeaderAction key="header-purge" icon={<Trash2 size={16} />} onClick={() => deleteVision(vision.id)} label="Purge" className="hover:text-danger" />
+                   <HeaderAction key="header-purge" icon={<Trash2 size={16} />} onClick={() => setShowDeleteConfirm(true)} label="Purge" className="hover:text-danger" />
                 </div>
                 
                 <button
@@ -646,6 +649,31 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
             isOpen={showCollaborateModal}
             onClose={() => setShowCollaborateModal(false)}
             vision={vision}
+          />
+          <ConfirmDialog
+            open={showPostConfirm}
+            title="Post this Vision Board?"
+            description="This will publish a Vision Board embed to your profile and feed so other users can view the board preview."
+            confirmLabel="Post"
+            tone="info"
+            onCancel={() => setShowPostConfirm(false)}
+            onConfirm={async () => {
+              setShowPostConfirm(false);
+              await postVisionBoardToProfile();
+            }}
+          />
+          <ConfirmDialog
+            open={showDeleteConfirm}
+            title="Delete this Vision?"
+            description="This removes the Vision, its tasks, and linked board data from your workspace. Make sure you do not need this Vision before continuing."
+            confirmLabel="Delete"
+            tone="danger"
+            onCancel={() => setShowDeleteConfirm(false)}
+            onConfirm={async () => {
+              setShowDeleteConfirm(false);
+              await deleteVision(vision.id);
+              onClose();
+            }}
           />
         </>
       )}

@@ -42,6 +42,7 @@ import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData'
 import { TrendingTopicsSection } from './TrendingTopicsSection';
 import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';
 import { SelectMenu } from '../ui/SelectMenu';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { SharedPostEmbed } from './SharedPostEmbed';
 import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
 import { renderSocialText } from '../../utils/parseSocialText';
@@ -70,6 +71,14 @@ const isCommentEnhancementMissing = (error: any) => (
   error?.code === 'PGRST200' ||
   /comment_likes|is_pinned|pinned_at|pinned_by/i.test(error?.message || '')
 );
+type ConfirmAction = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  tone?: 'danger' | 'warning' | 'info';
+  run: () => Promise<void>;
+};
+const FEED_POST_PREVIEW_LIMIT = 420;
 
 const editedLabel = (editedAt?: string | null) => editedAt ? `Edited ${safeFormat(editedAt, 'MMM d, h:mm a')}` : '';
 
@@ -1300,12 +1309,20 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
   const [reportDetails, setReportDetails] = useState('');
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const [isLiked, setIsLiked] = useState(!!post.isLiked);
   const [isSaved, setIsSaved] = useState(!!post.isSaved);
   const [likeCount, setLikeCount] = useState(post.likes);
   const currentUserId = session?.user?.id;
   const isOwnPost = post.userId === currentUserId;
   const isFollowingAuthor = followingIds.includes(post.userId);
+  const contentText = safeString(post.content);
+  const shouldTruncate = post.type !== 'status' && contentText.length > FEED_POST_PREVIEW_LIMIT;
+  const visibleContent = shouldTruncate && !isExpanded
+    ? `${contentText.slice(0, FEED_POST_PREVIEW_LIMIT).trimEnd()}...`
+    : contentText;
 
   useEffect(() => {
     if (!hasTrackedView.current) {
@@ -1413,7 +1430,7 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
   
   return (
     <motion.div
-      className="system-card p-5 sm:p-7 bg-card border-card-border hover:border-accent/20 transition-all group w-full relative overflow-visible"
+      className="system-card mx-auto w-full max-w-3xl p-5 sm:p-7 bg-card border-card-border hover:border-accent/20 transition-all group relative overflow-visible"
       layout
     >
       <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />
@@ -1470,10 +1487,18 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                   </button>
                   {!post.archived && (
                     <button
-                      onClick={async () => {
+                      onClick={() => {
                         setIsMenuOpen(false);
-                        const archived = await archivePost(post.id);
-                        if (archived) onPostArchived?.(post.id);
+                        setConfirmAction({
+                          title: 'Archive this post?',
+                          description: 'This removes the post from public feeds and profile posts, but keeps it available in your archive.',
+                          confirmLabel: 'Archive',
+                          tone: 'warning',
+                          run: async () => {
+                            const archived = await archivePost(post.id);
+                            if (archived) onPostArchived?.(post.id);
+                          }
+                        });
                       }}
                       className="visnova-menu-item"
                     >
@@ -1493,11 +1518,18 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
                     </button>
                   )}
                   <button
-                    onClick={async () => {
-                      if (!confirm('Delete this post? This will remove it from your profile and feeds.')) return;
+                    onClick={() => {
                       setIsMenuOpen(false);
-                      const deleted = await deletePost(post.id);
-                      if (deleted) onPostDeleted?.(post.id);
+                      setConfirmAction({
+                        title: 'Delete this post?',
+                        description: 'This removes the post from your profile, feed, saved views, and thread. This action cannot be undone.',
+                        confirmLabel: 'Delete',
+                        tone: 'danger',
+                        run: async () => {
+                          const deleted = await deletePost(post.id);
+                          if (deleted) onPostDeleted?.(post.id);
+                        }
+                      });
                     }}
                     className="visnova-menu-item visnova-menu-item-danger"
                   >
@@ -1614,8 +1646,17 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
               ? "inline-block rounded-[2rem] rounded-tl-md bg-accent/10 border border-accent/15 px-6 py-5 text-base font-bold text-text-main leading-relaxed shadow-sm"
               : "text-sm text-text-secondary leading-relaxed font-medium opacity-80"
           )}>
-            {renderInteractiveText(post.content, post.mentions)}
+            {renderInteractiveText(visibleContent, post.mentions)}
           </p>
+          {shouldTruncate && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(value => !value)}
+              className="text-[10px] font-black uppercase tracking-widest text-accent transition-colors hover:text-accent/70"
+            >
+              {isExpanded ? 'Show less' : 'See more'}
+            </button>
+          )}
         </div>
 
         <SharedPostEmbed post={post} />
@@ -1744,6 +1785,27 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
           />
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.description || ''}
+        confirmLabel={confirmAction?.confirmLabel || 'Confirm'}
+        tone={confirmAction?.tone || 'danger'}
+        isLoading={isConfirmingAction}
+        onCancel={() => {
+          if (!isConfirmingAction) setConfirmAction(null);
+        }}
+        onConfirm={async () => {
+          if (!confirmAction) return;
+          setIsConfirmingAction(true);
+          try {
+            await confirmAction.run();
+            setConfirmAction(null);
+          } finally {
+            setIsConfirmingAction(false);
+          }
+        }}
+      />
     </motion.div>
   );
 }
@@ -1961,6 +2023,8 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
 
   const fetchComments = async () => {
     try {
@@ -2085,11 +2149,18 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
   };
 
   const handleDeleteComment = async (comment: Comment) => {
-    if (!confirm('Delete this comment? Replies will stay in the thread.')) return;
-    const ok = await deleteComment(comment.id);
-    if (ok) {
-      setComments(current => current.map(item => item.id === comment.id ? { ...item, content: '', deletedAt: new Date().toISOString() } : item));
-    }
+    setConfirmAction({
+      title: 'Delete this comment?',
+      description: 'The comment text will be removed from the thread. Replies can stay visible so the conversation still makes sense.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+      run: async () => {
+        const ok = await deleteComment(comment.id);
+        if (ok) {
+          setComments(current => current.map(item => item.id === comment.id ? { ...item, content: '', deletedAt: new Date().toISOString() } : item));
+        }
+      }
+    });
   };
 
   const handleReportComment = async (comment: Comment) => {
