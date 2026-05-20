@@ -36,62 +36,121 @@ function EntryAvatar({ entry }: { entry: CircleMomentumEntry }) {
   );
 }
 
+function StatTile({ label, value, icon: Icon, wide = false }: { label: string; value: string | number; icon: typeof Award; wide?: boolean }) {
+  return (
+    <div className={cn(
+      'rounded-[1.4rem] border border-card-border bg-card p-4 shadow-sm',
+      wide && 'sm:col-span-2 lg:col-span-1'
+    )}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-3xl font-black text-text-main">{value}</p>
+          <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+          <Icon size={17} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeaturedMomentumCard({ entry, featured = false }: { entry?: CircleMomentumEntry; featured?: boolean }) {
+  if (!entry) {
+    return (
+      <div className="min-h-[180px] rounded-[1.6rem] border border-dashed border-card-border bg-card/80 p-5">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+          <Trophy size={18} />
+        </div>
+        <p className="mt-8 text-sm font-black text-text-main">Open spot</p>
+        <p className="mt-1 text-xs font-semibold text-text-secondary/60">Shared proof can claim this position.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn(
+      'relative min-h-[180px] overflow-hidden rounded-[1.6rem] border bg-card p-5 shadow-sm',
+      featured ? 'border-accent/60 shadow-[0_18px_50px_rgba(var(--accent-rgb),0.16)]' : 'border-card-border'
+    )}>
+      <div className="absolute right-4 top-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-lg font-black text-accent">
+        {entry.rank}
+      </div>
+      <div className="flex items-center gap-3">
+        <EntryAvatar entry={entry} />
+        <div className="min-w-0">
+          <h3 className="truncate text-base font-black text-text-main">{entry.isCurrentUser ? 'You' : entry.displayName}</h3>
+          <p className="truncate text-[10px] font-black uppercase tracking-widest text-text-secondary/50">
+            {entry.username ? `@${entry.username}` : entry.topBadge}
+          </p>
+        </div>
+      </div>
+      <div className="mt-8 grid grid-cols-3 gap-3">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">Logs</p>
+          <p className="mt-1 text-lg font-black text-text-main">{entry.progressLogsCount}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">Tasks</p>
+          <p className="mt-1 text-lg font-black text-text-main">{entry.completedTasksCount}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/45">Score</p>
+          <p className="mt-1 text-lg font-black text-text-main">{entry.momentumScore}</p>
+        </div>
+      </div>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${entry.momentumScore}%` }} />
+      </div>
+      <div className="pointer-events-none absolute -bottom-16 -right-12 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
+    </div>
+  );
+}
+
 function LeaderboardRow({ entry, showCounts }: { entry: CircleMomentumEntry; showCounts: boolean }) {
   const navigate = useNavigate();
   const hasActivityCounts = entry.progressLogsCount + entry.completedTasksCount + entry.proofUploadsCount > 0;
   return (
-    <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start gap-4">
+    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-card-border/70 px-2 py-4 last:border-0 md:grid-cols-[72px_1.3fr_0.7fr_0.7fr_0.7fr_auto]">
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-app-container text-xs font-black text-text-main">{entry.rank}</span>
+      </div>
+      <div className="flex min-w-0 items-center gap-3">
         <EntryAvatar entry={entry} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="truncate text-base font-black text-text-main">{entry.isCurrentUser ? 'You' : entry.displayName}</h3>
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">
-                {entry.username ? `@${entry.username}` : entry.topBadge}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-accent px-4 py-2 text-sm font-black text-accent-contrast">{entry.momentumScore}</div>
-          </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${entry.momentumScore}%` }} />
-          </div>
-          {showCounts && (
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-2xl bg-app-container px-3 py-2">
-              <p className="text-sm font-black text-text-main">{entry.progressLogsCount}</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Logs</p>
-            </div>
-            <div className="rounded-2xl bg-app-container px-3 py-2">
-              <p className="text-sm font-black text-text-main">{entry.completedTasksCount}</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Tasks</p>
-            </div>
-            <div className="rounded-2xl bg-app-container px-3 py-2">
-              <p className="text-sm font-black text-text-main">{entry.currentStreak}d</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Streak</p>
-            </div>
-          </div>
-          )}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => navigate(entry.isCurrentUser ? '/' : `/profile/${entry.userId}`)}
-              className="inline-flex h-10 items-center gap-2 rounded-2xl border border-card-border bg-card px-4 text-[10px] font-black uppercase tracking-widest text-text-main"
-            >
-              View proof <ChevronRight size={13} />
-            </button>
-            {!entry.isCurrentUser && (
-              <button
-                onClick={() => navigate(`/circle?tab=messages&user=${entry.userId}`)}
-                className="inline-flex h-10 items-center gap-2 rounded-2xl bg-accent/10 px-4 text-[10px] font-black uppercase tracking-widest text-accent"
-              >
-                Send encouragement <MessageCircle size={13} />
-              </button>
-            )}
-          </div>
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-black text-text-main">{entry.isCurrentUser ? 'You' : entry.displayName}</h3>
+          <p className="truncate text-[10px] font-black uppercase tracking-widest text-text-secondary/50">
+            {entry.username ? `@${entry.username}` : entry.topBadge}
+          </p>
           {!hasActivityCounts && (
-            <p className="mt-3 text-xs font-semibold text-text-secondary/60">Their next shared proof will start this week's momentum.</p>
+            <p className="mt-1 text-[11px] font-semibold text-text-secondary/60">Next shared proof starts momentum.</p>
           )}
         </div>
+      </div>
+      {showCounts && (
+        <>
+          <p className="hidden text-sm font-black text-text-main md:block">{entry.progressLogsCount}</p>
+          <p className="hidden text-sm font-black text-text-main md:block">{entry.completedTasksCount}</p>
+          <p className="hidden text-sm font-black text-text-main md:block">{entry.currentStreak}d</p>
+        </>
+      )}
+      <div className="justify-self-end rounded-2xl bg-accent/10 px-3 py-1.5 text-sm font-black text-accent">{entry.momentumScore}</div>
+      <div className="col-span-3 flex gap-2 md:col-span-1 md:justify-end">
+        <button
+          onClick={() => navigate(entry.isCurrentUser ? '/' : `/profile/${entry.userId}`)}
+          className="inline-flex h-9 items-center gap-1 rounded-2xl border border-card-border bg-card px-3 text-[9px] font-black uppercase tracking-widest text-text-main"
+        >
+          Proof <ChevronRight size={12} />
+        </button>
+        {!entry.isCurrentUser && (
+          <button
+            onClick={() => navigate(`/circle?tab=messages&user=${entry.userId}`)}
+            className="inline-flex h-9 items-center justify-center rounded-2xl bg-accent/10 px-3 text-accent"
+            title="Send encouragement"
+          >
+            <MessageCircle size={13} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -144,101 +203,78 @@ export default function CircleMomentumPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-      <header className="rounded-[2rem] border border-card-border bg-card p-6 shadow-sm md:p-8">
-        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Weekly Momentum</p>
-            <h1 className="mt-2 text-3xl font-black text-text-main md:text-5xl">Circle Momentum</h1>
-            <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-text-secondary/70">
-              Friendly progress across your accountability circle. Scores use visible progress only, never private logs or messages.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {ranges.map(item => (
-              <button
-                key={item.value}
-                onClick={() => setRange(item.value)}
-                className={cn(
-                  'h-11 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest transition-all',
-                  range === item.value ? 'bg-accent text-accent-contrast shadow-sm' : 'border border-card-border bg-app-container text-text-secondary'
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+      <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Weekly Momentum</p>
+          <h1 className="mt-1 text-3xl font-black text-text-main">Circle Momentum</h1>
+          <p className="mt-1 max-w-2xl text-sm font-semibold text-text-secondary/70">
+            Friendly progress across your accountability circle.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {ranges.map(item => (
+            <button
+              key={item.value}
+              onClick={() => setRange(item.value)}
+              className={cn(
+                'h-10 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest transition-all',
+                range === item.value ? 'bg-accent text-accent-contrast shadow-sm' : 'border border-card-border bg-card text-text-secondary'
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </header>
 
-      {error && (
-        <div className="rounded-2xl border border-warning/20 bg-warning/10 px-4 py-3 text-xs font-bold text-text-main">
-          {error} Showing whatever progress is available.
-        </div>
-      )}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile label="Circle members" value={entries.length} icon={Users} />
+        <StatTile label="Active this window" value={activeEntries.length} icon={Zap} />
+        <StatTile label="Your score" value={currentUserEntry?.momentumScore || 0} icon={Target} />
+        <StatTile
+          label="Proof energy"
+          value={activeEntries.reduce((sum, entry) => sum + entry.progressLogsCount, 0)}
+          icon={Flame}
+        />
+      </section>
 
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="space-y-6">
-          <div className="rounded-[2rem] border border-card-border bg-card p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Your position</p>
-                <h2 className="mt-2 text-3xl font-black text-text-main">
-                  {currentUserEntry ? `#${currentUserEntry.rank}` : 'Join the board'}
-                </h2>
-              </div>
-              <div className="rounded-2xl bg-accent px-4 py-2 text-lg font-black text-accent-contrast">
-                {currentUserEntry?.momentumScore || 0}
-              </div>
-            </div>
-            <p className="mt-4 text-sm font-semibold leading-relaxed text-text-secondary/70">
-              {nextEntry
-                ? `Your next proof log can move you closer to ${nextEntry.displayName}.`
-                : 'Your next proof log keeps the circle moving.'}
-            </p>
-            <button onClick={() => navigate('/')} className="mt-5 flex h-11 items-center gap-2 rounded-2xl bg-accent/10 px-5 text-[10px] font-black uppercase tracking-widest text-accent">
-              Log proof today <Zap size={14} />
-            </button>
-          </div>
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <FeaturedMomentumCard entry={entries[0]} featured />
+        <FeaturedMomentumCard entry={entries[1]} />
+        <FeaturedMomentumCard entry={entries[2]} />
+      </section>
 
-          <div className="rounded-[2rem] border border-card-border bg-card p-6 shadow-sm">
-            <div className="flex items-center gap-3">
-              <CalendarDays size={18} className="text-accent" />
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Top movers</p>
-                <h3 className="text-xl font-black text-text-main">{topMover ? topMover.displayName : 'Open this week'}</h3>
-              </div>
-            </div>
-            <p className="mt-3 text-sm font-semibold text-text-secondary/70">
-              {topMover ? `+${topMover.changeFromLastWeek} points from the last window.` : 'Shared proof will light this up.'}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <BadgeCard title="Most proof logged" entry={proofLeader?.progressLogsCount ? proofLeader : undefined} />
-            <BadgeCard title="Task crusher" entry={taskLeader?.completedTasksCount ? taskLeader : undefined} />
-            <BadgeCard title="Most consistent" entry={consistentLeader?.currentStreak ? consistentLeader : undefined} />
-            <BadgeCard title="Vision builder" entry={visionLeader?.activeVisionsCount ? visionLeader : undefined} />
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-card-border bg-app-container p-4 shadow-sm md:p-5">
-          <div className="mb-4 flex items-center justify-between gap-4 px-2">
+      <section className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
+        <div className="rounded-[1.6rem] border border-card-border bg-card p-4 shadow-sm md:p-5">
+          <div className="mb-2 flex items-center justify-between gap-4 px-2">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Proof Board</p>
-              <h2 className="text-2xl font-black text-text-main">Friendly weekly momentum</h2>
+              <h2 className="text-2xl font-black text-text-main">Global Ranking</h2>
+              <p className="mt-1 text-xs font-semibold text-text-secondary/60">
+                Visible proof only. Private logs stay yours.
+              </p>
             </div>
-            <Users size={22} className="text-accent" />
+            <Trophy size={20} className="text-accent" />
           </div>
-          <div className="space-y-4">
+          {detailMode === 'counts' && (
+            <div className="hidden grid-cols-[72px_1.3fr_0.7fr_0.7fr_0.7fr_auto] border-b border-card-border px-2 py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary/45 md:grid">
+              <span>Rank</span>
+              <span>User name</span>
+              <span>Logs</span>
+              <span>Tasks</span>
+              <span>Streak</span>
+              <span className="text-right">Score</span>
+            </div>
+          )}
+          <div>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, index) => (
-                <div key={index} className="h-36 animate-pulse rounded-[2rem] bg-card" />
+                <div key={index} className="my-3 h-16 animate-pulse rounded-2xl bg-app-container" />
               ))
             ) : entries.length > 0 && activeEntries.length > 0 ? (
               entries.map(entry => <LeaderboardRow key={entry.userId} entry={entry} showCounts={detailMode === 'counts'} />)
             ) : (
-              <div className="flex min-h-[340px] flex-col items-center justify-center rounded-[2rem] border border-dashed border-card-border bg-card p-8 text-center">
+              <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-card-border bg-app-container p-8 text-center">
                 <Users size={30} className="text-accent/70" />
                 <h3 className="mt-4 text-2xl font-black text-text-main">Build your Circle Momentum.</h3>
                 <p className="mt-2 max-w-md text-sm font-semibold leading-relaxed text-text-secondary/70">
@@ -248,7 +284,7 @@ export default function CircleMomentumPage() {
                   <button onClick={() => navigate('/circle?tab=connections')} className="rounded-2xl bg-accent px-5 py-3 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
                     Add connections
                   </button>
-                  <button onClick={() => navigate('/')} className="rounded-2xl border border-card-border bg-app-container px-5 py-3 text-[10px] font-black uppercase tracking-widest text-text-main">
+                  <button onClick={() => navigate('/')} className="rounded-2xl border border-card-border bg-card px-5 py-3 text-[10px] font-black uppercase tracking-widest text-text-main">
                     Log your proof
                   </button>
                 </div>
@@ -256,7 +292,53 @@ export default function CircleMomentumPage() {
             )}
           </div>
         </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-[1.6rem] border border-card-border bg-card p-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Your position</p>
+            <div className="mt-3 flex items-end justify-between gap-4">
+              <h2 className="text-3xl font-black text-text-main">
+                {currentUserEntry ? `#${currentUserEntry.rank}` : 'Join'}
+              </h2>
+              <span className="rounded-2xl bg-accent px-4 py-2 text-lg font-black text-accent-contrast">
+                {currentUserEntry?.momentumScore || 0}
+              </span>
+            </div>
+            <p className="mt-4 text-sm font-semibold leading-relaxed text-text-secondary/70">
+              {nextEntry
+                ? `Your next proof log can move you closer to ${nextEntry.displayName}.`
+                : 'Your next proof log keeps the circle moving.'}
+            </p>
+            <button onClick={() => navigate('/')} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent/10 px-5 text-[10px] font-black uppercase tracking-widest text-accent">
+              Log proof today <Zap size={14} />
+            </button>
+          </div>
+
+          <div className="rounded-[1.6rem] border border-card-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <CalendarDays size={18} className="text-accent" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Top mover</p>
+                <h3 className="text-lg font-black text-text-main">{topMover ? topMover.displayName : 'Open this week'}</h3>
+              </div>
+            </div>
+            <p className="mt-3 text-sm font-semibold text-text-secondary/70">
+              {topMover ? `+${topMover.changeFromLastWeek} points from the last window.` : 'Shared proof will light this up.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <BadgeCard title="Most proof logged" entry={proofLeader?.progressLogsCount ? proofLeader : undefined} />
+            <BadgeCard title="Task crusher" entry={taskLeader?.completedTasksCount ? taskLeader : undefined} />
+          </div>
+        </aside>
       </section>
+
+      {error && (
+        <div className="rounded-2xl border border-warning/20 bg-warning/10 px-4 py-3 text-xs font-bold text-text-main">
+          {error} Showing whatever progress is available.
+        </div>
+      )}
     </div>
   );
 }
