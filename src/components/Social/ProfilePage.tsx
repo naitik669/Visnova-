@@ -1238,10 +1238,10 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
   };
 
   return (
-    <div className="system-card p-6 sm:p-10 bg-card border-card-border group relative overflow-hidden transition-all hover:border-accent/20">
+    <div className="system-card p-6 sm:p-10 bg-card border-card-border group relative overflow-visible transition-all hover:border-accent/20">
       <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 blur-2xl rounded-full -mr-8 -mt-8 pointer-events-none" />
 
-      <div className="flex items-start justify-between relative z-10">
+      <div className="flex items-start justify-between relative z-[80]">
         <div className="flex flex-wrap gap-3">
           {post.type === 'sprint' && (
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/5 text-accent text-[8px] font-black uppercase tracking-widest border border-accent/10">
@@ -1275,7 +1275,10 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
         {(isOwnPost || currentUserId) && (
           <div ref={menuRef} className="relative z-50">
             <button
-              onClick={() => setIsMenuOpen(open => !open)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsMenuOpen(open => !open);
+              }}
               className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 hover:text-text-main transition-all shrink-0"
             >
               <MoreHorizontal size={18} />
@@ -1289,7 +1292,7 @@ function ProfilePostCard({ post, onOpenThread, onDeleted, onUpdated, onArchived 
                   exit={{ opacity: 0, scale: 0.96, y: -4 }}
                   onClick={(event) => event.stopPropagation()}
                   onMouseDown={(event) => event.stopPropagation()}
-                  className="visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-52 max-h-[70dvh] overflow-y-auto custom-scrollbar p-1.5 z-[240]"
+                  className="visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-x-auto sm:bottom-auto sm:top-full sm:right-0 sm:mt-2 w-auto sm:w-56 max-h-[70dvh] overflow-y-auto custom-scrollbar p-1.5 z-[300]"
                 >
                   {isOwnPost ? (
                     <>
