@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { SelectMenu } from '../ui/SelectMenu';
+import { DatePicker } from '../ui/DatePicker';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import { FinanceBillingCycle, FinanceBudget, FinanceGoal, FinanceGoalPriority, FinanceGoalStatus, FinanceSubscription, FinanceTransaction, FinanceTransactionType } from '../../types';
@@ -636,7 +637,7 @@ function TransactionForm({ mode, transaction, visions, goals, onSubmit }: { mode
       <Field label="Amount"><input name="amount" type="number" min="1" step="0.01" defaultValue={transaction?.amount || ''} className={inputClass} required /></Field>
       <Field label="Currency"><CurrencySelect defaultValue={transaction?.currency || 'INR'} /></Field>
       <Field label="Category"><FormSelect name="category" defaultValue={transaction?.category || categories[0]} options={categories.map(c => ({ value: c, label: c }))} /></Field>
-      <Field label="Date"><input name="transactionDate" type="date" defaultValue={transaction?.transactionDate || today()} className={inputClass} /></Field>
+      <Field label="Date"><DatePicker name="transactionDate" defaultValue={transaction?.transactionDate || today()} /></Field>
       <Field label="Payment Method"><input name="paymentMethod" defaultValue={transaction?.paymentMethod || ''} className={inputClass} placeholder="UPI, card, cash..." /></Field>
       <Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={transaction?.linkedVisionId || ''} /></Field>
       <Field label="Linked Goal"><FormSelect name="linkedGoalId" defaultValue={transaction?.linkedGoalId || ''} options={[{ value: '', label: 'No goal' }, ...goals.map(goal => ({ value: goal.id, label: goal.title }))]} /></Field>
@@ -653,7 +654,7 @@ function GoalForm({ goal, visions, onSubmit }: { goal: FinanceGoal | null; visio
       <Field label="Target Amount"><input name="targetAmount" type="number" min="1" step="0.01" defaultValue={goal?.targetAmount || ''} className={inputClass} required /></Field>
       <Field label="Current Amount"><input name="currentAmount" type="number" min="0" step="0.01" defaultValue={goal?.currentAmount || 0} className={inputClass} /></Field>
       <Field label="Currency"><CurrencySelect defaultValue={goal?.currency || 'INR'} /></Field>
-      <Field label="Deadline"><input name="deadline" type="date" defaultValue={goal?.deadline || ''} className={inputClass} /></Field>
+      <Field label="Deadline"><DatePicker name="deadline" defaultValue={goal?.deadline || ''} placeholder="No deadline" /></Field>
       <Field label="Priority"><FormSelect name="priority" defaultValue={goal?.priority || 'medium'} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} /></Field>
       <Field label="Status"><FormSelect name="status" defaultValue={goal?.status || 'active'} options={[{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }, { value: 'completed', label: 'Completed' }, { value: 'archived', label: 'Archived' }]} /></Field>
       <div className="sm:col-span-2"><Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={goal?.linkedVisionId || ''} /></Field></div>
@@ -679,7 +680,7 @@ function SubscriptionForm({ subscription, visions, onSubmit }: { subscription: F
       <Field label="Amount"><input name="amount" type="number" min="1" step="0.01" defaultValue={subscription?.amount || ''} className={inputClass} required /></Field>
       <Field label="Currency"><CurrencySelect defaultValue={subscription?.currency || 'INR'} /></Field>
       <Field label="Billing Cycle"><FormSelect name="billingCycle" defaultValue={subscription?.billingCycle || 'monthly'} options={[{ value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' }, { value: 'quarterly', label: 'Quarterly' }, { value: 'yearly', label: 'Yearly' }, { value: 'custom', label: 'Custom' }]} /></Field>
-      <Field label="Next Billing"><input name="nextBillingDate" type="date" defaultValue={subscription?.nextBillingDate || ''} className={inputClass} /></Field>
+      <Field label="Next Billing"><DatePicker name="nextBillingDate" defaultValue={subscription?.nextBillingDate || ''} placeholder="Select billing date" /></Field>
       <Field label="Category"><input name="category" defaultValue={subscription?.category || 'Subscriptions'} className={inputClass} /></Field>
       <Field label="Status"><FormSelect name="active" defaultValue={subscription?.active === false ? 'false' : 'true'} options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]} /></Field>
       <div className="sm:col-span-2"><Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={subscription?.linkedVisionId || ''} /></Field></div>
@@ -708,8 +709,8 @@ function ReviewForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Period Start"><input name="periodStart" type="date" defaultValue={start.toISOString().slice(0, 10)} className={inputClass} /></Field>
-        <Field label="Period End"><input name="periodEnd" type="date" defaultValue={end.toISOString().slice(0, 10)} className={inputClass} /></Field>
+        <Field label="Period Start"><DatePicker name="periodStart" defaultValue={start.toISOString().slice(0, 10)} /></Field>
+        <Field label="Period End"><DatePicker name="periodEnd" defaultValue={end.toISOString().slice(0, 10)} /></Field>
       </div>
       <Field label="What spending helped your Visions?"><textarea name="reflection" className={textareaClass} /></Field>
       <Field label="What money habit will you improve next week?"><textarea name="improvement" className={textareaClass} /></Field>

@@ -46,6 +46,7 @@ import { safeArray, safeString } from '../../lib/safeData';
 import { SelectMenu } from '../ui/SelectMenu';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
+import { DatePicker } from '../ui/DatePicker';
 
 const UNFILED_FOLDER_ID = '__unfiled__';
 
@@ -1185,17 +1186,13 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <label className="flex h-11 items-center gap-2 rounded-2xl border border-card-border bg-card px-3">
-            <Calendar size={14} className="text-text-secondary/45" />
-            <input
-              type="date"
-              value={format(selectedDate, 'yyyy-MM-dd')}
-              max={format(new Date(), 'yyyy-MM-dd')}
-              onChange={(event) => handleDatePickerChange(event.target.value)}
-              className="w-32 bg-transparent text-[10px] font-black uppercase tracking-widest text-text-main outline-none"
-              aria-label="Open journal calendar"
-            />
-          </label>
+          <DatePicker
+            value={format(selectedDate, 'yyyy-MM-dd')}
+            max={format(new Date(), 'yyyy-MM-dd')}
+            onChange={handleDatePickerChange}
+            ariaLabel="Open journal calendar"
+            triggerClassName="h-11 w-[10.5rem] bg-card px-3 text-[10px]"
+          />
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-text-secondary/40">
             {isSaving ? 'Saving...' : lastSaved ? `Saved ${safeFormat(lastSaved, 'h:mm a')}` : 'Unsaved'}
           </span>

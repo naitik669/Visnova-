@@ -19,6 +19,7 @@ import { getCapsuleImageUrl, supabase, uploadCapsuleImage } from '../../lib/supa
 import { useStore } from '../../store/useStore';
 import { NovaCapsule, NovaCapsuleItem, NovaCapsuleItemType } from '../../types';
 import { safeArray, safeFormat, safeString, safeTime } from '../../lib/safeData';
+import { DatePicker } from '../ui/DatePicker';
 
 type CapsuleTab = 'upcoming' | 'unlocked' | 'opened' | 'draft';
 type BuilderMode = 'create' | 'edit';
@@ -663,10 +664,7 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Unlock Date</span>
-                <div className="relative">
-                  <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" />
-                  <input type="date" value={unlockDate} onChange={event => setUnlockDate(event.target.value)} className="w-full h-[52px] rounded-2xl bg-card border border-card-border pl-11 pr-4 text-sm font-bold text-text-main outline-none focus:border-accent/60 focus:ring-4 focus:ring-accent/10 [color-scheme:inherit]" />
-                </div>
+                <DatePicker value={unlockDate} onChange={setUnlockDate} triggerClassName="h-[52px] text-sm normal-case tracking-normal" />
               </label>
               <label className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Unlock Time</span>

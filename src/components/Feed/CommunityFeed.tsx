@@ -44,6 +44,7 @@ import { TrendingTopicsSection } from './TrendingTopicsSection';
 import { SuggestedUsersFeedBlock } from './SuggestedUsersFeedBlock';
 import { SelectMenu } from '../ui/SelectMenu';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { DatePicker } from '../ui/DatePicker';
 import { SharedPostEmbed } from './SharedPostEmbed';
 import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
 import { renderSocialText } from '../../utils/parseSocialText';
@@ -1016,11 +1017,10 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] font-black uppercase tracking-widest text-text-secondary/60 ml-2">Date</label>
-                    <input 
-                      type="date"
+                    <DatePicker
                       value={date}
-                      onChange={e => setDate(e.target.value)}
-                      className="w-full bg-card border border-card-border rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-accent transition-all color-scheme-dark"
+                      onChange={setDate}
+                      triggerClassName="h-12 rounded-xl bg-card px-4 py-3 text-sm normal-case tracking-normal"
                     />
                   </div>
                 </div>

@@ -10,6 +10,7 @@ import { SelectMenu } from '../ui/SelectMenu';
 import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ProgressLogComposer } from '../Progress/ProgressLogComposer';
+import { DatePicker } from '../ui/DatePicker';
 
 type TaskStatus = NonNullable<Task['status']>;
 type BoardTask = Task & { visionId: string; visionTitle: string; visionCategory?: string; reactKey: string };
@@ -441,7 +442,7 @@ function TaskCreateModal({ open, visions, onClose, onCreate }: { open: boolean; 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <SelectMenu value={status} onChange={value => setStatus(value as TaskStatus)} options={COLUMNS.map(column => ({ value: column.id, label: column.label }))} />
           <SelectMenu value={priority} onChange={value => setPriority(value as any)} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} />
-          <input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)} className="h-11 rounded-xl border border-card-border bg-bg-base px-3 text-xs font-bold text-text-main outline-none focus:border-accent" />
+          <DatePicker value={dueDate} onChange={setDueDate} placeholder="Due date" triggerClassName="h-11 rounded-xl bg-bg-base text-xs" />
         </div>
         <textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="Description or checklist notes..." className="min-h-24 w-full resize-none rounded-2xl border border-card-border bg-bg-base p-4 text-sm font-semibold text-text-secondary outline-none focus:border-accent" />
         {visions.length === 0 && (
