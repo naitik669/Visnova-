@@ -33,7 +33,8 @@ import {
   StopCircle,
   Upload,
   Volume2,
-  Send
+  Send,
+  MoreHorizontal
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, isAfter, startOfDay } from 'date-fns';
@@ -255,6 +256,27 @@ export default function NotesSystem() {
     return {
       all: visibleLibraryNotes.length,
       unfiled: visibleLibraryNotes.filter(note => !note.folderId).length,
+      byFolder
+    };
+  }, [notes]);
+
+  const folderPreviewNotes = useMemo(() => {
+    const visibleLibraryNotes = safeArray<Note>(notes)
+      .filter(n => !n.isDeleted && libraryNoteTypes.includes(n.note_type))
+      .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+    const byFolder = new Map<string, Note[]>();
+
+    visibleLibraryNotes.forEach(note => {
+      if (!note.folderId) return;
+      const next = byFolder.get(note.folderId) || [];
+      if (next.length < 2) {
+        byFolder.set(note.folderId, [...next, note]);
+      }
+    });
+
+    return {
+      all: visibleLibraryNotes.slice(0, 2),
+      unfiled: visibleLibraryNotes.filter(note => !note.folderId).slice(0, 2),
       byFolder
     };
   }, [notes]);
@@ -550,13 +572,14 @@ export default function NotesSystem() {
                     </div>
                     
                     <div className={cn(
-                      "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 transition-all",
+                      "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 transition-all",
                       draggingNoteId && "rounded-3xl bg-accent/5 p-2"
                     )}>
                        <FolderCard
                          folder={{ id: null, name: 'All Notes', color: 'var(--accent)' }}
                          active={!selectedFolder}
                          count={noteCounts.all}
+                         previewNotes={folderPreviewNotes.all}
                          dropActive={false}
                          onClick={() => setSelectedFolder(null)}
                          onDoubleClick={() => setSelectedFolder(null)}
@@ -565,6 +588,7 @@ export default function NotesSystem() {
                          folder={{ id: UNFILED_FOLDER_ID, name: 'Unfiled', color: 'var(--surface-muted)' }}
                          active={selectedFolder === UNFILED_FOLDER_ID}
                          count={noteCounts.unfiled}
+                         previewNotes={folderPreviewNotes.unfiled}
                          dropActive={dragOverFolderId === UNFILED_FOLDER_ID}
                          onClick={() => setSelectedFolder(selectedFolder === UNFILED_FOLDER_ID ? null : UNFILED_FOLDER_ID)}
                          onDoubleClick={() => setSelectedFolder(UNFILED_FOLDER_ID)}
@@ -578,6 +602,7 @@ export default function NotesSystem() {
                           folder={folder}
                           active={selectedFolder === folder.id}
                           count={noteCounts.byFolder.get(folder.id) || 0}
+                          previewNotes={folderPreviewNotes.byFolder.get(folder.id) || []}
                           dropActive={dragOverFolderId === folder.id}
                           onClick={() => setSelectedFolder(selectedFolder === folder.id ? null : folder.id)}
                           onDoubleClick={() => setFolderViewer(folder)}
@@ -588,7 +613,7 @@ export default function NotesSystem() {
                        ))}
                        <button 
                          onClick={() => setIsFolderModalOpen(true)}
-                         className="min-h-24 rounded-2xl border border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex items-center justify-center gap-3 px-4"
+                         className="min-h-36 rounded-[1.65rem] border border-dashed border-card-border hover:border-accent/40 hover:bg-accent/5 transition-all group flex flex-col items-center justify-center gap-3 px-4"
                        >
                           <div className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/40 group-hover:text-accent transition-colors shrink-0">
                              <Plus size={20} />
@@ -1980,6 +2005,7 @@ function FolderCard({
   folder,
   active,
   count = 0,
+  previewNotes = [],
   dropActive = false,
   onClick,
   onDoubleClick,
@@ -1990,6 +2016,7 @@ function FolderCard({
   folder: any;
   active: boolean;
   count?: number;
+  previewNotes?: Note[];
   dropActive?: boolean;
   onClick: () => void;
   onDoubleClick: () => void;
@@ -2016,29 +2043,63 @@ function FolderCard({
         if (noteId) onDropNote(noteId);
       }}
       className={cn(
-        "min-h-24 rounded-2xl border px-4 py-3 transition-all group text-left flex items-center gap-3",
-        active ? "border-accent/40 bg-accent/10 shadow-sm" : "border-card-border/70 bg-card hover:-translate-y-0.5 hover:border-accent/30",
+        "min-h-36 rounded-[1.65rem] border p-4 transition-all group text-left flex flex-col gap-4 overflow-hidden",
+        active ? "border-accent/35 bg-accent/10 shadow-sm" : "border-card-border/70 bg-card hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5",
         dropActive && "border-accent bg-accent/15 ring-2 ring-accent/20"
       )}
     >
-      <div
-        className={cn(
-          "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors",
-          active || dropActive ? "bg-accent text-accent-contrast" : "bg-surface-muted text-text-secondary/60 group-hover:text-accent"
-        )}
-      >
-        <Folder size={20} fill={active || dropActive ? "currentColor" : (folder.color || "transparent")} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className={cn(
+              "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors shadow-sm",
+              active || dropActive ? "bg-accent text-accent-contrast" : "bg-surface-muted text-text-secondary/60 group-hover:text-accent"
+            )}
+          >
+            <Folder size={20} fill={active || dropActive ? "currentColor" : (folder.color || "transparent")} />
+          </div>
+          <div className="min-w-0">
+            <p className={cn(
+              "text-sm font-black tracking-tight truncate",
+              active || dropActive ? "text-accent" : "text-text-main"
+            )}>
+              {folder.name}
+            </p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
+              {dropActive ? 'Drop to move here' : `${count} ${count === 1 ? 'note' : 'notes'}`}
+            </p>
+          </div>
+        </div>
+        <MoreHorizontal size={16} className="mt-2 shrink-0 text-text-secondary/25 transition-colors group-hover:text-accent" />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className={cn(
-          "text-sm font-black tracking-tight truncate",
-          active || dropActive ? "text-accent" : "text-text-main"
-        )}>
-          {folder.name}
-        </p>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
-          {dropActive ? 'Drop to move here' : `${count} ${count === 1 ? 'note' : 'notes'}`}
-        </p>
+
+      <div className="grid grid-cols-2 gap-2">
+        {safeArray<Note>(previewNotes).length > 0 ? safeArray<Note>(previewNotes).map((note, index) => {
+          const visualStyle = noteStyleFor(note);
+          const NoteIcon = note.note_type === 'audio' ? Volume2 : FileText;
+          return (
+            <div
+              key={note.id || index}
+              className="min-h-16 rounded-2xl border bg-card/75 p-2 shadow-sm"
+              style={{ borderColor: visualStyle.border }}
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <span
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl"
+                  style={{ background: visualStyle.background, color: visualStyle.ink }}
+                >
+                  <NoteIconGlyph note={note} fallback={NoteIcon} size={14} />
+                </span>
+                <p className="truncate text-[10px] font-black text-text-main">{safeString(note.title, 'Untitled')}</p>
+              </div>
+              <p className="line-clamp-2 text-[9px] font-semibold leading-snug text-text-secondary/60">{cleanPreview(note.content)}</p>
+            </div>
+          );
+        }) : (
+          <div className="col-span-2 rounded-2xl border border-dashed border-card-border/70 bg-bg-base/35 px-3 py-4 text-[9px] font-black uppercase tracking-widest text-text-secondary/35">
+            Empty folder
+          </div>
+        )}
       </div>
     </button>
   );
@@ -2449,70 +2510,79 @@ function NoteCard({
     <div 
       {...dragProps}
       onClick={handleCardClick}
-      className="group relative flex min-h-[188px] cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-card-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5"
+      className="group relative flex min-h-[268px] cursor-pointer flex-col overflow-hidden rounded-[2rem] border border-card-border/70 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent/35 hover:shadow-xl hover:shadow-accent/5"
     >
-       <div className="flex items-start gap-3">
+      <div
+        className="absolute inset-x-0 top-0 h-28 opacity-90"
+        style={{ background: `linear-gradient(135deg, ${visualStyle.background}, transparent)` }}
+      />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm"
-            style={{ background: visualStyle.background, borderColor: visualStyle.border, color: visualStyle.ink }}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-card shadow-sm"
+            style={{ borderColor: visualStyle.border, color: visualStyle.ink }}
           >
-            <NoteIconGlyph note={note} fallback={NoteIcon} size={19} />
+            <NoteIconGlyph note={note} fallback={NoteIcon} size={20} />
           </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-[15px] font-black text-text-main group-hover:text-accent transition-colors leading-tight tracking-tight line-clamp-1">{safeString(note.title, 'Untitled Note')}</h4>
-            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45 truncate">
+          <div className="min-w-0">
+            <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary/45">
               {createdOrUpdated} - {folderName || 'Unfiled'}
             </p>
+            <h4 className="line-clamp-2 text-[18px] font-black leading-tight tracking-tight text-text-main transition-colors group-hover:text-accent">
+              {safeString(note.title, 'Untitled Note')}
+            </h4>
           </div>
-          <button
-            type="button"
-            aria-label="Post note to profile"
-            onClick={(event) => {
-              event.stopPropagation();
-              onPost();
-            }}
-            className="w-8 h-8 rounded-xl text-text-secondary/45 hover:text-accent hover:bg-accent/10 flex items-center justify-center shrink-0"
-          >
-            <Send size={14} />
-          </button>
-       </div>
+        </div>
+        <button
+          type="button"
+          aria-label="Post note to profile"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPost();
+          }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-text-secondary/45 transition-colors hover:bg-accent/10 hover:text-accent"
+        >
+          <Send size={14} />
+        </button>
+      </div>
 
-       <div
-         className="mt-4 min-w-0 flex-1 rounded-[1.35rem] border p-4"
-         style={{ background: visualStyle.background, borderColor: visualStyle.border }}
-       >
-          <p className="text-[13px] font-semibold leading-relaxed text-text-secondary/85 line-clamp-4">
-            {preview}
-          </p>
-       </div>
+      <div className="relative mt-5 flex flex-1 flex-col rounded-[1.65rem] border border-card-border/70 bg-card/80 p-4 shadow-sm">
+        <div
+          className="mb-3 h-1.5 w-14 rounded-full"
+          style={{ background: visualStyle.ink }}
+        />
+        <p className="line-clamp-6 text-[14px] font-semibold leading-relaxed text-text-secondary/85">
+          {preview}
+        </p>
+      </div>
 
-       <div className="mt-4 flex items-center justify-between gap-3 border-t border-card-border/40 pt-3">
-          <div className="flex items-center gap-1 min-w-0">
-            {sourceBadge && (
-              <span className="rounded-full bg-danger/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-danger">
-                {sourceBadge}
-              </span>
-            )}
-            {noteTags.slice(0, 3).map((t, i) => (
-              <span key={i} className="rounded-full bg-surface-muted px-2 py-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60 truncate max-w-20">#{t}</span>
-            ))}
+      <div className="relative mt-4 flex items-center justify-between gap-3 border-t border-card-border/35 pt-3">
+        <div className="flex min-w-0 items-center gap-1">
+          {sourceBadge && (
+            <span className="rounded-full bg-danger/10 px-2 py-1 text-[9px] font-black uppercase tracking-widest text-danger">
+              {sourceBadge}
+            </span>
+          )}
+          {noteTags.slice(0, 2).map((t, i) => (
+            <span key={i} className="max-w-20 truncate rounded-full bg-surface-muted px-2 py-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">#{t}</span>
+          ))}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div onClick={(event) => event.stopPropagation()} className="w-24 sm:w-28">
+            <SelectMenu
+              value={currentFolderValue}
+              onChange={handleMoveChange}
+              options={folderOptions}
+              placeholder="Move"
+              triggerClassName="h-8 rounded-lg px-2 text-[9px]"
+              menuClassName="sm:w-48"
+            />
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div onClick={(event) => event.stopPropagation()} className="w-24 sm:w-28">
-              <SelectMenu
-                value={currentFolderValue}
-                onChange={handleMoveChange}
-                options={folderOptions}
-                placeholder="Move"
-                triggerClassName="h-8 rounded-lg px-2 text-[9px]"
-                menuClassName="sm:w-48"
-              />
-            </div>
-            <div className="flex items-center gap-1 text-[9px] font-black text-accent uppercase tracking-widest group-hover:translate-x-1 transition-transform">
-              Open <ChevronRight size={12} />
-            </div>
+          <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-accent transition-transform group-hover:translate-x-1">
+            Open <ChevronRight size={12} />
           </div>
-       </div>
+        </div>
+      </div>
     </div>
   );
 }
