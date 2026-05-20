@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -32,8 +33,31 @@ export function SelectMenu({
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [menuRect, setMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const selected = options.find(option => option.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const updatePosition = () => {
+      const rect = rootRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuRect({
+        left: Math.max(12, Math.min(rect.left, window.innerWidth - rect.width - 12)),
+        top: rect.bottom + 8,
+        width: rect.width,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,47 +99,56 @@ export function SelectMenu({
         <ChevronDown size={15} className={cn('ml-auto shrink-0 text-text-secondary/45 transition-transform', open && 'rotate-180 text-accent')} />
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.14 }}
-            role="listbox"
-            onClick={(event) => event.stopPropagation()}
-            onMouseDown={(event) => event.stopPropagation()}
-            className={cn(
-              'visnova-menu fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[360] max-h-[55dvh] overflow-y-auto p-1.5 sm:absolute sm:inset-x-0 sm:bottom-auto sm:top-full sm:mt-2 sm:max-h-72',
-              menuClassName
-            )}
-          >
-            {options.map(option => {
-              const active = option.value === value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  onClick={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                  className={cn('visnova-menu-item', active && 'visnova-menu-item-active')}
-                >
-                  {option.icon && <span className="shrink-0 text-text-secondary/55">{option.icon}</span>}
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{option.label}</span>
-                    {option.description && <span className="mt-0.5 block truncate text-[10px] font-semibold normal-case tracking-normal text-text-secondary/55">{option.description}</span>}
-                  </span>
-                  {active && <Check size={14} className="shrink-0 text-accent" />}
-                </button>
-              );
-            })}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {open && menuRect && (
+            <motion.div
+              initial={{ opacity: 0, y: -4, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.98 }}
+              transition={{ duration: 0.14 }}
+              role="listbox"
+              onClick={(event) => event.stopPropagation()}
+              onMouseDown={(event) => event.stopPropagation()}
+              className={cn(
+                'visnova-menu fixed z-[520] max-h-[55dvh] overflow-y-auto p-1.5 sm:max-h-72',
+                menuClassName
+              )}
+              style={{
+                left: menuRect.left,
+                top: menuRect.top,
+                width: menuRect.width,
+                maxWidth: 'calc(100vw - 24px)'
+              }}
+            >
+              {options.map(option => {
+                const active = option.value === value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => {
+                      onChange(option.value);
+                      setOpen(false);
+                    }}
+                    className={cn('visnova-menu-item', active && 'visnova-menu-item-active')}
+                  >
+                    {option.icon && <span className="shrink-0 text-text-secondary/55">{option.icon}</span>}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{option.label}</span>
+                      {option.description && <span className="mt-0.5 block truncate text-[10px] font-semibold normal-case tracking-normal text-text-secondary/55">{option.description}</span>}
+                    </span>
+                    {active && <Check size={14} className="shrink-0 text-accent" />}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
