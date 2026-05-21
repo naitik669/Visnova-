@@ -34,6 +34,7 @@ export function PrivacyPolicyPage() {
         <h2 className="text-xl font-black text-text-main">How Data Is Used</h2>
         <p>We use your data to authenticate your account, sync your workspace, show your chosen social activity, protect the app from abuse, and provide support. We do not sell private workspace content.</p>
         <p>Private messages are not used for recommendations. Private notes, private journals, private progress logs, and private message content are not used for optional analytics or recommendations.</p>
+        <p>Resource recommendations may use selected interests, Vision categories, saved resources, money/resource goals, and product interactions when enabled. They do not use private message, journal, note, or private progress log content.</p>
         <p>VisNova uses account access controls, database security rules, and privacy settings to protect private content. We do not claim end-to-end encryption.</p>
       </section>
       <section className="space-y-4">
@@ -66,6 +67,11 @@ export function TermsPage() {
       <section className="space-y-4">
         <h2 className="text-xl font-black text-text-main">YouTube Embeds</h2>
         <p>Growth Learning Sessions can embed YouTube videos. YouTube content remains governed by YouTube’s terms and privacy policies. Do not use VisNova to copy, redistribute, or claim ownership of third-party videos.</p>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-black text-text-main">Partner Resource Links</h2>
+        <p>Some resource links may be affiliate or partner links. If you purchase through them, VisNova may earn a commission at no extra cost to you.</p>
+        <p>Products and templates are sold and fulfilled by third-party partners unless clearly stated otherwise. Prices, availability, delivery, refunds, and support are controlled by the partner site.</p>
       </section>
     </LegalShell>
   );

@@ -291,6 +291,36 @@ export interface MoneyOverview {
   topGoal: FinanceGoal | null;
 }
 
+export type StoreProductType =
+  | 'physical_product'
+  | 'digital_template'
+  | 'course'
+  | 'book'
+  | 'software'
+  | 'creator_tool'
+  | 'study_resource'
+  | 'startup_tool';
+
+export interface StoreProduct {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  price?: number | null;
+  currency: CurrencyCode;
+  partnerName?: string;
+  affiliateUrl?: string;
+  productType: StoreProductType;
+  category?: string;
+  tags: string[];
+  visionCategories: string[];
+  minBudget?: number | null;
+  maxBudget?: number | null;
+  isDigital: boolean;
+  recommendationReason?: string;
+  score?: number;
+}
+
 export type EcosystemVisibility = 'private' | 'circle' | 'public';
 
 export type ProgressLogType =
