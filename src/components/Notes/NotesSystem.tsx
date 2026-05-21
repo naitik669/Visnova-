@@ -34,7 +34,12 @@ import {
   Upload,
   Volume2,
   Send,
-  MoreHorizontal
+  MoreHorizontal,
+  Bold,
+  Italic,
+  Highlighter,
+  StickyNote,
+  ListChecks
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, isAfter, startOfDay } from 'date-fns';
@@ -49,6 +54,19 @@ import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { DatePicker } from '../ui/DatePicker';
 
 const UNFILED_FOLDER_ID = '__unfiled__';
+const NOTE_HIGHLIGHT_COLORS = ['#FDE68A', '#FBCFE8', '#C7D2FE', '#BBF7D0', '#FED7AA'];
+
+const hasHtmlMarkup = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value);
+
+const escapeHtml = (value: string) => value
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#039;')
+  .replace(/\n/g, '<br>');
+
+const normalizeNoteEditorHtml = (value: string) => (hasHtmlMarkup(value) ? value : escapeHtml(value || ''));
 
 function formatDuration(seconds?: number) {
   if (!seconds) return '0:00';
@@ -59,6 +77,11 @@ function formatDuration(seconds?: number) {
 
 function cleanPreview(content?: string) {
   const cleaned = safeString(content)
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(div|p|li|ul|ol)>/gi, ' ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
     .replace(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/\S+/gi, 'YouTube')
     .replace(/https?:\/\/\S+/gi, 'Link')
     .replace(/[#*_`>[\]()]/g, '')
@@ -2741,8 +2764,63 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   const { deleteNote, session, addToast } = useStore();
   const audioInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const saveTimerRef = useRef<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = normalizeNoteEditorHtml(note.content || '');
+    }
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  }, [note.id]);
+
+  useEffect(() => () => {
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+  }, []);
+
+  const saveEditorContent = (immediate = false) => {
+    const html = editorRef.current?.innerHTML || '';
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    if (immediate) {
+      updateNote(note.id, { content: html });
+      return;
+    }
+    saveTimerRef.current = window.setTimeout(() => updateNote(note.id, { content: html }), 350);
+  };
+
+  const runEditorCommand = (command: string, value?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    saveEditorContent(true);
+  };
+
+  const insertEditorHtml = (html: string) => {
+    editorRef.current?.focus();
+    document.execCommand('insertHTML', false, html);
+    saveEditorContent(true);
+  };
+
+  const insertStickyNote = () => {
+    insertEditorHtml(`
+      <div style="margin:18px 0;padding:18px 20px;border-radius:22px;background:#FEF3C7;border:1px solid rgba(120,80,20,0.12);box-shadow:0 14px 30px rgba(90,60,20,0.10);color:#4A3418;font-weight:700;line-height:1.65;">
+        Sticky thought...
+      </div><p><br></p>
+    `);
+  };
+
+  const insertChecklist = () => {
+    insertEditorHtml(`
+      <ul style="margin:18px 0;padding:16px 18px 16px 42px;border-radius:22px;background:rgba(var(--accent-rgb),0.08);border:1px solid rgba(var(--accent-rgb),0.14);line-height:1.9;font-weight:700;">
+        <li><label><input type="checkbox" style="margin-right:10px;accent-color:rgb(var(--accent-rgb));"> Checklist item</label></li>
+        <li><label><input type="checkbox" style="margin-right:10px;accent-color:rgb(var(--accent-rgb));"> Next step</label></li>
+      </ul><p><br></p>
+    `);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -2958,18 +3036,74 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             className="w-full bg-transparent text-3xl font-extrabold tracking-tight text-text-main placeholder:text-text-secondary/20 focus:outline-none sm:text-4xl"
             placeholder="Document Title"
           />
+
+          <div className="sticky top-0 z-20 -mx-2 flex flex-wrap items-center gap-2 rounded-[1.4rem] border border-card-border bg-card/95 p-2 shadow-sm backdrop-blur-md sm:mx-0">
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => runEditorCommand('bold')}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-muted text-text-main transition-colors hover:bg-accent hover:text-accent-contrast"
+              title="Bold selected text"
+            >
+              <Bold size={15} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => runEditorCommand('italic')}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-muted text-text-main transition-colors hover:bg-accent hover:text-accent-contrast"
+              title="Italic selected text"
+            >
+              <Italic size={15} />
+            </button>
+            <div className="mx-1 h-7 w-px bg-card-border" />
+            <div className="flex items-center gap-1 rounded-xl bg-surface-muted px-2 py-1">
+              <Highlighter size={14} className="text-text-secondary/50" />
+              {NOTE_HIGHLIGHT_COLORS.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => runEditorCommand('backColor', color)}
+                  className="h-6 w-6 rounded-lg border border-card-border shadow-sm transition-transform hover:scale-110"
+                  style={{ background: color }}
+                  title="Highlight selected text"
+                />
+              ))}
+            </div>
+            <div className="mx-1 h-7 w-px bg-card-border" />
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={insertStickyNote}
+              className="flex h-9 items-center gap-2 rounded-xl bg-surface-muted px-3 text-[10px] font-black uppercase tracking-widest text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+            >
+              <StickyNote size={14} /> Sticky
+            </button>
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={insertChecklist}
+              className="flex h-9 items-center gap-2 rounded-xl bg-surface-muted px-3 text-[10px] font-black uppercase tracking-widest text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+            >
+              <ListChecks size={14} /> Checklist
+            </button>
+          </div>
           
-          <textarea
-            value={note.content}
-            onChange={e => {
-              updateNote(note.id, { content: e.target.value });
-              e.target.style.height = 'auto';
-              e.target.style.height = e.target.scrollHeight + 'px';
-            }}
-            className="min-h-[58vh] w-full resize-none bg-transparent text-base font-medium leading-loose text-text-secondary placeholder:text-text-secondary/20 focus:outline-none sm:text-lg"
-            placeholder="Log details..."
-            style={{ height: 'auto' }}
-          />
+          <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-6">
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={() => saveEditorContent()}
+              onBlur={() => saveEditorContent(true)}
+              onClick={(event) => {
+                if ((event.target as HTMLElement).tagName === 'INPUT') saveEditorContent(true);
+              }}
+              className="note-paper-editor min-h-[58vh] w-full rounded-[1.5rem] px-6 py-5 text-base font-medium leading-[34px] text-text-secondary outline-none empty:before:text-text-secondary/25 empty:before:content-[attr(data-placeholder)] sm:px-8 sm:text-lg"
+              data-placeholder="Log details..."
+            />
+          </div>
 
           {(resolvedAudioUrl || note.audio_url) && (
             <div className="rounded-2xl border border-accent/10 bg-accent/5 p-5 flex flex-col sm:flex-row sm:items-center gap-4">
