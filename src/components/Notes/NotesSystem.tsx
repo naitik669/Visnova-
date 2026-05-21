@@ -2777,6 +2777,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
   const [selectedEditorBlockId, setSelectedEditorBlockId] = useState<string | null>(null);
+  const [isSizeMenuOpen, setIsSizeMenuOpen] = useState(false);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -3156,21 +3157,46 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             >
               Title
             </button>
-            <select
-              defaultValue=""
-              onChange={(event) => {
-                const size = Number(event.target.value);
-                if (size) applyFontSize(size);
-                event.target.value = '';
-              }}
-              className="h-9 rounded-xl border border-card-border bg-surface-muted px-2 text-[10px] font-black uppercase tracking-widest text-text-main outline-none"
-              title="Change selected text size"
-            >
-              <option value="">Size</option>
-              {NOTE_FONT_SIZES.map(size => (
-                <option key={size} value={size}>{size}px</option>
-              ))}
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setIsSizeMenuOpen(open => !open)}
+                className={cn(
+                  "flex h-9 items-center gap-2 rounded-xl border px-3 text-[10px] font-black uppercase tracking-widest transition-colors",
+                  isSizeMenuOpen ? "border-accent/30 bg-accent/10 text-accent" : "border-card-border bg-surface-muted text-text-main hover:bg-accent hover:text-accent-contrast"
+                )}
+                title="Change selected text size"
+              >
+                Size <ChevronDown size={12} />
+              </button>
+              <AnimatePresence>
+                {isSizeMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 6, scale: 1 }}
+                    exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                    transition={{ duration: 0.16, ease: 'easeOut' }}
+                    className="absolute left-0 top-full z-50 w-32 overflow-hidden rounded-2xl border border-card-border bg-card p-1.5 shadow-xl"
+                  >
+                    {NOTE_FONT_SIZES.map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          applyFontSize(size);
+                          setIsSizeMenuOpen(false);
+                        }}
+                        className="flex h-9 w-full items-center justify-between rounded-xl px-3 text-left text-[11px] font-black uppercase tracking-wider text-text-main transition-colors hover:bg-accent/10 hover:text-accent"
+                      >
+                        {size}px
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <div className="mx-1 h-7 w-px bg-card-border" />
             <div className="flex items-center gap-1 rounded-xl bg-surface-muted px-2 py-1">
               <Highlighter size={14} className="text-text-secondary/50" />
