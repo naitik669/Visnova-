@@ -2766,6 +2766,13 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   const recorderRef = useRef<MediaRecorder | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<number | null>(null);
+  const stickyDragRef = useRef<{
+    element: HTMLElement;
+    startX: number;
+    startY: number;
+    left: number;
+    top: number;
+  } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
 
@@ -2781,6 +2788,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
 
   useEffect(() => () => {
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    window.removeEventListener('pointermove', moveStickyNote);
+    window.removeEventListener('pointerup', stopStickyNoteDrag);
   }, []);
 
   const saveEditorContent = (immediate = false) => {
@@ -2807,19 +2816,65 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
 
   const insertStickyNote = () => {
     insertEditorHtml(`
-      <div style="margin:18px 0;padding:18px 20px;border-radius:22px;background:#FEF3C7;border:1px solid rgba(120,80,20,0.12);box-shadow:0 14px 30px rgba(90,60,20,0.10);color:#4A3418;font-weight:700;line-height:1.65;">
-        Sticky thought...
+      <div class="note-sticky-block" data-sticky-note="true" style="left:56px;top:124px;">
+        <div class="note-sticky-handle" data-sticky-handle="true" contenteditable="false">Move sticky</div>
+        <div class="note-sticky-body">Sticky thought...</div>
       </div><p><br></p>
     `);
   };
 
   const insertChecklist = () => {
     insertEditorHtml(`
-      <ul style="margin:18px 0;padding:16px 18px 16px 42px;border-radius:22px;background:rgba(var(--accent-rgb),0.08);border:1px solid rgba(var(--accent-rgb),0.14);line-height:1.9;font-weight:700;">
-        <li><label><input type="checkbox" style="margin-right:10px;accent-color:rgb(var(--accent-rgb));"> Checklist item</label></li>
-        <li><label><input type="checkbox" style="margin-right:10px;accent-color:rgb(var(--accent-rgb));"> Next step</label></li>
+      <ul class="note-checklist-block">
+        <li><label><input type="checkbox"> Checklist item</label></li>
+        <li><label><input type="checkbox"> Next step</label></li>
       </ul><p><br></p>
     `);
+  };
+
+  const moveStickyNote = (event: PointerEvent) => {
+    const drag = stickyDragRef.current;
+    const editor = editorRef.current;
+    if (!drag || !editor) return;
+
+    const nextLeft = drag.left + event.clientX - drag.startX;
+    const nextTop = drag.top + event.clientY - drag.startY;
+    const maxLeft = Math.max(0, editor.clientWidth - drag.element.offsetWidth - 16);
+    const maxTop = Math.max(0, editor.scrollHeight - drag.element.offsetHeight - 16);
+
+    drag.element.style.left = `${Math.min(Math.max(16, nextLeft), maxLeft)}px`;
+    drag.element.style.top = `${Math.min(Math.max(16, nextTop), maxTop)}px`;
+  };
+
+  const stopStickyNoteDrag = () => {
+    window.removeEventListener('pointermove', moveStickyNote);
+    window.removeEventListener('pointerup', stopStickyNoteDrag);
+    if (stickyDragRef.current) {
+      stickyDragRef.current = null;
+      saveEditorContent(true);
+    }
+  };
+
+  const startStickyNoteDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const handle = target.closest('[data-sticky-handle="true"]') as HTMLElement | null;
+    const editor = editorRef.current;
+    const sticky = handle?.closest('[data-sticky-note="true"]') as HTMLElement | null;
+    if (!handle || !sticky || !editor) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const stickyRect = sticky.getBoundingClientRect();
+    const editorRect = editor.getBoundingClientRect();
+    stickyDragRef.current = {
+      element: sticky,
+      startX: event.clientX,
+      startY: event.clientY,
+      left: Number.parseFloat(sticky.style.left || '') || stickyRect.left - editorRect.left + editor.scrollLeft,
+      top: Number.parseFloat(sticky.style.top || '') || stickyRect.top - editorRect.top + editor.scrollTop,
+    };
+    window.addEventListener('pointermove', moveStickyNote);
+    window.addEventListener('pointerup', stopStickyNoteDrag);
   };
 
   useEffect(() => {
@@ -2974,7 +3029,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar px-1 pb-24 pt-8 sm:pt-10 md:pt-12">
-        <div className="mx-auto max-w-5xl space-y-10 sm:space-y-12">
+        <div className="mx-auto max-w-6xl space-y-10 sm:space-y-12">
           {note.note_type === 'journal' && (
             <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{safeFormat(note.createdAt, 'EEEE, MMM dd')}</h4>
           )}
@@ -3090,17 +3145,18 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             </button>
           </div>
           
-          <div className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm sm:p-6">
+          <div className="rounded-[2rem] border border-card-border bg-card p-3 shadow-sm sm:p-5">
             <div
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
               onInput={() => saveEditorContent()}
               onBlur={() => saveEditorContent(true)}
+              onPointerDown={startStickyNoteDrag}
               onClick={(event) => {
                 if ((event.target as HTMLElement).tagName === 'INPUT') saveEditorContent(true);
               }}
-              className="note-paper-editor min-h-[58vh] w-full rounded-[1.5rem] px-6 py-5 text-base font-medium leading-[34px] text-text-secondary outline-none empty:before:text-text-secondary/25 empty:before:content-[attr(data-placeholder)] sm:px-8 sm:text-lg"
+              className="note-paper-editor min-h-[72vh] w-full rounded-[1.5rem] px-6 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:px-10 sm:text-lg"
               data-placeholder="Log details..."
             />
           </div>

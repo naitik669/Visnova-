@@ -498,12 +498,15 @@ select option {
   }
 
   .note-paper-editor {
+    position: relative;
+    overflow: auto;
     background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--accent) 18%, transparent) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, transparent 0 33px, color-mix(in srgb, var(--text-secondary) 16%, transparent) 33px 34px);
-    background-position: 3.25rem 0, 0 0;
-    background-size: 1px 100%, 100% 34px;
-    background-color: color-mix(in srgb, var(--card) 92%, var(--accent) 4%);
+      linear-gradient(to right, rgb(226 232 240 / 0.9) 0 1px, transparent 1px),
+      repeating-linear-gradient(to bottom, transparent 0 35px, rgb(203 213 225 / 0.72) 35px 36px);
+    background-position: 3.75rem 0, 0 8px;
+    background-size: 1px 100%, 100% 36px;
+    background-color: #ffffff;
+    color: #51445e;
     white-space: pre-wrap;
     word-break: break-word;
   }
@@ -526,6 +529,70 @@ select option {
   .note-paper-editor input[type='checkbox'] {
     width: 1rem;
     height: 1rem;
+    accent-color: rgb(var(--accent-rgb));
+  }
+
+  .note-paper-editor p {
+    min-height: 36px;
+    margin: 0;
+  }
+
+  .note-sticky-block {
+    position: absolute;
+    z-index: 3;
+    width: min(28rem, calc(100% - 4rem));
+    min-height: 8.5rem;
+    padding: 1rem 1.1rem 1.15rem;
+    border: 1px solid rgb(230 184 80 / 0.55);
+    border-radius: 1.35rem;
+    background: #fef3c7;
+    box-shadow: 0 18px 35px rgb(90 60 20 / 0.13);
+    color: #4a3418;
+    font-weight: 700;
+    line-height: 1.55;
+  }
+
+  .note-sticky-handle {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0.7rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.72);
+    color: rgb(74 52 24 / 0.64);
+    cursor: grab;
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    line-height: 1;
+    text-transform: uppercase;
+    user-select: none;
+  }
+
+  .note-sticky-handle:active {
+    cursor: grabbing;
+  }
+
+  .note-sticky-body {
+    min-height: 4.5rem;
+    outline: none;
+  }
+
+  .note-checklist-block {
+    margin: 18px 0;
+    padding: 16px 18px 16px 42px;
+    border: 1px solid #e7ddff;
+    border-radius: 22px;
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgb(37 22 61 / 0.06);
+    color: #51445e;
+    font-weight: 700;
+    line-height: 1.9;
+  }
+
+  .note-checklist-block input[type='checkbox'] {
+    margin-right: 10px;
+    background-color: #ffffff;
   }
 
   [data-theme='dark'] .visnova-menu,
@@ -560,9 +627,10 @@ select option {
   [data-theme='forest-dark'] .note-paper-editor,
   [data-theme='plum-dark'] .note-paper-editor,
   [data-theme='flare'] .note-paper-editor {
-    background-color: color-mix(in srgb, var(--card-elevated) 86%, var(--accent) 6%);
+    background-color: #ffffff;
+    color: #51445e;
     background-image:
-      linear-gradient(to right, color-mix(in srgb, var(--accent) 22%, transparent) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, transparent 0 33px, color-mix(in srgb, var(--text-secondary) 18%, transparent) 33px 34px);
+      linear-gradient(to right, rgb(226 232 240 / 0.9) 0 1px, transparent 1px),
+      repeating-linear-gradient(to bottom, transparent 0 35px, rgb(203 213 225 / 0.72) 35px 36px);
   }
 }
