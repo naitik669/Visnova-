@@ -2860,8 +2860,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
     const blockId = `note-block-${Date.now()}`;
     insertEditorHtml(`
       <div class="note-checklist-block" data-note-block-id="${blockId}" contenteditable="false">
-        <label class="note-checklist-row"><input type="checkbox"> <span contenteditable="true">Checklist item</span></label>
-        <label class="note-checklist-row"><input type="checkbox"> <span contenteditable="true">Next step</span></label>
+        <label class="note-checklist-row"><input type="checkbox"> <input class="note-checklist-text" type="text" value="Checklist item"></label>
+        <label class="note-checklist-row"><input type="checkbox"> <input class="note-checklist-text" type="text" value="Next step"></label>
         <button type="button" class="note-checklist-add" data-checklist-add="true">+ Add item</button>
       </div><p><br></p>
     `);
@@ -3220,7 +3220,6 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               ref={editorRef}
               contentEditable
               suppressContentEditableWarning
-              onInput={() => saveEditorContent()}
               onBlur={() => saveEditorContent(true)}
               onPointerDown={startStickyNoteDrag}
               onClick={(event) => {
@@ -3232,11 +3231,20 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                   const checklist = addButton.closest('.note-checklist-block');
                   const row = document.createElement('label');
                   row.className = 'note-checklist-row';
-                  row.innerHTML = '<input type="checkbox"> <span contenteditable="true">New item</span>';
+                  row.innerHTML = '<input type="checkbox"> <input class="note-checklist-text" type="text" value="New item">';
                   checklist?.insertBefore(row, addButton);
                   saveEditorContent(true);
                 }
                 if (target.tagName === 'INPUT') saveEditorContent(true);
+              }}
+              onInput={(event) => {
+                const target = event.target as HTMLInputElement;
+                if (target.matches('.note-checklist-text')) {
+                  target.setAttribute('value', target.value);
+                  saveEditorContent();
+                  return;
+                }
+                saveEditorContent();
               }}
               className="note-paper-editor min-h-[72vh] w-full rounded-[1.5rem] px-6 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:px-10 sm:text-lg"
               data-placeholder="Log details..."

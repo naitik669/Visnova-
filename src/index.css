@@ -623,12 +623,18 @@ select option {
     line-height: 36px;
   }
 
-  .note-checklist-row span {
+  .note-checklist-text {
     min-width: 6rem;
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
     outline: none;
   }
 
-  .note-checklist-row span:focus {
+  .note-checklist-text:focus {
     border-radius: 0.45rem;
     background: rgba(var(--accent-rgb), 0.08);
     box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
