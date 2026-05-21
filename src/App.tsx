@@ -37,6 +37,7 @@ const loadCommunityFeed = () => import('./components/Feed/CommunityFeed');
 const loadCircleMomentumPage = () => import('./components/Circle/CircleMomentumPage');
 const loadPostThreadPage = () => import('./components/Feed/PostThreadPage');
 const loadStoreRedirectPage = () => import('./components/Feed/StoreRedirectPage');
+const loadStoreResourcesPage = () => import('./components/Feed/StoreResourcesPage');
 const loadNotesSystem = () => import('./components/Notes/NotesSystem');
 const loadTasksPage = () => import('./components/Tasks/TasksPage');
 const loadProfilePage = () => import('./components/Social/ProfilePage');
@@ -51,6 +52,7 @@ const CommunityFeed = lazy(loadCommunityFeed);
 const CircleMomentumPage = lazy(loadCircleMomentumPage);
 const PostThreadPage = lazy(loadPostThreadPage);
 const StoreRedirectPage = lazy(loadStoreRedirectPage);
+const StoreResourcesPage = lazy(loadStoreResourcesPage);
 const NotesSystem = lazy(loadNotesSystem);
 const TasksPage = lazy(loadTasksPage);
 const ProfilePage = lazy(loadProfilePage);
@@ -63,6 +65,7 @@ const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Pro
   { match: path => path === '/circle/momentum', load: loadCircleMomentumPage },
   { match: path => path.startsWith('/post/'), load: loadPostThreadPage },
   { match: path => path.startsWith('/store/redirect/'), load: loadStoreRedirectPage },
+  { match: path => path === '/store' || path === '/resources/store', load: loadStoreResourcesPage },
   { match: path => path === '/visions' || path === '/vision', load: loadVisionBoard },
   { match: path => path === '/tasks', load: loadTasksPage },
   { match: path => path === '/library' || path === '/notes' || path === '/journal', load: loadNotesSystem },
@@ -661,6 +664,8 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/cookie-policy': { title: 'Cookie Policy', subtitle: 'Browser storage and optional tracking choices' },
   '/support': { title: 'Support', subtitle: 'Legal, account, and help requests' },
   '/feedback': { title: 'Feedback', subtitle: 'Report bugs and beta feedback' },
+  '/store': { title: 'Resources', subtitle: 'Useful tools for your current Vision' },
+  '/resources/store': { title: 'Resources', subtitle: 'Useful tools for your current Vision' },
 };
 
 function PageContextHeader() {
@@ -1012,6 +1017,8 @@ function AppContent() {
                       <Route path="/dashboard" element={<Navigate to="/" replace />} />
                       <Route path="/feed" element={<CommunityFeed />} />
                       <Route path="/post/:postId" element={<PostThreadPage />} />
+                      <Route path="/store" element={<StoreResourcesPage />} />
+                      <Route path="/resources/store" element={<StoreResourcesPage />} />
                       <Route path="/store/redirect/:productId" element={<StoreRedirectPage />} />
                       <Route path="/visions" element={<VisionBoard />} />
                       <Route path="/vision" element={<Navigate to="/visions" replace />} />

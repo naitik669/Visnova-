@@ -299,24 +299,41 @@ export type StoreProductType =
   | 'software'
   | 'creator_tool'
   | 'study_resource'
-  | 'startup_tool';
+  | 'startup_tool'
+  | 'productivity_kit';
+
+export type StoreFulfillmentType =
+  | 'affiliate_external'
+  | 'digital_external'
+  | 'digital_internal_future'
+  | 'dropship_future'
+  | 'manual_partner_future';
 
 export interface StoreProduct {
   id: string;
   title: string;
   description?: string;
+  shortDescription?: string;
   imageUrl?: string;
+  galleryUrls: string[];
   price?: number | null;
+  compareAtPrice?: number | null;
   currency: CurrencyCode;
   partnerName?: string;
+  partnerUrl?: string;
   affiliateUrl?: string;
+  externalCheckoutUrl?: string;
+  digitalDeliveryUrl?: string;
   productType: StoreProductType;
+  fulfillmentType: StoreFulfillmentType;
   category?: string;
   tags: string[];
   visionCategories: string[];
+  stockStatus?: string;
   minBudget?: number | null;
   maxBudget?: number | null;
   isDigital: boolean;
+  recommendationPriority?: number;
   recommendationReason?: string;
   score?: number;
 }

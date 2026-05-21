@@ -25,14 +25,15 @@ export default function StoreRedirectPage() {
 
       const { data, error: productError } = await supabase
         .from('store_products')
-        .select('id, affiliate_url, product_type, category')
+        .select('id, affiliate_url, external_checkout_url, partner_url, product_type, category, fulfillment_type')
         .eq('id', productId)
         .eq('is_active', true)
         .eq('safety_status', 'approved')
         .single();
 
       if (cancelled) return;
-      if (productError || !data?.affiliate_url) {
+      const destination = data?.affiliate_url || data?.external_checkout_url || data?.partner_url;
+      if (productError || !destination) {
         setError('This resource is unavailable or no longer active.');
         return;
       }
@@ -42,10 +43,10 @@ export default function StoreRedirectPage() {
         product_id: data.id,
         event_type: 'redirect',
         source_location: 'redirect',
-        metadata: { product_type: data.product_type, category: data.category },
+        metadata: { product_type: data.product_type, category: data.category, fulfillment_type: data.fulfillment_type },
       });
 
-      if (!cancelled) window.location.replace(data.affiliate_url);
+      if (!cancelled) window.location.replace(destination);
     };
 
     redirect();

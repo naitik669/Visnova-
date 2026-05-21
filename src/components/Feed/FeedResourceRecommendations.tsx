@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowUpRight, Bookmark, ExternalLink, Loader2, Package, PiggyBank, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ExternalLink, HelpCircle, Package, RefreshCw, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { formatCurrency } from '../../lib/currency';
 import {
   getActiveVisionForResources,
+  isStarterStoreProduct,
   mapStoreProductRow,
   scoreStoreProducts,
+  STARTER_STORE_PRODUCTS,
   STORE_RECOMMENDATIONS_ENABLED,
   type StoreEventSource,
   type StoreEventType,
@@ -22,7 +25,7 @@ const logStoreEvent = async (
   userId?: string,
   linkedVisionId?: string | null,
 ) => {
-  if (!STORE_RECOMMENDATIONS_ENABLED || !product.id) return;
+  if (!STORE_RECOMMENDATIONS_ENABLED || !product.id || isStarterStoreProduct(product.id)) return;
   const { error } = await supabase.from('store_events').insert({
     user_id: userId || null,
     product_id: product.id,
@@ -34,7 +37,7 @@ const logStoreEvent = async (
   if (error) console.error('Failed to log resource event:', error);
 };
 
-function ProductPreviewModal({
+export function ProductPreviewModal({
   product,
   onClose,
   onSave,
@@ -47,6 +50,15 @@ function ProductPreviewModal({
   onAddGoal: () => void;
   onHide: () => void;
 }) {
+  const partnerHref = isStarterStoreProduct(product.id)
+    ? product.externalCheckoutUrl || product.affiliateUrl || product.partnerUrl || '#'
+    : `/store/redirect/${product.id}`;
+  const fulfillmentLabel = product.fulfillmentType === 'digital_external'
+    ? 'Digital partner'
+    : product.fulfillmentType === 'affiliate_external'
+      ? 'Partner checkout'
+      : 'Future fulfillment';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -82,21 +94,27 @@ function ProductPreviewModal({
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">{product.partnerName || 'Partner resource'}</p>
             <h3 className="mt-2 text-2xl font-black tracking-tight text-text-main">{product.title}</h3>
-            <p className="mt-2 text-sm font-semibold leading-relaxed text-text-secondary">{product.description}</p>
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-text-secondary">{product.description || product.shortDescription}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full bg-accent/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent">
               {product.price ? formatCurrency(product.price, product.currency) : 'Free / varies'}
             </span>
             <span className="rounded-full bg-surface-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-text-secondary">
-              {product.isDigital ? 'Digital' : 'Resource'}
+              {product.productType.replace(/_/g, ' ')}
+            </span>
+            <span className="rounded-full bg-surface-muted px-3 py-1 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+              {fulfillmentLabel}
             </span>
           </div>
           <div className="rounded-2xl border border-card-border bg-surface-muted p-4 text-xs font-semibold leading-relaxed text-text-secondary">
             {product.recommendationReason || 'Recommended because it can support one of your current goals.'}
           </div>
           <div className="rounded-2xl bg-warning/10 p-4 text-[11px] font-bold leading-relaxed text-text-secondary">
-            Sold and fulfilled by a third-party partner. VisNova may earn a commission. Prices and availability can change on partner sites.
+            {product.isDigital
+              ? 'This digital product is delivered by a third-party creator or platform. VisNova may earn a commission.'
+              : 'This product is sold and fulfilled by a third-party partner. VisNova may earn a commission.'}
+            {' '}Prices and availability can change on partner sites.
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <button onClick={onSave} className="h-11 rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast">
@@ -109,7 +127,7 @@ function ProductPreviewModal({
               Not Interested
             </button>
             <a
-              href={`/store/redirect/${product.id}`}
+              href={partnerHref}
               target="_blank"
               rel="noreferrer"
               className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-text-main text-[10px] font-black uppercase tracking-widest text-bg-base"
@@ -124,6 +142,7 @@ function ProductPreviewModal({
 }
 
 export function FeedResourceRecommendations() {
+  const navigate = useNavigate();
   const user = useStore(state => state.user);
   const visions = useStore(state => state.visions);
   const financeGoals = useStore(state => state.financeGoals);
@@ -134,14 +153,17 @@ export function FeedResourceRecommendations() {
   const [hiddenProductIds, setHiddenProductIds] = useState<Set<string>>(new Set());
   const [savedProductIds, setSavedProductIds] = useState<Set<string>>(new Set());
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
+  const [whyOpen, setWhyOpen] = useState(false);
   const [loading, setLoading] = useState(STORE_RECOMMENDATIONS_ENABLED);
   const [error, setError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!STORE_RECOMMENDATIONS_ENABLED || !user.id) return;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
+      setError('');
       const [{ data: rows, error: productError }, { data: savedRows }] = await Promise.all([
         supabase
           .from('store_products')
@@ -157,8 +179,14 @@ export function FeedResourceRecommendations() {
       if (cancelled) return;
       if (productError) {
         console.error('Failed to load resource recommendations:', productError);
-        setError('Resources could not load.');
-        setProducts([]);
+        const code = (productError as any)?.code || '';
+        if (code === '42P01' || code === 'PGRST205' || code === 'PGRST200') {
+          setProducts(STARTER_STORE_PRODUCTS);
+          setError('');
+        } else {
+          setError('Resources could not load.');
+          setProducts([]);
+        }
       } else {
         setProducts((rows || []).map(mapStoreProductRow));
         setHiddenProductIds(new Set((savedRows || []).filter(row => row.status === 'not_interested' || row.status === 'hidden').map(row => row.product_id)));
@@ -170,16 +198,20 @@ export function FeedResourceRecommendations() {
     return () => {
       cancelled = true;
     };
-  }, [user.id]);
+  }, [user.id, retryKey]);
+
+  const hasUsefulSignal = !!activeVision || (user.interests || []).length > 0 || financeGoals.some(goal => goal.status === 'active') || savedProductIds.size > 0;
+  const displayProducts = products.length > 0 && hasUsefulSignal ? products : STARTER_STORE_PRODUCTS;
+  const isStarterMode = !hasUsefulSignal || products.length === 0;
 
   const recommendations = useMemo(() => (
-    scoreStoreProducts(products, {
+    scoreStoreProducts(displayProducts, {
       activeVision,
       financeGoals,
       interests: user.interests || [],
       hiddenProductIds,
     }).slice(0, 4)
-  ), [products, activeVision, financeGoals, user.interests, hiddenProductIds]);
+  ), [displayProducts, activeVision, financeGoals, user.interests, hiddenProductIds]);
 
   useEffect(() => {
     recommendations.forEach(product => {
@@ -191,6 +223,11 @@ export function FeedResourceRecommendations() {
 
   const saveProduct = async (product: StoreProduct) => {
     if (!user.id) return;
+    if (isStarterStoreProduct(product.id)) {
+      setSavedProductIds(prev => new Set(prev).add(product.id));
+      addToast({ type: 'success', title: 'Starter resource saved', description: 'Saved for this session. Create a Vision to connect real resources.' });
+      return;
+    }
     const { error: saveError } = await supabase.from('user_saved_products').upsert({
       user_id: user.id,
       product_id: product.id,
@@ -210,6 +247,11 @@ export function FeedResourceRecommendations() {
 
   const hideProduct = async (product: StoreProduct) => {
     if (!user.id) return;
+    if (isStarterStoreProduct(product.id)) {
+      setHiddenProductIds(prev => new Set(prev).add(product.id));
+      setSelectedProduct(null);
+      return;
+    }
     await supabase.from('user_saved_products').upsert({
       user_id: user.id,
       product_id: product.id,
@@ -251,7 +293,7 @@ export function FeedResourceRecommendations() {
             <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Resources</p>
             <h3 className="mt-1 text-lg font-black tracking-tight text-text-main">For your Vision</h3>
             <p className="mt-1 text-[11px] font-bold leading-relaxed text-text-secondary">
-              {activeVision ? `Based on ${activeVision.title}` : 'Based on your current goals'}
+              {isStarterMode ? 'Pick a Vision to get better recommendations.' : activeVision ? `Based on ${activeVision.title}` : 'Based on your current goals'}
             </p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
@@ -266,13 +308,23 @@ export function FeedResourceRecommendations() {
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-card-border bg-surface-muted p-4 text-xs font-bold text-text-secondary">{error}</div>
+          <div className="space-y-3 rounded-2xl border border-card-border bg-surface-muted p-4 text-xs font-bold text-text-secondary">
+            <p>{error}</p>
+            <button onClick={() => setRetryKey(key => key + 1)} className="inline-flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-[9px] font-black uppercase tracking-widest text-accent">
+              <RefreshCw size={12} /> Retry
+            </button>
+          </div>
         ) : recommendations.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-card-border p-4 text-xs font-bold leading-relaxed text-text-secondary">
-            No recommendations yet. Create a Vision or save resources to sharpen suggestions.
+            No resources available yet. Create a Vision to sharpen suggestions.
           </div>
         ) : (
           <div className="space-y-3">
+            {isStarterMode && (
+              <div className="rounded-2xl border border-card-border bg-accent/5 p-3 text-xs font-bold leading-relaxed text-text-secondary">
+                <span className="text-text-main">Starter resources.</span> These are generic picks until VisNova has enough goal context.
+              </div>
+            )}
             {recommendations.map(product => (
               <button
                 key={product.id}
@@ -312,15 +364,54 @@ export function FeedResourceRecommendations() {
                 </div>
               </button>
             ))}
+            <button
+              onClick={() => navigate('/store')}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast transition-transform active:scale-95"
+            >
+              View more resources <ArrowRight size={14} />
+            </button>
           </div>
         )}
       </div>
 
-      <div className="rounded-[1.5rem] border border-card-border bg-card/70 p-4 text-[10px] font-bold leading-relaxed text-text-secondary">
-        Private messages, journals, notes, and private logs are never used for recommendations.
-      </div>
+      <button
+        onClick={() => setWhyOpen(true)}
+        className="flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-text-secondary/70 transition-colors hover:text-accent"
+      >
+        <HelpCircle size={13} /> Why am I seeing this?
+      </button>
 
       <AnimatePresence>
+        {whyOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[260] flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm"
+            onClick={() => setWhyOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.98 }}
+              className="max-w-sm rounded-[2rem] border border-card-border bg-card p-6 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Why this?</p>
+                  <h3 className="mt-2 text-xl font-black text-text-main">Resources follow your goals.</h3>
+                </div>
+                <button onClick={() => setWhyOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary">
+                  <X size={15} />
+                </button>
+              </div>
+              <p className="mt-4 text-sm font-semibold leading-6 text-text-secondary">
+                Recommendations use selected interests, active Visions, saved resources, money goals, and product interactions. Private messages, journals, notes, and private logs are not used.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
         {selectedProduct && (
           <ProductPreviewModal
             product={selectedProduct}
