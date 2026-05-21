@@ -501,8 +501,8 @@ select option {
     position: relative;
     overflow: auto;
     background-image:
-      linear-gradient(to right, rgb(226 232 240 / 0.9) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, transparent 0 35px, rgb(203 213 225 / 0.72) 35px 36px);
+      linear-gradient(to right, rgb(210 219 228 / 0.95) 0 1px, transparent 1px),
+      repeating-linear-gradient(to bottom, transparent 0 35px, rgb(187 199 214 / 0.88) 35px 36px);
     background-position: 3.75rem 0, 0 8px;
     background-size: 1px 100%, 100% 36px;
     background-color: #ffffff;
@@ -537,14 +537,28 @@ select option {
     margin: 0;
   }
 
+  .note-paper-editor h2 {
+    min-height: 36px;
+    margin: 0;
+    color: #2f243d;
+    font-size: 1.55rem;
+    font-weight: 900;
+    line-height: 36px;
+  }
+
+  .note-paper-editor [data-note-block-id].is-selected {
+    outline: 2px solid rgb(var(--accent-rgb));
+    outline-offset: 4px;
+  }
+
   .note-sticky-block {
     position: absolute;
     z-index: 3;
-    width: min(28rem, calc(100% - 4rem));
-    min-height: 8.5rem;
+    width: min(15rem, calc(100% - 4rem));
+    height: min(15rem, calc(100% - 4rem));
     padding: 1rem 1.1rem 1.15rem;
     border: 1px solid rgb(230 184 80 / 0.55);
-    border-radius: 1.35rem;
+    border-radius: 1.25rem;
     background: #fef3c7;
     box-shadow: 0 18px 35px rgb(90 60 20 / 0.13);
     color: #4a3418;
@@ -574,11 +588,15 @@ select option {
   }
 
   .note-sticky-body {
-    min-height: 4.5rem;
+    min-height: 9.3rem;
     outline: none;
+    overflow: auto;
   }
 
   .note-checklist-block {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
     margin: 18px 0;
     padding: 16px 18px 16px 42px;
     border: 1px solid #e7ddff;
@@ -630,7 +648,7 @@ select option {
     background-color: #ffffff;
     color: #51445e;
     background-image:
-      linear-gradient(to right, rgb(226 232 240 / 0.9) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, transparent 0 35px, rgb(203 213 225 / 0.72) 35px 36px);
+      linear-gradient(to right, rgb(210 219 228 / 0.95) 0 1px, transparent 1px),
+      repeating-linear-gradient(to bottom, transparent 0 35px, rgb(187 199 214 / 0.88) 35px 36px);
   }
 }

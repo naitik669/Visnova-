@@ -55,6 +55,7 @@ import { DatePicker } from '../ui/DatePicker';
 
 const UNFILED_FOLDER_ID = '__unfiled__';
 const NOTE_HIGHLIGHT_COLORS = ['#FDE68A', '#FBCFE8', '#C7D2FE', '#BBF7D0', '#FED7AA'];
+const NOTE_FONT_SIZES = [16, 18, 20, 24, 28, 32];
 
 const hasHtmlMarkup = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value);
 
@@ -2775,6 +2776,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
+  const [selectedEditorBlockId, setSelectedEditorBlockId] = useState<string | null>(null);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -2808,6 +2810,36 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
     saveEditorContent(true);
   };
 
+  const applyFontSize = (size: number) => {
+    editorRef.current?.focus();
+    document.execCommand('fontSize', false, '7');
+    editorRef.current?.querySelectorAll('font[size="7"]').forEach(node => {
+      const span = document.createElement('span');
+      span.style.fontSize = `${size}px`;
+      span.innerHTML = node.innerHTML;
+      node.replaceWith(span);
+    });
+    saveEditorContent(true);
+  };
+
+  const selectEditorBlock = (block: HTMLElement | null) => {
+    editorRef.current?.querySelectorAll('.is-selected').forEach(node => node.classList.remove('is-selected'));
+    if (!block) {
+      setSelectedEditorBlockId(null);
+      return;
+    }
+    block.classList.add('is-selected');
+    setSelectedEditorBlockId(block.dataset.noteBlockId || null);
+  };
+
+  const deleteSelectedEditorBlock = () => {
+    if (!selectedEditorBlockId || !editorRef.current) return;
+    const block = editorRef.current.querySelector(`[data-note-block-id="${selectedEditorBlockId}"]`);
+    block?.remove();
+    setSelectedEditorBlockId(null);
+    saveEditorContent(true);
+  };
+
   const insertEditorHtml = (html: string) => {
     editorRef.current?.focus();
     document.execCommand('insertHTML', false, html);
@@ -2815,8 +2847,9 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   };
 
   const insertStickyNote = () => {
+    const blockId = `note-block-${Date.now()}`;
     insertEditorHtml(`
-      <div class="note-sticky-block" data-sticky-note="true" style="left:56px;top:124px;">
+      <div class="note-sticky-block" data-note-block-id="${blockId}" data-sticky-note="true" style="left:56px;top:124px;">
         <div class="note-sticky-handle" data-sticky-handle="true" contenteditable="false">Move sticky</div>
         <div class="note-sticky-body">Sticky thought...</div>
       </div><p><br></p>
@@ -2824,8 +2857,9 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   };
 
   const insertChecklist = () => {
+    const blockId = `note-block-${Date.now()}`;
     insertEditorHtml(`
-      <ul class="note-checklist-block">
+      <ul class="note-checklist-block" data-note-block-id="${blockId}">
         <li><label><input type="checkbox"> Checklist item</label></li>
         <li><label><input type="checkbox"> Next step</label></li>
       </ul><p><br></p>
@@ -2864,6 +2898,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
 
     event.preventDefault();
     event.stopPropagation();
+    selectEditorBlock(sticky);
     const stickyRect = sticky.getBoundingClientRect();
     const editorRect = editor.getBoundingClientRect();
     stickyDragRef.current = {
@@ -3111,6 +3146,30 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             >
               <Italic size={15} />
             </button>
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => runEditorCommand('formatBlock', 'h2')}
+              className="flex h-9 items-center rounded-xl bg-surface-muted px-3 text-[10px] font-black uppercase tracking-widest text-text-main transition-colors hover:bg-accent hover:text-accent-contrast"
+              title="Turn selected line into a title"
+            >
+              Title
+            </button>
+            <select
+              defaultValue=""
+              onChange={(event) => {
+                const size = Number(event.target.value);
+                if (size) applyFontSize(size);
+                event.target.value = '';
+              }}
+              className="h-9 rounded-xl border border-card-border bg-surface-muted px-2 text-[10px] font-black uppercase tracking-widest text-text-main outline-none"
+              title="Change selected text size"
+            >
+              <option value="">Size</option>
+              {NOTE_FONT_SIZES.map(size => (
+                <option key={size} value={size}>{size}px</option>
+              ))}
+            </select>
             <div className="mx-1 h-7 w-px bg-card-border" />
             <div className="flex items-center gap-1 rounded-xl bg-surface-muted px-2 py-1">
               <Highlighter size={14} className="text-text-secondary/50" />
@@ -3143,6 +3202,16 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             >
               <ListChecks size={14} /> Checklist
             </button>
+            {selectedEditorBlockId && (
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={deleteSelectedEditorBlock}
+                className="ml-auto flex h-9 items-center gap-2 rounded-xl bg-danger/10 px-3 text-[10px] font-black uppercase tracking-widest text-danger transition-colors hover:bg-danger hover:text-white"
+              >
+                <Trash2 size={14} /> Delete Block
+              </button>
+            )}
           </div>
           
           <div className="rounded-[2rem] border border-card-border bg-card p-3 shadow-sm sm:p-5">
@@ -3154,7 +3223,10 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               onBlur={() => saveEditorContent(true)}
               onPointerDown={startStickyNoteDrag}
               onClick={(event) => {
-                if ((event.target as HTMLElement).tagName === 'INPUT') saveEditorContent(true);
+                const target = event.target as HTMLElement;
+                const block = target.closest('[data-note-block-id]') as HTMLElement | null;
+                selectEditorBlock(block);
+                if (target.tagName === 'INPUT') saveEditorContent(true);
               }}
               className="note-paper-editor min-h-[72vh] w-full rounded-[1.5rem] px-6 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:px-10 sm:text-lg"
               data-placeholder="Log details..."
