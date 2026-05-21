@@ -2850,7 +2850,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
     const blockId = `note-block-${Date.now()}`;
     insertEditorHtml(`
       <div class="note-sticky-block" data-note-block-id="${blockId}" data-sticky-note="true" style="left:56px;top:124px;">
-        <div class="note-sticky-handle" data-sticky-handle="true" contenteditable="false">Move sticky</div>
+        <div class="note-sticky-handle" data-sticky-handle="true" contenteditable="false" aria-label="Move sticky"></div>
         <div class="note-sticky-body">Sticky thought...</div>
       </div><p><br></p>
     `);
@@ -2859,10 +2859,11 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   const insertChecklist = () => {
     const blockId = `note-block-${Date.now()}`;
     insertEditorHtml(`
-      <ul class="note-checklist-block" data-note-block-id="${blockId}">
-        <li><label><input type="checkbox"> Checklist item</label></li>
-        <li><label><input type="checkbox"> Next step</label></li>
-      </ul><p><br></p>
+      <div class="note-checklist-block" data-note-block-id="${blockId}" contenteditable="false">
+        <label class="note-checklist-row"><input type="checkbox"> <span>Checklist item</span></label>
+        <label class="note-checklist-row"><input type="checkbox"> <span>Next step</span></label>
+        <button type="button" class="note-checklist-add" data-checklist-add="true">+ Add item</button>
+      </div><p><br></p>
     `);
   };
 
@@ -3226,6 +3227,15 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 const target = event.target as HTMLElement;
                 const block = target.closest('[data-note-block-id]') as HTMLElement | null;
                 selectEditorBlock(block);
+                const addButton = target.closest('[data-checklist-add="true"]') as HTMLButtonElement | null;
+                if (addButton) {
+                  const checklist = addButton.closest('.note-checklist-block');
+                  const row = document.createElement('label');
+                  row.className = 'note-checklist-row';
+                  row.innerHTML = '<input type="checkbox"> <span>New item</span>';
+                  checklist?.insertBefore(row, addButton);
+                  saveEditorContent(true);
+                }
                 if (target.tagName === 'INPUT') saveEditorContent(true);
               }}
               className="note-paper-editor min-h-[72vh] w-full rounded-[1.5rem] px-6 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:px-10 sm:text-lg"

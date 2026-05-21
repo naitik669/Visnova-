@@ -500,12 +500,13 @@ select option {
   .note-paper-editor {
     position: relative;
     overflow: auto;
+    isolation: isolate;
     background-image:
-      linear-gradient(to right, rgb(210 219 228 / 0.95) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, transparent 0 35px, rgb(187 199 214 / 0.88) 35px 36px);
-    background-position: 3.75rem 0, 0 8px;
+      linear-gradient(to right, rgb(226 154 154 / 0.5) 0 1px, transparent 1px),
+      repeating-linear-gradient(to bottom, #ffffff 0 35px, rgb(204 213 226 / 0.95) 35px 36px) !important;
+    background-position: 3.75rem 0, 0 7px;
     background-size: 1px 100%, 100% 36px;
-    background-color: #ffffff;
+    background-color: #ffffff !important;
     color: #51445e;
     white-space: pre-wrap;
     word-break: break-word;
@@ -556,7 +557,7 @@ select option {
     z-index: 3;
     width: min(15rem, calc(100% - 4rem));
     height: min(15rem, calc(100% - 4rem));
-    padding: 1rem 1.1rem 1.15rem;
+    padding: 1.1rem;
     border: 1px solid rgb(230 184 80 / 0.55);
     border-radius: 1.25rem;
     background: #fef3c7;
@@ -567,20 +568,27 @@ select option {
   }
 
   .note-sticky-handle {
-    display: inline-flex;
-    align-items: center;
-    margin-bottom: 0.7rem;
-    padding: 0.35rem 0.6rem;
-    border-radius: 999px;
-    background: rgb(255 255 255 / 0.72);
-    color: rgb(74 52 24 / 0.64);
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1.15rem;
+    border-radius: 1.25rem 1.25rem 0 0;
+    background: transparent;
+    color: transparent;
     cursor: grab;
-    font-size: 0.62rem;
-    font-weight: 900;
-    letter-spacing: 0.18em;
-    line-height: 1;
-    text-transform: uppercase;
     user-select: none;
+  }
+
+  .note-sticky-block:hover .note-sticky-handle::after,
+  .note-sticky-block.is-selected .note-sticky-handle::after {
+    content: '';
+    position: absolute;
+    top: 0.45rem;
+    left: 50%;
+    width: 2.4rem;
+    height: 0.2rem;
+    border-radius: 999px;
+    background: rgb(74 52 24 / 0.22);
+    transform: translateX(-50%);
   }
 
   .note-sticky-handle:active {
@@ -595,22 +603,51 @@ select option {
 
   .note-checklist-block {
     box-sizing: border-box;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
     width: 100%;
-    margin: 18px 0;
-    padding: 16px 18px 16px 42px;
-    border: 1px solid #e7ddff;
-    border-radius: 22px;
-    background: #ffffff;
-    box-shadow: 0 12px 28px rgb(37 22 61 / 0.06);
+    margin: 10px 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
     color: #51445e;
     font-weight: 700;
-    line-height: 1.9;
+    line-height: 1.45;
+  }
+
+  .note-checklist-row {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 1rem;
+    line-height: 36px;
   }
 
   .note-checklist-block input[type='checkbox'] {
-    margin-right: 10px;
+    margin: 0;
     background-color: #ffffff;
+  }
+
+  .note-checklist-add {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    min-height: 2rem;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(var(--accent-rgb), 0.1);
+    color: rgb(var(--accent-rgb));
+    cursor: pointer;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    padding: 0.55rem 0.8rem;
+    text-transform: uppercase;
   }
 
   [data-theme='dark'] .visnova-menu,
@@ -645,10 +682,10 @@ select option {
   [data-theme='forest-dark'] .note-paper-editor,
   [data-theme='plum-dark'] .note-paper-editor,
   [data-theme='flare'] .note-paper-editor {
-    background-color: #ffffff;
+    background-color: #ffffff !important;
     color: #51445e;
     background-image:
-      linear-gradient(to right, rgb(210 219 228 / 0.95) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, transparent 0 35px, rgb(187 199 214 / 0.88) 35px 36px);
+      linear-gradient(to right, rgb(226 154 154 / 0.5) 0 1px, transparent 1px),
+      repeating-linear-gradient(to bottom, #ffffff 0 35px, rgb(204 213 226 / 0.95) 35px 36px) !important;
   }
 }
