@@ -502,11 +502,11 @@ select option {
     overflow: auto;
     isolation: isolate;
     background-image:
-      linear-gradient(to right, rgb(226 154 154 / 0.5) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, #ffffff 0 35px, rgb(204 213 226 / 0.95) 35px 36px) !important;
-    background-position: 3.75rem 0, 0 7px;
+      linear-gradient(to right, rgb(172 185 204 / 0.42) 0 1px, transparent 1px),
+      repeating-linear-gradient(to bottom, #fbfdff 0 34px, rgb(168 182 204 / 0.82) 34px 36px) !important;
+    background-position: 3.75rem 0, 0 8px;
     background-size: 1px 100%, 100% 36px;
-    background-color: #ffffff !important;
+    background-color: #fbfdff !important;
     color: #51445e;
     white-space: pre-wrap;
     word-break: break-word;
@@ -627,6 +627,17 @@ select option {
     line-height: 36px;
   }
 
+  .note-checklist-row span {
+    min-width: 6rem;
+    outline: none;
+  }
+
+  .note-checklist-row span:focus {
+    border-radius: 0.45rem;
+    background: rgba(var(--accent-rgb), 0.08);
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
+  }
+
   .note-checklist-block input[type='checkbox'] {
     margin: 0;
     background-color: #ffffff;
@@ -682,10 +693,10 @@ select option {
   [data-theme='forest-dark'] .note-paper-editor,
   [data-theme='plum-dark'] .note-paper-editor,
   [data-theme='flare'] .note-paper-editor {
-    background-color: #ffffff !important;
+    background-color: #fbfdff !important;
     color: #51445e;
     background-image:
-      linear-gradient(to right, rgb(226 154 154 / 0.5) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, #ffffff 0 35px, rgb(204 213 226 / 0.95) 35px 36px) !important;
+      linear-gradient(to right, rgb(172 185 204 / 0.42) 0 1px, transparent 1px),
+      repeating-linear-gradient(to bottom, #fbfdff 0 34px, rgb(168 182 204 / 0.82) 34px 36px) !important;
   }
 }

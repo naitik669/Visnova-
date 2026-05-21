@@ -2860,8 +2860,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
     const blockId = `note-block-${Date.now()}`;
     insertEditorHtml(`
       <div class="note-checklist-block" data-note-block-id="${blockId}" contenteditable="false">
-        <label class="note-checklist-row"><input type="checkbox"> <span>Checklist item</span></label>
-        <label class="note-checklist-row"><input type="checkbox"> <span>Next step</span></label>
+        <label class="note-checklist-row"><input type="checkbox"> <span contenteditable="true">Checklist item</span></label>
+        <label class="note-checklist-row"><input type="checkbox"> <span contenteditable="true">Next step</span></label>
         <button type="button" class="note-checklist-add" data-checklist-add="true">+ Add item</button>
       </div><p><br></p>
     `);
@@ -2999,9 +2999,9 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="mx-auto flex min-h-[calc(100vh-13rem)] w-full max-w-[1600px] flex-col overflow-hidden bg-app-container text-text-main"
+      className="mx-auto flex min-h-[calc(100vh-13rem)] w-full max-w-[1600px] flex-col overflow-hidden bg-[#f8fbff] text-text-main"
     >
-      <div className="flex min-h-16 flex-col gap-4 border-b border-card-border/60 bg-app-container/95 px-1 pb-5 backdrop-blur-md sm:min-h-20 sm:flex-row sm:items-center sm:justify-between sm:px-0">
+      <div className="flex min-h-16 flex-col gap-4 border-b border-card-border/60 bg-[#f8fbff]/95 px-1 pb-5 backdrop-blur-md sm:min-h-20 sm:flex-row sm:items-center sm:justify-between sm:px-0">
          <div className="flex items-center gap-4 sm:gap-6">
            <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/5 text-accent transition-all hover:bg-accent hover:text-white active:scale-90">
               <ChevronRight className="rotate-180" size={18} />
@@ -3232,7 +3232,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                   const checklist = addButton.closest('.note-checklist-block');
                   const row = document.createElement('label');
                   row.className = 'note-checklist-row';
-                  row.innerHTML = '<input type="checkbox"> <span>New item</span>';
+                  row.innerHTML = '<input type="checkbox"> <span contenteditable="true">New item</span>';
                   checklist?.insertBefore(row, addButton);
                   saveEditorContent(true);
                 }
