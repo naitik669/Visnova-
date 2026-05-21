@@ -501,11 +501,7 @@ select option {
     position: relative;
     overflow: auto;
     isolation: isolate;
-    background-image:
-      linear-gradient(to right, rgb(172 185 204 / 0.42) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, #fbfdff 0 34px, rgb(168 182 204 / 0.82) 34px 36px) !important;
-    background-position: 3.75rem 0, 0 8px;
-    background-size: 1px 100%, 100% 36px;
+    background-image: none !important;
     background-color: #fbfdff !important;
     color: #51445e;
     white-space: pre-wrap;
@@ -695,8 +691,6 @@ select option {
   [data-theme='flare'] .note-paper-editor {
     background-color: #fbfdff !important;
     color: #51445e;
-    background-image:
-      linear-gradient(to right, rgb(172 185 204 / 0.42) 0 1px, transparent 1px),
-      repeating-linear-gradient(to bottom, #fbfdff 0 34px, rgb(168 182 204 / 0.82) 34px 36px) !important;
+    background-image: none !important;
   }
 }
