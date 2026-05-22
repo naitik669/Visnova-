@@ -42,7 +42,7 @@ import { useCookieConsent } from '../../hooks/useCookieConsent';
 import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
 import { CURRENCY_OPTIONS } from '../../lib/currency';
 
-type SettingsSection = 'profile' | 'themes' | 'security' | 'notifications' | 'preferences' | 'privacy';
+type SettingsSection = 'profile' | 'themes' | 'notifications' | 'preferences' | 'privacy';
 
 const themes = [
   { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main', preview: { bg: '#f8f5f1', card: '#ffffff', accent: '#111827', text: '#1f2937', muted: '#e7e2da' } },
@@ -110,10 +110,9 @@ export default function Settings() {
   const sections = useMemo(() => [
     { id: 'profile' as const, icon: User, label: 'Profile', desc: 'Identity and public profile' },
     { id: 'themes' as const, icon: Palette, label: 'Themes', desc: 'Visual appearance' },
-    { id: 'security' as const, icon: Shield, label: 'Security', desc: 'Password and session' },
     { id: 'notifications' as const, icon: Bell, label: 'Notifications', desc: 'Alerts and reminders' },
     { id: 'preferences' as const, icon: SettingsIcon, label: 'Preferences', desc: 'Defaults and beta tools' },
-    { id: 'privacy' as const, icon: Cookie, label: 'Privacy & Security', desc: 'Sharing, cookies, and legal links' },
+    { id: 'privacy' as const, icon: Shield, label: 'Privacy & Security', desc: 'Access, sharing, cookies' },
   ], []);
 
   const handleSaveProfile = async () => {
@@ -179,7 +178,7 @@ export default function Settings() {
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-accent">Settings</p>
             <h1 className="mt-2 text-4xl font-black tracking-tight text-text-main">Account Controls</h1>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-text-secondary">
-              Manage your profile, theme, security, notifications, and beta preferences.
+              Manage your profile, theme, notifications, privacy, security, and beta preferences.
             </p>
           </div>
           <div className="rounded-2xl border border-card-border bg-card px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/55">
@@ -337,41 +336,6 @@ export default function Settings() {
             </SettingsPanel>
           )}
 
-          {activeSection === 'security' && (
-            <SettingsPanel title="Security" subtitle="Keep your account access clean and recoverable.">
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                <div className="rounded-3xl border border-card-border bg-app-container p-5">
-                  <div className="mb-5 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent"><Lock size={18} /></div>
-                    <div>
-                      <h3 className="text-sm font-black text-text-main">Update Password</h3>
-                      <p className="text-xs font-semibold text-text-secondary/60">Requires your current session.</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" className="settings-input" />
-                    <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="settings-input" />
-                    <button onClick={handlePasswordUpdate} disabled={isUpdatingPassword || !password || !confirmPassword} className="h-11 w-full rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50">
-                      {isUpdatingPassword ? 'Updating...' : 'Update Password'}
-                    </button>
-                  </div>
-                </div>
-                <div className="rounded-3xl border border-card-border bg-app-container p-5">
-                  <div className="mb-5 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary"><Key size={18} /></div>
-                    <div>
-                      <h3 className="text-sm font-black text-text-main">Session</h3>
-                      <p className="text-xs font-semibold text-text-secondary/60">Sign out on this device.</p>
-                    </div>
-                  </div>
-                  <button onClick={signOut} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-card-border bg-card text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-danger">
-                    <LogOut size={14} /> Logout
-                  </button>
-                </div>
-              </div>
-            </SettingsPanel>
-          )}
-
           {activeSection === 'notifications' && (
             <SettingsPanel title="Notifications" subtitle="Control product, social, and reminder signals on this browser.">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -456,8 +420,39 @@ export default function Settings() {
           )}
 
           {activeSection === 'privacy' && (
-            <SettingsPanel title="Privacy & Security" subtitle="Private is the default. You choose what becomes Circle or Public.">
+            <SettingsPanel title="Privacy & Security" subtitle="Account access, sharing defaults, cookies, and legal controls in one place.">
               <div className="space-y-5">
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                  <div className="rounded-3xl border border-card-border bg-app-container p-5">
+                    <div className="mb-5 flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent"><Lock size={18} /></div>
+                      <div>
+                        <h3 className="text-sm font-black text-text-main">Update Password</h3>
+                        <p className="text-xs font-semibold text-text-secondary/60">Requires your current signed-in session.</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New password" className="settings-input" />
+                      <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm password" className="settings-input" />
+                      <button onClick={handlePasswordUpdate} disabled={isUpdatingPassword || !password || !confirmPassword} className="h-11 w-full rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50">
+                        {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="rounded-3xl border border-card-border bg-app-container p-5">
+                    <div className="mb-5 flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary"><Key size={18} /></div>
+                      <div>
+                        <h3 className="text-sm font-black text-text-main">Session</h3>
+                        <p className="text-xs font-semibold text-text-secondary/60">Sign out on this device when you are done.</p>
+                      </div>
+                    </div>
+                    <button onClick={signOut} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-card-border bg-card text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-danger">
+                      <LogOut size={14} /> Logout
+                    </button>
+                  </div>
+                </div>
+
                 <div className="rounded-3xl border border-card-border bg-app-container p-5">
                   <div className="mb-5 flex items-start gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
