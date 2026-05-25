@@ -7,6 +7,11 @@ import { useStore } from '../../store/useStore';
 import { SelectMenu } from '../ui/SelectMenu';
 
 const supportEmail = 'naitik.business69@gmail.com';
+const REPORT_TYPES = ['feedback', 'bug', 'feature_request', 'general'] as const;
+const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
+
+type ReportType = typeof REPORT_TYPES[number];
+type ReportPriority = typeof PRIORITIES[number];
 
 function getDeviceType() {
   if (typeof window === 'undefined') return 'unknown';
@@ -18,96 +23,80 @@ function getDeviceType() {
 
 function getFeedbackContext() {
   if (typeof window === 'undefined') {
-    return { route: '', pageUrl: '', browser: '', device: 'unknown', submittedAt: new Date().toISOString() };
+    return {
+      route: '',
+      pageUrl: '',
+      userAgent: '',
+      device: 'unknown',
+      submittedAt: new Date().toISOString(),
+      viewport: { width: 0, height: 0 }
+    };
   }
 
   return {
     route: window.location.pathname + window.location.search,
     pageUrl: window.location.href,
-    browser: navigator.userAgent,
+    userAgent: navigator.userAgent,
     device: getDeviceType(),
-    submittedAt: new Date().toISOString()
+    submittedAt: new Date().toISOString(),
+    viewport: {
+      width: window.innerWidth,
+      height: window.innerHeight
+    }
   };
 }
 
-function buildFeedbackMailto(category: string, severity: string, title: string, message: string, contactEmail: string) {
-  const context = getFeedbackContext();
-  const subject = encodeURIComponent(`VisNova feedback: ${category} - ${title || severity}`);
-  const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const body = encodeURIComponent([
-    title ? `Title: ${title}` : '',
-    `Severity: ${severity}`,
-    message,
-    '',
-    contactEmail ? `Contact email: ${contactEmail}` : '',
-    pageUrl ? `Page: ${pageUrl}` : '',
-    context.route ? `Route: ${context.route}` : '',
-    context.device ? `Device: ${context.device}` : '',
-    context.browser ? `Browser: ${context.browser}` : '',
-    `Timestamp: ${context.submittedAt}`
-  ].filter(Boolean).join('\n'));
-
-  return `mailto:${supportEmail}?subject=${subject}&body=${body}`;
-}
-
-function isMissingFeedbackTable(error: any) {
-  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase();
-  return text.includes('feedback_reports') && (text.includes('schema cache') || text.includes('could not find the table'));
-}
-
 export default function FeedbackPage() {
-  const { session, addToast } = useStore();
-  const [category, setCategory] = useState('bug');
-  const [severity, setSeverity] = useState('medium');
+  const { addToast } = useStore();
+  const [reportType, setReportType] = useState<ReportType>('bug');
+  const [priority, setPriority] = useState<ReportPriority>('normal');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [contactEmail, setContactEmail] = useState(session?.user?.email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submit = async () => {
     const safeTitle = sanitizeText(title, 120);
     const safeMessage = sanitizePlainText(message, 3000);
-    const safeEmail = sanitizeText(contactEmail, 254).toLowerCase();
-    if (!safeTitle || !safeMessage) {
-      addToast({ type: 'error', title: 'Details required', description: 'Add a short title and describe what happened.' });
+    if (!safeMessage) {
+      addToast({ type: 'error', title: 'Please write your feedback before submitting.' });
       return;
     }
 
     setIsSubmitting(true);
     try {
+      const { data: userResult, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const user = userResult.user;
+      if (!user) {
+        addToast({ type: 'error', title: 'Please log in to send feedback.' });
+        return;
+      }
+
       const context = getFeedbackContext();
       const { error } = await supabase.from('feedback_reports').insert({
-        user_id: session?.user?.id || null,
-        category,
-        severity,
-        title: safeTitle,
+        user_id: user.id,
+        type: reportType,
+        title: safeTitle || null,
         message: safeMessage,
-        contact_email: safeEmail || null,
         page_url: context.pageUrl || null,
-        route: context.route || null,
-        browser: context.browser || null,
-        device: context.device,
+        user_agent: context.userAgent || null,
+        priority,
         metadata: {
-          submitted_at: context.submittedAt,
-          viewport: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null
+          route: context.route || null,
+          viewport: context.viewport,
+          timestamp: context.submittedAt
         }
       });
       if (error) throw error;
-      trackBetaEvent(session?.user?.id, 'feedback_submitted', { category, severity, route: context.route });
+      trackBetaEvent(user.id, 'feedback_submitted', { type: reportType, priority, route: context.route });
       setTitle('');
       setMessage('');
-      addToast({ type: 'success', title: 'Feedback sent', description: 'Thanks. We will review it for beta stability.' });
+      addToast({ type: 'success', title: 'Thanks — your report was sent.' });
     } catch (error: any) {
       console.error('Feedback submission failed:', error);
-      const mailto = buildFeedbackMailto(category, severity, safeTitle, safeMessage, safeEmail);
-      if (typeof window !== 'undefined') window.location.href = mailto;
-
       addToast({
-        type: isMissingFeedbackTable(error) ? 'info' : 'error',
-        title: isMissingFeedbackTable(error) ? 'Feedback email opened' : 'Feedback fallback opened',
-        description: isMissingFeedbackTable(error)
-          ? 'The feedback database is not ready yet, so an email draft was opened instead.'
-          : `Could not save feedback in-app. Send the email draft to ${supportEmail}.`
+        type: 'error',
+        title: "Couldn't send report. Please try again."
       });
     } finally {
       setIsSubmitting(false);
@@ -126,34 +115,29 @@ export default function FeedbackPage() {
         <label className="block space-y-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Type</span>
           <SelectMenu
-            value={category}
-            onChange={setCategory}
+            value={reportType}
+            onChange={value => setReportType(REPORT_TYPES.includes(value as ReportType) ? value as ReportType : 'feedback')}
             options={[
               { value: 'bug', label: 'Bug report' },
-              { value: 'content', label: 'Report content/profile' },
-              { value: 'account', label: 'Account/support' },
+              { value: 'general', label: 'Report content/profile' },
+              { value: 'feature_request', label: 'Feature request' },
               { value: 'feedback', label: 'Product feedback' }
             ]}
           />
         </label>
 
         <label className="block space-y-2">
-          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Severity</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Priority</span>
           <SelectMenu
-            value={severity}
-            onChange={setSeverity}
+            value={priority}
+            onChange={value => setPriority(PRIORITIES.includes(value as ReportPriority) ? value as ReportPriority : 'normal')}
             options={[
               { value: 'low', label: 'Low' },
-              { value: 'medium', label: 'Medium' },
+              { value: 'normal', label: 'Normal' },
               { value: 'high', label: 'High' },
-              { value: 'critical', label: 'Critical' }
+              { value: 'urgent', label: 'Urgent' }
             ]}
           />
-        </label>
-
-        <label className="block space-y-2">
-          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Contact email</span>
-          <input value={contactEmail} onChange={event => setContactEmail(event.target.value)} className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main" placeholder="you@example.com" />
         </label>
 
         <label className="block space-y-2">
@@ -166,7 +150,7 @@ export default function FeedbackPage() {
           <textarea value={message} onChange={event => setMessage(event.target.value)} className="w-full min-h-48 rounded-2xl bg-surface-muted border border-card-border p-4 text-sm font-semibold text-text-main resize-y" placeholder="What happened? Add links, steps, or expected behavior." />
         </label>
 
-        <button onClick={submit} disabled={isSubmitting || !title.trim() || !message.trim()} className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2 disabled:opacity-50">
+        <button onClick={submit} disabled={isSubmitting} className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2 disabled:opacity-50">
           <Send size={16} />
           {isSubmitting ? 'Sending...' : 'Send feedback'}
         </button>
