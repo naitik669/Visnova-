@@ -13,6 +13,8 @@ const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
 type ReportType = typeof REPORT_TYPES[number];
 type ReportPriority = typeof PRIORITIES[number];
 
+type EmailDeliveryState = 'sent' | 'not_configured' | 'failed';
+
 function getDeviceType() {
   if (typeof window === 'undefined') return 'unknown';
   const width = window.innerWidth;
@@ -46,6 +48,29 @@ function getFeedbackContext() {
   };
 }
 
+async function sendFeedbackEmail(reportId: string, accessToken: string): Promise<EmailDeliveryState> {
+  try {
+    const response = await fetch('/api/send-feedback', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ reportId })
+    });
+
+    if (response.ok) return 'sent';
+    if (response.status === 503 || response.status === 404) return 'not_configured';
+
+    const result = await response.json().catch(() => ({}));
+    console.error('Feedback email delivery failed:', result);
+    return 'failed';
+  } catch (error) {
+    console.error('Feedback email delivery failed:', error);
+    return 'failed';
+  }
+}
+
 export default function FeedbackPage() {
   const { addToast } = useStore();
   const [reportType, setReportType] = useState<ReportType>('bug');
@@ -71,27 +96,52 @@ export default function FeedbackPage() {
         addToast({ type: 'error', title: 'Please log in to send feedback.' });
         return;
       }
+      const { data: sessionResult } = await supabase.auth.getSession();
+      const accessToken = sessionResult.session?.access_token;
+      if (!accessToken) {
+        addToast({ type: 'error', title: 'Please log in to send feedback.' });
+        return;
+      }
 
       const context = getFeedbackContext();
-      const { error } = await supabase.from('feedback_reports').insert({
-        user_id: user.id,
-        type: reportType,
-        title: safeTitle || null,
-        message: safeMessage,
-        page_url: context.pageUrl || null,
-        user_agent: context.userAgent || null,
-        priority,
-        metadata: {
-          route: context.route || null,
-          viewport: context.viewport,
-          timestamp: context.submittedAt
-        }
-      });
+      const { data, error } = await supabase
+        .from('feedback_reports')
+        .insert({
+          user_id: user.id,
+          type: reportType,
+          title: safeTitle || null,
+          message: safeMessage,
+          page_url: context.pageUrl || null,
+          user_agent: context.userAgent || null,
+          priority,
+          metadata: {
+            route: context.route || null,
+            viewport: context.viewport,
+            timestamp: context.submittedAt
+          }
+        })
+        .select('id')
+        .single();
       if (error) throw error;
+      const emailState = await sendFeedbackEmail(data.id, accessToken);
       trackBetaEvent(user.id, 'feedback_submitted', { type: reportType, priority, route: context.route });
       setTitle('');
       setMessage('');
-      addToast({ type: 'success', title: 'Thanks — your report was sent.' });
+      if (emailState === 'sent') {
+        addToast({ type: 'success', title: 'Thanks — your report was sent.' });
+      } else if (emailState === 'not_configured') {
+        addToast({
+          type: 'info',
+          title: 'Report saved',
+          description: `Email delivery is not configured yet, so it was saved in Supabase instead. You can also email ${supportEmail}.`
+        });
+      } else {
+        addToast({
+          type: 'error',
+          title: 'Report saved, email failed',
+          description: `It is saved in Supabase, but Gmail delivery failed. You can also email ${supportEmail}.`
+        });
+      }
     } catch (error: any) {
       console.error('Feedback submission failed:', error);
       addToast({
