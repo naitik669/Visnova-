@@ -505,9 +505,9 @@ export default function NotesSystem() {
         {/* Content Section */}
         <div className={cn(
           "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
-          activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-2 sm:px-8 md:px-12 py-5 sm:py-10"
+          activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-3 sm:px-6 lg:px-10 xl:px-12 py-5 sm:py-10"
         )}>
-          <header className="mx-auto max-w-[1600px] flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 sm:pb-8 mb-5 sm:mb-8 border-b border-card-border/30">
+          <header className="flex w-full flex-col gap-4 border-b border-card-border/30 pb-5 mb-5 sm:pb-8 sm:mb-8 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 min-w-0">
                 <div className="min-w-0">
                   <h1 className="font-black text-text-main tracking-tight uppercase text-2xl sm:text-3xl">Library</h1>
@@ -566,8 +566,8 @@ export default function NotesSystem() {
               />
             ) : (
               <div className={cn(
-                "mx-auto transition-all duration-700",
-                activeTab === 'journal' ? "max-w-[1500px] space-y-6" : "max-w-[1600px] space-y-16"
+                "w-full transition-all duration-700",
+                activeTab === 'journal' ? "mx-auto max-w-[1500px] space-y-6" : "max-w-none space-y-16"
               )}>
                 {activeTab === 'vault' && (
                   <section className="space-y-8">
@@ -771,7 +771,7 @@ export default function NotesSystem() {
                     ) : (
                       <div className={cn(
                         "grid",
-                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" : "grid-cols-1"
+                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4 min-[1800px]:grid-cols-5 gap-4" : "grid-cols-1"
                       )}>
                         {safeArray<Note>(filteredNotes).map((note, idx) => (
                           <SafeItemBoundary key={note.id || `note-${idx}`}>
@@ -3000,9 +3000,9 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="mx-auto flex min-h-[calc(100vh-13rem)] w-full max-w-[1600px] flex-col overflow-hidden bg-[#f8fbff] text-text-main"
+      className="flex min-h-[calc(100vh-9rem)] w-full flex-col overflow-hidden bg-app-container text-text-main"
     >
-      <div className="flex min-h-16 flex-col gap-4 border-b border-card-border/60 bg-[#f8fbff]/95 px-1 pb-5 backdrop-blur-md sm:min-h-20 sm:flex-row sm:items-center sm:justify-between sm:px-0">
+      <div className="flex min-h-16 flex-col gap-4 border-b border-card-border/60 bg-app-container/95 px-0 pb-5 backdrop-blur-md sm:min-h-20 sm:flex-row sm:items-center sm:justify-between">
          <div className="flex items-center gap-4 sm:gap-6">
            <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/5 text-accent transition-all hover:bg-accent hover:text-white active:scale-90">
               <ChevronRight className="rotate-180" size={18} />
@@ -3065,8 +3065,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-1 pb-24 pt-8 sm:pt-10 md:pt-12">
-        <div className="mx-auto max-w-6xl space-y-10 sm:space-y-12">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 pt-8 sm:pt-10 md:pt-12">
+        <div className="w-full space-y-10 sm:space-y-12">
           {note.note_type === 'journal' && (
             <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{safeFormat(note.createdAt, 'EEEE, MMM dd')}</h4>
           )}
@@ -3241,7 +3241,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             )}
           </div>
           
-          <div className="rounded-[2rem] border border-card-border bg-card p-3 shadow-sm sm:p-5">
+          <div className="border-t border-card-border/50 pt-5">
             <div
               ref={editorRef}
               contentEditable
@@ -3272,7 +3272,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 }
                 saveEditorContent();
               }}
-              className="note-paper-editor min-h-[72vh] w-full rounded-[1.5rem] px-6 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:px-10 sm:text-lg"
+              className="note-paper-editor min-h-[calc(100vh-22rem)] w-full px-3 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:px-6 sm:text-lg lg:px-8"
               data-placeholder="Log details..."
             />
           </div>
