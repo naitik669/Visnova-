@@ -405,6 +405,9 @@ function Sidebar() {
           >
             <img
               src={user?.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${user?.id || 'visnova'}`}
+              onError={(event) => {
+                event.currentTarget.src = `https://api.dicebear.com/7.x/shapes/svg?seed=${user?.id || 'visnova'}`;
+              }}
               className="w-8 h-8 rounded-xl object-cover border border-card-border shrink-0"
               alt="Profile"
             />

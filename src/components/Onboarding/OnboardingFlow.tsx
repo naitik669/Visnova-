@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as Ima
 import { useStore } from '../../store/useStore';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
-import { getAuthRedirectUrl, supabase } from '../../lib/supabase';
+import { getAuthRedirectUrl, supabase, uploadAvatar } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
 import { trackBetaEvent } from '../../lib/betaAnalytics';
 import { getRandomVisNovaAvatar } from '../../lib/avatarLibrary';
@@ -1010,6 +1010,7 @@ function Screen7({ avatar, setAvatar, name, setName, username, setUsername, bio,
   const [showLibrary, setShowLibrary] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const addToast = useStore((state) => state.addToast);
 
   const normalizeUsername = (val: string) => {
@@ -1128,19 +1129,32 @@ function Screen7({ avatar, setAvatar, name, setName, username, setUsername, bio,
                    <Zap size={20} className="text-text-secondary/40 group-hover:text-accent transition-colors" />
                    <input
                      type="file"
-                     accept="image/*"
+                     accept="image/png,image/jpeg,image/webp"
                      className="hidden"
-                     onChange={(e) => {
+                     disabled={isUploadingAvatar}
+                     onChange={async (e) => {
                        const file = e.target.files?.[0];
-                       if (file) {
-                         const url = URL.createObjectURL(file);
-                         setAvatar(url);
+                       e.target.value = '';
+                       if (!file) return;
+
+                       setIsUploadingAvatar(true);
+                       try {
+                         const { publicUrl } = await uploadAvatar(file, currentUserId);
+                         setAvatar(publicUrl);
                          setShowLibrary(false);
+                       } catch (error: any) {
+                         console.error('Onboarding avatar upload failed:', error);
+                         addToast({ type: 'error', title: 'Photo failed', description: error.message || 'Could not upload your profile photo.' });
+                       } finally {
+                         setIsUploadingAvatar(false);
                        }
                      }}
                    />
                 </label>
               </div>
+              {isUploadingAvatar && (
+                <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-accent">Uploading photo...</p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

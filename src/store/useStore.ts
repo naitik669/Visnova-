@@ -48,6 +48,16 @@ function normalizeUsernameInput(username: string) {
   return username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '').slice(0, 24);
 }
 
+function fallbackAvatarUrl(seed: string | undefined) {
+  return getRandomVisNovaAvatar(seed || 'visnova');
+}
+
+function normalizeAvatarUrl(url: string | null | undefined, seed: string | undefined) {
+  const cleanUrl = String(url || '').trim();
+  if (!cleanUrl || cleanUrl.startsWith('blob:')) return fallbackAvatarUrl(seed);
+  return cleanUrl;
+}
+
 function extractMentionUsernames(text: string) {
   return Array.from(new Set((text.match(/@([a-z0-9_]{3,24})/gi) || [])
     .map(match => normalizeUsernameInput(match.replace('@', '')))
@@ -592,9 +602,9 @@ function toProfileUser(profile: any, fallbackEmail = ''): AppState['user'] {
     name: safeString(profile?.display_name || profile?.full_name, 'Explorer'),
     email: safeString(profile?.email, fallbackEmail),
     username: profile?.username || undefined,
-    avatar: safeString(profile?.avatar_url, getRandomVisNovaAvatar(safeString(profile?.id, 'Explorer'))),
+    avatar: normalizeAvatarUrl(profile?.avatar_url, safeString(profile?.id, 'Explorer')),
     rank: safeString(profile?.role, 'Explorer'),
-    level: safeNumber(profile?.level, 1),
+    level: Math.max(1, safeNumber(profile?.level, 1)),
     xp: safeNumber(profile?.xp),
     streak: safeNumber(profile?.streak),
     isGrinding: safeBoolean(profile?.is_grinding),
@@ -2411,8 +2421,12 @@ export const useStore = create<AppState>((set, get) => ({
       }
 
       if (updates.avatar !== undefined) {
-        dbUpdates.avatar_url = updates.avatar || null;
-        nextUserUpdates.avatar = updates.avatar;
+        const avatarUrl = String(updates.avatar || '').trim();
+        if (avatarUrl.startsWith('blob:')) {
+          throw new Error('Profile photo is still local. Upload it before saving.');
+        }
+        dbUpdates.avatar_url = avatarUrl || null;
+        nextUserUpdates.avatar = avatarUrl ? normalizeAvatarUrl(avatarUrl, userId) : fallbackAvatarUrl(userId);
       }
       if (updates.bio !== undefined) {
         dbUpdates.bio = sanitizePlainText(updates.bio || '', 300);
@@ -5090,9 +5104,9 @@ export const useStore = create<AppState>((set, get) => ({
         display_name: name || 'Explorer',
         username: normalizedUsername,
         bio: bio || '',
-        avatar_url: avatar || getRandomVisNovaAvatar(userId),
+        avatar_url: String(avatar || '').startsWith('blob:') ? getRandomVisNovaAvatar(userId) : (avatar || getRandomVisNovaAvatar(userId)),
         role: role || 'Explorer',
-        gender: gender || 'custom',
+        gender: gender || 'prefer_not_say',
         onboarded: true,
         onboarding_step: 999,
         onboarding_completed_at: new Date().toISOString(),
