@@ -76,6 +76,7 @@ const visibleOnly = <T extends { visibility?: string }>(rows: T[]) =>
 export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
   const user = useStore(state => state.user);
   const circle = useStore(state => state.circle);
+  const fetchCircleData = useStore(state => state.fetchCircleData);
   const localProgressLogs = useStore(state => state.progressLogs);
   const localVisions = useStore(state => state.visions);
   const localTodos = useStore(state => state.todos);
@@ -99,6 +100,11 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
   const prefs = getAppPreferences();
   const isHidden = prefs.circleMomentumVisibility === 'hidden';
   const detailMode = prefs.circleMomentumDetail;
+
+  useEffect(() => {
+    if (!user.id) return;
+    fetchCircleData().catch(error => console.error('Failed to load Circle Momentum members:', error));
+  }, [fetchCircleData, user.id]);
 
   useEffect(() => {
     let cancelled = false;

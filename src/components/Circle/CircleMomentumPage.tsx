@@ -271,7 +271,7 @@ export default function CircleMomentumPage() {
               Array.from({ length: 5 }).map((_, index) => (
                 <div key={index} className="my-3 h-16 animate-pulse rounded-2xl bg-app-container" />
               ))
-            ) : entries.length > 0 && activeEntries.length > 0 ? (
+            ) : entries.length > 0 ? (
               entries.map(entry => <LeaderboardRow key={entry.userId} entry={entry} showCounts={detailMode === 'counts'} />)
             ) : (
               <div className="flex min-h-[260px] flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-card-border bg-app-container p-8 text-center">
