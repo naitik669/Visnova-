@@ -345,8 +345,8 @@ function Sidebar() {
         <button
           id="nav-focus"
           onClick={toggleFocusMode}
-          title={!isExpanded ? "Start Focus" : undefined}
-          aria-label="Start Focus"
+          title={!isExpanded ? "Deep Sprint" : undefined}
+          aria-label="Deep Sprint"
           className={cn(
             "w-full h-11 rounded-xl bg-accent text-accent-contrast transition-all shadow-lg shadow-accent/10 flex items-center overflow-hidden group active:scale-95",
             isExpanded ? "justify-start gap-4 px-3.5" : "justify-center px-0"
@@ -355,12 +355,12 @@ function Sidebar() {
            <div className="w-5 h-5 shrink-0 flex items-center justify-center">
               <Zap size={16} className="fill-accent-contrast" />
            </div>
-           <span className={cn(
-              "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
-              isExpanded ? "opacity-100 translate-x-0" : "sr-only"
-            )}>
-              Start Focus
-            </span>
+          <span className={cn(
+            "font-semibold text-[10px] uppercase tracking-wider transition-all duration-500 whitespace-nowrap",
+            isExpanded ? "opacity-100 translate-x-0" : "sr-only"
+          )}>
+            Deep Sprint
+          </span>
         </button>
 
         <div className="relative">

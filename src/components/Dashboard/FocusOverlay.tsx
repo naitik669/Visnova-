@@ -271,10 +271,10 @@ export default function FocusOverlay() {
             </AnimatePresence>
 
             {sessionState === 'active' && (
-              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid min-h-0 flex-1 gap-5 overflow-hidden xl:grid-cols-[minmax(0,1fr)_360px] xl:space-y-0")}>
-                <div className={cn("space-y-5 sm:space-y-6", isExpanded && "grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-3 pt-0")}>
+              <div className={cn("space-y-5 sm:space-y-6", isExpanded && "flex min-h-0 flex-1 flex-col overflow-hidden")}>
+                <div className={cn("space-y-5 sm:space-y-6", isExpanded && "flex min-h-0 flex-1 flex-col gap-4 pt-0")}>
                 {/* Social Pulse in Focus */}
-                <div className="flex justify-center">
+                <div className={cn("flex justify-center", isExpanded && "hidden sm:flex opacity-70")}>
                   <div className={cn(
                     "inline-flex items-center gap-4 rounded-full border px-4 py-2",
                     isExpanded ? "border-accent/20 bg-overlay/35 backdrop-blur-md" : "bg-accent/[0.03] border-accent/10"
@@ -291,7 +291,7 @@ export default function FocusOverlay() {
                 </div>
 
                 {/* Header Info */}
-                <div className={cn("text-center", isExpanded ? "space-y-2" : "space-y-4")}>
+                <div className={cn("text-center", isExpanded ? "space-y-2 opacity-80" : "space-y-4")}>
                   <div className={cn(
                     "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest leading-none",
                     isExpanded ? "bg-overlay/40 text-accent-contrast shadow-md backdrop-blur-md" : "bg-accent/10 text-accent"
@@ -307,7 +307,7 @@ export default function FocusOverlay() {
                 </div>
 
                 {/* Preset Selector */}
-                <div className={cn("space-y-4", isExpanded && "row-start-2")}>
+                <div className={cn("space-y-4", isExpanded && "shrink-0 opacity-75 transition-opacity hover:opacity-100")}>
                   <div className="flex items-center justify-between">
                     <span className={cn("text-[10px] font-bold uppercase tracking-wider", isExpanded ? "text-accent-contrast/80" : "text-text-secondary/60")}>Presets</span>
                     <button
@@ -393,7 +393,7 @@ export default function FocusOverlay() {
                 {/* Main Timer Area */}
                 <div className={cn(
                   "flex flex-col items-center justify-center",
-                  isExpanded ? "row-start-3 min-h-0 -mt-4 pb-4" : "py-2 sm:py-4"
+                  isExpanded ? "min-h-0 flex-1 -translate-y-8 pb-10 sm:-translate-y-10 lg:-translate-y-14" : "py-2 sm:py-4"
                 )}>
                   <div className="relative group">
                     <motion.div
@@ -406,7 +406,7 @@ export default function FocusOverlay() {
                         "font-medium tracking-tighter leading-none select-none tabular-nums relative z-10",
                         isExpanded ? "text-accent-contrast drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)]" : "text-text-main"
                       )}
-                      style={{ fontSize: isExpanded ? 'clamp(5.5rem, 15vw, 11.5rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
+                      style={{ fontSize: isExpanded ? 'clamp(5.25rem, 14vw, 10.75rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
                     >
                       {formatTime(focusSession.timeLeft)}
                     </motion.div>
@@ -450,10 +450,10 @@ export default function FocusOverlay() {
 
                 {/* Cognitive Anchor */}
                 <div className={cn(
-                  "p-4 sm:p-5 rounded-3xl border flex items-start gap-4 backdrop-blur-md",
+                  "p-4 sm:p-5 rounded-3xl border items-start gap-4 backdrop-blur-md",
                   isExpanded
-                    ? "self-start border-accent/20 bg-overlay/45 text-accent-contrast shadow-2xl shadow-overlay/30 xl:flex-col"
-                    : "bg-bg-base/60 border-card-border"
+                    ? "hidden"
+                    : "flex bg-bg-base/60 border-card-border"
                 )}>
                   <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center text-accent shrink-0">
                     <Brain size={20} />
