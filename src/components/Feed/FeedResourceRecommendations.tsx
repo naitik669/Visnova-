@@ -18,6 +18,8 @@ import {
 import { useStore } from '../../store/useStore';
 import type { StoreProduct } from '../../types';
 
+const FEED_RESOURCE_LIMIT = 5;
+
 const logStoreEvent = async (
   product: StoreProduct,
   eventType: StoreEventType,
@@ -144,6 +146,7 @@ export function ProductPreviewModal({
 export function FeedResourceRecommendations() {
   const navigate = useNavigate();
   const user = useStore(state => state.user);
+  const userInterests = useStore(state => state.userInterests);
   const visions = useStore(state => state.visions);
   const financeGoals = useStore(state => state.financeGoals);
   const createFinanceGoal = useStore(state => state.createFinanceGoal);
@@ -170,7 +173,7 @@ export function FeedResourceRecommendations() {
           .select('*')
           .eq('is_active', true)
           .eq('safety_status', 'approved')
-          .limit(40),
+          .limit(24),
         supabase
           .from('user_saved_products')
           .select('product_id,status')
@@ -200,7 +203,23 @@ export function FeedResourceRecommendations() {
     };
   }, [user.id, retryKey]);
 
-  const hasUsefulSignal = !!activeVision || (user.interests || []).length > 0 || financeGoals.some(goal => goal.status === 'active') || savedProductIds.size > 0;
+  const interestSignals = useMemo(() => {
+    const explicitInterests = (user.interests || []).map(interest => interest.toLowerCase());
+    const learnedInterests = Object.entries(userInterests || {})
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6)
+      .map(([tag]) => tag.toLowerCase());
+    return Array.from(new Set([...explicitInterests, ...learnedInterests])).slice(0, 8);
+  }, [user.interests, userInterests]);
+
+  const matchedSignals = useMemo(() => {
+    const signals = [...interestSignals];
+    if (activeVision?.category) signals.unshift(activeVision.category);
+    (activeVision?.tags || []).forEach(tag => signals.push(tag));
+    return Array.from(new Set(signals.map(signal => signal.toLowerCase()).filter(Boolean))).slice(0, 4);
+  }, [activeVision?.category, activeVision?.tags, interestSignals]);
+
+  const hasUsefulSignal = !!activeVision || interestSignals.length > 0 || financeGoals.some(goal => goal.status === 'active') || savedProductIds.size > 0;
   const displayProducts = products.length > 0 && hasUsefulSignal ? products : STARTER_STORE_PRODUCTS;
   const isStarterMode = !hasUsefulSignal || products.length === 0;
 
@@ -208,10 +227,10 @@ export function FeedResourceRecommendations() {
     scoreStoreProducts(displayProducts, {
       activeVision,
       financeGoals,
-      interests: user.interests || [],
+      interests: interestSignals,
       hiddenProductIds,
-    }).slice(0, 4)
-  ), [displayProducts, activeVision, financeGoals, user.interests, hiddenProductIds]);
+    }).slice(0, FEED_RESOURCE_LIMIT)
+  ), [displayProducts, activeVision, financeGoals, interestSignals, hiddenProductIds]);
 
   useEffect(() => {
     recommendations.forEach(product => {
@@ -286,18 +305,27 @@ export function FeedResourceRecommendations() {
   };
 
   return (
-    <aside className="sticky top-5 space-y-4">
-      <div className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm">
-        <div className="mb-4 flex items-start justify-between gap-3">
+    <aside className="space-y-3">
+      <div className="rounded-[1.6rem] border border-card-border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Resources</p>
-            <h3 className="mt-1 text-lg font-black tracking-tight text-text-main">For your Vision</h3>
+            <h3 className="mt-1 text-base font-black tracking-tight text-text-main">Matched picks</h3>
             <p className="mt-1 text-[11px] font-bold leading-relaxed text-text-secondary">
-              {isStarterMode ? 'Pick a Vision to get better recommendations.' : activeVision ? `Based on ${activeVision.title}` : 'Based on your current goals'}
+              {isStarterMode ? 'Starter resources until your interests sharpen.' : activeVision ? `Based on ${activeVision.title}` : 'Based on your interests'}
             </p>
+            {matchedSignals.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {matchedSignals.map(signal => (
+                  <span key={signal} className="rounded-full bg-accent/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-accent">
+                    {signal}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-            <Package size={17} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent">
+            <Package size={16} />
           </div>
         </div>
 
@@ -319,10 +347,10 @@ export function FeedResourceRecommendations() {
             No resources available yet. Create a Vision to sharpen suggestions.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {isStarterMode && (
-              <div className="rounded-2xl border border-card-border bg-accent/5 p-3 text-xs font-bold leading-relaxed text-text-secondary">
-                <span className="text-text-main">Starter resources.</span> These are generic picks until VisNova has enough goal context.
+              <div className="rounded-xl border border-card-border bg-accent/5 p-2.5 text-[11px] font-bold leading-relaxed text-text-secondary">
+                <span className="text-text-main">Starter picks.</span> Add interests or a Vision for tighter matches.
               </div>
             )}
             {recommendations.map(product => (
@@ -332,10 +360,10 @@ export function FeedResourceRecommendations() {
                   setSelectedProduct(product);
                   logStoreEvent(product, 'click', 'feed_sidebar', user.id, activeVision?.id);
                 }}
-                className="group w-full rounded-2xl border border-card-border bg-surface-muted/60 p-3 text-left transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:bg-card hover:shadow-sm"
+                className="group w-full rounded-xl border border-card-border bg-surface-muted/60 p-2.5 text-left transition-all hover:border-accent/30 hover:bg-card hover:shadow-sm"
               >
-                <div className="flex gap-3">
-                  <div className="h-14 w-14 overflow-hidden rounded-xl bg-card">
+                <div className="flex gap-2.5">
+                  <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-card">
                     {product.imageUrl ? (
                       <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
@@ -345,13 +373,13 @@ export function FeedResourceRecommendations() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-black text-text-main">{product.title}</p>
+                    <p className="truncate text-xs font-black text-text-main">{product.title}</p>
                     <p className="mt-0.5 text-[11px] font-black text-accent">{product.price ? formatCurrency(product.price, product.currency) : 'Free / varies'}</p>
-                    <p className="mt-1 line-clamp-2 text-[10px] font-semibold leading-snug text-text-secondary/70">{product.recommendationReason}</p>
+                    <p className="mt-0.5 line-clamp-1 text-[10px] font-semibold leading-snug text-text-secondary/70">{product.recommendationReason}</p>
                   </div>
                   <ArrowUpRight size={14} className="mt-1 text-text-secondary/30 transition-colors group-hover:text-accent" />
                 </div>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-2 flex gap-2">
                   <span className={cn(
                     "rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-widest",
                     savedProductIds.has(product.id) ? "bg-success/10 text-success" : "bg-card text-text-secondary"
@@ -366,7 +394,7 @@ export function FeedResourceRecommendations() {
             ))}
             <button
               onClick={() => navigate('/store')}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast transition-transform active:scale-95"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast transition-transform active:scale-95"
             >
               View more resources <ArrowRight size={14} />
             </button>
