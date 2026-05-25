@@ -100,13 +100,18 @@ const streakBonus = (streak: number) => {
   return 0;
 };
 
-const scoreMomentum = (entry: Omit<CircleMomentumEntry, 'momentumScore' | 'rank' | 'topBadge' | 'changeFromLastWeek'>) => Math.min(100,
-  entry.progressLogsCount * 25
-  + entry.completedTasksCount * 15
-  + entry.proofUploadsCount * 15
-  + Math.round((entry.weeklySprintProgress / 100) * 20)
-  + streakBonus(entry.currentStreak)
-);
+const getExecutionWeight = (entry: Pick<CircleMomentumEntry, 'progressLogsCount' | 'completedTasksCount' | 'proofUploadsCount'>) =>
+  entry.progressLogsCount * 100 + entry.completedTasksCount * 65 + entry.proofUploadsCount * 20;
+
+const scoreMomentum = (entry: Omit<CircleMomentumEntry, 'momentumScore' | 'rank' | 'topBadge' | 'changeFromLastWeek'>) => {
+  const executionPoints =
+    entry.progressLogsCount * 30
+    + entry.completedTasksCount * 20
+    + entry.proofUploadsCount * 10;
+  const sprintPoints = entry.weeklySprintProgress > 0 ? Math.round((entry.weeklySprintProgress / 100) * 10) : 0;
+  const hasExecution = executionPoints > 0 || sprintPoints > 0;
+  return Math.min(100, executionPoints + sprintPoints + (hasExecution ? streakBonus(entry.currentStreak) : 0));
+};
 
 const getBadge = (entry: CircleMomentumEntry) => {
   if (entry.currentStreak >= 5) return 'Most consistent';
@@ -188,7 +193,13 @@ export function buildCircleMomentum(input: BuildCircleMomentumInput): CircleMome
   });
 
   return entries
-    .sort((a, b) => b.momentumScore - a.momentumScore || b.progressLogsCount - a.progressLogsCount || a.displayName.localeCompare(b.displayName))
+    .sort((a, b) =>
+      getExecutionWeight(b) - getExecutionWeight(a)
+      || b.momentumScore - a.momentumScore
+      || b.weeklySprintProgress - a.weeklySprintProgress
+      || b.currentStreak - a.currentStreak
+      || a.displayName.localeCompare(b.displayName)
+    )
     .map((entry, index, sorted) => {
       const withRank = { ...entry, rank: index + 1 };
       const highestLogs = Math.max(...sorted.map(item => item.progressLogsCount), 0);
@@ -207,7 +218,7 @@ export const splitRowsByMomentumWindow = <T extends { created_at?: string; creat
   range: CircleMomentumRange
 ) => {
   const window = getCircleMomentumWindow(range);
-  const getRowTime = (row: T) => safeTime(row.createdAt || row.created_at || row.completedAt || row.completed_at || row.updatedAt || row.updated_at);
+  const getRowTime = (row: T) => safeTime(row.completedAt || row.completed_at || row.updatedAt || row.updated_at || row.createdAt || row.created_at);
   return {
     current: rows.filter(row => getRowTime(row) >= window.startMs),
     previous: rows.filter(row => getRowTime(row) >= window.previousStartMs && getRowTime(row) < window.previousEndMs),
