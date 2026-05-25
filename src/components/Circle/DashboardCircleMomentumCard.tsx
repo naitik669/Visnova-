@@ -28,8 +28,10 @@ export function DashboardCircleMomentumCard() {
   const sprint = useStore(state => state.weeklyProofSprint);
   const fetchWeeklyProofSprint = useStore(state => state.fetchWeeklyProofSprint);
   const createWeeklyProofSprint = useStore(state => state.createWeeklyProofSprint);
-  const nonZero = topEntries.some(entry => entry.momentumScore > 0);
   const topThree = topEntries.slice(0, 3);
+  const hasEntries = topThree.length > 0;
+  const hasMomentum = topEntries.some(entry => entry.momentumScore > 0);
+  const hasCircleMembers = topEntries.some(entry => !entry.isCurrentUser);
   const nextEntry = currentUserEntry
     ? topEntries.find(entry => entry.rank < currentUserEntry.rank && entry.momentumScore > currentUserEntry.momentumScore)
     : null;
@@ -112,21 +114,38 @@ export function DashboardCircleMomentumCard() {
           Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="h-12 animate-pulse rounded-2xl bg-surface-muted" />
           ))
-        ) : topThree.length > 0 && nonZero ? (
-          topThree.map(entry => (
-            <div key={entry.userId} className="flex items-center gap-3 rounded-2xl border border-card-border/70 bg-app-container/60 p-3">
-              <Avatar src={entry.avatarUrl} name={entry.displayName} rank={entry.rank} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="truncate text-sm font-black text-text-main">{entry.isCurrentUser ? 'You' : entry.displayName}</p>
-                  <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-black text-accent">{entry.momentumScore}</span>
-                </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
-                  <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${entry.momentumScore}%` }} />
+        ) : hasEntries ? (
+          <>
+            {topThree.map(entry => (
+              <div key={entry.userId} className="flex items-center gap-3 rounded-2xl border border-card-border/70 bg-app-container/60 p-3">
+                <Avatar src={entry.avatarUrl} name={entry.displayName} rank={entry.rank} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-sm font-black text-text-main">{entry.isCurrentUser ? 'You' : entry.displayName}</p>
+                    <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-black text-accent">{entry.momentumScore}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${entry.momentumScore}%` }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+            {!hasMomentum && (
+              <div className="flex items-start gap-3 rounded-2xl border border-dashed border-card-border bg-app-container/50 p-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                  <Sparkles size={15} />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-text-main">No shared proof yet this week.</p>
+                  <p className="mt-1 text-[11px] font-semibold leading-relaxed text-text-secondary/65">
+                    {hasCircleMembers
+                      ? 'The first circle-visible proof log starts the board.'
+                      : 'Log circle-visible proof or add partners to build momentum together.'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-card-border bg-app-container/50 px-5 py-8 text-center">
             <Users size={24} className="text-accent/60" />
