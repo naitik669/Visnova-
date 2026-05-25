@@ -41,6 +41,7 @@ import { CookiePreferencesModal } from '../Legal/CookiePreferencesModal';
 import { useCookieConsent } from '../../hooks/useCookieConsent';
 import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
 import { CURRENCY_OPTIONS } from '../../lib/currency';
+import { ProfileRoleSelect } from '../ProfileRoleSelect';
 
 type SettingsSection = 'profile' | 'themes' | 'notifications' | 'preferences' | 'privacy';
 
@@ -245,7 +246,7 @@ export default function Settings() {
                     <input value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} className="settings-input" />
                   </SettingsField>
                   <SettingsField label="Role title">
-                    <input value={editData.role} onChange={e => setEditData({ ...editData, role: e.target.value })} className="settings-input" />
+                    <ProfileRoleSelect value={editData.role} onChange={role => setEditData({ ...editData, role })} />
                   </SettingsField>
                   <SettingsField label="Username">
                     <input value={editData.username} onChange={e => setEditData({ ...editData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })} className="settings-input" />

@@ -54,6 +54,7 @@ import { ResponsiveModal } from '../ui/ResponsiveModal';
 import { SelectMenu } from '../ui/SelectMenu';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
+import { ProfileRoleSelect } from '../ProfileRoleSelect';
 
 type SocialProfile = {
   id: string;
@@ -1010,6 +1011,13 @@ export default function ProfilePage() {
                                 {usernameStatus === 'invalid' && 'Use 3-24 lowercase letters, numbers, or underscores.'}
                                 {usernameStatus === 'idle' && 'Lowercase letters, numbers, and underscores only.'}
                               </p>
+                            </div>
+                            <div className="space-y-3 md:col-span-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 ml-2">Role</label>
+                              <ProfileRoleSelect
+                                value={editData.role}
+                                onChange={role => setEditData(data => ({ ...data, role }))}
+                              />
                             </div>
                          </div>
                          <div className="space-y-3">

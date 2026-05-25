@@ -8,6 +8,7 @@ import { getAuthRedirectUrl, supabase, uploadAvatar } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
 import { trackBetaEvent } from '../../lib/betaAnalytics';
 import { getRandomVisNovaAvatar } from '../../lib/avatarLibrary';
+import { PROFILE_ROLE_CATEGORIES } from '../../lib/profileRoles';
 import { BrandLogo } from '../BrandLogo';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
@@ -1695,45 +1696,6 @@ export default function OnboardingFlow() {
     );
   };
 
-  const ROLE_CATEGORIES = [
-    {
-      name: "Tech & Builders",
-      roles: ["Software Developer", "Web Developer", "App Developer", "Data Scientist", "Data Analyst", "Cybersecurity Specialist", "Cloud Engineer", "DevOps Engineer", "Game Developer", "Blockchain Developer", "Robotics Engineer", "Embedded Systems Engineer"]
-    },
-    {
-      name: "Engineering",
-      roles: ["Mechanical Engineer", "Civil Engineer", "Electrical Engineer", "Electronics Engineer", "Aerospace Engineer", "Chemical Engineer", "Industrial Engineer"]
-    },
-    {
-      name: "Creators & Media",
-      roles: ["Content Creator", "YouTuber", "Video Editor", "Animator", "Filmmaker", "Photographer", "Graphic Designer", "UI/UX Designer", "Writer", "Blogger", "Podcaster", "Storyteller", "Meme Creator"]
-    },
-    {
-      name: "Business & Entrepreneurship",
-      roles: ["Entrepreneur", "Startup Founder", "Business Owner", "Marketer", "Digital Marketer", "Sales Specialist", "Product Manager", "Business Analyst", "Consultant", "Investor"]
-    },
-    {
-      name: "Academics & Students",
-      roles: ["Student", "Commerce Student", "Science Student", "Engineering Student", "Medical Student", "Law Student", "Researcher", "Scholar"]
-    },
-    {
-      name: "Health & Medical",
-      roles: ["Doctor", "Medical Professional", "Nurse", "Therapist", "Psychologist", "Fitness Coach", "Nutritionist", "Personal Trainer"]
-    },
-    {
-      name: "Lifestyle & Self-Development",
-      roles: ["Self-Improver", "Discipline Builder", "Productivity Enthusiast", "Learner", "Explorer"]
-    },
-    {
-      name: "Creative Arts",
-      roles: ["Musician", "Rapper", "Singer", "Painter", "Illustrator", "Dancer", "Actor"]
-    },
-    {
-      name: "Other / Flexible",
-      roles: ["Freelancer", "Side Hustler", "Multi-skilled", "Generalist"]
-    }
-  ];
-
   const renderCurrentStep = () => {
     switch (step) {
       case 1: return <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} />;
@@ -1759,7 +1721,7 @@ export default function OnboardingFlow() {
       case 6: return <Screen5 interests={interests} intent={intent} nextStep={nextStep} />;
       case 7: return <Screen6 nextStep={nextStep} />;
       case 8: return <Screen7 avatar={avatar} setAvatar={setAvatar} name={name} setName={setName} username={username} setUsername={setUsername} bio={bio} setBio={setBio} gender={gender} setGender={setGender} currentUserId={session?.user?.id} nextStep={nextStep} />;
-      case 9: return <Screen8 role={role} setRole={setRole} ROLE_CATEGORIES={ROLE_CATEGORIES} nextStep={() => nextStep(9.25)} />;
+      case 9: return <Screen8 role={role} setRole={setRole} ROLE_CATEGORIES={PROFILE_ROLE_CATEGORIES} nextStep={() => nextStep(9.25)} />;
       case 9.25: return <ScreenCreateFirstVision onCreate={handleCreateFirstVision} onSkip={() => handleComplete(false)} />;
       case 9.5: return <Screen9 handleForceStart={handleForceStart} />;
       case 10: return null; 
