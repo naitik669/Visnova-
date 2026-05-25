@@ -1,6 +1,8 @@
 import { ChevronRight, ShieldCheck, Sparkles, Users, Zap } from 'lucide-react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCircleMomentum } from '../../hooks/useCircleMomentum';
+import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 
 function Avatar({ src, name, rank }: { src?: string; name: string; rank: number }) {
@@ -23,6 +25,9 @@ function Avatar({ src, name, rank }: { src?: string; name: string; rank: number 
 export function DashboardCircleMomentumCard() {
   const navigate = useNavigate();
   const { topEntries, currentUserEntry, isLoading, isHidden } = useCircleMomentum('week');
+  const sprint = useStore(state => state.weeklyProofSprint);
+  const fetchWeeklyProofSprint = useStore(state => state.fetchWeeklyProofSprint);
+  const createWeeklyProofSprint = useStore(state => state.createWeeklyProofSprint);
   const nonZero = topEntries.some(entry => entry.momentumScore > 0);
   const topThree = topEntries.slice(0, 3);
   const nextEntry = currentUserEntry
@@ -31,6 +36,13 @@ export function DashboardCircleMomentumCard() {
   const proofLogsNeeded = nextEntry && currentUserEntry
     ? Math.max(1, Math.ceil((nextEntry.momentumScore - currentUserEntry.momentumScore + 1) / 25))
     : 1;
+  const sprintTotal = sprint ? Math.max(1, sprint.targetLogs + sprint.targetTasks) : 3;
+  const sprintDone = sprint ? sprint.currentLogs + sprint.currentTasks : 0;
+  const sprintPercent = Math.min(100, Math.round((sprintDone / sprintTotal) * 100));
+
+  useEffect(() => {
+    fetchWeeklyProofSprint().catch(error => console.error('Failed to load dashboard Weekly Proof Sprint:', error));
+  }, [fetchWeeklyProofSprint]);
 
   if (isHidden) {
     return (
@@ -72,6 +84,30 @@ export function DashboardCircleMomentumCard() {
       </div>
 
       <div className="mt-5 flex-1 space-y-3">
+        <div className="rounded-2xl border border-card-border/70 bg-app-container/60 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Weekly Proof Sprint</p>
+              <p className="mt-1 text-sm font-black text-text-main">
+                {sprint ? `${sprint.currentLogs}/${sprint.targetLogs} proof logs completed` : 'Commit to 3 proof logs this week'}
+              </p>
+            </div>
+            {!sprint && (
+              <span
+                onClick={(event) => {
+                  event.stopPropagation();
+                  createWeeklyProofSprint();
+                }}
+                className="rounded-full bg-accent/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-accent"
+              >
+                Start
+              </span>
+            )}
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted">
+            <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${sprintPercent}%` }} />
+          </div>
+        </div>
         {isLoading ? (
           Array.from({ length: 3 }).map((_, index) => (
             <div key={index} className="h-12 animate-pulse rounded-2xl bg-surface-muted" />

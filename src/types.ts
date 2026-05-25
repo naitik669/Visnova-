@@ -369,6 +369,50 @@ export interface ProgressLog {
   updatedAt: number;
 }
 
+export type AccountabilityVisibility = 'private' | 'circle' | 'public';
+export type WeeklyProofSprintStatus = 'active' | 'completed' | 'almost_there' | 'missed' | 'restarted';
+export type NudgeType = 'encouragement' | 'ask_update' | 'sprint_reminder' | 'offer_help' | 'celebrate_progress';
+
+export interface AccountabilityPreferences {
+  userId: string;
+  showInCircleMomentum: boolean;
+  momentumVisibility: 'circle' | 'public' | 'hidden';
+  momentumDetailLevel: 'score_only' | 'counts';
+  allowNudges: boolean;
+  allowProofRequests: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface WeeklyProofSprint {
+  id: string;
+  userId: string;
+  linkedVisionId?: string | null;
+  targetLogs: number;
+  targetTasks: number;
+  visibility: AccountabilityVisibility;
+  weekStart: string;
+  weekEnd: string;
+  currentLogs: number;
+  currentTasks: number;
+  status: WeeklyProofSprintStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AccountabilityNudge {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  nudgeType: NudgeType;
+  message?: string | null;
+  linkedVisionId?: string | null;
+  linkedTaskId?: string | null;
+  createdAt: string;
+  readAt?: string | null;
+  dismissedAt?: string | null;
+}
+
 export interface GrowthTimelineEvent {
   id: string;
   userId: string;
@@ -514,6 +558,9 @@ export interface AppState {
   journalEntries: JournalEntry[];
   posts: Post[];
   progressLogs: ProgressLog[];
+  weeklyProofSprint: WeeklyProofSprint | null;
+  accountabilityPreferences: AccountabilityPreferences | null;
+  nudges: AccountabilityNudge[];
   growthTimelineEvents: GrowthTimelineEvent[];
   aiInsights: AIInsight[];
   userInterests: Record<string, number>;
@@ -556,6 +603,14 @@ export interface AppState {
   fetchDashboardData: () => Promise<void>;
   fetchProgressLogs: (visionId?: string) => Promise<void>;
   createProgressLog: (log: Partial<ProgressLog> & { content: string }) => Promise<ProgressLog | false>;
+  fetchAccountabilityPreferences: () => Promise<void>;
+  updateAccountabilityPreferences: (updates: Partial<AccountabilityPreferences>) => Promise<boolean>;
+  fetchWeeklyProofSprint: () => Promise<WeeklyProofSprint | null>;
+  createWeeklyProofSprint: (input?: Partial<WeeklyProofSprint>) => Promise<WeeklyProofSprint | false>;
+  refreshWeeklyProofSprintProgress: () => Promise<WeeklyProofSprint | null>;
+  fetchNudges: () => Promise<void>;
+  sendNudge: (toUserId: string, type?: NudgeType, message?: string) => Promise<boolean>;
+  dismissNudge: (id: string) => Promise<boolean>;
   fetchGrowthTimeline: (visionId?: string) => Promise<void>;
   fetchAIInsights: (visionId?: string) => Promise<void>;
   fetchMoneyOverview: () => Promise<void>;
@@ -681,7 +736,7 @@ export interface Post {
   saves: number;
   isSaved?: boolean;
   isLiked?: boolean;
-  type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement' | 'status';
+  type: 'sprint' | 'insight' | 'milestone' | 'update' | 'achievement' | 'status' | 'help_request';
   visibility: 'public' | 'private' | 'circle';
   visionId?: string | null;
   taskId?: string | null;

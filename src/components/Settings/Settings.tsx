@@ -61,7 +61,7 @@ const themes = [
 ] as const;
 
 export default function Settings() {
-  const { theme, setTheme, user, updateUser, restartTutorial, signOut, addToast } = useStore();
+  const { theme, setTheme, user, updateUser, restartTutorial, signOut, addToast, fetchAccountabilityPreferences, updateAccountabilityPreferences } = useStore();
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [password, setPassword] = useState('');
@@ -93,10 +93,24 @@ export default function Settings() {
   };
 
   const updatePreferencePrefs = (next: typeof preferencePrefs) => {
+    const shouldSyncAccountability =
+      next.circleMomentumVisibility !== preferencePrefs.circleMomentumVisibility ||
+      next.circleMomentumDetail !== preferencePrefs.circleMomentumDetail;
     setPreferencePrefsState(next);
     setAppPreferences(next);
+    if (shouldSyncAccountability) {
+      updateAccountabilityPreferences({
+        showInCircleMomentum: next.circleMomentumVisibility !== 'hidden',
+        momentumVisibility: next.circleMomentumVisibility,
+        momentumDetailLevel: next.circleMomentumDetail === 'counts' ? 'counts' : 'score_only'
+      }).catch(error => console.error('Failed to sync accountability preferences:', error));
+    }
     playInteractionSound('click');
   };
+
+  useEffect(() => {
+    fetchAccountabilityPreferences().catch(error => console.error('Failed to load accountability settings:', error));
+  }, [fetchAccountabilityPreferences]);
 
   useEffect(() => {
     setEditData({

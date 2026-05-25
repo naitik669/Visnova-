@@ -1,6 +1,7 @@
 import { Award, CalendarDays, ChevronRight, Flame, MessageCircle, ShieldCheck, Sparkles, Target, Trophy, Users, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCircleMomentum } from '../../hooks/useCircleMomentum';
+import { useStore } from '../../store/useStore';
 import type { CircleMomentumEntry, CircleMomentumRange } from '../../lib/circleMomentum';
 import { cn } from '../../lib/utils';
 
@@ -109,6 +110,7 @@ function FeaturedMomentumCard({ entry, featured = false }: { entry?: CircleMomen
 
 function LeaderboardRow({ entry, showCounts }: { entry: CircleMomentumEntry; showCounts: boolean }) {
   const navigate = useNavigate();
+  const sendNudge = useStore(state => state.sendNudge);
   const hasActivityCounts = entry.progressLogsCount + entry.completedTasksCount + entry.proofUploadsCount > 0;
   return (
     <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-card-border/70 px-2 py-4 last:border-0 md:grid-cols-[72px_1.3fr_0.7fr_0.7fr_0.7fr_auto]">
@@ -144,7 +146,7 @@ function LeaderboardRow({ entry, showCounts }: { entry: CircleMomentumEntry; sho
         </button>
         {!entry.isCurrentUser && (
           <button
-            onClick={() => navigate(`/circle?tab=messages&user=${entry.userId}`)}
+            onClick={() => sendNudge(entry.userId, hasActivityCounts ? 'celebrate_progress' : 'encouragement')}
             className="inline-flex h-9 items-center justify-center rounded-2xl bg-accent/10 px-3 text-accent"
             title="Send encouragement"
           >
@@ -175,6 +177,8 @@ function BadgeCard({ title, entry }: { title: string; entry?: CircleMomentumEntr
 export default function CircleMomentumPage() {
   const navigate = useNavigate();
   const { entries, currentUserEntry, range, setRange, isLoading, error, isHidden, detailMode } = useCircleMomentum('week');
+  const sprint = useStore(state => state.weeklyProofSprint);
+  const createWeeklyProofSprint = useStore(state => state.createWeeklyProofSprint);
   const activeEntries = entries.filter(entry => entry.momentumScore > 0);
   const topMover = entries.filter(entry => entry.changeFromLastWeek > 0).sort((a, b) => b.changeFromLastWeek - a.changeFromLastWeek)[0];
   const proofLeader = [...entries].sort((a, b) => b.progressLogsCount - a.progressLogsCount)[0];
@@ -184,6 +188,9 @@ export default function CircleMomentumPage() {
   const nextEntry = currentUserEntry
     ? entries.find(entry => entry.rank < currentUserEntry.rank && entry.momentumScore > currentUserEntry.momentumScore)
     : null;
+  const sprintTotal = sprint ? Math.max(1, sprint.targetLogs + sprint.targetTasks) : 3;
+  const sprintDone = sprint ? sprint.currentLogs + sprint.currentTasks : 0;
+  const sprintPercent = Math.min(100, Math.round((sprintDone / sprintTotal) * 100));
 
   if (isHidden) {
     return (
@@ -228,6 +235,35 @@ export default function CircleMomentumPage() {
         </div>
       </header>
 
+      <section className="rounded-[1.6rem] border border-card-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Weekly Proof Sprint</p>
+            <h2 className="mt-1 text-2xl font-black text-text-main">
+              {sprint ? `${sprint.currentLogs}/${sprint.targetLogs} proof logs completed` : 'Commit to one small weekly target'}
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-text-secondary/70">
+              {sprint
+                ? sprint.status === 'completed'
+                  ? 'Weekly Sprint completed.'
+                  : sprint.status === 'missed'
+                    ? 'Momentum paused. Start again this week.'
+                    : 'Log Proof keeps the loop moving.'
+                : 'Your Circle helps you stay consistent. Start with 3 proof logs this week.'}
+            </p>
+          </div>
+          <button
+            onClick={() => sprint ? navigate('/') : createWeeklyProofSprint()}
+            className="h-11 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+          >
+            {sprint ? 'Log Proof' : 'Start Sprint'}
+          </button>
+        </div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted">
+          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${sprintPercent}%` }} />
+        </div>
+      </section>
+
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Circle members" value={entries.length} icon={Users} />
         <StatTile label="Active this window" value={activeEntries.length} icon={Zap} />
@@ -249,7 +285,7 @@ export default function CircleMomentumPage() {
         <div className="rounded-[1.6rem] border border-card-border bg-card p-4 shadow-sm md:p-5">
           <div className="mb-2 flex items-center justify-between gap-4 px-2">
             <div>
-              <h2 className="text-2xl font-black text-text-main">Global Ranking</h2>
+              <h2 className="text-2xl font-black text-text-main">Weekly Momentum</h2>
               <p className="mt-1 text-xs font-semibold text-text-secondary/60">
                 Visible proof only. Private logs stay yours.
               </p>

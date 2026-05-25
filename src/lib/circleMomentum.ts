@@ -14,6 +14,7 @@ export type CircleMomentumEntry = {
   activeVisionsCount: number;
   visiblePostsCount: number;
   resourceUpdatesCount: number;
+  weeklySprintProgress: number;
   currentStreak: number;
   topBadge: string;
   rank: number;
@@ -54,6 +55,7 @@ type BuildCircleMomentumInput = {
   previousTasks?: VisibleTask[];
   previousVisions?: VisibleVision[];
   previousPosts?: VisiblePost[];
+  weeklySprintProgressByUser?: Record<string, number>;
   includeCurrentUser?: boolean;
 };
 
@@ -102,9 +104,7 @@ const scoreMomentum = (entry: Omit<CircleMomentumEntry, 'momentumScore' | 'rank'
   entry.progressLogsCount * 25
   + entry.completedTasksCount * 15
   + entry.proofUploadsCount * 15
-  + entry.activeVisionsCount * 10
-  + entry.visiblePostsCount * 5
-  + entry.resourceUpdatesCount * 5
+  + Math.round((entry.weeklySprintProgress / 100) * 20)
   + streakBonus(entry.currentStreak)
 );
 
@@ -142,6 +142,7 @@ const buildRawEntry = (
     activeVisionsCount: visions.filter(vision => vision.id && (profile.isCurrentUser || vision.visibility !== 'private')).length,
     visiblePostsCount: posts.length,
     resourceUpdatesCount: 0,
+    weeklySprintProgress: 0,
     currentStreak: profile.currentStreak || 0,
     isCurrentUser: profile.isCurrentUser
   };
@@ -175,6 +176,8 @@ export function buildCircleMomentum(input: BuildCircleMomentumInput): CircleMome
 
   const entries = Array.from(users.entries()).map(([userId, profile]) => {
     const entry = buildRawEntry(userId, profile, input);
+    entry.weeklySprintProgress = Math.max(0, Math.min(100, input.weeklySprintProgressByUser?.[userId] || 0));
+    entry.momentumScore = scoreMomentum(entry);
     const previous = buildRawEntry(userId, profile, {
       progressLogs: input.previousProgressLogs || [],
       tasks: input.previousTasks || [],

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-export type NotificationType = 'like' | 'save' | 'comment' | 'follow' | 'mention' | 'reply' | 'achievement' | 'nova_capsule_unlocked';
+export type NotificationType = 'like' | 'save' | 'comment' | 'follow' | 'mention' | 'reply' | 'achievement' | 'nova_capsule_unlocked' | 'nudge' | 'proof_request' | 'sprint_progress' | 'sprint_completed' | 'help_reply' | 'circle_momentum' | 'encouragement';
 
 export interface NotificationPayload {
   userId: string;
@@ -26,6 +26,8 @@ export const notificationService = {
           type: payload.type,
           post_id: payload.postId,
           comment_id: payload.commentId,
+          entity_id: payload.entityId,
+          content: payload.content,
           message: payload.message,
           is_read: false
         });
@@ -56,6 +58,8 @@ export const notificationService = {
           type: payload.type,
           post_id: payload.postId,
           comment_id: payload.commentId,
+          entity_id: payload.entityId,
+          content: payload.content,
           message: payload.message,
           is_read: false
         })));

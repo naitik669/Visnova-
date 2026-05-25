@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary, FinanceTransaction, FinanceGoal, FinanceBudget, FinanceSubscription, FinanceReview, ProgressLog, GrowthTimelineEvent, AIInsight } from '../types';
+import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary, FinanceTransaction, FinanceGoal, FinanceBudget, FinanceSubscription, FinanceReview, ProgressLog, GrowthTimelineEvent, AIInsight, AccountabilityPreferences, WeeklyProofSprint, AccountabilityNudge } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured, getAuthRedirectUrl } from '../lib/supabase';
@@ -33,6 +33,7 @@ import {
   validateFinanceTransaction
 } from '../lib/financeValidation';
 import { getAppPreferences, getDefaultVisibility, normalizeVisibility, playInteractionSound, toPostVisibility, toVisionVisibility } from '../lib/appPreferences';
+import { accountabilityFlags } from '../lib/accountabilityFlags';
 import { extractHashtags as extractSocialHashtags, extractMentions as extractSocialMentions } from '../utils/parseSocialText';
 import { convertCurrencyAmount, normalizeCurrencyCode } from '../lib/currency';
 
@@ -367,6 +368,72 @@ function normalizeProgressLog(row: any): ProgressLog {
   };
 }
 
+function currentWeekBounds() {
+  const now = new Date();
+  const start = new Date(now);
+  const day = start.getDay();
+  const diff = (day + 6) % 7;
+  start.setDate(start.getDate() - diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return {
+    start,
+    end,
+    startDate: toDateKey(start),
+    endDate: toDateKey(end)
+  };
+}
+
+function normalizeAccountabilityPreferences(row: any, userId: string): AccountabilityPreferences {
+  const momentumVisibility = row?.momentum_visibility === 'public' || row?.momentum_visibility === 'hidden' ? row.momentum_visibility : 'circle';
+  const momentumDetailLevel = row?.momentum_detail_level === 'counts' ? 'counts' : 'score_only';
+  return {
+    userId,
+    showInCircleMomentum: row?.show_in_circle_momentum !== false && momentumVisibility !== 'hidden',
+    momentumVisibility,
+    momentumDetailLevel,
+    allowNudges: row?.allow_nudges !== false,
+    allowProofRequests: row?.allow_proof_requests !== false,
+    createdAt: row?.created_at,
+    updatedAt: row?.updated_at
+  };
+}
+
+function normalizeWeeklyProofSprint(row: any): WeeklyProofSprint {
+  return {
+    id: safeString(row?.id),
+    userId: safeString(row?.user_id),
+    linkedVisionId: row?.linked_vision_id || null,
+    targetLogs: safeNumber(row?.target_logs, 3),
+    targetTasks: safeNumber(row?.target_tasks),
+    visibility: normalizeVisibility(row?.visibility) as WeeklyProofSprint['visibility'],
+    weekStart: safeString(row?.week_start),
+    weekEnd: safeString(row?.week_end),
+    currentLogs: safeNumber(row?.current_logs),
+    currentTasks: safeNumber(row?.current_tasks),
+    status: safeString(row?.status, 'active') as WeeklyProofSprint['status'],
+    createdAt: safeString(row?.created_at),
+    updatedAt: safeString(row?.updated_at)
+  };
+}
+
+function normalizeAccountabilityNudge(row: any): AccountabilityNudge {
+  return {
+    id: safeString(row?.id),
+    fromUserId: safeString(row?.from_user_id),
+    toUserId: safeString(row?.to_user_id),
+    nudgeType: safeString(row?.nudge_type, 'encouragement') as AccountabilityNudge['nudgeType'],
+    message: row?.message || null,
+    linkedVisionId: row?.linked_vision_id || null,
+    linkedTaskId: row?.linked_task_id || null,
+    createdAt: safeString(row?.created_at),
+    readAt: row?.read_at || null,
+    dismissedAt: row?.dismissed_at || null
+  };
+}
+
 function normalizeGrowthTimelineEvent(row: any): GrowthTimelineEvent {
   return {
     id: safeString(row?.id),
@@ -640,6 +707,9 @@ function privateStateReset() {
     todos: [],
     posts: [],
     progressLogs: [],
+    weeklyProofSprint: null,
+    accountabilityPreferences: null,
+    nudges: [],
     growthTimelineEvents: [],
     aiInsights: [],
     journalEntries: [],
@@ -751,6 +821,9 @@ export const useStore = create<AppState>((set, get) => ({
   todos: [],
   posts: [],
   progressLogs: [],
+  weeklyProofSprint: null,
+  accountabilityPreferences: null,
+  nudges: [],
   growthTimelineEvents: [],
   aiInsights: [],
   focusPresets: [
@@ -923,6 +996,9 @@ export const useStore = create<AppState>((set, get) => ({
     runBackground('Dashboard circle refresh', () => get().fetchCircleData());
     runBackground('Dashboard notifications refresh', () => get().fetchNotifications());
     runBackground('Dashboard progress logs refresh', () => get().fetchProgressLogs());
+    runBackground('Dashboard accountability preferences refresh', () => get().fetchAccountabilityPreferences());
+    runBackground('Dashboard weekly sprint refresh', () => get().fetchWeeklyProofSprint());
+    runBackground('Dashboard nudges refresh', () => get().fetchNudges());
     runBackground('Dashboard growth timeline refresh', () => get().fetchGrowthTimeline());
     runBackground('Dashboard AI insights refresh', () => get().fetchAIInsights());
     runBackground('Dashboard money refresh', async () => {
@@ -1047,6 +1123,9 @@ export const useStore = create<AppState>((set, get) => ({
       }
 
       get().recordDailyActivity('post');
+      if (accountabilityFlags.weeklySprints) {
+        get().refreshWeeklyProofSprintProgress().catch(error => console.error('Failed to refresh weekly sprint after progress log:', error));
+      }
       if (saved.visibility !== 'private') {
         trackBetaEvent(userId, 'progress_log_created', {
           log_type: saved.logType,
@@ -1064,6 +1143,263 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (error: any) {
       console.error('Failed to create progress log:', error);
       get().addToast({ type: 'error', title: 'Progress log failed', description: error.message || 'Could not save this progress log.' });
+      return false;
+    }
+  },
+
+  fetchAccountabilityPreferences: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId || !accountabilityFlags.accountability) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('accountability_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error) throw error;
+
+      if (!data) {
+        const { data: created, error: createError } = await supabase
+          .from('accountability_preferences')
+          .insert({ user_id: userId })
+          .select('*')
+          .single();
+        if (createError) throw createError;
+        set({ accountabilityPreferences: normalizeAccountabilityPreferences(created, userId) });
+        return;
+      }
+
+      set({ accountabilityPreferences: normalizeAccountabilityPreferences(data, userId) });
+    } catch (error) {
+      console.error('Failed to fetch accountability preferences:', error);
+    }
+  },
+
+  updateAccountabilityPreferences: async (updates) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to update accountability settings.' });
+      return false;
+    }
+
+    try {
+      const payload: Record<string, any> = { user_id: userId, updated_at: new Date().toISOString() };
+      if (typeof updates.showInCircleMomentum === 'boolean') payload.show_in_circle_momentum = updates.showInCircleMomentum;
+      if (updates.momentumVisibility) payload.momentum_visibility = updates.momentumVisibility;
+      if (updates.momentumDetailLevel) payload.momentum_detail_level = updates.momentumDetailLevel;
+      if (typeof updates.allowNudges === 'boolean') payload.allow_nudges = updates.allowNudges;
+      if (typeof updates.allowProofRequests === 'boolean') payload.allow_proof_requests = updates.allowProofRequests;
+
+      const { data, error } = await supabase
+        .from('accountability_preferences')
+        .upsert(payload, { onConflict: 'user_id' })
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      set({ accountabilityPreferences: normalizeAccountabilityPreferences(data, userId) });
+      return true;
+    } catch (error) {
+      console.error('Failed to update accountability preferences:', error);
+      get().addToast({ type: 'error', title: 'Could not save settings', description: 'Try again in a moment.' });
+      return false;
+    }
+  },
+
+  fetchWeeklyProofSprint: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId || !accountabilityFlags.weeklySprints) return null;
+
+    try {
+      const week = currentWeekBounds();
+      const { data, error } = await supabase
+        .from('weekly_proof_sprints')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('week_start', week.startDate)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        set({ weeklyProofSprint: null });
+        return null;
+      }
+
+      const sprint = normalizeWeeklyProofSprint(data);
+      set({ weeklyProofSprint: sprint });
+      return await get().refreshWeeklyProofSprintProgress();
+    } catch (error) {
+      console.error('Failed to fetch weekly proof sprint:', error);
+      return null;
+    }
+  },
+
+  createWeeklyProofSprint: async (input = {}) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to start a Weekly Proof Sprint.' });
+      return false;
+    }
+
+    try {
+      const week = currentWeekBounds();
+      const payload = {
+        user_id: userId,
+        linked_vision_id: input.linkedVisionId || null,
+        target_logs: Math.max(1, Math.min(30, Number(input.targetLogs || 3))),
+        target_tasks: Math.max(0, Math.min(100, Number(input.targetTasks || 0))),
+        visibility: normalizeVisibility(input.visibility || 'private'),
+        week_start: week.startDate,
+        week_end: week.endDate,
+        status: 'active',
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('weekly_proof_sprints')
+        .upsert(payload, { onConflict: 'user_id,week_start' })
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      const sprint = normalizeWeeklyProofSprint(data);
+      set({ weeklyProofSprint: sprint });
+      await get().refreshWeeklyProofSprintProgress();
+      get().addToast({ type: 'success', title: 'Weekly Sprint started', description: `${sprint.targetLogs} proof logs is the target this week.` });
+      return get().weeklyProofSprint || sprint;
+    } catch (error: any) {
+      console.error('Failed to create weekly proof sprint:', error);
+      get().addToast({ type: 'error', title: 'Sprint not started', description: error.message || 'Could not create your Weekly Proof Sprint.' });
+      return false;
+    }
+  },
+
+  refreshWeeklyProofSprintProgress: async () => {
+    const userId = get().session?.user?.id;
+    const sprint = get().weeklyProofSprint;
+    if (!userId || !sprint) return sprint || null;
+
+    try {
+      const weekStart = new Date(`${sprint.weekStart}T00:00:00`).getTime();
+      const weekEnd = new Date(`${sprint.weekEnd}T23:59:59.999`).getTime();
+      const currentLogs = get().progressLogs.filter(log => log.userId === userId && log.createdAt >= weekStart && log.createdAt <= weekEnd).length;
+      const currentTasks = [
+        ...get().todos,
+        ...get().visions.flatMap(vision => vision.tasks || [])
+      ].filter(task => task.completed && (task.completedAt ? new Date(task.completedAt).getTime() >= weekStart : true)).length;
+      const logDone = currentLogs >= sprint.targetLogs;
+      const taskDone = sprint.targetTasks <= 0 || currentTasks >= sprint.targetTasks;
+      const daysLeft = Math.ceil((weekEnd - Date.now()) / 86400000);
+      const status = logDone && taskDone
+        ? 'completed'
+        : daysLeft < 0
+          ? 'missed'
+          : currentLogs >= Math.max(1, sprint.targetLogs - 1)
+            ? 'almost_there'
+            : 'active';
+
+      const { data, error } = await supabase
+        .from('weekly_proof_sprints')
+        .update({
+          current_logs: currentLogs,
+          current_tasks: currentTasks,
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sprint.id)
+        .eq('user_id', userId)
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      const nextSprint = normalizeWeeklyProofSprint(data);
+      set({ weeklyProofSprint: nextSprint });
+      return nextSprint;
+    } catch (error) {
+      console.error('Failed to refresh weekly proof sprint progress:', error);
+      return sprint;
+    }
+  },
+
+  fetchNudges: async () => {
+    const userId = get().session?.user?.id;
+    if (!userId || !accountabilityFlags.nudges) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('nudges')
+        .select('*')
+        .or(`from_user_id.eq.${userId},to_user_id.eq.${userId}`)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      set({ nudges: safeArray(data).map(normalizeAccountabilityNudge) });
+    } catch (error) {
+      console.error('Failed to fetch nudges:', error);
+    }
+  },
+
+  sendNudge: async (toUserId, type = 'encouragement', message) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to send encouragement.' });
+      return false;
+    }
+    if (toUserId === userId) return false;
+
+    try {
+      const safeMessage = sanitizePlainText(message || '', 180).trim() || null;
+      const { data, error } = await supabase
+        .from('nudges')
+        .insert({
+          from_user_id: userId,
+          to_user_id: toUserId,
+          nudge_type: type,
+          message: safeMessage
+        })
+        .select('*')
+        .single();
+      if (error) throw error;
+
+      const nudge = normalizeAccountabilityNudge(data);
+      set((state) => ({ nudges: [nudge, ...state.nudges.filter(item => item.id !== nudge.id)] }));
+      await notificationService.send({
+        userId: toUserId,
+        actorId: userId,
+        type: 'nudge',
+        entityId: nudge.id,
+        message: 'nudged you to log progress'
+      });
+      get().addToast({ type: 'success', title: 'Encouragement sent', description: 'One respectful nudge for today.' });
+      return true;
+    } catch (error: any) {
+      console.error('Failed to send nudge:', error);
+      const message = `${error?.message || ''}`.toLowerCase().includes('duplicate') || `${error?.code || ''}` === '23505'
+        ? 'You already nudged this person today.'
+        : 'Could not send encouragement. Try again.';
+      get().addToast({ type: 'error', title: 'Nudge not sent', description: message });
+      return false;
+    }
+  },
+
+  dismissNudge: async (id) => {
+    const userId = get().session?.user?.id;
+    if (!userId) {
+      get().addToast({ type: 'error', title: 'Login required', description: 'Sign in to dismiss nudges.' });
+      return false;
+    }
+    try {
+      const { error } = await supabase
+        .from('nudges')
+        .update({ dismissed_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('to_user_id', userId);
+      if (error) throw error;
+      set((state) => ({ nudges: state.nudges.map(item => item.id === id ? { ...item, dismissedAt: new Date().toISOString() } : item) }));
+      return true;
+    } catch (error) {
+      console.error('Failed to dismiss nudge:', error);
+      get().addToast({ type: 'error', title: 'Could not dismiss nudge', description: 'Try again in a moment.' });
       return false;
     }
   },

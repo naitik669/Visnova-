@@ -10,6 +10,7 @@ import {
   VisibleTask,
   VisibleVision
 } from '../lib/circleMomentum';
+import { accountabilityFlags } from '../lib/accountabilityFlags';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import type { ProgressLog } from '../types';
@@ -77,6 +78,10 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
   const user = useStore(state => state.user);
   const circle = useStore(state => state.circle);
   const fetchCircleData = useStore(state => state.fetchCircleData);
+  const fetchAccountabilityPreferences = useStore(state => state.fetchAccountabilityPreferences);
+  const fetchWeeklyProofSprint = useStore(state => state.fetchWeeklyProofSprint);
+  const accountabilityPreferences = useStore(state => state.accountabilityPreferences);
+  const weeklyProofSprint = useStore(state => state.weeklyProofSprint);
   const localProgressLogs = useStore(state => state.progressLogs);
   const localVisions = useStore(state => state.visions);
   const localTodos = useStore(state => state.todos);
@@ -87,6 +92,7 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
   const [remoteTasks, setRemoteTasks] = useState<VisibleTask[]>([]);
   const [remoteVisions, setRemoteVisions] = useState<VisibleVision[]>([]);
   const [remotePosts, setRemotePosts] = useState<VisiblePost[]>([]);
+  const [remoteSprintProgress, setRemoteSprintProgress] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,13 +104,17 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
   }, [circle, user.id]);
 
   const prefs = getAppPreferences();
-  const isHidden = prefs.circleMomentumVisibility === 'hidden';
-  const detailMode = prefs.circleMomentumDetail;
+  const dbVisibility = accountabilityPreferences?.momentumVisibility;
+  const dbDetail = accountabilityPreferences?.momentumDetailLevel;
+  const isHidden = (dbVisibility || prefs.circleMomentumVisibility) === 'hidden' || accountabilityPreferences?.showInCircleMomentum === false;
+  const detailMode = dbDetail === 'score_only' ? 'score' : prefs.circleMomentumDetail;
 
   useEffect(() => {
     if (!user.id) return;
     fetchCircleData().catch(error => console.error('Failed to load Circle Momentum members:', error));
-  }, [fetchCircleData, user.id]);
+    if (accountabilityFlags.accountability) fetchAccountabilityPreferences().catch(error => console.error('Failed to load accountability preferences:', error));
+    if (accountabilityFlags.weeklySprints) fetchWeeklyProofSprint().catch(error => console.error('Failed to load Weekly Proof Sprint:', error));
+  }, [fetchAccountabilityPreferences, fetchCircleData, fetchWeeklyProofSprint, user.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,7 +125,7 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
       const window = getCircleMomentumWindow(range);
       const since = range === 'all' ? '2000-01-01T00:00:00.000Z' : window.previousStartIso;
 
-      const [logsResult, tasksResult, visionsResult, postsResult] = await Promise.allSettled([
+      const [logsResult, tasksResult, visionsResult, postsResult, sprintsResult] = await Promise.allSettled([
         supabase
           .from('progress_logs')
           .select('id,user_id,vision_id,task_id,post_id,log_type,visibility,attachments,created_at,updated_at')
@@ -139,6 +149,14 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
           .select('id,user_id,visibility,created_at,timestamp')
           .in('user_id', userIds)
           .in('visibility', ['public', 'circle'])
+          .eq('archived', false)
+          .is('deleted_at', null)
+          .gte('created_at', since),
+        supabase
+          .from('weekly_proof_sprints')
+          .select('id,user_id,target_logs,target_tasks,current_logs,current_tasks,visibility,week_start,week_end,status')
+          .in('user_id', userIds)
+          .in('visibility', ['public', 'circle'])
           .gte('created_at', since)
       ]);
 
@@ -156,14 +174,22 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
       const nextPosts = postsResult.status === 'fulfilled' && !postsResult.value.error
         ? (postsResult.value.data || []).map(normalizeRemotePost)
         : [];
+      const nextSprintProgress = sprintsResult.status === 'fulfilled' && !sprintsResult.value.error
+        ? Object.fromEntries((sprintsResult.value.data || []).map((row: any) => {
+          const target = Math.max(1, Number(row.target_logs || 3) + Number(row.target_tasks || 0));
+          const current = Number(row.current_logs || 0) + Number(row.current_tasks || 0);
+          return [String(row.user_id), Math.min(100, Math.round((current / target) * 100))];
+        }))
+        : {};
 
-      const failed = [logsResult, tasksResult, visionsResult, postsResult].some(result =>
+      const failed = [logsResult, tasksResult, visionsResult, postsResult, sprintsResult].some(result =>
         result.status === 'rejected' || (result.status === 'fulfilled' && Boolean(result.value.error))
       );
       setRemoteLogs(nextLogs);
       setRemoteTasks(nextTasks);
       setRemoteVisions(nextVisions);
       setRemotePosts(nextPosts);
+      setRemoteSprintProgress(nextSprintProgress);
       setError(failed ? 'Some Circle activity could not be loaded.' : null);
       setIsLoading(false);
     };
@@ -211,6 +237,10 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
     const visionWindow = splitRowsByMomentumWindow(visions, range);
     const postWindow = splitRowsByMomentumWindow(posts, range);
 
+    const currentSprintProgress = weeklyProofSprint
+      ? Math.min(100, Math.round(((weeklyProofSprint.currentLogs + weeklyProofSprint.currentTasks) / Math.max(1, weeklyProofSprint.targetLogs + weeklyProofSprint.targetTasks)) * 100))
+      : 0;
+
     return buildCircleMomentum({
       user,
       circle,
@@ -221,9 +251,13 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
       previousProgressLogs: logWindow.previous,
       previousTasks: taskWindow.previous,
       previousVisions: visionWindow.previous,
-      previousPosts: postWindow.previous
+      previousPosts: postWindow.previous,
+      weeklySprintProgressByUser: {
+        ...remoteSprintProgress,
+        ...(user.id ? { [user.id]: currentSprintProgress } : {})
+      }
     });
-  }, [circle, localPosts, localProgressLogs, localTodos, localVisions, range, remoteLogs, remotePosts, remoteTasks, remoteVisions, user]);
+  }, [circle, localPosts, localProgressLogs, localTodos, localVisions, range, remoteLogs, remotePosts, remoteSprintProgress, remoteTasks, remoteVisions, user, weeklyProofSprint]);
 
   const currentUserEntry = entries.find(entry => entry.isCurrentUser);
 
