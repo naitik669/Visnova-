@@ -18,7 +18,7 @@ import {
 import { useStore } from '../../store/useStore';
 import type { StoreProduct } from '../../types';
 
-const FEED_RESOURCE_LIMIT = 5;
+const FEED_RESOURCE_LIMIT = 3;
 
 const logStoreEvent = async (
   product: StoreProduct,

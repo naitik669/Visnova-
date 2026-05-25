@@ -63,7 +63,7 @@ export default function PublishModal({ isOpen, onClose, vision }: PublishModalPr
                  <div className="w-8 h-8 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-accent font-bold text-[10px]">PS</div>
                  <div>
                     <p className="text-[10px] font-black uppercase text-text-main">Publication Status</p>
-                    <p className="text-[9px] font-bold text-text-secondary opacity-50 uppercase tracking-widest">{isPublic ? 'Live on Network' : 'Encrypted & Local'}</p>
+                    <p className="text-[9px] font-bold text-text-secondary opacity-50 uppercase tracking-widest">{isPublic ? 'Live on Network' : 'Private workspace'}</p>
                  </div>
                </div>
             </div>

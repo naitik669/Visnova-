@@ -6,28 +6,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, X, Bot, Sparkles, Brain, Shrink, Maximize2, Terminal, Zap } from 'lucide-react';
-import { GoogleGenAI } from "@google/genai";
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import Markdown from 'react-markdown';
 
-const SYSTEM_INSTRUCTION = `You are "The Strategist", the Vision Assistant for Visnova, a high-performance vision board and productivity ecosystem.
-Your goal is to help users maintain their "Strategic Alignment" with their goals.
-You have access to the user's current context (visions, notes, vitals).
-
-Be concise, practical but encouraging, and use the user's "Architect" persona.
-Use formatting like bolding and bullet points for clarity.
-If asked to help plan something, provide a structured breakdown.`;
-
 export default function NeuralAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
-    { role: 'assistant', content: 'Strategic link active. Architect, how shall we optimize your vision trajectory today?' }
+    { role: 'assistant', content: 'Quick Help is ready. Ask about your open tasks, active Visions, or recent notes.' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const { visions, notes, vitals, user } = useStore();
+  const { visions, notes, todos, user } = useStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -47,31 +38,30 @@ export default function NeuralAssistant() {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
-      const context = {
-        user: { name: user.name, rank: user.rank, level: user.level },
-        activeVisions: visions.filter(v => v.status === 'in-progress').map(v => ({ title: v.title, tasks: v.tasks })),
-        recentNotes: notes.slice(0, 3).map(n => ({ title: n.title, content: n.content.substring(0, 100) })),
-        vitals: vitals
-      };
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          { role: 'user', parts: [{ text: `Context: ${JSON.stringify(context)}\n\nUser Message: ${userMessage}` }] }
-        ],
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          temperature: 0.7,
-        },
-      });
-
-      const assistantMessage = response.text || "Communication error. Re-syncing...";
+      const activeVisions = visions.filter(v => v.status !== 'completed');
+      const openTasks = [
+        ...todos.filter(task => !task.completed),
+        ...visions.flatMap(vision => (vision.tasks || []).filter(task => !task.completed).map(task => ({ ...task, visionTitle: vision.title })))
+      ].slice(0, 5);
+      const recentNotes = notes.filter(note => !note.isDeleted).slice(0, 4);
+      const lower = userMessage.toLowerCase();
+      const assistantMessage = lower.includes('task')
+        ? openTasks.length
+          ? `Open tasks:\n${openTasks.map((task: any) => `- ${task.text}${task.visionTitle ? ` (${task.visionTitle})` : ''}`).join('\n')}`
+          : 'No open tasks found. Create one small next step from your Dashboard or Vision page.'
+        : lower.includes('vision') || lower.includes('goal')
+          ? activeVisions.length
+            ? `Active Visions:\n${activeVisions.slice(0, 5).map(vision => `- ${vision.title} - ${vision.progress || 0}%`).join('\n')}`
+            : 'No active Visions yet. Start with one goal you want to make real.'
+          : lower.includes('note')
+            ? recentNotes.length
+              ? `Recent notes:\n${recentNotes.map(note => `- ${note.title || 'Untitled Note'}`).join('\n')}`
+              : 'No notes yet. Save your first idea, plan, or resource in Notes.'
+            : `Try one small action now: log proof for your most important Vision. ${user.name ? `${user.name}, ` : ''}even a short update counts.`;
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
     } catch (error) {
-      console.error('Gemini Error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "Neural feedback detected. Check your API uplink." }]);
+      console.error('Quick Help error:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Quick Help could not read your workspace right now. Try again in a moment.' }]);
     } finally {
       setIsLoading(false);
     }
@@ -117,8 +107,8 @@ export default function NeuralAssistant() {
                   <Terminal size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-text-main tracking-tight uppercase">Vision Strategist</h3>
-                  <p className="text-[10px] font-bold text-accent tracking-[0.2em] uppercase origin-left scale-90">Strategist v4.2.0</p>
+                  <h3 className="text-sm font-black text-text-main tracking-tight uppercase">Quick Help</h3>
+                  <p className="text-[10px] font-bold text-accent tracking-[0.2em] uppercase origin-left scale-90">Workspace helper</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -173,7 +163,7 @@ export default function NeuralAssistant() {
                       className="flex items-center gap-3 text-accent"
                     >
                       <Zap size={14} className="animate-pulse" />
-                      <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Calculating Trajectory...</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Checking workspace...</span>
                     </motion.div>
                   )}
                   <div ref={messagesEndRef} />
@@ -190,7 +180,7 @@ export default function NeuralAssistant() {
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Planning execution trajectory..."
+                        placeholder="Ask about tasks, Visions, or notes..."
                         className="w-full h-14 pl-6 pr-12 rounded-2xl bg-white/5 border border-white/5 text-sm focus:outline-none focus:border-accent/40 transition-all font-medium text-text-main placeholder:text-text-secondary/30"
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-text-secondary">
@@ -206,7 +196,7 @@ export default function NeuralAssistant() {
                     </button>
                   </form>
                   <p className="mt-4 text-[9px] text-center text-text-secondary/40 font-black uppercase tracking-widest">
-                    AI Insights powered by Vision Core 3.1
+                    Data-backed quick help. No external AI is connected here.
                   </p>
                 </div>
               </>
