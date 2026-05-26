@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { VisNovaMotion, type MotionVariant } from './ui/VisNovaMotion';
 
@@ -25,9 +25,27 @@ function getToastAnimationVariant(title: string, description?: string): MotionVa
   return null;
 }
 
+function useIsMobileToastViewport() {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 767px)').matches;
+  });
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  return isMobile;
+}
+
 export default function ToastViewport() {
   const { toasts, removeToast } = useStore();
-  const visibleToasts = useMemo(() => toasts.slice(-2), [toasts]);
+  const isMobile = useIsMobileToastViewport();
+  const visibleToasts = useMemo(() => toasts.slice(isMobile ? -1 : -2), [isMobile, toasts]);
 
   useEffect(() => {
     if (!visibleToasts.length) return;
@@ -38,7 +56,7 @@ export default function ToastViewport() {
   }, [visibleToasts, removeToast]);
 
   return (
-    <div className="fixed right-4 top-4 z-[300] flex w-[min(340px,calc(100vw-2rem))] flex-col gap-2 pointer-events-none sm:right-6 sm:top-6">
+    <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[300] flex w-auto flex-col gap-2 sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-6 sm:w-[min(340px,calc(100vw-2rem))]">
       <AnimatePresence initial={false}>
         {visibleToasts.map((toast) => {
           const Icon = icons[toast.type] || Info;
@@ -46,10 +64,10 @@ export default function ToastViewport() {
           return (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: -12, scale: 0.96 }}
+              initial={{ opacity: 0, y: isMobile ? 16 : -12, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -12, scale: 0.96 }}
-              className="pointer-events-auto rounded-2xl border border-card-border bg-card/95 p-3 shadow-xl backdrop-blur-xl"
+              exit={{ opacity: 0, y: isMobile ? 16 : -12, scale: 0.96 }}
+              className="pointer-events-auto rounded-2xl border border-card-border bg-card/95 p-3 shadow-xl shadow-overlay/5 backdrop-blur-xl"
             >
               <div className="flex items-start gap-3">
                 {animationVariant ? (
@@ -57,7 +75,7 @@ export default function ToastViewport() {
                     variant={animationVariant}
                     size="sm"
                     decorative
-                    className="mt-[-10px] h-16 w-16 shrink-0 max-w-none"
+                    className="mt-[-6px] h-12 w-12 shrink-0 max-w-none sm:mt-[-10px] sm:h-16 sm:w-16"
                   />
                 ) : (
                   <div className="mt-0.5 rounded-xl bg-accent/10 p-2 text-accent">
@@ -74,7 +92,7 @@ export default function ToastViewport() {
                 </div>
                 <button
                   onClick={() => removeToast(toast.id)}
-                  className="rounded-lg p-1 text-text-secondary/60 transition-colors hover:bg-surface-muted hover:text-text-main"
+                  className="flex min-h-9 min-w-9 items-center justify-center rounded-xl text-text-secondary/60 transition-colors hover:bg-surface-muted hover:text-text-main"
                   aria-label="Dismiss notification"
                 >
                   <X size={14} />
