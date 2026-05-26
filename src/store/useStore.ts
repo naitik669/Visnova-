@@ -1348,6 +1348,12 @@ export const useStore = create<AppState>((set, get) => ({
     if (toUserId === userId) return false;
 
     try {
+      const circleMember = get().circle.find(member => member.id === toUserId);
+      if (!circleMember) {
+        get().addToast({ type: 'error', title: 'Nudge not sent', description: 'You can only nudge people in your Circle.' });
+        return false;
+      }
+
       const safeMessage = sanitizePlainText(message || '', 180).trim() || null;
       const { data, error } = await supabase
         .from('nudges')
@@ -1363,19 +1369,22 @@ export const useStore = create<AppState>((set, get) => ({
 
       const nudge = normalizeAccountabilityNudge(data);
       set((state) => ({ nudges: [nudge, ...state.nudges.filter(item => item.id !== nudge.id)] }));
-      await notificationService.send({
+      notificationService.send({
         userId: toUserId,
         actorId: userId,
         type: 'nudge',
         entityId: nudge.id,
         message: 'nudged you to log progress'
-      });
+      }).catch(error => console.error('Nudge saved, but notification delivery failed:', error));
       get().addToast({ type: 'success', title: 'Encouragement sent', description: 'One respectful nudge for today.' });
       return true;
     } catch (error: any) {
       console.error('Failed to send nudge:', error);
-      const message = `${error?.message || ''}`.toLowerCase().includes('duplicate') || `${error?.code || ''}` === '23505'
+      const rawMessage = `${error?.message || ''}`.toLowerCase();
+      const message = rawMessage.includes('duplicate') || `${error?.code || ''}` === '23505'
         ? 'You already nudged this person today.'
+        : rawMessage.includes('row-level security') || `${error?.code || ''}` === '42501'
+          ? 'This person is not accepting Circle nudges right now.'
         : 'Could not send encouragement. Try again.';
       get().addToast({ type: 'error', title: 'Nudge not sent', description: message });
       return false;
