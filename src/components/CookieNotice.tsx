@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { CookiePreferencesModal } from './Legal/CookiePreferencesModal';
 import { useCookieConsent } from '../hooks/useCookieConsent';
+import { VisNovaMotion } from './ui/VisNovaMotion';
 
 export default function CookieNotice() {
   const {
@@ -16,7 +17,7 @@ export default function CookieNotice() {
   return (
     <>
       {!hasConsentChoice && (
-        <div className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-[250] rounded-3xl border border-card-border bg-card p-4 pr-12 shadow-2xl shadow-accent/10 lg:bottom-4 lg:left-auto lg:right-4 lg:w-[500px]">
+        <div className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-[250] flex flex-col gap-4 rounded-3xl border border-card-border bg-card p-4 pr-12 shadow-2xl shadow-accent/10 sm:flex-row sm:items-center lg:bottom-4 lg:left-auto lg:right-4 lg:w-[680px]">
           <button
             type="button"
             onClick={rejectOptional}
@@ -25,10 +26,12 @@ export default function CookieNotice() {
           >
             <X size={16} />
           </button>
+          <VisNovaMotion variant="cookie" className="hidden max-w-[130px] shrink-0 sm:block" />
+          <div className="min-w-0 flex-1">
           <div className="space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Cookie choices</p>
             <p className="text-sm font-semibold leading-relaxed text-text-main">
-              VisNova uses essential cookies/storage to keep the app secure and working. With your permission, we may also use analytics and personalization to improve the app and recommend useful resources. Private messages, journals, notes, and private logs are never used for recommendations.
+              We use essential cookies/storage to keep VisNova working. You control optional analytics and personalization. Private messages, journals, notes, and private logs are never used for recommendations.
             </p>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -52,6 +55,7 @@ export default function CookieNotice() {
             <Link to="/privacy-policy" className="inline-flex h-10 items-center rounded-xl px-3 text-[10px] font-black uppercase tracking-widest text-accent">
               Privacy
             </Link>
+          </div>
           </div>
         </div>
       )}

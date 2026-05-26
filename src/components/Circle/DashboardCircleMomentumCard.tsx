@@ -1,9 +1,10 @@
-import { ChevronRight, ShieldCheck, Sparkles, Users, Zap } from 'lucide-react';
+import { ChevronRight, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCircleMomentum } from '../../hooks/useCircleMomentum';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
+import { VisNovaMotion } from '../ui/VisNovaMotion';
 
 function Avatar({ src, name, rank }: { src?: string; name: string; rank: number }) {
   return (
@@ -148,7 +149,7 @@ export function DashboardCircleMomentumCard() {
           </>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-card-border bg-app-container/50 px-5 py-8 text-center">
-            <Users size={24} className="text-accent/60" />
+            <VisNovaMotion variant="circleEmpty" className="max-w-[220px]" />
             <h4 className="mt-3 text-sm font-black text-text-main">Build your Circle Momentum.</h4>
             <p className="mt-1 text-xs font-semibold leading-relaxed text-text-secondary/65">
               Add accountability partners to see weekly progress together.

@@ -5,6 +5,7 @@ import { trackBetaEvent } from '../../lib/betaAnalytics';
 import { sanitizePlainText, sanitizeText } from '../../lib/security';
 import { useStore } from '../../store/useStore';
 import { SelectMenu } from '../ui/SelectMenu';
+import { VisNovaMotion } from '../ui/VisNovaMotion';
 
 const supportEmail = 'naitik.business69@gmail.com';
 const REPORT_TYPES = ['feedback', 'bug', 'feature_request', 'general'] as const;
@@ -78,6 +79,7 @@ export default function FeedbackPage() {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const submit = async () => {
     const safeTitle = sanitizeText(title, 120);
@@ -127,6 +129,7 @@ export default function FeedbackPage() {
       trackBetaEvent(user.id, 'feedback_submitted', { type: reportType, priority, route: context.route });
       setTitle('');
       setMessage('');
+      setIsSubmitted(true);
       if (emailState === 'sent') {
         addToast({ type: 'success', title: 'Thanks — your report was sent.' });
       } else if (emailState === 'not_configured') {
@@ -152,6 +155,24 @@ export default function FeedbackPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isSubmitted) {
+    return (
+      <div className="mx-auto flex max-w-2xl flex-col items-center justify-center space-y-5 pb-20 text-center">
+        <VisNovaMotion variant="reportSent" className="max-w-md" />
+        <h1 className="text-2xl font-black tracking-tight text-text-main">Thanks - your report was sent.</h1>
+        <p className="max-w-md text-sm font-semibold leading-6 text-text-secondary">
+          We saved it for review. If email delivery is configured, the team will receive it there too.
+        </p>
+        <button
+          onClick={() => setIsSubmitted(false)}
+          className="rounded-2xl bg-accent px-6 py-3 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+        >
+          Send another report
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-20">

@@ -1,4 +1,5 @@
 import React from 'react';
+import { VisNovaMotion } from './ui/VisNovaMotion';
 
 type State = {
   hasError: boolean;
@@ -51,8 +52,9 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
       return (
         <div className="min-h-screen bg-bg-base flex items-center justify-center p-6">
           <div className="max-w-2xl rounded-3xl border border-card-border bg-card p-6 text-center space-y-4">
-            <h1 className="text-xl font-black text-text-main">Something broke</h1>
-            <p className="text-sm font-semibold text-text-secondary">Refresh the app. If it happens again, send a bug report from Feedback.</p>
+            <VisNovaMotion variant="error" className="max-w-sm" />
+            <h1 className="text-xl font-black text-text-main">Something didn't load.</h1>
+            <p className="text-sm font-semibold text-text-secondary">Try again. If it happens again, send a bug report from Feedback.</p>
             {isDebugVisible && (
               <pre className="max-h-64 overflow-auto rounded-2xl bg-surface-muted p-3 text-left text-xs whitespace-pre-wrap text-text-secondary">
                 {JSON.stringify(details, null, 2)}

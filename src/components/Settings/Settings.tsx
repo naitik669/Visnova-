@@ -42,6 +42,7 @@ import { useCookieConsent } from '../../hooks/useCookieConsent';
 import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
 import { CURRENCY_OPTIONS } from '../../lib/currency';
 import { ProfileRoleSelect } from '../ProfileRoleSelect';
+import { VisNovaMotion } from '../ui/VisNovaMotion';
 
 type SettingsSection = 'profile' | 'themes' | 'notifications' | 'preferences' | 'privacy';
 
@@ -282,6 +283,16 @@ export default function Settings() {
 
           {activeSection === 'themes' && (
             <SettingsPanel title="Themes" subtitle="Choose the mood of your workspace.">
+              <div className="mb-5 grid gap-5 rounded-[2rem] border border-card-border bg-card p-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Theme Studio</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-tight text-text-main">Make VisNova yours.</h3>
+                  <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-text-secondary">
+                    Switch themes anytime. Your workspace keeps the same structure while the mood adapts to how you like to build.
+                  </p>
+                </div>
+                <VisNovaMotion variant="theme" className="max-w-[220px]" />
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {themes.map(item => (
                   <button

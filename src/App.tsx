@@ -37,6 +37,7 @@ import {
 import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supabase';
 import { trackBetaEvent } from './lib/betaAnalytics';
 import { XpToast } from './components/ui/XpToast';
+import { VisNovaMotion } from './components/ui/VisNovaMotion';
 import { BrandLogo } from './components/BrandLogo';
 import { ProgressLogComposer } from './components/Progress/ProgressLogComposer';
 
@@ -785,12 +786,10 @@ function SupabaseConfigScreen() {
 function NotFoundPage() {
   const navigate = useNavigate();
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-8 text-center">
-      <div className="text-6xl font-black text-text-main/10">404</div>
-      <h2 className="text-xl font-black uppercase tracking-widest text-text-main">Page not found</h2>
-      <p className="max-w-xs text-sm text-text-secondary">
-        This page does not exist or was moved. Head back to your dashboard.
-      </p>
+    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 p-8 text-center">
+      <VisNovaMotion variant="notFound" className="max-w-2xl" />
+      <h2 className="text-2xl font-black tracking-tight text-text-main">Lost in the Vision space?</h2>
+      <p className="max-w-xs text-sm font-semibold text-text-secondary">Let's get you back.</p>
       <button
         onClick={() => navigate('/')}
         className="rounded-2xl bg-accent px-6 py-3 text-xs font-black uppercase tracking-widest text-accent-contrast transition-opacity hover:opacity-90"
@@ -908,14 +907,8 @@ function AppContent() {
 
   if (authLoading && !isAuthInitialized && !isAuthCallbackPath) {
     return (
-      <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
-         <motion.div
-            animate={{ rotate: 360, scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20"
-         >
-            <div className="h-2 w-2 animate-ping rounded-full bg-accent" />
-         </motion.div>
+      <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6 px-6 text-center">
+         <VisNovaMotion variant="progressLoader" className="max-w-xs" />
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">VisNova</span>
             <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-text-secondary opacity-40">Setting up your workspace...</span>
@@ -928,14 +921,8 @@ function AppContent() {
   // refreshes happen in the background so the app never blanks mid-session.
   if (session && !isProfileReady && !profile) {
     return (
-      <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6">
-         <motion.div
-            animate={{ rotate: 360, scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20"
-         >
-            <div className="h-2 w-2 animate-ping rounded-full bg-accent" />
-         </motion.div>
+      <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6 px-6 text-center">
+         <VisNovaMotion variant={profileWaitTimedOut ? 'error' : 'progressLoader'} className="max-w-xs" />
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">Loading</span>
             <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-text-secondary opacity-40">Loading your profile data...</span>

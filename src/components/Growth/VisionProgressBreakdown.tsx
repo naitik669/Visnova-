@@ -1,5 +1,6 @@
 import type { VisionProgressItem } from '../../lib/progressAnalytics';
 import { safeFormat } from '../../lib/safeData';
+import { VisNovaMotion } from '../ui/VisNovaMotion';
 
 export function VisionProgressBreakdown({ items }: { items: VisionProgressItem[] }) {
   return (
@@ -23,8 +24,10 @@ export function VisionProgressBreakdown({ items }: { items: VisionProgressItem[]
             </div>
           </div>
         )) : (
-          <div className="rounded-[1.4rem] border border-dashed border-card-border bg-app-container p-5 text-center text-sm font-semibold text-text-secondary">
-            Your progress story starts here. Create a Vision and log your first proof.
+          <div className="rounded-[1.4rem] border border-dashed border-card-border bg-app-container p-5 text-center">
+            <VisNovaMotion variant="progressEmpty" className="max-w-xs" />
+            <h3 className="mt-2 text-base font-black text-text-main">Your progress story starts here.</h3>
+            <p className="mt-1 text-sm font-semibold text-text-secondary">Log your first proof.</p>
           </div>
         )}
       </div>
