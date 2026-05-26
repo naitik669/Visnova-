@@ -866,6 +866,23 @@ function useBrowserOnline() {
   return { isOnline: isBrowserOnline && !hasNetworkIssue, hasNetworkIssue };
 }
 
+function useIsMobileViewport() {
+  const [isMobileViewport, setIsMobileViewport] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 767px)').matches;
+  });
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const updateViewport = () => setIsMobileViewport(media.matches);
+    updateViewport();
+    media.addEventListener('change', updateViewport);
+    return () => media.removeEventListener('change', updateViewport);
+  }, []);
+
+  return isMobileViewport;
+}
+
 function OfflinePage({ hasNetworkIssue = false }: { hasNetworkIssue?: boolean }) {
   const navigate = useNavigate();
   return (
@@ -919,6 +936,7 @@ export function DeletedContentPage({ label = 'content' }: { label?: string }) {
 
 function AppContent() {
   const { isOnline, hasNetworkIssue } = useBrowserOnline();
+  const isMobileViewport = useIsMobileViewport();
   const { canUseAnalytics } = useCookieConsent();
   const theme = useStore(state => state.theme);
   const isFocusMode = useStore(state => state.isFocusMode);
@@ -1026,19 +1044,26 @@ function AppContent() {
   useEffect(() => {
     if (!isOnline || !session?.user?.id || !hasCompletedOnboarding || !isProfileReady || isPasswordRecovery || isAuthCallbackPath) return;
 
+    const commonRoutes = isMobileViewport
+      ? ['/feed', '/circle']
+      : ['/feed', '/circle', '/visions', '/library'];
+    const secondaryRoutes = isMobileViewport
+      ? ['/profile', '/settings']
+      : ['/growth', '/wallet', '/nova-clock', '/profile', '/settings', '/feedback'];
+
     const commonRouteTimer = window.setTimeout(() => {
-      ['/feed', '/circle', '/visions', '/library'].forEach(preloadRoute);
-    }, 350);
+      commonRoutes.forEach(preloadRoute);
+    }, isMobileViewport ? 900 : 350);
 
     const secondaryRouteTimer = window.setTimeout(() => {
-      ['/growth', '/wallet', '/nova-clock', '/profile', '/settings', '/feedback'].forEach(preloadRoute);
-    }, 1600);
+      secondaryRoutes.forEach(preloadRoute);
+    }, isMobileViewport ? 2600 : 1600);
 
     return () => {
       window.clearTimeout(commonRouteTimer);
       window.clearTimeout(secondaryRouteTimer);
     };
-  }, [isOnline, session?.user?.id, hasCompletedOnboarding, isProfileReady, isPasswordRecovery, isAuthCallbackPath]);
+  }, [isOnline, session?.user?.id, hasCompletedOnboarding, isProfileReady, isPasswordRecovery, isAuthCallbackPath, isMobileViewport]);
 
   if (!isSupabaseConfigured()) {
     return <SupabaseConfigScreen />;
