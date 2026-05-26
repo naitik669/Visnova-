@@ -275,24 +275,24 @@ export default function MoneyPage() {
   };
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto space-y-6 pb-20">
-      <section className="rounded-[2rem] bg-card border border-card-border p-5 sm:p-7 overflow-hidden relative">
+    <div className="mx-auto w-full max-w-[1400px] space-y-5 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:space-y-6 sm:pb-20">
+      <section className="relative overflow-hidden rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm sm:rounded-[2rem] sm:p-7">
         <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-accent/5 blur-3xl translate-x-1/3 -translate-y-1/3 pointer-events-none" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-5">
+        <div className="relative z-10 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent">
               <Wallet size={14} />
               Private Wallet
             </div>
             <div>
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-text-main">Wallet</h1>
-              <p className="mt-2 max-w-2xl text-sm sm:text-base font-medium text-text-secondary">
+              <h1 className="text-3xl font-black tracking-tight text-text-main sm:text-5xl">Wallet</h1>
+              <p className="mt-2 max-w-2xl text-sm font-medium text-text-secondary sm:text-base">
                 Track spending, subscriptions, and savings connected to your Visions.
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <div className="relative z-[260] min-w-56 overflow-visible rounded-2xl border border-card-border bg-bg-base p-2">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+            <div className="relative z-[260] min-w-0 overflow-visible rounded-2xl border border-card-border bg-bg-base p-2 sm:min-w-56">
               <p className="px-2 pb-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">Wallet Currency</p>
               <SelectMenu
                 value={defaultCurrency}
@@ -303,26 +303,26 @@ export default function MoneyPage() {
               />
               {isConvertingCurrency && <p className="px-2 pt-1 text-[9px] font-black uppercase tracking-widest text-accent">Converting values...</p>}
             </div>
-            <button onClick={() => setModal('income')} className="h-11 px-4 rounded-2xl bg-success text-white text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
+            <button onClick={() => setModal('income')} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-success px-4 text-[11px] font-black uppercase tracking-widest text-white">
               <Plus size={16} /> Add Income
             </button>
-            <button onClick={() => setModal('expense')} className="h-11 px-4 rounded-2xl bg-danger/10 text-danger text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
+            <button onClick={() => setModal('expense')} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-danger/10 px-4 text-[11px] font-black uppercase tracking-widest text-danger">
               <Plus size={16} /> Add Expense
             </button>
-            <button onClick={() => setModal('goal')} className="h-11 px-4 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
+            <button onClick={() => setModal('goal')} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[11px] font-black uppercase tracking-widest text-accent-contrast">
               <Target size={16} /> Add Goal
             </button>
           </div>
         </div>
       </section>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="sticky top-0 z-20 -mx-1 flex gap-2 overflow-x-auto border-y border-card-border bg-app-container/95 px-1 py-2 backdrop-blur scrollbar-hide sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'shrink-0 h-10 px-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all',
+              'h-10 shrink-0 rounded-2xl border px-4 text-[10px] font-black uppercase tracking-widest transition-all',
               activeTab === tab.id ? 'bg-accent text-accent-contrast border-accent' : 'bg-card border-card-border text-text-secondary hover:text-text-main'
             )}
           >
@@ -333,14 +333,14 @@ export default function MoneyPage() {
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
             <MetricCard icon={ArrowUpRight} label="This Month Income" value={formatMoney(moneyOverview?.monthIncome || 0, defaultCurrency)} tone="success" />
             <MetricCard icon={ArrowDownLeft} label="This Month Expenses" value={formatMoney(moneyOverview?.monthExpenses || 0, defaultCurrency)} tone="danger" />
             <MetricCard icon={PiggyBank} label="Saved This Month" value={formatMoney(moneyOverview?.monthSavings || 0, defaultCurrency)} tone="accent" />
             <MetricCard icon={Target} label="Active Goals" value={String(moneyOverview?.activeGoals || 0)} tone="neutral" />
           </div>
           {currencyRows.length > 1 && (
-            <section className="rounded-[2rem] border border-card-border bg-card p-5">
+            <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
               <h2 className="text-lg font-black text-text-main">Currency breakdown</h2>
               <p className="mt-1 text-xs font-semibold text-text-secondary">Multiple currencies are shown separately. No exchange conversion is guessed.</p>
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -363,9 +363,9 @@ export default function MoneyPage() {
             </section>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <section className="lg:col-span-2 rounded-[2rem] bg-card border border-card-border p-5">
-              <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
+            <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5 lg:col-span-2">
+              <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-black text-text-main">Vision funding</h2>
                   <p className="text-xs font-medium text-text-secondary">Saving goals linked to your long-term work.</p>
@@ -381,7 +381,7 @@ export default function MoneyPage() {
               )}
             </section>
 
-            <section className="rounded-[2rem] bg-card border border-card-border p-5">
+            <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
               <h2 className="text-lg font-black text-text-main">Upcoming</h2>
               <p className="text-xs font-medium text-text-secondary mb-4">Subscriptions due soon.</p>
               {moneyOverview?.upcomingSubscriptions?.length ? (
@@ -397,15 +397,15 @@ export default function MoneyPage() {
       )}
 
       {activeTab === 'transactions' && (
-        <section className="rounded-[2rem] bg-card border border-card-border p-5">
+        <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
             <div>
               <h2 className="text-xl font-black text-text-main">Transactions</h2>
               <p className="text-xs font-medium text-text-secondary">Income, expenses, and saving contributions.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
               {(['all', 'income', 'expense', 'saving'] as const).map(filter => (
-                <button key={filter} onClick={() => setTransactionFilter(filter)} className={cn('h-9 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest border', transactionFilter === filter ? 'bg-accent text-accent-contrast border-accent' : 'bg-surface-muted border-card-border text-text-secondary')}>
+                <button key={filter} onClick={() => setTransactionFilter(filter)} className={cn('h-9 shrink-0 rounded-xl border px-3 text-[10px] font-black uppercase tracking-widest', transactionFilter === filter ? 'bg-accent text-accent-contrast border-accent' : 'bg-surface-muted border-card-border text-text-secondary')}>
                   {filter}
                 </button>
               ))}
@@ -424,7 +424,7 @@ export default function MoneyPage() {
       )}
 
       {activeTab === 'goals' && (
-        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {financeGoals.length === 0 ? (
             <div className="md:col-span-2 xl:col-span-3"><EmptyState title="No saving goals yet." description="Create a savings goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} /></div>
           ) : financeGoals.map(goal => (
@@ -434,13 +434,13 @@ export default function MoneyPage() {
       )}
 
       {activeTab === 'subscriptions' && (
-        <section className="rounded-[2rem] bg-card border border-card-border p-5">
+        <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
             <div>
               <h2 className="text-xl font-black text-text-main">Subscriptions</h2>
               <p className="text-xs font-medium text-text-secondary">Estimated monthly total: {formatMoney(monthlySubscriptionTotal, defaultCurrency)}</p>
             </div>
-            <button onClick={() => setModal('subscription')} className="h-10 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest">Add Subscription</button>
+            <button onClick={() => setModal('subscription')} className="h-11 rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:h-10">Add Subscription</button>
           </div>
           <div className="space-y-3">
             {financeSubscriptions.length ? financeSubscriptions.map(sub => <SubscriptionRow key={sub.id} subscription={sub} visions={visions} onEdit={() => { setEditingSubscription(sub); setModal('subscription'); }} onDelete={() => deleteFinanceSubscription(sub.id)} />) : <EmptyState title="No subscriptions tracked." description="Add recurring payments before they surprise you." action="Add Subscription" onClick={() => setModal('subscription')} />}
@@ -449,13 +449,13 @@ export default function MoneyPage() {
       )}
 
       {activeTab === 'budgets' && (
-        <section className="rounded-[2rem] bg-card border border-card-border p-5">
+        <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
             <div>
               <h2 className="text-xl font-black text-text-main">Budgets</h2>
               <p className="text-xs font-medium text-text-secondary">Simple category limits for this month.</p>
             </div>
-            <button onClick={() => setModal('budget')} className="h-10 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest">Add Budget</button>
+            <button onClick={() => setModal('budget')} className="h-11 rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:h-10">Add Budget</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {financeBudgets.length ? financeBudgets.map(budget => <BudgetCard key={budget.id} budget={budget} transactions={financeTransactions} onDelete={() => deleteFinanceBudget(budget.id)} />) : <div className="md:col-span-2 xl:col-span-3"><EmptyState title="No budgets set." description="Set limits for categories you want to control." action="Add Budget" onClick={() => setModal('budget')} /></div>}
@@ -465,12 +465,12 @@ export default function MoneyPage() {
 
       {activeTab === 'review' && (
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="rounded-[2rem] bg-card border border-card-border p-5">
+          <div className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
             <h2 className="text-xl font-black text-text-main">Weekly Wallet Review</h2>
             <p className="text-sm font-medium text-text-secondary mt-2">Reflect on what helped your Visions, what spending leaked value, and what you will improve next week.</p>
-            <button onClick={() => setModal('review')} className="mt-5 h-11 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest">Write Review</button>
+            <button onClick={() => setModal('review')} className="mt-5 h-11 w-full rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:w-auto">Write Review</button>
           </div>
-          <div className="rounded-[2rem] bg-card border border-card-border p-5">
+          <div className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
             <h3 className="text-lg font-black text-text-main mb-4">Recent Reviews</h3>
             {financeReviews.length ? financeReviews.slice(0, 5).map(review => (
               <div key={review.id} className="border-b border-card-border/60 py-3 last:border-b-0">
@@ -485,7 +485,7 @@ export default function MoneyPage() {
       {isMoneyLoading && <p className="text-center text-[10px] font-black uppercase tracking-widest text-text-secondary">Refreshing Wallet...</p>}
 
       <ResponsiveModal open={!!modal || !!contributionGoal} onClose={closeModal} title={modalTitle(modal, editingTransaction, editingGoal, editingSubscription, contributionGoal)} subtitle="Wallet is private by default." size="md">
-        <div className="p-4 sm:p-6">
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
           {(modal === 'income' || modal === 'expense') && (
             <TransactionForm mode={modal} transaction={editingTransaction} visions={visions} goals={financeGoals} onSubmit={handleTransactionSubmit} />
           )}
@@ -517,10 +517,10 @@ function modalTitle(modal: MoneyModal, transaction: FinanceTransaction | null, g
 function MetricCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: 'success' | 'danger' | 'accent' | 'neutral' }) {
   const toneClass = tone === 'success' ? 'text-success bg-success/10' : tone === 'danger' ? 'text-danger bg-danger/10' : tone === 'accent' ? 'text-accent bg-accent/10' : 'text-text-secondary bg-surface-muted';
   return (
-    <div className="rounded-[2rem] bg-card border border-card-border p-5">
-      <div className={cn('w-11 h-11 rounded-2xl flex items-center justify-center mb-4', toneClass)}><Icon size={19} /></div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{label}</p>
-      <p className="mt-1 text-2xl font-black text-text-main">{value}</p>
+    <div className="rounded-[1.35rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
+      <div className={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-2xl sm:mb-4 sm:h-11 sm:w-11', toneClass)}><Icon size={19} /></div>
+      <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary sm:text-[10px]">{label}</p>
+      <p className="mt-1 break-words text-xl font-black text-text-main sm:text-2xl">{value}</p>
     </div>
   );
 }
@@ -541,18 +541,18 @@ function TransactionRow({ transaction, visions, goals, onEdit, onDelete }: { tra
   const visionName = linkedVisionName(visions, transaction.linkedVisionId);
   const goalName = goals.find(goal => goal.id === transaction.linkedGoalId)?.title;
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-card-border bg-app-container p-3">
-      <div className={cn('w-11 h-11 rounded-2xl flex items-center justify-center shrink-0', isPositive ? 'bg-success/10 text-success' : isSaving ? 'bg-accent/10 text-accent' : 'bg-danger/10 text-danger')}>
+    <div className="grid grid-cols-[auto_1fr] gap-3 rounded-2xl border border-card-border bg-app-container p-3 sm:flex sm:items-center">
+      <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', isPositive ? 'bg-success/10 text-success' : isSaving ? 'bg-accent/10 text-accent' : 'bg-danger/10 text-danger')}>
         {isPositive ? <ArrowUpRight size={18} /> : isSaving ? <PiggyBank size={18} /> : <ArrowDownLeft size={18} />}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-black text-text-main truncate">{transaction.title}</p>
         <p className="text-[11px] font-semibold text-text-secondary truncate">{transaction.category || 'Other'} - {visionName || goalName || 'No Vision linked'} - {transaction.transactionDate}</p>
       </div>
-      <p className={cn('text-sm font-black tabular-nums', isPositive ? 'text-success' : isSaving ? 'text-accent' : 'text-danger')}>
+      <p className={cn('col-start-2 text-sm font-black tabular-nums sm:col-auto', isPositive ? 'text-success' : isSaving ? 'text-accent' : 'text-danger')}>
         {isPositive ? '+' : '-'}{formatMoney(transaction.amount, transaction.currency)}
       </p>
-      <RowActions onEdit={onEdit} onDelete={onDelete} />
+      <div className="col-span-2 sm:col-auto"><RowActions onEdit={onEdit} onDelete={onDelete} /></div>
     </div>
   );
 }
@@ -569,7 +569,7 @@ function GoalRow({ goal, visions, onContribute, onEdit, onDelete }: { goal: Fina
         <span className="text-[10px] font-black text-accent">{progress}%</span>
       </div>
       <div className="mt-3 h-2 rounded-full bg-surface-muted overflow-hidden"><div className="h-full rounded-full bg-accent" style={{ width: `${progress}%` }} /></div>
-      <div className="mt-3 flex items-center justify-between gap-3">
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs font-bold text-text-main">{formatMoney(goal.currentAmount, goal.currency)} / {formatMoney(goal.targetAmount, goal.currency)}</p>
         <div className="flex gap-2">
           <button onClick={onContribute} className="h-8 px-3 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest">Add</button>
@@ -586,14 +586,14 @@ function GoalCard(props: Parameters<typeof GoalRow>[0]) {
 
 function SubscriptionRow({ subscription, visions, onEdit, onDelete }: { subscription: FinanceSubscription; visions: any[]; onEdit: () => void; onDelete: () => void }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-card-border bg-app-container p-3">
-      <div className="w-11 h-11 rounded-2xl bg-warning/10 text-warning flex items-center justify-center shrink-0"><CreditCard size={18} /></div>
+    <div className="grid grid-cols-[auto_1fr] gap-3 rounded-2xl border border-card-border bg-app-container p-3 sm:flex sm:items-center">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-warning/10 text-warning"><CreditCard size={18} /></div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-black text-text-main truncate">{subscription.name}</p>
         <p className="text-[11px] font-semibold text-text-secondary truncate">{subscription.billingCycle} - {subscription.nextBillingDate || 'No date'} - {linkedVisionName(visions, subscription.linkedVisionId) || 'No Vision linked'}</p>
       </div>
-      <p className="text-sm font-black text-text-main">{formatMoney(subscription.amount, subscription.currency)}</p>
-      <RowActions onEdit={onEdit} onDelete={onDelete} />
+      <p className="col-start-2 text-sm font-black text-text-main sm:col-auto">{formatMoney(subscription.amount, subscription.currency)}</p>
+      <div className="col-span-2 sm:col-auto"><RowActions onEdit={onEdit} onDelete={onDelete} /></div>
     </div>
   );
 }
@@ -620,9 +620,9 @@ function BudgetCard({ budget, transactions, onDelete }: { budget: FinanceBudget;
 
 function RowActions({ onEdit, onDelete, compact }: { onEdit: () => void; onDelete: () => void; compact?: boolean }) {
   return (
-    <div className="flex items-center gap-1 shrink-0">
-      <button onClick={onEdit} className={cn('rounded-xl bg-surface-muted text-text-secondary flex items-center justify-center', compact ? 'w-8 h-8' : 'w-9 h-9')}><Edit3 size={14} /></button>
-      <button onClick={onDelete} className={cn('rounded-xl bg-danger/10 text-danger flex items-center justify-center', compact ? 'w-8 h-8' : 'w-9 h-9')}><Trash2 size={14} /></button>
+    <div className="flex shrink-0 items-center gap-1">
+      <button aria-label="Edit" onClick={onEdit} className={cn('flex items-center justify-center rounded-xl bg-surface-muted text-text-secondary', compact ? 'h-8 w-8' : 'h-10 w-10 sm:h-9 sm:w-9')}><Edit3 size={14} /></button>
+      <button aria-label="Delete" onClick={onDelete} className={cn('flex items-center justify-center rounded-xl bg-danger/10 text-danger', compact ? 'h-8 w-8' : 'h-10 w-10 sm:h-9 sm:w-9')}><Trash2 size={14} /></button>
     </div>
   );
 }
@@ -642,7 +642,7 @@ function TransactionForm({ mode, transaction, visions, goals, onSubmit }: { mode
       <Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={transaction?.linkedVisionId || ''} /></Field>
       <Field label="Linked Goal"><FormSelect name="linkedGoalId" defaultValue={transaction?.linkedGoalId || ''} options={[{ value: '', label: 'No goal' }, ...goals.map(goal => ({ value: goal.id, label: goal.title }))]} /></Field>
       <div className="sm:col-span-2"><Field label="Note"><textarea name="note" defaultValue={transaction?.note || ''} className={textareaClass} /></Field></div>
-      <button className="sm:col-span-2 h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Transaction</button>
+      <button className="h-12 rounded-2xl bg-accent text-[11px] font-black uppercase tracking-widest text-accent-contrast sm:col-span-2">Save Transaction</button>
     </form>
   );
 }
@@ -658,7 +658,7 @@ function GoalForm({ goal, visions, onSubmit }: { goal: FinanceGoal | null; visio
       <Field label="Priority"><FormSelect name="priority" defaultValue={goal?.priority || 'medium'} options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} /></Field>
       <Field label="Status"><FormSelect name="status" defaultValue={goal?.status || 'active'} options={[{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }, { value: 'completed', label: 'Completed' }, { value: 'archived', label: 'Archived' }]} /></Field>
       <div className="sm:col-span-2"><Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={goal?.linkedVisionId || ''} /></Field></div>
-      <button className="sm:col-span-2 h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Goal</button>
+      <button className="h-12 rounded-2xl bg-accent text-[11px] font-black uppercase tracking-widest text-accent-contrast sm:col-span-2">Save Goal</button>
     </form>
   );
 }
@@ -668,7 +668,7 @@ function ContributionForm({ goal, onSubmit }: { goal: FinanceGoal; onSubmit: (ev
     <form onSubmit={onSubmit} className="space-y-4">
       <Field label="Contribution Title"><input name="title" defaultValue={`Contribution to ${goal.title}`} className={inputClass} /></Field>
       <Field label="Amount"><input name="amount" type="number" min="1" step="0.01" className={inputClass} required /></Field>
-      <button className="w-full h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Add Contribution</button>
+      <button className="h-12 w-full rounded-2xl bg-accent text-[11px] font-black uppercase tracking-widest text-accent-contrast">Add Contribution</button>
     </form>
   );
 }
@@ -684,7 +684,7 @@ function SubscriptionForm({ subscription, visions, onSubmit }: { subscription: F
       <Field label="Category"><input name="category" defaultValue={subscription?.category || 'Subscriptions'} className={inputClass} /></Field>
       <Field label="Status"><FormSelect name="active" defaultValue={subscription?.active === false ? 'false' : 'true'} options={[{ value: 'true', label: 'Active' }, { value: 'false', label: 'Inactive' }]} /></Field>
       <div className="sm:col-span-2"><Field label="Linked Vision"><VisionSelect name="linkedVisionId" visions={visions} defaultValue={subscription?.linkedVisionId || ''} /></Field></div>
-      <button className="sm:col-span-2 h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Subscription</button>
+      <button className="h-12 rounded-2xl bg-accent text-[11px] font-black uppercase tracking-widest text-accent-contrast sm:col-span-2">Save Subscription</button>
     </form>
   );
 }
@@ -697,7 +697,7 @@ function BudgetForm({ month, year, onSubmit }: { month: number; year: number; on
       <Field label="Currency"><CurrencySelect /></Field>
       <Field label="Month"><input name="month" type="number" min="1" max="12" defaultValue={month} className={inputClass} /></Field>
       <Field label="Year"><input name="year" type="number" min="2000" max="2100" defaultValue={year} className={inputClass} /></Field>
-      <button className="sm:col-span-2 h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Budget</button>
+      <button className="h-12 rounded-2xl bg-accent text-[11px] font-black uppercase tracking-widest text-accent-contrast sm:col-span-2">Save Budget</button>
     </form>
   );
 }
@@ -714,7 +714,7 @@ function ReviewForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>
       </div>
       <Field label="What spending helped your Visions?"><textarea name="reflection" className={textareaClass} /></Field>
       <Field label="What money habit will you improve next week?"><textarea name="improvement" className={textareaClass} /></Field>
-      <button className="w-full h-12 rounded-2xl bg-accent text-accent-contrast text-[11px] font-black uppercase tracking-widest">Save Review</button>
+      <button className="h-12 w-full rounded-2xl bg-accent text-[11px] font-black uppercase tracking-widest text-accent-contrast">Save Review</button>
     </form>
   );
 }
