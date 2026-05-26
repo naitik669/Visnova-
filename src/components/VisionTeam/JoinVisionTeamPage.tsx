@@ -64,7 +64,11 @@ export default function JoinVisionTeamPage() {
       navigate(`/visions?open=${result.vision_id}&team=${result.team_id}`, { replace: true });
     } catch (error: any) {
       console.error('Failed to join Vision Team:', error);
-      addToast({ type: 'error', title: 'Join failed', description: error.message || 'This invite link is invalid or expired.' });
+      const rawMessage = String(error?.message || '');
+      const safeMessage = /ambiguous|column reference|schema cache|function/i.test(rawMessage)
+        ? 'Could not join this Vision Team. Please refresh and try again.'
+        : rawMessage || 'This invite link is invalid or expired.';
+      addToast({ type: 'error', title: 'Join failed', description: safeMessage });
     } finally {
       setJoining(false);
     }
