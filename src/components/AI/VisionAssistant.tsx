@@ -32,7 +32,11 @@ const staticAnswers: Record<string, string[]> = {
   change_username: ['Open Profile.', 'Choose Edit Profile.', 'Enter a lowercase username with 3-24 letters, numbers, or underscores, then save.']
 };
 
+const ASSISTANT_ENABLED = import.meta.env.VITE_ENABLE_ASSISTANT === 'true';
+
 export default function VisionAssistant() {
+  if (!ASSISTANT_ENABLED) return null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isVisionBoardOpen, setIsVisionBoardOpen] = useState(false);

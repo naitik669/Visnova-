@@ -10,7 +10,11 @@ import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import Markdown from 'react-markdown';
 
+const ASSISTANT_ENABLED = import.meta.env.VITE_ENABLE_ASSISTANT === 'true';
+
 export default function NeuralAssistant() {
+  if (!ASSISTANT_ENABLED) return null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
     { role: 'assistant', content: 'Quick Help is ready. Ask about your open tasks, active Visions, or recent notes.' }
