@@ -169,6 +169,71 @@ async function awardXpOnce(userId: string, sourceType: string, sourceId: string,
   throw error;
 }
 
+function sumXpEvents(rows?: Array<{ xp_amount?: number | null }>) {
+  return safeArray(rows).reduce((sum, row) => sum + safeNumber(row?.xp_amount), 0);
+}
+
+function sumDailyActivityXp(rows?: any[]) {
+  return safeArray(rows).reduce((sum, row) => sum
+    + safeNumber(row?.task_count) * 15
+    + safeNumber(row?.todo_count) * 20
+    + safeNumber(row?.post_count) * 50
+    + safeNumber(row?.note_count) * 10
+    + safeNumber(row?.journal_count) * 10
+    + safeNumber(row?.vision_count) * 25
+    + safeNumber(row?.focus_count) * 25, 0);
+}
+
+async function deriveUserXpFromWork(userId: string) {
+  const [eventsRes, tasksRes, todosRes, proofRes, dailyRes] = await Promise.allSettled([
+    supabase.from('xp_events').select('xp_amount').eq('user_id', userId).limit(1000),
+    supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('completed', true),
+    supabase.from('todos').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('completed', true),
+    supabase.from('progress_logs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    supabase.from('user_daily_activity').select('task_count,todo_count,post_count,note_count,journal_count,vision_count,focus_count').eq('user_id', userId).limit(366)
+  ]);
+
+  const eventTotal = eventsRes.status === 'fulfilled' && !eventsRes.value.error ? sumXpEvents(eventsRes.value.data || []) : 0;
+  const taskCount = tasksRes.status === 'fulfilled' && !tasksRes.value.error ? safeNumber(tasksRes.value.count) : 0;
+  const todoCount = todosRes.status === 'fulfilled' && !todosRes.value.error ? safeNumber(todosRes.value.count) : 0;
+  const proofCount = proofRes.status === 'fulfilled' && !proofRes.value.error ? safeNumber(proofRes.value.count) : 0;
+  const completedWorkTotal = taskCount * TASK_XP + todoCount * TODO_XP + proofCount * 50;
+  const dailyTotal = dailyRes.status === 'fulfilled' && !dailyRes.value.error ? sumDailyActivityXp(dailyRes.value.data || []) : 0;
+
+  return Math.max(eventTotal, completedWorkTotal, dailyTotal);
+}
+
+async function repairProfileXpIfStale(profile: any) {
+  const userId = safeString(profile?.id);
+  if (!userId) return profile;
+
+  const currentTotalXp = normalizeLegacyXp(safeNumber(profile?.level, 1), safeNumber(profile?.xp));
+  const derivedXp = await deriveUserXpFromWork(userId);
+  const repairedXp = Math.max(currentTotalXp, derivedXp);
+
+  if (repairedXp <= currentTotalXp) return profile;
+
+  const repairedProfile = {
+    ...profile,
+    xp: repairedXp,
+    level: getLevelFromXp(repairedXp)
+  };
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ xp: repairedProfile.xp, level: repairedProfile.level, updated_at: new Date().toISOString() })
+    .eq('id', userId)
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    console.error('Failed to persist repaired XP:', error);
+    return repairedProfile;
+  }
+
+  return data || repairedProfile;
+}
+
 function emptyDailyActivity(date: string): DailyActivitySummary {
   return {
     date,
@@ -961,7 +1026,19 @@ export const useStore = create<AppState>((set, get) => ({
       authSubscription = subscription;
     } catch (error) {
       console.error('Auth initialization error:', error);
-      set({ ...privateStateReset(), authLoading: false, profileLoading: false, isProfileReady: true, isAuthInitialized: true });
+      set((state) => ({
+        authLoading: false,
+        profileLoading: false,
+        isProfileReady: true,
+        isAuthInitialized: true,
+        session: state.session,
+        authUser: state.authUser
+      }));
+      get().addToast({
+        type: 'error',
+        title: 'Session check was slow',
+        description: 'VisNova kept your local session. Refresh if data does not appear.'
+      });
     } finally {
       set({ authLoading: false });
     }
@@ -1941,16 +2018,22 @@ export const useStore = create<AppState>((set, get) => ({
       if (error) throw error;
       
       if (data) {
+        let syncedProfile = data;
+        try {
+          syncedProfile = await withTimeout(repairProfileXpIfStale(data), PROFILE_QUERY_TIMEOUT_MS, 'Syncing your XP');
+        } catch (xpSyncError) {
+          console.error('XP sync repair failed:', xpSyncError);
+        }
         set((state) => ({
-          profile: data,
-          user: toProfileUser(data, state.session?.user?.email || state.user.email),
+          profile: syncedProfile,
+          user: toProfileUser(syncedProfile, state.session?.user?.email || state.user.email),
           vitals: {
-            focus: data.focus ?? 85,
-            energy: data.energy ?? 72,
-            mood: data.mood ?? 90,
-            sleep: data.sleep ?? 64,
+            focus: syncedProfile.focus ?? 85,
+            energy: syncedProfile.energy ?? 72,
+            mood: syncedProfile.mood ?? 90,
+            sleep: syncedProfile.sleep ?? 64,
           },
-          hasCompletedOnboarding: !!data.onboarded
+          hasCompletedOnboarding: !!syncedProfile.onboarded
         }));
         get().fetchProfileStats(userId).catch(error => console.error('Failed to load profile stats:', error));
         get().fetchUserStreak().catch(error => console.error('Failed to load streak:', error));
