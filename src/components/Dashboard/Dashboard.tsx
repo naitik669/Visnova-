@@ -329,9 +329,9 @@ function CalendarWorkspaceModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-overlay/70 p-3 backdrop-blur-xl sm:p-6" role="dialog" aria-modal="true" aria-label="Calendar workspace">
-      <div className="flex h-[min(900px,94vh)] w-full max-w-7xl overflow-hidden rounded-[2rem] border border-card-border bg-app-container shadow-2xl">
-        <aside className="hidden w-80 shrink-0 flex-col gap-4 border-r border-card-border bg-card/85 p-5 lg:flex">
+    <div className="fixed inset-0 z-[120] bg-app-container" role="dialog" aria-modal="true" aria-label="Calendar workspace">
+      <div className="flex h-dvh w-dvw overflow-hidden bg-app-container">
+        <aside className="hidden min-h-0 w-80 shrink-0 flex-col gap-4 overflow-y-auto border-r border-card-border bg-card/85 p-5 lg:flex">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.26em] text-accent">Planner</p>
@@ -415,7 +415,7 @@ function CalendarWorkspaceModal({
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setViewDate(new Date())} className="h-10 rounded-2xl border border-card-border bg-card px-4 text-[10px] font-black uppercase tracking-widest text-text-main">Today</button>
-              <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary hover:text-text-main lg:hidden" aria-label="Close calendar"><X size={18} /></button>
+              <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary hover:text-text-main" aria-label="Close calendar"><X size={18} /></button>
             </div>
           </div>
 
@@ -1379,13 +1379,6 @@ export default function Dashboard() {
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-success" />Task</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-accent" />Note</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-warning" />Journal</span>
-                <button
-                  type="button"
-                  onClick={() => setShowCalendarWorkspace(true)}
-                  className="rounded-full bg-accent/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent transition-colors hover:bg-accent/20"
-                >
-                  Open Calendar
-                </button>
               </div>
               <div className="grid grid-cols-7 gap-1.5 text-center text-xs relative">
                 {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d, i) => (
@@ -1456,12 +1449,16 @@ export default function Dashboard() {
 
             <div className="min-w-0 flex flex-col gap-4 w-full h-full min-h-[300px]">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 ml-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCalendarWorkspace(true)}
+                  className="ml-2 flex items-center gap-3 rounded-2xl px-2 py-1 text-left transition-colors hover:bg-accent/10"
+                >
                   <Calendar size={18} className="text-text-secondary" />
                   <h3 className="text-[15px] font-semibold text-text-secondary">
                     Day Planner
                   </h3>
-                </div>
+                </button>
                 <button
                   onClick={() => navigate("/library")}
                   className="text-[10px] font-bold tracking-widest uppercase text-accent bg-accent/10 px-3 py-1 rounded-full hover:bg-accent/20 transition-colors"
@@ -1470,7 +1467,10 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <div className="bg-app-container rounded-[2rem] p-5 sm:p-6 w-full flex flex-col gap-5 relative overflow-hidden border border-card-border/50 min-h-[260px]">
+              <div
+                onDoubleClick={() => setShowCalendarWorkspace(true)}
+                className="bg-app-container rounded-[2rem] p-5 sm:p-6 w-full flex flex-col gap-5 relative overflow-hidden border border-card-border/50 min-h-[260px]"
+              >
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-[10px] font-black uppercase tracking-widest text-accent">Selected Day</p>
