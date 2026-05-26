@@ -131,10 +131,12 @@ const buildRawEntry = (
   profile: Pick<CircleMomentumEntry, 'displayName' | 'username' | 'avatarUrl' | 'currentStreak' | 'isCurrentUser'>,
   data: Pick<BuildCircleMomentumInput, 'progressLogs' | 'tasks' | 'visions' | 'posts'>
 ) => {
-  const logs = data.progressLogs.filter(log => log.userId === userId && log.visibility !== 'private');
-  const tasks = data.tasks.filter(task => rowUserId(task) === userId && Boolean(task.completed) && task.visibility !== 'private');
-  const visions = data.visions.filter(vision => rowUserId(vision) === userId && vision.status !== 'completed' && vision.visibility !== 'private');
-  const posts = data.posts.filter(post => post.userId === userId && post.visibility !== 'private');
+  const canUsePrivateRows = profile.isCurrentUser === true;
+  const isVisibleToBoard = (visibility?: string) => canUsePrivateRows || visibility !== 'private';
+  const logs = data.progressLogs.filter(log => log.userId === userId && isVisibleToBoard(log.visibility));
+  const tasks = data.tasks.filter(task => rowUserId(task) === userId && Boolean(task.completed) && isVisibleToBoard(task.visibility));
+  const visions = data.visions.filter(vision => rowUserId(vision) === userId && vision.status !== 'completed' && isVisibleToBoard(vision.visibility));
+  const posts = data.posts.filter(post => post.userId === userId && isVisibleToBoard(post.visibility));
 
   const base = {
     userId,

@@ -71,13 +71,13 @@ const normalizeRemoteVision = (row: any): VisibleVision => ({
   updated_at: row?.updated_at
 });
 
-const visibleOnly = <T extends { visibility?: string }>(rows: T[]) =>
-  rows.filter(row => row.visibility === 'public' || row.visibility === 'circle');
-
 export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
   const user = useStore(state => state.user);
   const circle = useStore(state => state.circle);
   const fetchCircleData = useStore(state => state.fetchCircleData);
+  const fetchProgressLogs = useStore(state => state.fetchProgressLogs);
+  const fetchTodos = useStore(state => state.fetchTodos);
+  const fetchVisions = useStore(state => state.fetchVisions);
   const fetchAccountabilityPreferences = useStore(state => state.fetchAccountabilityPreferences);
   const fetchWeeklyProofSprint = useStore(state => state.fetchWeeklyProofSprint);
   const accountabilityPreferences = useStore(state => state.accountabilityPreferences);
@@ -112,9 +112,12 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
   useEffect(() => {
     if (!user.id) return;
     fetchCircleData().catch(error => console.error('Failed to load Circle Momentum members:', error));
+    fetchProgressLogs().catch(error => console.error('Failed to load Circle Momentum proof logs:', error));
+    fetchTodos().catch(error => console.error('Failed to load Circle Momentum tasks:', error));
+    fetchVisions().catch(error => console.error('Failed to load Circle Momentum visions:', error));
     if (accountabilityFlags.accountability) fetchAccountabilityPreferences().catch(error => console.error('Failed to load accountability preferences:', error));
     if (accountabilityFlags.weeklySprints) fetchWeeklyProofSprint().catch(error => console.error('Failed to load Weekly Proof Sprint:', error));
-  }, [fetchAccountabilityPreferences, fetchCircleData, fetchWeeklyProofSprint, user.id]);
+  }, [fetchAccountabilityPreferences, fetchCircleData, fetchProgressLogs, fetchTodos, fetchVisions, fetchWeeklyProofSprint, user.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,7 +128,7 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
       const window = getCircleMomentumWindow(range);
       const since = range === 'all' ? '2000-01-01T00:00:00.000Z' : window.previousStartIso;
 
-      const [logsResult, tasksResult, visionsResult, postsResult, sprintsResult] = await Promise.allSettled([
+      const [logsResult, ownLogsResult, tasksResult, ownTodosResult, visionsResult, postsResult, sprintsResult] = await Promise.allSettled([
         supabase
           .from('progress_logs')
           .select('id,user_id,vision_id,task_id,post_id,log_type,visibility,attachments,created_at,updated_at')
@@ -133,10 +136,21 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
           .in('visibility', ['public', 'circle'])
           .gte('created_at', since),
         supabase
+          .from('progress_logs')
+          .select('id,user_id,vision_id,task_id,post_id,log_type,visibility,attachments,created_at,updated_at')
+          .eq('user_id', user.id)
+          .gte('created_at', since),
+        supabase
           .from('tasks')
           .select('id,user_id,text,title,completed,status,visibility,completed_at,created_at,updated_at')
           .in('user_id', userIds)
           .in('visibility', ['public', 'circle'])
+          .gte('updated_at', since),
+        supabase
+          .from('todos')
+          .select('id,user_id,text,completed,completed_at,created_at,updated_at')
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
           .gte('updated_at', since),
         supabase
           .from('visions')
@@ -165,8 +179,14 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
       const nextLogs = logsResult.status === 'fulfilled' && !logsResult.value.error
         ? (logsResult.value.data || []).map(normalizeRemoteLog)
         : [];
+      const nextOwnLogs = ownLogsResult.status === 'fulfilled' && !ownLogsResult.value.error
+        ? (ownLogsResult.value.data || []).map(normalizeRemoteLog)
+        : [];
       const nextTasks = tasksResult.status === 'fulfilled' && !tasksResult.value.error
         ? (tasksResult.value.data || []).map(normalizeRemoteTask)
+        : [];
+      const nextOwnTodos = ownTodosResult.status === 'fulfilled' && !ownTodosResult.value.error
+        ? (ownTodosResult.value.data || []).map(normalizeRemoteTask)
         : [];
       const nextVisions = visionsResult.status === 'fulfilled' && !visionsResult.value.error
         ? (visionsResult.value.data || []).map(normalizeRemoteVision)
@@ -182,11 +202,11 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
         }))
         : {};
 
-      const failed = [logsResult, tasksResult, visionsResult, postsResult, sprintsResult].some(result =>
+      const failed = [logsResult, ownLogsResult, tasksResult, ownTodosResult, visionsResult, postsResult, sprintsResult].some(result =>
         result.status === 'rejected' || (result.status === 'fulfilled' && Boolean(result.value.error))
       );
-      setRemoteLogs(nextLogs);
-      setRemoteTasks(nextTasks);
+      setRemoteLogs([...nextOwnLogs, ...nextLogs].filter((row, index, all) => all.findIndex(item => item.id === row.id) === index));
+      setRemoteTasks([...nextOwnTodos, ...nextTasks].filter((row, index, all) => all.findIndex(item => item.id === row.id) === index));
       setRemoteVisions(nextVisions);
       setRemotePosts(nextPosts);
       setRemoteSprintProgress(nextSprintProgress);
@@ -216,15 +236,15 @@ export function useCircleMomentum(initialRange: CircleMomentumRange = 'week') {
       }))
     );
     const localData = {
-      logs: visibleOnly(localProgressLogs),
-      tasks: visibleOnly([...localTodos.map(task => ({ ...task, userId: user.id, user_id: user.id })), ...localVisionTasks]),
-      visions: visibleOnly(localVisions.map(vision => ({ ...vision, userId: user.id, user_id: user.id }))),
-      posts: visibleOnly(localPosts.map(post => ({
+      logs: localProgressLogs,
+      tasks: [...localTodos.map(task => ({ ...task, userId: user.id, user_id: user.id })), ...localVisionTasks],
+      visions: localVisions.map(vision => ({ ...vision, userId: user.id, user_id: user.id })),
+      posts: localPosts.map(post => ({
         id: post.id,
         userId: post.userId,
         visibility: post.visibility,
         createdAt: post.createdAt || new Date(post.timestamp).getTime()
-      })))
+      }))
     };
 
     const logs = [...remoteLogs, ...localData.logs].filter((row, index, all) => all.findIndex(item => item.id === row.id) === index);

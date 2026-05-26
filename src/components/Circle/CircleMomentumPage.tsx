@@ -287,7 +287,7 @@ export default function CircleMomentumPage() {
             <div>
               <h2 className="text-2xl font-black text-text-main">Weekly Momentum</h2>
               <p className="mt-1 text-xs font-semibold text-text-secondary/60">
-                Visible proof only. Private logs stay yours.
+                Your private work counts for you. Circle members show shared proof only.
               </p>
             </div>
             <Trophy size={20} className="text-accent" />
