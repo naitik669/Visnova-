@@ -895,6 +895,7 @@ function AppContent() {
   const removeToast = useStore(state => state.removeToast);
   const [profileWaitTimedOut, setProfileWaitTimedOut] = useState(false);
   const location = useLocation();
+  const isLibraryRoute = location.pathname === '/library' || location.pathname === '/notes' || location.pathname === '/journal';
   
   const isPasswordRecovery = sessionStorage.getItem('visnova-auth-link-mode') === 'recovery' || new URLSearchParams(window.location.search).get('mode') === 'reset-password';
   const isAuthCallbackPath = location.pathname === '/auth/callback';
@@ -1158,7 +1159,14 @@ function AppContent() {
               <FloatingTimer />
               <main className="flex-1 min-w-0 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
                 <PageContextHeader />
-                <div className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-6 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <div
+                  className={cn(
+                    "flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar",
+                    isLibraryRoute
+                      ? "p-0 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-0"
+                      : "p-3 sm:p-4 lg:p-5 xl:p-6 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-6"
+                  )}
+                >
                   <Suspense fallback={<RouteFallback />}>
                     <Routes>
                       <Route path="/" element={<Dashboard />} />

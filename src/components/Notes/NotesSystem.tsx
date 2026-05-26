@@ -167,7 +167,6 @@ export default function NotesSystem() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'board'>('grid');
-  const [isLibrarySidebarHovered, setIsLibrarySidebarHovered] = useState(false);
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'all'>('all');
   const [draggingNoteId, setDraggingNoteId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
@@ -377,135 +376,15 @@ export default function NotesSystem() {
 
   return (
     <div className={cn(
-      "flex bg-app-container text-text-main transition-all duration-700 font-sans relative overflow-hidden max-w-full",
-      "h-full min-h-[calc(100vh-3rem)]"
+      "flex h-full min-h-0 w-full bg-app-container text-text-main transition-all duration-700 font-sans relative overflow-hidden"
     )}>
-      {/* 1. Left Support Sidebar - Hidden with animation on Journal or Full View */}
-      <AnimatePresence>
-        {activeTab !== 'journal' && (
-          <motion.aside 
-            initial={{ x: -280, opacity: 0 }}
-            animate={{ x: 0, opacity: 1, width: isLibrarySidebarHovered ? 256 : 72 }}
-            exit={{ x: -280, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            onMouseEnter={() => setIsLibrarySidebarHovered(true)}
-            onMouseLeave={() => setIsLibrarySidebarHovered(false)}
-            className="flex flex-col border-r border-card-border/50 bg-card shrink-0 overflow-hidden"
-          >
-            <div className={cn(
-              "flex flex-col h-full transition-all duration-300",
-              isLibrarySidebarHovered ? "p-6 md:p-8 gap-10" : "px-2 py-6 gap-8"
-            )}>
-              {/* Add New Section like in image */}
-              <div className={cn(isLibrarySidebarHovered ? "block" : "hidden")}>
-                <button 
-                  onClick={() => handleCreateNote('normal')}
-                  className="w-full h-12 flex items-center justify-center gap-3 bg-accent text-white rounded-2xl font-bold text-xs shadow-xl shadow-accent/10 hover:scale-[1.02] transition-all"
-                >
-                  <Plus size={16} />
-                  Add new
-                </button>
-                {activeTab === 'vault' && (
-                  <button
-                    onClick={() => setIsAudioModalOpen(true)}
-                    className="w-full h-12 mt-3 flex items-center justify-center gap-3 bg-surface-muted text-accent rounded-2xl font-bold text-xs border border-card-border hover:bg-accent/5 transition-all"
-                  >
-                    <Mic size={16} />
-                    New Audio Note
-                  </button>
-                )}
-              </div>
-
-              <nav className="flex-1 w-full space-y-6">
-                <div className="space-y-1">
-                  <SidebarIconBtn 
-                    key="btn-all"
-                    icon={<Layout size={18} />} 
-                    active={sidebarFilter === 'all'} 
-                    onClick={() => { setSidebarFilter('all'); setSelectedFolder(null); }} 
-                    label="All Notes"
-                    expanded={isLibrarySidebarHovered}
-                  />
-                  <SidebarIconBtn 
-                    key="btn-favorites"
-                    icon={<Star size={18} />} 
-                    active={sidebarFilter === 'favorites'} 
-                    onClick={() => setSidebarFilter('favorites')} 
-                    label="Favorites"
-                    expanded={isLibrarySidebarHovered}
-                  />
-                  <SidebarIconBtn 
-                    key="btn-recent"
-                    icon={<Clock size={18} />} 
-                    active={sidebarFilter === 'recent'} 
-                    onClick={() => setSidebarFilter('recent')} 
-                    label="Recent"
-                    expanded={isLibrarySidebarHovered}
-                  />
-                  <SidebarIconBtn 
-                    key="btn-trash"
-                    icon={<Trash2 size={18} />} 
-                    active={sidebarFilter === 'trash'} 
-                    onClick={() => setSidebarFilter('trash')} 
-                    label="Trash"
-                    expanded={isLibrarySidebarHovered}
-                  />
-                </div>
-                
-                <div className={cn("pt-6 border-t border-card-border/30", isLibrarySidebarHovered ? "block" : "hidden")}>
-                  <div className="flex items-center justify-between ml-4 mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40">Folders</p>
-                    <button 
-                      onClick={() => setIsFolderModalOpen(true)}
-                      className="p-1 hover:bg-surface-muted rounded-md text-text-secondary/40 hover:text-accent transition-colors"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                  <div className="space-y-1 px-1">
-                    {safeArray<FolderType>(folders).slice(0, 5).map(f => (
-                      <button 
-                        key={f.id} 
-                        onClick={() => {
-                          setActiveTab('vault');
-                          setSelectedFolder(f.id);
-                        }}
-                        className={cn(
-                          "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[11px] font-bold transition-all",
-                          selectedFolder === f.id ? "bg-accent/5 text-accent" : "text-text-secondary hover:bg-surface-muted"
-                        )}
-                      >
-                        <Folder size={14} className={selectedFolder === f.id ? "fill-accent" : ""} />
-                        <span className="truncate">{f.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </nav>
-
-              <div className={cn("mt-auto border-t border-card-border/30 pt-6", isLibrarySidebarHovered ? "block" : "hidden")}>
-                 <div className="flex items-center gap-3 px-2">
-                    <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-accent/10">
-                       <img src={user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`} className="w-full h-full object-cover" alt="User" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold text-text-main truncate">{user?.name || "Explorer"}</p>
-                      <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">{user?.rank || "Architect"}</p>
-                    </div>
-                 </div>
-              </div>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-app-container overflow-hidden relative">
         {/* Top Header - Reduced size and condensed content */}
         {/* Content Section */}
         <div className={cn(
           "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
-          activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-3 sm:px-6 lg:px-10 xl:px-12 py-5 sm:py-10"
+          activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 sm:py-8"
         )}>
           <header className="flex w-full flex-col gap-4 border-b border-card-border/30 pb-5 mb-5 sm:pb-8 sm:mb-8 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 min-w-0">
@@ -534,6 +413,30 @@ export default function NotesSystem() {
                     </button>
                   ))}
                 </div>
+                {activeTab !== 'journal' && (
+                  <div className="flex max-w-full overflow-x-auto bg-surface-muted p-1 rounded-2xl border border-card-border/50 custom-scrollbar">
+                    {[
+                      { label: 'All', value: 'all' as const },
+                      { label: 'Favorites', value: 'favorites' as const },
+                      { label: 'Recent', value: 'recent' as const },
+                      { label: 'Trash', value: 'trash' as const }
+                    ].map((filter) => (
+                      <button
+                        key={filter.value}
+                        onClick={() => {
+                          setSidebarFilter(filter.value);
+                          if (filter.value === 'all') setSelectedFolder(null);
+                        }}
+                        className={cn(
+                          "h-9 px-3 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                          sidebarFilter === filter.value ? "bg-card text-accent shadow-sm" : "text-text-secondary/45 hover:text-text-main"
+                        )}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -597,7 +500,7 @@ export default function NotesSystem() {
                     </div>
                     
                     <div className={cn(
-                      "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 transition-all",
+                      "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 min-[1760px]:grid-cols-5 gap-4 transition-all",
                       draggingNoteId && "rounded-3xl bg-accent/5 p-2"
                     )}>
                        <FolderCard
@@ -771,7 +674,7 @@ export default function NotesSystem() {
                     ) : (
                       <div className={cn(
                         "grid",
-                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4 min-[1800px]:grid-cols-5 gap-4" : "grid-cols-1"
+                        viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 min-[1760px]:grid-cols-5 gap-4" : "grid-cols-1"
                       )}>
                         {safeArray<Note>(filteredNotes).map((note, idx) => (
                           <SafeItemBoundary key={note.id || `note-${idx}`}>
@@ -1911,26 +1814,6 @@ function NewFolderModal({ isOpen, folders, onClose, onCreate }: {
           </button>
         </div>
     </ResponsiveModal>
-  );
-}
-
-function SidebarIconBtn({ icon, active, onClick, label, expanded }: any) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-4 px-4 h-12 rounded-2xl transition-all group relative",
-        active ? "bg-accent text-white shadow-lg shadow-accent/10" : "text-text-secondary hover:bg-surface-muted"
-      )}
-    >
-      <div className={cn("shrink-0 transition-transform", active ? "scale-110" : "group-hover:scale-110")}>{icon}</div>
-      <span className={cn(
-        "text-[11px] font-bold tracking-tight transition-all duration-200 whitespace-nowrap",
-        expanded ? "opacity-100 translate-x-0" : "pointer-events-none w-0 opacity-0 -translate-x-2 overflow-hidden",
-        active ? "opacity-100" : "opacity-70 group-hover:opacity-100"
-      )}>{label}</span>
-      {active && <div className={cn("absolute left-0 w-1 h-5 bg-white/40 rounded-r-full", expanded ? "block" : "hidden")} />}
-    </button>
   );
 }
 
