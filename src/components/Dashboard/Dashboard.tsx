@@ -39,15 +39,6 @@ import { formatCurrency } from "../../lib/currency";
 import { DashboardProgressPulseCard } from "../Growth/DashboardProgressPulseCard";
 import { DashboardCircleMomentumCard } from "../Circle/DashboardCircleMomentumCard";
 import { MobilePage, MobilePrimaryAction, MobileSection } from "../mobile/MobileLayout";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
 
 const CircularProgress = ({
   value,
@@ -137,6 +128,57 @@ function FirstVisionPrompt({ onCreate, onFeed }: { onCreate: () => void; onFeed:
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function DashboardActivityChart({ data }: { data: Array<{ name: string; output: number }> }) {
+  const width = 420;
+  const height = 140;
+  const top = 12;
+  const bottom = 30;
+  const max = Math.max(...data.map((item) => item.output), 1);
+  const plotHeight = height - top - bottom;
+  const step = data.length > 1 ? width / (data.length - 1) : width;
+  const points = data.map((item, index) => {
+    const x = index * step;
+    const y = top + plotHeight - (Math.max(0, item.output) / max) * plotHeight;
+    return { ...item, x, y };
+  });
+  const linePath = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L ${width} ${height - bottom} L 0 ${height - bottom} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label="Weekly output activity chart">
+      <defs>
+        <linearGradient id="dashboardActivityFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
+        </linearGradient>
+      </defs>
+      {[0.25, 0.5, 0.75].map((ratio) => (
+        <line
+          key={ratio}
+          x1="0"
+          x2={width}
+          y1={top + plotHeight * ratio}
+          y2={top + plotHeight * ratio}
+          stroke="var(--card-border)"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+          opacity="0.55"
+        />
+      ))}
+      <path d={areaPath} fill="url(#dashboardActivityFill)" />
+      <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      {points.map((point) => (
+        <g key={point.name}>
+          <circle cx={point.x} cy={point.y} r="3.5" fill="var(--card)" stroke="var(--accent)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          <text x={point.x} y={height - 7} textAnchor="middle" className="fill-text-secondary text-[10px] font-bold opacity-60">
+            {point.name}
+          </text>
+        </g>
+      ))}
+    </svg>
   );
 }
 
@@ -1662,54 +1704,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="h-[180px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={chartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient
-                      id="colorOutput"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="5%"
-                        stopColor="var(--accent)"
-                        stopOpacity={0.3}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="var(--accent)"
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <XAxis
-                    dataKey="name"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      fill: "var(--text-secondary)",
-                      opacity: 0.5,
-                    }}
-                    dy={10}
-                  />
-                  <YAxis hide domain={[0, "dataMax + 20"]} />
-                  <Area
-                    type="monotone"
-                    dataKey="output"
-                    stroke="var(--accent)"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorOutput)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <DashboardActivityChart data={chartData} />
             </div>
           </div>
 

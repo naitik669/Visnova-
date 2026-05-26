@@ -1,5 +1,16 @@
 import { Brain } from 'lucide-react';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
+
+function sparklinePath(values: number[], width = 220, height = 58) {
+  const max = Math.max(...values, 1);
+  const step = values.length > 1 ? width / (values.length - 1) : width;
+  return values
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - (Math.max(0, value) / max) * (height - 8) - 4;
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
 
 export function DashboardProgressPulseCard({
   currentStreak,
@@ -14,7 +25,9 @@ export function DashboardProgressPulseCard({
   tasksDone: number;
   onOpen: () => void;
 }) {
-  const data = [currentStreak, totalProofLogs % 10, tasksDone, weeklyScore / 10, Math.max(1, weeklyScore / 8)].map((value, index) => ({ index, value }));
+  const data = [currentStreak, totalProofLogs % 10, tasksDone, weeklyScore / 10, Math.max(1, weeklyScore / 8)];
+  const linePath = sparklinePath(data);
+  const areaPath = `${linePath} L 220 58 L 0 58 Z`;
 
   return (
     <button
@@ -37,17 +50,16 @@ export function DashboardProgressPulseCard({
       </div>
       <div className="relative z-10 mt-4 grid grid-cols-[1fr_auto] items-end gap-3">
         <div className="h-16">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="dashboardPulseFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.01} />
-                </linearGradient>
-              </defs>
-              <Area type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2.8} fill="url(#dashboardPulseFill)" dot={false} activeDot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <svg viewBox="0 0 220 58" className="h-full w-full overflow-visible" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="dashboardPulseFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.01} />
+              </linearGradient>
+            </defs>
+            <path d={areaPath} fill="url(#dashboardPulseFill)" />
+            <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          </svg>
         </div>
         <span className="mb-1 rounded-full bg-accent px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-accent-contrast">
           View full tracker
