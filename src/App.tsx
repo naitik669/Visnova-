@@ -42,6 +42,7 @@ import { BrandLogo } from './components/BrandLogo';
 import { ProgressLogComposer } from './components/Progress/ProgressLogComposer';
 import { useCookieConsent } from './hooks/useCookieConsent';
 import { identifyAnalyticsUser, resetAnalyticsUser, trackPageView } from './lib/analytics';
+import { isLikelyNetworkError, VISNOVA_NETWORK_ERROR_EVENT } from './lib/networkState';
 
 const loadVisionBoard = () => import('./components/VisionBoard/VisionBoard');
 const loadNovaClock = () => import('./components/Nova/NovaClock');
@@ -829,44 +830,65 @@ function NotFoundPage() {
 }
 
 function useBrowserOnline() {
-  const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  const [isBrowserOnline, setIsBrowserOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+  const [hasNetworkIssue, setHasNetworkIssue] = useState(false);
 
   useEffect(() => {
-    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    const updateOnlineStatus = () => {
+      const nextOnline = navigator.onLine;
+      setIsBrowserOnline(nextOnline);
+      if (nextOnline) setHasNetworkIssue(false);
+    };
+    const showNetworkIssue = () => setHasNetworkIssue(true);
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (isLikelyNetworkError(event.reason)) showNetworkIssue();
+    };
+    const handleWindowError = (event: ErrorEvent) => {
+      if (isLikelyNetworkError(event.error) || isLikelyNetworkError(event.message)) showNetworkIssue();
+    };
+
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
+    window.addEventListener(VISNOVA_NETWORK_ERROR_EVENT, showNetworkIssue);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('error', handleWindowError);
     updateOnlineStatus();
 
     return () => {
       window.removeEventListener('online', updateOnlineStatus);
       window.removeEventListener('offline', updateOnlineStatus);
+      window.removeEventListener(VISNOVA_NETWORK_ERROR_EVENT, showNetworkIssue);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('error', handleWindowError);
     };
   }, []);
 
-  return isOnline;
+  return { isOnline: isBrowserOnline && !hasNetworkIssue, hasNetworkIssue };
 }
 
-function OfflinePage() {
+function OfflinePage({ hasNetworkIssue = false }: { hasNetworkIssue?: boolean }) {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen w-screen bg-bg-base px-5 py-8 text-center text-text-main">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl flex-col items-center justify-center">
-        <VisNovaMotion variant="error" size="lg" className="w-full max-w-3xl" />
-        <div className="mt-[-1rem] flex max-w-xl flex-col items-center gap-3">
-          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">No internet connection.</h1>
+    <div className="min-h-[100dvh] w-screen bg-bg-base px-5 py-8 text-center text-text-main">
+      <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-5xl flex-col items-center justify-center">
+        <VisNovaMotion variant="error" size="lg" className="w-full max-w-3xl" ariaLabel="Connection interrupted animation" />
+        <div className="mt-[-1rem] flex w-full max-w-xl flex-col items-center gap-3 pb-[env(safe-area-inset-bottom)]">
+          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Something didn't load right.</h1>
           <p className="text-sm font-semibold leading-6 text-text-secondary sm:text-base">
-            VisNova needs a connection to sync your workspace. Check your network, then try again.
+            {hasNetworkIssue
+              ? 'Your connection dropped while VisNova was syncing. Check your internet, then try again.'
+              : 'You are offline. Check your internet connection, then try again.'}
           </p>
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-5 grid w-full max-w-md grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               onClick={() => window.location.reload()}
-              className="rounded-2xl bg-accent px-6 py-3 text-xs font-black uppercase tracking-widest text-accent-contrast transition-opacity hover:opacity-90"
+              className="min-h-11 rounded-2xl bg-accent px-6 py-3 text-xs font-black uppercase tracking-widest text-accent-contrast transition-opacity hover:opacity-90"
             >
               Try Again
             </button>
             <button
               onClick={() => navigate('/')}
-              className="rounded-2xl border border-card-border bg-card px-6 py-3 text-xs font-black uppercase tracking-widest text-text-secondary transition-colors hover:text-accent"
+              className="min-h-11 rounded-2xl border border-card-border bg-card px-6 py-3 text-xs font-black uppercase tracking-widest text-text-secondary transition-colors hover:text-accent"
             >
               Go to Dashboard
             </button>
@@ -896,7 +918,7 @@ export function DeletedContentPage({ label = 'content' }: { label?: string }) {
 }
 
 function AppContent() {
-  const isOnline = useBrowserOnline();
+  const { isOnline, hasNetworkIssue } = useBrowserOnline();
   const { canUseAnalytics } = useCookieConsent();
   const theme = useStore(state => state.theme);
   const isFocusMode = useStore(state => state.isFocusMode);
@@ -1023,7 +1045,7 @@ function AppContent() {
   }
 
   if (!isOnline) {
-    return <OfflinePage />;
+    return <OfflinePage hasNetworkIssue={hasNetworkIssue} />;
   }
 
   if (authLoading && !isAuthInitialized && !isAuthCallbackPath) {

@@ -36,6 +36,7 @@ import { getAppPreferences, getDefaultVisibility, normalizeVisibility, playInter
 import { accountabilityFlags } from '../lib/accountabilityFlags';
 import { extractHashtags as extractSocialHashtags, extractMentions as extractSocialMentions } from '../utils/parseSocialText';
 import { convertCurrencyAmount, normalizeCurrencyCode } from '../lib/currency';
+import { isLikelyNetworkError, notifyNetworkIssue } from '../lib/networkState';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -2598,7 +2599,13 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addToast: (toast) => {
-    if (toast.type === 'error' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    const looksLikeNetworkIssue = toast.type === 'error' && (
+      (typeof navigator !== 'undefined' && !navigator.onLine) ||
+      isLikelyNetworkError(`${toast.title} ${toast.description || ''}`)
+    );
+
+    if (looksLikeNetworkIssue) {
+      notifyNetworkIssue({ title: toast.title, description: toast.description });
       return;
     }
 
