@@ -5,7 +5,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet, Plus, User, FileText, BookOpen, CheckCircle2, MessageSquare } from 'lucide-react';
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useId, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './components/Dashboard/Dashboard';
 import Squad from './components/Mentors/Squad';
@@ -464,6 +464,8 @@ function MobileNav() {
   const unreadMessageCount = useUnreadMessageCount();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isProgressOpen, setIsProgressOpen] = useState(false);
+  const createSheetPanelId = useId();
+  const createSheetTitleId = useId();
 
   const primaryItems = [
     { icon: Home, label: 'Home', path: '/' },
@@ -544,6 +546,27 @@ function MobileNav() {
   };
   const PrimaryCreateIcon = primaryCreateAction.icon;
 
+  useEffect(() => {
+    if (!isCreateOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeCreate();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isCreateOpen]);
+
+  useEffect(() => {
+    closeCreate();
+  }, [location.pathname]);
+
   return (
     <>
       <ProgressLogComposer open={isProgressOpen} onClose={() => setIsProgressOpen(false)} />
@@ -555,6 +578,7 @@ function MobileNav() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[210] bg-overlay/70 backdrop-blur-sm lg:hidden"
+            role="presentation"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) closeCreate();
             }}
@@ -564,18 +588,22 @@ function MobileNav() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 42, opacity: 0 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
+              id={createSheetPanelId}
               className="absolute bottom-0 left-0 right-0 max-h-[82dvh] overflow-y-auto rounded-t-[2rem] border-t border-card-border bg-app-container p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={createSheetTitleId}
             >
               <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-card-border" />
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Create</p>
-                  <h2 className="mt-1 text-xl font-black tracking-tight text-text-main">What do you need next?</h2>
+                  <h2 id={createSheetTitleId} className="mt-1 text-xl font-black tracking-tight text-text-main">What do you need next?</h2>
                 </div>
                 <button
                   type="button"
                   onClick={closeCreate}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card text-text-secondary"
+                  className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-2xl bg-card text-text-secondary"
                   aria-label="Close create menu"
                 >
                   <X size={18} />
@@ -651,6 +679,7 @@ function MobileNav() {
               onMouseEnter={() => preloadRoute(item.path)}
               onFocus={() => preloadRoute(item.path)}
               onTouchStart={() => preloadRoute(item.path)}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
                 active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
@@ -667,6 +696,8 @@ function MobileNav() {
           onClick={() => setIsCreateOpen(true)}
           className="relative -mt-5 mx-auto flex h-16 w-16 flex-col items-center justify-center rounded-[1.4rem] bg-accent text-accent-contrast shadow-xl shadow-accent/25 ring-4 ring-app-container active:scale-95 transition-transform"
           aria-label="Create"
+          aria-expanded={isCreateOpen}
+          aria-controls={isCreateOpen ? createSheetPanelId : undefined}
         >
           <Plus size={26} strokeWidth={2.8} />
           <span className="mt-0.5 text-[8px] font-black uppercase tracking-widest">Create</span>
@@ -682,6 +713,7 @@ function MobileNav() {
               onMouseEnter={() => preloadRoute(item.path)}
               onFocus={() => preloadRoute(item.path)}
               onTouchStart={() => preloadRoute(item.path)}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
                 active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
