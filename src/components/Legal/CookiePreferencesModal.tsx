@@ -79,30 +79,30 @@ export function CookiePreferencesModal({ open, onClose, onSaved }: CookiePrefere
       subtitle="Essential storage stays on for login, security, and core app functionality. Optional choices are yours."
       footer={
         <>
-          <button type="button" onClick={handleRejectOptional} className="h-11 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main">
+          <button type="button" onClick={handleRejectOptional} className="h-11 w-full rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main sm:w-auto">
             Reject optional
           </button>
-          <button type="button" onClick={handleAcceptAll} className="h-11 rounded-2xl border border-accent/30 bg-accent/10 px-5 text-[10px] font-black uppercase tracking-widest text-accent">
+          <button type="button" onClick={handleAcceptAll} className="h-11 w-full rounded-2xl border border-accent/30 bg-accent/10 px-5 text-[10px] font-black uppercase tracking-widest text-accent sm:w-auto">
             Accept all
           </button>
-          <button type="button" onClick={handleSave} className="h-11 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+          <button type="button" onClick={handleSave} className="h-11 w-full rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:w-auto">
             Save choices
           </button>
         </>
       }
     >
-      <div className="space-y-4 bg-[#F7F3FF] p-4 sm:p-6">
-        <div className="rounded-2xl border border-[#E7DDFF] bg-white p-4">
+      <div className="space-y-4 bg-app-container p-4 sm:p-6">
+        <div className="rounded-2xl border border-card-border bg-card p-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#F0E7FF] text-[#8B5CF6]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
               <ShieldCheck size={18} />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-black text-[#2B1B48]">Essential cookies/storage</h3>
-                <span className="rounded-full bg-[#F0E7FF] px-3 py-1 text-[9px] font-black uppercase tracking-widest text-[#8B5CF6]">Always active</span>
+                <h3 className="text-sm font-black text-text-main">Essential cookies/storage</h3>
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent">Always active</span>
               </div>
-              <p className="mt-1 text-xs font-semibold leading-relaxed text-[#7A6F91]">
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-text-secondary">
                 Required for login, security, session management, and core app functionality.
               </p>
             </div>
@@ -128,17 +128,17 @@ export function CookiePreferencesModal({ open, onClose, onSaved }: CookiePrefere
           onChange={setResourceRecommendations}
         />
 
-        <div className="rounded-2xl border border-[#E7DDFF] bg-white p-4">
+        <div className="rounded-2xl border border-card-border bg-card p-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#F0E7FF] text-[#8B5CF6]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
               <MessageCircleOff size={18} />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-black text-[#2B1B48]">Private workspace content</h3>
-                <span className="rounded-full bg-[#F0E7FF] px-3 py-1 text-[9px] font-black uppercase tracking-widest text-[#8B5CF6]">Never used</span>
+                <h3 className="text-sm font-black text-text-main">Private workspace content</h3>
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent">Never used</span>
               </div>
-              <p className="mt-1 text-xs font-semibold leading-relaxed text-[#7A6F91]">
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-text-secondary">
                 Private messages, private journals, private notes, and private progress logs are never used for recommendations or product personalization.
               </p>
             </div>

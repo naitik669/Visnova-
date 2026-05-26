@@ -17,7 +17,7 @@ export default function CookieNotice() {
   return (
     <>
       {!hasConsentChoice && (
-        <div className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-[250] flex flex-col gap-4 rounded-3xl border border-card-border bg-card p-4 pr-12 shadow-2xl shadow-accent/10 sm:flex-row sm:items-center lg:bottom-4 lg:left-auto lg:right-4 lg:w-[680px]">
+        <div className="fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-[250] flex max-h-[calc(100dvh-7rem)] flex-col gap-4 overflow-y-auto rounded-3xl border border-card-border bg-card p-4 pr-12 shadow-2xl shadow-accent/10 sm:flex-row sm:items-center lg:bottom-4 lg:left-auto lg:right-4 lg:w-[680px]">
           <button
             type="button"
             onClick={rejectOptional}
@@ -28,24 +28,24 @@ export default function CookieNotice() {
           </button>
           <VisNovaMotion variant="cookie" className="hidden max-w-[130px] shrink-0 sm:block" />
           <div className="min-w-0 flex-1">
-          <div className="space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Cookie choices</p>
-            <p className="text-sm font-semibold leading-relaxed text-text-main">
-              We use essential cookies/storage to keep VisNova working. You control optional analytics and personalization. Private messages, journals, notes, and private logs are never used for recommendations.
-            </p>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+            <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Cookie choices</p>
+              <p className="text-sm font-semibold leading-relaxed text-text-main">
+                We use essential cookies/storage to keep VisNova working. You control optional analytics and personalization. Private messages, journals, notes, and private logs are never used for recommendations.
+              </p>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
             <button
               type="button"
               onClick={acceptAll}
-              className="h-10 rounded-xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+              className="h-11 rounded-xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:h-10"
             >
               Accept all
             </button>
             <button
               type="button"
               onClick={openPreferences}
-              className="h-10 rounded-xl border border-card-border bg-card px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main"
+              className="h-11 rounded-xl border border-card-border bg-card px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main sm:h-10"
             >
               Manage choices
             </button>
@@ -55,7 +55,7 @@ export default function CookieNotice() {
             <Link to="/privacy-policy" className="inline-flex h-10 items-center rounded-xl px-3 text-[10px] font-black uppercase tracking-widest text-accent">
               Privacy
             </Link>
-          </div>
+            </div>
           </div>
         </div>
       )}

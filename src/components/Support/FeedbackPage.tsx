@@ -158,7 +158,7 @@ export default function FeedbackPage() {
 
   if (isSubmitted) {
     return (
-      <div className="mx-auto flex max-w-2xl flex-col items-center justify-center space-y-5 pb-20 text-center">
+      <div className="mx-auto flex max-w-2xl flex-col items-center justify-center space-y-5 px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] text-center sm:pb-20">
         <VisNovaMotion variant="reportSent" className="max-w-md" />
         <h1 className="text-2xl font-black tracking-tight text-text-main">Thanks - your report was sent.</h1>
         <p className="max-w-md text-sm font-semibold leading-6 text-text-secondary">
@@ -175,14 +175,14 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-20">
-      <div className="space-y-3">
+    <div className="mx-auto max-w-3xl space-y-5 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:space-y-6 sm:pb-20">
+      <div className="rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
         <p className="text-[10px] font-black uppercase tracking-[0.35em] text-accent">Closed beta</p>
-        <h1 className="text-3xl sm:text-4xl font-black text-text-main tracking-tight">Feedback</h1>
+        <h1 className="text-2xl font-black tracking-tight text-text-main sm:text-4xl">Feedback</h1>
         <p className="text-sm font-semibold text-text-secondary">Report bugs, broken content, profile issues, or product feedback.</p>
       </div>
 
-      <div className="rounded-3xl border border-card-border bg-card p-5 sm:p-6 space-y-4">
+      <div className="space-y-4 rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm sm:rounded-3xl sm:p-6">
         <label className="block space-y-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Type</span>
           <SelectMenu
@@ -213,18 +213,20 @@ export default function FeedbackPage() {
 
         <label className="block space-y-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Short title</span>
-          <input value={title} onChange={event => setTitle(event.target.value)} className="w-full h-12 rounded-2xl bg-surface-muted border border-card-border px-4 text-sm font-semibold text-text-main" placeholder="Example: Profile modal overlaps on mobile" maxLength={120} />
+          <input value={title} onChange={event => setTitle(event.target.value)} className="h-12 w-full rounded-2xl border border-card-border bg-surface-muted px-4 text-sm font-semibold text-text-main" placeholder="Example: Profile modal overlaps on mobile" maxLength={120} />
         </label>
 
         <label className="block space-y-2">
           <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Details</span>
-          <textarea value={message} onChange={event => setMessage(event.target.value)} className="w-full min-h-48 rounded-2xl bg-surface-muted border border-card-border p-4 text-sm font-semibold text-text-main resize-y" placeholder="What happened? Add links, steps, or expected behavior." />
+          <textarea value={message} onChange={event => setMessage(event.target.value)} className="min-h-48 w-full resize-y rounded-2xl border border-card-border bg-surface-muted p-4 text-sm font-semibold text-text-main" placeholder="What happened? Add links, steps, or expected behavior." />
         </label>
 
-        <button onClick={submit} disabled={isSubmitting} className="h-12 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2 disabled:opacity-50">
+        <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] -mx-4 border-t border-card-border bg-card/95 p-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+        <button onClick={submit} disabled={isSubmitting} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50 sm:w-auto">
           <Send size={16} />
           {isSubmitting ? 'Sending...' : 'Send feedback'}
         </button>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-card-border bg-surface-muted p-4 text-sm text-text-secondary">

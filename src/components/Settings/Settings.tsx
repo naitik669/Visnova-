@@ -186,39 +186,39 @@ export default function Settings() {
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-      className="mx-auto max-w-7xl space-y-8 pb-32 pt-6"
+      className="mx-auto max-w-7xl space-y-5 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-2 sm:space-y-8 sm:pb-32 sm:pt-6"
     >
-      <section className="px-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="px-0 sm:px-4">
+        <div className="rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none md:flex md:items-end md:justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-accent">Settings</p>
-            <h1 className="mt-2 text-4xl font-black tracking-tight text-text-main">Account Controls</h1>
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-text-main sm:text-4xl">Account Controls</h1>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-text-secondary">
               Manage your profile, theme, notifications, privacy, security, and beta preferences.
             </p>
           </div>
-          <div className="rounded-2xl border border-card-border bg-card px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/55">
+          <div className="mt-4 inline-flex rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/55 md:mt-0">
             VisNova Beta Settings
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 px-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="system-card h-fit bg-card p-3">
-          <div className="space-y-1">
+      <section className="grid grid-cols-1 gap-4 px-0 sm:gap-6 sm:px-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="sticky top-0 z-20 -mx-1 overflow-x-auto border-y border-card-border bg-app-container/95 px-1 py-2 backdrop-blur lg:static lg:mx-0 lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0">
+          <div className="flex gap-2 lg:block lg:space-y-1 lg:rounded-[2rem] lg:border lg:border-card-border lg:bg-card lg:p-3">
             {sections.map(section => (
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all',
+                  'flex h-12 shrink-0 items-center gap-2 rounded-2xl px-4 text-left transition-all lg:h-auto lg:w-full lg:gap-3 lg:py-3',
                   activeSection === section.id ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/10' : 'text-text-secondary hover:bg-surface-muted hover:text-text-main'
                 )}
               >
                 <section.icon size={18} />
                 <span className="min-w-0">
                   <span className="block text-xs font-black uppercase tracking-widest">{section.label}</span>
-                  <span className={cn('block text-[10px] font-semibold', activeSection === section.id ? 'text-accent-contrast/70' : 'text-text-secondary/55')}>{section.desc}</span>
+                  <span className={cn('hidden text-[10px] font-semibold lg:block', activeSection === section.id ? 'text-accent-contrast/70' : 'text-text-secondary/55')}>{section.desc}</span>
                 </span>
               </button>
             ))}
@@ -228,10 +228,10 @@ export default function Settings() {
         <main className="min-w-0">
           {activeSection === 'profile' && (
             <SettingsPanel title="Profile" subtitle="Your public identity across VisNova.">
-              <div className="flex flex-col gap-8 lg:flex-row">
-                <div className="shrink-0">
+              <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+                <div className="flex shrink-0 flex-col items-center text-center lg:block lg:text-left">
                   <div className="relative">
-                    <img src={editData.avatar} className="h-32 w-32 rounded-3xl border-4 border-card-border object-cover shadow-xl" alt="Profile" />
+                    <img src={editData.avatar} className="h-28 w-28 rounded-3xl border-4 border-card-border object-cover shadow-xl sm:h-32 sm:w-32" alt="Profile" />
                     <div className="absolute -bottom-3 -right-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-contrast shadow-lg">
                       <Camera size={18} />
                     </div>
@@ -239,7 +239,7 @@ export default function Settings() {
                   <p className="mt-4 max-w-44 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
                     Choose from VisNova's profile library or upload from Profile.
                   </p>
-                  <div className="mt-4 grid max-w-44 grid-cols-4 gap-2">
+                  <div className="mt-4 grid max-w-52 grid-cols-4 gap-2 lg:max-w-44">
                     {VISNOVA_PROFILE_AVATARS.map(avatarUrl => (
                       <button
                         key={avatarUrl}
@@ -272,7 +272,7 @@ export default function Settings() {
                     </SettingsField>
                   </div>
                   <div className="md:col-span-2">
-                    <button onClick={handleSaveProfile} disabled={isSavingProfile} className="h-12 rounded-2xl bg-accent px-6 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50">
+                    <button onClick={handleSaveProfile} disabled={isSavingProfile} className="h-12 w-full rounded-2xl bg-accent px-6 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50 sm:w-auto">
                       {isSavingProfile ? 'Saving...' : 'Save Profile'}
                     </button>
                   </div>
@@ -283,17 +283,17 @@ export default function Settings() {
 
           {activeSection === 'themes' && (
             <SettingsPanel title="Themes" subtitle="Choose the mood of your workspace.">
-              <div className="mb-5 grid gap-5 rounded-[2rem] border border-card-border bg-card p-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
+              <div className="mb-5 grid gap-4 rounded-[1.5rem] border border-card-border bg-card p-4 sm:gap-5 sm:rounded-[2rem] sm:p-5 md:grid-cols-[minmax(0,1fr)_220px] md:items-center">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Theme Studio</p>
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-text-main">Make VisNova yours.</h3>
+                  <h3 className="mt-2 text-xl font-black tracking-tight text-text-main sm:text-2xl">Make VisNova yours.</h3>
                   <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-text-secondary">
                     Switch themes anytime. Your workspace keeps the same structure while the mood adapts to how you like to build.
                   </p>
                 </div>
                 <VisNovaMotion variant="theme" className="max-w-[220px]" />
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
                 {themes.map(item => (
                   <button
                     key={item.id}
@@ -433,7 +433,7 @@ export default function Settings() {
                   <ToggleRow label="Reduce motion" desc="Lower animation intensity." checked={preferencePrefs.reduceMotion} onChange={value => updatePreferencePrefs({ ...preferencePrefs, reduceMotion: value })} />
                   <ToggleRow label="Beta tips" desc="Show guidance for unfinished beta flows." checked={preferencePrefs.betaTips} onChange={value => updatePreferencePrefs({ ...preferencePrefs, betaTips: value })} />
                 </div>
-                <div className="flex flex-wrap gap-3 border-t border-card-border pt-5">
+                <div className="flex flex-col gap-3 border-t border-card-border pt-5 sm:flex-row sm:flex-wrap">
                   <button onClick={restartTutorial} className="flex h-11 items-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
                     <Monitor size={14} /> Restart Tour
                   </button>
@@ -497,9 +497,9 @@ export default function Settings() {
                         value={preferencePrefs.defaultVisibility}
                         onChange={value => updatePreferencePrefs({ ...preferencePrefs, defaultVisibility: value as any })}
                         options={[
-                          { value: 'private', label: 'Private · Only you' },
-                          { value: 'circle', label: 'Circle · People you choose' },
-                          { value: 'public', label: 'Public · Feed and profile' }
+                          { value: 'private', label: 'Private / Only you' },
+                          { value: 'circle', label: 'Circle / People you choose' },
+                          { value: 'public', label: 'Public / Feed and profile' }
                         ]}
                       />
                       <p className="mt-2 text-[11px] font-semibold text-text-secondary/60">{getVisibilityLabel(preferencePrefs.defaultVisibility)}</p>
@@ -509,9 +509,9 @@ export default function Settings() {
                         value={preferencePrefs.progressLogVisibility}
                         onChange={value => updatePreferencePrefs({ ...preferencePrefs, progressLogVisibility: value as any })}
                         options={[
-                          { value: 'private', label: 'Private · Only you' },
-                          { value: 'circle', label: 'Circle · People you choose' },
-                          { value: 'public', label: 'Public · Feed and profile' }
+                          { value: 'private', label: 'Private / Only you' },
+                          { value: 'circle', label: 'Circle / People you choose' },
+                          { value: 'public', label: 'Public / Feed and profile' }
                         ]}
                       />
                       <p className="mt-2 text-[11px] font-semibold text-text-secondary/60">Private logs do not appear in Feed, public profile, recommendations, or analytics.</p>
@@ -614,7 +614,7 @@ export default function Settings() {
                         </p>
                       )}
                     </div>
-                    <button onClick={openPreferences} className="h-11 shrink-0 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+                    <button onClick={openPreferences} className="h-11 w-full shrink-0 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast md:w-auto">
                       Manage cookie preferences
                     </button>
                   </div>
@@ -623,7 +623,7 @@ export default function Settings() {
                 <div className="rounded-3xl border border-card-border bg-card p-5">
                   <h3 className="text-sm font-black text-text-main">Legal and data controls</h3>
                   <p className="mt-1 text-xs font-semibold text-text-secondary/60">Cookie choices can be changed anytime. Export and delete-account requests are handled through support during beta.</p>
-                  <div className="mt-4 flex flex-wrap gap-3">
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
                     <Link to="/cookie-policy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
                     <Link to="/privacy-policy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy Policy</Link>
                     <Link to="/terms-of-service" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms of Service</Link>
@@ -639,7 +639,7 @@ export default function Settings() {
         </main>
       </section>
 
-      <section className="px-4">
+      <section className="px-0 sm:px-4">
         <div className="rounded-[2rem] border border-danger/15 bg-danger/5 p-6">
           <div className="flex items-start gap-4">
             <Shield size={24} className="mt-1 text-danger" />
@@ -667,10 +667,10 @@ function SettingsPanel({ title, subtitle, children }: { title: string; subtitle:
       key={title}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="system-card bg-card p-5 sm:p-7"
+      className="rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm sm:rounded-[2rem] sm:p-7"
     >
-      <div className="mb-6">
-        <h2 className="text-2xl font-black tracking-tight text-text-main">{title}</h2>
+      <div className="mb-5 sm:mb-6">
+        <h2 className="text-xl font-black tracking-tight text-text-main sm:text-2xl">{title}</h2>
         <p className="mt-1 text-sm font-semibold text-text-secondary">{subtitle}</p>
       </div>
       {children}
@@ -732,7 +732,7 @@ function ToggleRow({ label, desc, checked, onChange }: { label: string; desc: st
   return (
     <button
       onClick={() => onChange(!checked)}
-      className="flex items-center justify-between gap-4 rounded-3xl border border-card-border bg-app-container p-5 text-left transition-all hover:border-accent/30"
+      className="flex min-h-16 items-center justify-between gap-4 rounded-3xl border border-card-border bg-app-container p-4 text-left transition-all hover:border-accent/30 sm:p-5"
     >
       <span>
         <span className="block text-sm font-black text-text-main">{label}</span>
