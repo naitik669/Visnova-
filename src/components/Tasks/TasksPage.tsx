@@ -14,6 +14,7 @@ import { DatePicker } from '../ui/DatePicker';
 
 type TaskStatus = NonNullable<Task['status']>;
 type BoardTask = Task & { visionId: string; visionTitle: string; visionCategory?: string; reactKey: string };
+type MobileTaskMode = 'today' | 'upcoming' | 'proof_needed' | 'done' | 'all';
 
 const COLUMNS: Array<{ id: TaskStatus; label: string; empty: string }> = [
   { id: 'planned', label: 'Planned', empty: 'Break a Vision into the next small move.' },
@@ -21,6 +22,14 @@ const COLUMNS: Array<{ id: TaskStatus; label: string; empty: string }> = [
   { id: 'in_progress', label: 'Doing', empty: 'Start one useful move.' },
   { id: 'proof_needed', label: 'Proof Needed', empty: 'All clear. Completed work has proof.' },
   { id: 'done', label: 'Done', empty: 'Complete your first task and turn it into proof.' }
+];
+
+const MOBILE_MODES: Array<{ id: MobileTaskMode; label: string; empty: string }> = [
+  { id: 'today', label: 'Today', empty: 'Nothing due today. Pull one task into focus when you are ready.' },
+  { id: 'upcoming', label: 'Upcoming', empty: 'No upcoming moves yet. Add the next small action.' },
+  { id: 'proof_needed', label: 'Proof Needed', empty: 'No completed work is waiting for proof.' },
+  { id: 'done', label: 'Done', empty: 'Completed tasks will collect here.' },
+  { id: 'all', label: 'All', empty: 'No tasks match these filters.' },
 ];
 
 const PRIORITY_COLORS = {
@@ -52,7 +61,7 @@ export default function TasksPage() {
   const [query, setQuery] = useState('');
   const [visionFilter, setVisionFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [mobileStatus, setMobileStatus] = useState<TaskStatus>('today');
+  const [mobileMode, setMobileMode] = useState<MobileTaskMode>('today');
   const [createOpen, setCreateOpen] = useState(false);
   const [detailTask, setDetailTask] = useState<BoardTask | null>(null);
   const [proofVisionId, setProofVisionId] = useState<string | null>(null);
@@ -105,6 +114,23 @@ export default function TasksPage() {
     return map;
   }, [filteredTasks]);
 
+  const mobileTasksByMode = useMemo(() => {
+    const todayKey = safeFormat(new Date(), 'yyyy-MM-dd');
+    const map = new Map<MobileTaskMode, BoardTask[]>();
+    MOBILE_MODES.forEach(mode => map.set(mode.id, []));
+    filteredTasks.forEach(task => {
+      const status = normalizeTaskStatus(task);
+      const scheduledToday = task.scheduledDate && safeFormat(task.scheduledDate, 'yyyy-MM-dd') === todayKey;
+      const dueToday = task.dueDate && safeFormat(task.dueDate, 'yyyy-MM-dd') === todayKey;
+      if (status === 'today' || scheduledToday || dueToday) map.get('today')?.push(task);
+      if (status === 'planned' || status === 'in_progress') map.get('upcoming')?.push(task);
+      if (status === 'proof_needed') map.get('proof_needed')?.push(task);
+      if (status === 'done') map.get('done')?.push(task);
+      map.get('all')?.push(task);
+    });
+    return map;
+  }, [filteredTasks]);
+
   const handleStatusChange = async (task: BoardTask, status: TaskStatus) => {
     await updateVisionTask(task.visionId, task.id, { status });
   };
@@ -118,6 +144,7 @@ export default function TasksPage() {
     { value: 'all', label: 'All Visions' },
     ...safeArray<Vision>(visions).map(vision => ({ value: vision.id, label: vision.title }))
   ];
+  const activeMobileTasks = mobileTasksByMode.get(mobileMode) || [];
 
   return (
     <div className="mx-auto flex h-full max-w-[1600px] flex-col gap-4 overflow-hidden">
@@ -141,7 +168,7 @@ export default function TasksPage() {
             <div className="w-full sm:w-44">
               <SelectMenu value={visionFilter} onChange={setVisionFilter} options={visionOptions} triggerClassName="h-11 rounded-2xl bg-bg-base" />
             </div>
-            <button className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-card-border bg-bg-base px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+            <button className="hidden h-11 items-center justify-center gap-2 rounded-2xl border border-card-border bg-bg-base px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary sm:flex">
               <Filter size={14} /> Filters
             </button>
             <button onClick={() => setCreateOpen(true)} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-text-main px-5 text-[10px] font-black uppercase tracking-widest text-bg-base shadow-lg shadow-text-main/10">
@@ -151,17 +178,32 @@ export default function TasksPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-3 gap-2 lg:hidden">
+        <div className="rounded-2xl border border-card-border bg-card p-3">
+          <p className="text-xl font-black text-accent">{mobileTasksByMode.get('today')?.length || 0}</p>
+          <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Today</p>
+        </div>
+        <div className="rounded-2xl border border-card-border bg-card p-3">
+          <p className="text-xl font-black text-warning">{mobileTasksByMode.get('proof_needed')?.length || 0}</p>
+          <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Proof</p>
+        </div>
+        <div className="rounded-2xl border border-card-border bg-card p-3">
+          <p className="text-xl font-black text-success">{mobileTasksByMode.get('done')?.length || 0}</p>
+          <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Done</p>
+        </div>
+      </div>
+
       <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
-        {COLUMNS.map(column => (
+        {MOBILE_MODES.map(mode => (
           <button
-            key={column.id}
-            onClick={() => setMobileStatus(column.id)}
+            key={mode.id}
+            onClick={() => setMobileMode(mode.id)}
             className={cn(
               "h-10 shrink-0 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest transition-all",
-              mobileStatus === column.id ? "bg-accent text-accent-contrast" : "border border-card-border bg-card text-text-secondary"
+              mobileMode === mode.id ? "bg-accent text-accent-contrast" : "border border-card-border bg-card text-text-secondary"
             )}
           >
-            {column.label} · {columnTasks.get(column.id)?.length || 0}
+            {mode.label} · {mobileTasksByMode.get(mode.id)?.length || 0}
           </button>
         ))}
       </div>
@@ -186,7 +228,7 @@ export default function TasksPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar lg:hidden">
         <div className="space-y-3">
-          {(columnTasks.get(mobileStatus) || []).map(task => (
+          {activeMobileTasks.map(task => (
             <TaskCard
               key={task.reactKey}
               task={task}
@@ -196,9 +238,10 @@ export default function TasksPage() {
               onDelete={() => setDeleteTarget(task)}
               onDragStart={() => undefined}
               onDragEnd={() => undefined}
+              allowDrag={false}
             />
           ))}
-          {(columnTasks.get(mobileStatus) || []).length === 0 && <TaskEmptyState message={COLUMNS.find(c => c.id === mobileStatus)?.empty || 'No tasks here.'} />}
+          {activeMobileTasks.length === 0 && <TaskEmptyState message={MOBILE_MODES.find(mode => mode.id === mobileMode)?.empty || 'No tasks here.'} />}
         </div>
       </div>
 
@@ -292,6 +335,7 @@ function TaskColumn({
             onDelete={() => onDelete(task)}
             onDragStart={() => onDragStart(task.id)}
             onDragEnd={onDragEnd}
+            allowDrag
           />
         ))}
         {tasks.length === 0 && <TaskEmptyState message={column.empty} />}
@@ -307,7 +351,8 @@ function TaskCard({
   onStatusChange,
   onDelete,
   onDragStart,
-  onDragEnd
+  onDragEnd,
+  allowDrag = true
 }: {
   task: BoardTask;
   onOpen: () => void;
@@ -316,6 +361,7 @@ function TaskCard({
   onDelete: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  allowDrag?: boolean;
 }) {
   const priority = task.priority || 'medium';
   const progress = getTaskProgress(task);
@@ -325,15 +371,16 @@ function TaskCard({
   return (
     <motion.div
       layout
-      draggable
+      draggable={allowDrag}
       onDragStart={event => {
+        if (!allowDrag) return;
         const dragEvent = event as unknown as DragEvent;
         dragEvent.dataTransfer?.setData('application/json', JSON.stringify(task));
         if (dragEvent.dataTransfer) dragEvent.dataTransfer.effectAllowed = 'move';
         onDragStart();
       }}
       onDragEnd={onDragEnd}
-      className={cn("cursor-grab rounded-[1.35rem] border p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg active:cursor-grabbing", PRIORITY_COLORS[priority])}
+      className={cn("rounded-[1.35rem] border p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg", allowDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default", PRIORITY_COLORS[priority])}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap gap-1">
@@ -459,8 +506,16 @@ function TaskDetailDrawer({ task, onClose, onLogProof, onStatusChange, onDelete 
   return (
     <AnimatePresence>
       {task && (
-        <motion.div className="fixed inset-0 z-[220] flex justify-end bg-overlay/40 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-          <motion.aside initial={{ x: 420 }} animate={{ x: 0 }} exit={{ x: 420 }} transition={{ type: 'spring', damping: 30, stiffness: 260 }} onClick={event => event.stopPropagation()} className="h-full w-full max-w-md overflow-y-auto bg-card p-6 shadow-2xl">
+        <motion.div className="fixed inset-0 z-[220] flex items-end bg-overlay/40 backdrop-blur-sm lg:items-stretch lg:justify-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+          <motion.aside
+            initial={{ y: 420, x: 0 }}
+            animate={{ y: 0, x: 0 }}
+            exit={{ y: 420, x: 0 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 260 }}
+            onClick={event => event.stopPropagation()}
+            className="max-h-[88dvh] w-full overflow-y-auto rounded-t-[2rem] bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl lg:h-full lg:max-h-none lg:max-w-md lg:rounded-none lg:p-6"
+          >
+            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-card-border lg:hidden" />
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.26em] text-accent">Task Detail</p>
@@ -518,3 +573,4 @@ function TaskEmptyState({ message }: { message: string }) {
     </div>
   );
 }
+

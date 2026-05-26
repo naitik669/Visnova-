@@ -384,7 +384,7 @@ export default function NotesSystem() {
         {/* Content Section */}
         <div className={cn(
           "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
-          activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-6 sm:py-8"
+          activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-3 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-4 sm:py-8"
         )}>
           <header className="flex w-full flex-col gap-4 border-b border-card-border/30 pb-5 mb-5 sm:pb-8 sm:mb-8 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 min-w-0">
@@ -458,6 +458,19 @@ export default function NotesSystem() {
                 </button>
               </div>
           </header>
+          {activeTab !== 'journal' && (
+            <div className="mb-5 block sm:hidden">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40" />
+                <input
+                  placeholder="Search Library..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-card-border bg-surface-muted pl-10 pr-4 text-sm font-semibold text-text-main outline-none focus:border-accent"
+                />
+              </div>
+            </div>
+          )}
           <AnimatePresence mode="wait">
             {selectedNote ? (
               <NoteEditor 
@@ -473,8 +486,8 @@ export default function NotesSystem() {
                 activeTab === 'journal' ? "mx-auto max-w-[1500px] space-y-6" : "max-w-none space-y-16"
               )}>
                 {activeTab === 'vault' && (
-                  <section className="space-y-8">
-                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                  <section className="hidden space-y-8 sm:block">
+                      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                       <div className="space-y-1">
                         <h3 className="text-xl font-black text-text-main tracking-tight uppercase">Recent Folders</h3>
                         <p className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-60">Directory Layout</p>
@@ -566,8 +579,8 @@ export default function NotesSystem() {
                             {activeTab === 'vault' ? 'Normal notes and folders' : activeTab === 'audio' ? 'Recorded notes with private playback' : 'Daily writing space'}
                           </p>
                         </div>
-                        <div className="flex items-center gap-4 self-start sm:self-auto">
-                          <div className="flex bg-surface-muted p-1 rounded-xl border border-card-border/50">
+                        <div className="flex w-full items-center gap-4 self-start sm:w-auto sm:self-auto">
+                          <div className="flex max-w-full overflow-x-auto bg-surface-muted p-1 rounded-xl border border-card-border/50">
                             {[
                               { label: 'Today', value: 'today' as const },
                               { label: 'This Week', value: 'week' as const },
@@ -1176,7 +1189,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[860px] justify-center transition-all duration-1000">
+      <div className="flex flex-col lg:flex-row gap-5 lg:gap-8 items-stretch min-h-[620px] lg:min-h-[860px] justify-center transition-all duration-1000">
         {journalMode === 'history' ? (
           <JournalHistoryView entries={safeArray<Note>(journalEntries)} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
         ) : journalMode === 'canvas' ? (
@@ -1208,14 +1221,14 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
         <motion.div 
           key={`journal-page-${selectedDate.toISOString()}`}
           layout
-          className="mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 perspective-[1500px] min-h-[820px]"
+          className="mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-8 perspective-[1500px] min-h-[620px] lg:min-h-[820px]"
         >
           {/* Left Page: Daily Overview */}
           <motion.div 
             initial={{ rotateY: -10, opacity: 0 }}
             animate={{ rotateY: 0, opacity: 1 }}
             transition={{ duration: 0.8, type: 'spring' }}
-            className="min-w-0 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col items-center text-center space-y-5 sm:space-y-8 lg:space-y-10 origin-right relative overflow-hidden"
+            className="hidden min-w-0 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 lg:flex flex-col items-center text-center space-y-5 sm:space-y-8 lg:space-y-10 origin-right relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-2 h-full bg-surface-muted/30 border-l border-card-border/10" />
             
@@ -1335,14 +1348,14 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
               const noteContent = e.dataTransfer.getData('text/plain');
               if (noteContent) handleDropNote(noteContent);
             }}
-            className="min-w-0 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col space-y-5 sm:space-y-8 relative origin-left overflow-hidden"
+            className="min-h-[70dvh] min-w-0 bg-card rounded-[1.5rem] sm:rounded-[2rem] border border-card-border/50 shadow-2xl p-4 sm:p-6 lg:p-10 flex flex-col space-y-5 sm:space-y-8 relative origin-left overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-2 h-full bg-surface-muted/30 border-r border-card-border/10" />
             <div className="absolute top-0 left-0 w-1.5 h-full bg-accent/5 rounded-l-full" />
             
             {/* Editor Area */}
-            <div className="flex-1 flex flex-col space-y-5 pt-10 sm:pt-12">
-               <div className="absolute top-8 right-10 text-right pointer-events-none">
+            <div className="flex-1 flex flex-col space-y-5 pt-5 sm:pt-12">
+               <div className="absolute top-8 right-10 hidden text-right pointer-events-none sm:block">
                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-text-secondary/30">Written</p>
                  <p className="text-xs font-black text-accent uppercase tracking-widest">{format(selectedDate, 'MMM dd, yyyy')}</p>
                </div>
@@ -1377,8 +1390,8 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
             </div>
 
             {/* Metadata & Actions */}
-            <div className="pt-5 border-t border-card-border/30">
-              <div className="flex items-center justify-between">
+            <div className="sticky bottom-0 -mx-4 border-t border-card-border/30 bg-card/95 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-secondary/30">
                   {isSaving ? (
                     <>
@@ -1404,7 +1417,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                 ) : isLocked ? (
                     <button
                       onClick={() => setIsEditingLockedEntry(true)}
-                      className="h-12 px-10 rounded-2xl bg-text-main text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:scale-105 active:scale-95 transition-all"
+                      className="h-12 w-full px-8 rounded-2xl bg-text-main text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all sm:w-auto sm:px-10"
                     >
                       Edit Entry
                     </button>
@@ -1412,7 +1425,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="h-12 px-10 rounded-2xl bg-accent text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                      className="h-12 w-full px-8 rounded-2xl bg-accent text-white font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-accent/20 active:scale-95 transition-all disabled:opacity-50 sm:w-auto sm:px-10"
                     >
                       Save Entry
                     </button>
@@ -2883,9 +2896,9 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="flex min-h-[calc(100vh-9rem)] w-full flex-col overflow-hidden bg-app-container text-text-main"
+      className="fixed inset-0 z-[260] flex min-h-[100dvh] w-full flex-col overflow-hidden bg-app-container text-text-main sm:relative sm:z-auto sm:min-h-[calc(100vh-9rem)]"
     >
-      <div className="flex min-h-16 flex-col gap-4 border-b border-card-border/60 bg-app-container/95 px-0 pb-5 backdrop-blur-md sm:min-h-20 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-h-16 flex-col gap-4 border-b border-card-border/60 bg-app-container/95 px-3 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-md sm:min-h-20 sm:flex-row sm:items-center sm:justify-between sm:px-0 sm:pt-0">
          <div className="flex items-center gap-4 sm:gap-6">
            <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/5 text-accent transition-all hover:bg-accent hover:text-white active:scale-90">
               <ChevronRight className="rotate-180" size={18} />
@@ -2897,7 +2910,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
              <p className="text-[9px] font-bold text-accent uppercase tracking-widest leading-none">Writing Space</p>
            </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:pb-0">
            <button
              onClick={() => setIsIconPickerOpen(open => !open)}
              className={cn(
@@ -2948,8 +2961,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 pt-8 sm:pt-10 md:pt-12">
-        <div className="w-full space-y-10 sm:space-y-12">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-0 sm:pb-24 sm:pt-10 md:pt-12">
+        <div className="w-full space-y-7 sm:space-y-12">
           {note.note_type === 'journal' && (
             <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{safeFormat(note.createdAt, 'EEEE, MMM dd')}</h4>
           )}
@@ -3012,7 +3025,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             placeholder="Document Title"
           />
 
-          <div className="sticky top-0 z-20 -mx-2 flex flex-wrap items-center gap-2 rounded-[1.4rem] border border-card-border bg-card/95 p-2 shadow-sm backdrop-blur-md sm:mx-0">
+          <div className="sticky top-0 z-20 -mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto rounded-[1.4rem] border border-card-border bg-card/95 p-2 shadow-sm backdrop-blur-md sm:mx-0 sm:flex-wrap sm:overflow-visible">
             <button
               type="button"
               onMouseDown={(event) => event.preventDefault()}
@@ -3081,7 +3094,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               </AnimatePresence>
             </div>
             <div className="mx-1 h-7 w-px bg-card-border" />
-            <div className="flex items-center gap-1 rounded-xl bg-surface-muted px-2 py-1">
+            <div className="hidden items-center gap-1 rounded-xl bg-surface-muted px-2 py-1 sm:flex">
               <Highlighter size={14} className="text-text-secondary/50" />
               {NOTE_HIGHLIGHT_COLORS.map(color => (
                 <button
@@ -3155,7 +3168,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 }
                 saveEditorContent();
               }}
-              className="note-paper-editor min-h-[calc(100vh-22rem)] w-full px-3 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:px-6 sm:text-lg lg:px-8"
+              className="note-paper-editor min-h-[55dvh] w-full px-3 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:min-h-[calc(100vh-22rem)] sm:px-6 sm:text-lg lg:px-8"
               data-placeholder="Log details..."
             />
           </div>

@@ -76,7 +76,7 @@ interface VisionDetailModalProps {
   onClose: () => void;
 }
 
-type Tab = 'board' | 'milestones';
+type Tab = 'overview' | 'tasks' | 'board' | 'proof' | 'resources' | 'team' | 'milestones';
 
 // Add save status type
 type SaveStatus = 'idle' | 'saving' | 'saved';
@@ -493,6 +493,14 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
 
   if (!vision) return null;
   const boardReadOnly = !!vision.teamRole && !canEditBoard(vision.teamRole);
+  const mobileTabs: Array<{ id: Tab; label: string }> = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'board', label: 'Board' },
+    { id: 'proof', label: 'Proof' },
+    { id: 'resources', label: 'Resources' },
+    { id: 'team', label: 'Team' },
+  ];
 
   return (
     <AnimatePresence>
@@ -519,6 +527,43 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
               isFullscreen ? "inset-0 rounded-none" : "inset-0 sm:inset-4 md:inset-8 rounded-none sm:rounded-[2rem]"
             )}
           >
+            <div className="border-b border-card-border bg-card p-4 pb-3 lg:hidden">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Vision</p>
+                  <h2 className="mt-1 line-clamp-2 text-xl font-black leading-tight text-text-main">{vision.title}</h2>
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-base">
+                      <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, vision.progress || 0)}%` }} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{vision.progress || 0}%</span>
+                  </div>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-card-border bg-bg-base text-text-secondary"
+                  aria-label="Close Vision"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                {mobileTabs.map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "h-10 shrink-0 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest transition-all",
+                      activeTab === tab.id ? "bg-accent text-accent-contrast" : "border border-card-border bg-bg-base text-text-secondary"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Intelligent Floating Header */}
             <motion.div 
                animate={{ 
@@ -526,7 +571,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                  backgroundColor: isCollapsed ? 'var(--card)' : 'var(--card)',
                }}
                className={cn(
-                 "px-6 md:px-10 border-b border-card-border flex items-center justify-between relative z-[80] shrink-0 transition-all duration-500",
+                 "hidden px-6 md:px-10 border-b border-card-border lg:flex items-center justify-between relative z-[80] shrink-0 transition-all duration-500",
                  isCollapsed && "shadow-xl border-transparent"
                )}
             >
@@ -627,20 +672,34 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
 
             {/* Main Canvas Area */}
             <div className="flex-1 relative min-h-0 overflow-hidden bg-bg-base/30">
-               <BoardPermissionBanner role={vision.teamRole} />
-               {activeTab === 'board' ? (
-                 <CreativeCanvas 
-                   vision={vision} 
-                   updateVision={updateVision} 
+               <div className="h-full overflow-y-auto p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:hidden">
+                 <MobileVisionDetailContent
+                   tab={activeTab}
+                   vision={vision}
+                   updateVision={updateVision}
                    readOnly={boardReadOnly}
-                   onActiveChange={(active) => {
+                   onBoardActiveChange={(active) => {
                      if (active && !isCollapsed) setIsCollapsed(true);
                    }}
+                   onCollaborate={() => setShowCollaborateModal(true)}
+                   onPost={() => setShowPostConfirm(true)}
                  />
-               ) : (
-                 <ExecutionPlan vision={vision} />
-               )}
-
+               </div>
+               <div className="hidden h-full lg:block">
+                 <BoardPermissionBanner role={vision.teamRole} />
+                 {activeTab === 'board' ? (
+                   <CreativeCanvas 
+                     vision={vision} 
+                     updateVision={updateVision} 
+                     readOnly={boardReadOnly}
+                     onActiveChange={(active) => {
+                       if (active && !isCollapsed) setIsCollapsed(true);
+                     }}
+                   />
+                 ) : (
+                   <ExecutionPlan vision={vision} />
+                 )}
+               </div>
             </div>
           </motion.div>
 
@@ -687,6 +746,197 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
 }
 
 /// --- Internal Helper Components ---
+
+function MobileVisionDetailContent({
+  tab,
+  vision,
+  updateVision,
+  readOnly,
+  onBoardActiveChange,
+  onCollaborate,
+  onPost,
+}: {
+  tab: Tab;
+  vision: Vision;
+  updateVision: (id: string, updates: Partial<Vision>) => void;
+  readOnly: boolean;
+  onBoardActiveChange: (active: boolean) => void;
+  onCollaborate: () => void;
+  onPost: () => void;
+}) {
+  const { financeGoals, financeTransactions } = useStore();
+  const navigate = useNavigate();
+  const tasks = safeArray<Task>(vision.tasks);
+  const boardItems = safeArray<VisionElement>(vision.elements);
+  const openTasks = tasks.filter(task => !task.completed);
+  const completedTasks = tasks.filter(task => task.completed);
+  const linkedGoals = financeGoals.filter(goal => goal.linkedVisionId === vision.id && goal.status !== 'archived');
+  const linkedTransactions = financeTransactions.filter(transaction => transaction.linkedVisionId === vision.id && !transaction.deletedAt);
+
+  if (tab === 'board') {
+    return (
+      <div className="h-[68dvh] overflow-hidden rounded-[2rem] border border-card-border bg-card">
+        <BoardPermissionBanner role={vision.teamRole} />
+        <CreativeCanvas
+          vision={vision}
+          updateVision={updateVision}
+          readOnly={readOnly}
+          onActiveChange={onBoardActiveChange}
+        />
+      </div>
+    );
+  }
+
+  if (tab === 'tasks') {
+    return (
+      <MobileVisionSection eyebrow="Tasks" title="Next moves">
+        <div className="space-y-2">
+          {tasks.map(task => (
+            <div key={task.id} className="rounded-2xl border border-card-border bg-card p-3">
+              <div className="flex items-start gap-3">
+                <span className={cn("mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border", task.completed ? "border-success bg-success text-white" : "border-accent/35 text-accent")}>
+                  {task.completed && <CheckCircle2 size={14} />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className={cn("line-clamp-2 text-sm font-black leading-snug text-text-main", task.completed && "line-through opacity-55")}>{task.text}</p>
+                  {task.description && <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-text-secondary">{task.description}</p>}
+                  <div className="mt-2 flex flex-wrap gap-2 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">
+                    <span className="rounded-full bg-bg-base px-2 py-1">{task.priority || 'medium'}</span>
+                    <span className="rounded-full bg-bg-base px-2 py-1">{task.status || (task.completed ? 'done' : 'planned')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {tasks.length === 0 && <MobileEmptyText>Add a task to turn this Vision into a next move.</MobileEmptyText>}
+        </div>
+      </MobileVisionSection>
+    );
+  }
+
+  if (tab === 'proof') {
+    return (
+      <MobileVisionSection eyebrow="Proof" title="Progress trail">
+        <div className="space-y-3">
+          {safeArray<string>(vision.proof).map((item, index) => (
+            <div key={`${item}-${index}`} className="flex gap-3 rounded-2xl border border-card-border bg-card p-3">
+              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
+              <p className="text-sm font-semibold leading-5 text-text-main">{item}</p>
+            </div>
+          ))}
+          {vision.proof.length === 0 && <MobileEmptyText>No proof attached yet. Log progress to build the timeline.</MobileEmptyText>}
+        </div>
+      </MobileVisionSection>
+    );
+  }
+
+  if (tab === 'resources') {
+    const primaryCurrency = linkedGoals[0]?.currency || linkedTransactions[0]?.currency || 'INR';
+    const target = linkedGoals.filter(goal => goal.currency === primaryCurrency).reduce((sum, goal) => sum + goal.targetAmount, 0);
+    const saved = linkedGoals.filter(goal => goal.currency === primaryCurrency).reduce((sum, goal) => sum + goal.currentAmount, 0);
+    const progress = Math.min(100, Math.round((saved / Math.max(1, target)) * 100));
+    return (
+      <MobileVisionSection eyebrow="Resources" title="Money and saved tools">
+        <div className="rounded-2xl border border-card-border bg-card p-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Funding</p>
+              <p className="mt-1 text-2xl font-black text-text-main">{formatCurrency(saved, primaryCurrency)}</p>
+            </div>
+            <p className="text-sm font-black text-accent">{progress}%</p>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-bg-base">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${progress}%` }} />
+          </div>
+          <p className="mt-2 text-xs font-semibold text-text-secondary">
+            Target: {formatCurrency(target, primaryCurrency)} · {linkedTransactions.length} transaction{linkedTransactions.length === 1 ? '' : 's'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/growth', { state: { section: 'resources', visionId: vision.id } })}
+          className="mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+        >
+          Open Resources
+        </button>
+      </MobileVisionSection>
+    );
+  }
+
+  if (tab === 'team') {
+    return (
+      <MobileVisionSection eyebrow="Team" title="Collaboration">
+        <div className="space-y-2">
+          {safeArray(vision.collaborators).map((member, index) => (
+            <div key={member.id || index} className="flex items-center gap-3 rounded-2xl border border-card-border bg-card p-3">
+              <img src={member.avatar} alt={member.name} className="h-11 w-11 rounded-2xl object-cover" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-black text-text-main">{member.name}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{member.role}</p>
+              </div>
+            </div>
+          ))}
+          {safeArray(vision.collaborators).length === 0 && <MobileEmptyText>No collaborators yet.</MobileEmptyText>}
+          <button type="button" onClick={onCollaborate} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+            <UserPlus size={15} />
+            Invite Team
+          </button>
+        </div>
+      </MobileVisionSection>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <MobileVisionSection eyebrow="Overview" title={vision.title}>
+        <p className="text-sm font-semibold leading-6 text-text-secondary">{vision.description || 'No description yet. Add context when this Vision becomes clearer.'}</p>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <MobileStat label="Tasks" value={tasks.length} />
+          <MobileStat label="Open" value={openTasks.length} />
+          <MobileStat label="Done" value={completedTasks.length} />
+        </div>
+      </MobileVisionSection>
+
+      <MobileVisionSection eyebrow="Board" title="Canvas summary">
+        <div className="grid grid-cols-2 gap-2">
+          <MobileStat label="Items" value={boardItems.length} />
+          <MobileStat label="Proof" value={safeArray(vision.proof).length} />
+        </div>
+        <button type="button" onClick={onPost} className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-card-border bg-card text-[10px] font-black uppercase tracking-widest text-text-secondary">
+          <Share2 size={15} />
+          Post Preview
+        </button>
+      </MobileVisionSection>
+    </div>
+  );
+}
+
+function MobileVisionSection({ eyebrow, title, children }: { eyebrow: string; title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-[2rem] border border-card-border bg-bg-base/70 p-4 shadow-sm">
+      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">{eyebrow}</p>
+      <h3 className="mt-1 text-lg font-black leading-tight text-text-main">{title}</h3>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function MobileStat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-2xl border border-card-border bg-card p-3">
+      <p className="text-xl font-black text-text-main">{value}</p>
+      <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
+    </div>
+  );
+}
+
+function MobileEmptyText({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-card-border bg-card p-4 text-sm font-semibold leading-5 text-text-secondary">
+      {children}
+    </div>
+  );
+}
 
 function ExecutionPlan({ vision }: { vision: Vision }) {
   const { notes, updateVision, session, addToast, financeGoals, financeTransactions, fetchMoneyOverview } = useStore();

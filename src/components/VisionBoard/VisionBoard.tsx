@@ -36,7 +36,7 @@ export default function VisionBoard() {
   const [selectedVision, setSelectedVision] = useState<Vision | null>(null);
   const [setupVision, setSetupVision] = useState<Vision | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'kanban' | 'list'>('grid');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const activeVisionBoards = useMemo(() => {
@@ -194,7 +194,30 @@ export default function VisionBoard() {
            </p>
         </div>
         
-        <div className="flex items-center gap-2 sm:gap-4 bg-app-container border border-card-border p-2 rounded-[2rem] sm:rounded-[3rem] shadow-2xl shadow-accent/5 backdrop-blur-xl overflow-x-auto custom-scrollbar max-w-full">
+        <div className="flex items-center gap-2 bg-app-container border border-card-border p-2 rounded-[2rem] shadow-2xl shadow-accent/5 backdrop-blur-xl lg:hidden">
+           {(['grid', 'list'] as const).map(mode => (
+             <button
+               key={mode}
+               onClick={() => setViewMode(mode)}
+               className={cn(
+                 "px-5 py-3 rounded-[1.35rem] text-[10px] font-black uppercase tracking-widest transition-all",
+                 viewMode === mode ? "bg-text-main text-bg-base shadow-lg" : "text-text-secondary hover:text-text-main"
+               )}
+             >
+               {mode === 'grid' ? 'Board' : 'List'}
+             </button>
+           ))}
+           <button
+             id="add-vision-btn-mobile"
+             onClick={handleAddNew}
+             className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] bg-accent text-accent-contrast shadow-lg shadow-accent/20 active:scale-95 transition-all"
+             aria-label="Create Vision"
+           >
+             <Plus size={22} />
+           </button>
+        </div>
+
+        <div className="hidden items-center gap-2 sm:gap-4 bg-app-container border border-card-border p-2 rounded-[2rem] sm:rounded-[3rem] shadow-2xl shadow-accent/5 backdrop-blur-xl overflow-x-auto custom-scrollbar max-w-full lg:flex">
            {(['grid', 'kanban'] as const).map(mode => (
              <button
                key={mode}
@@ -221,7 +244,14 @@ export default function VisionBoard() {
       {showVisionSkeleton && <VisionBoardSkeleton />}
 
       {!showVisionSkeleton && <AnimatePresence mode="wait">
-        {viewMode === 'grid' ? (
+        {viewMode === 'list' ? (
+          <MobileVisionList
+            visions={repositoryVisions}
+            sharedVisions={sharedVisions}
+            onOpen={handleCardClick}
+            onCreate={handleAddNew}
+          />
+        ) : viewMode === 'grid' ? (
           <motion.div
             key="grid"
             initial={{ opacity: 0, y: 20 }}
@@ -413,6 +443,101 @@ function VisionBoardSkeleton() {
         </div>
       </section>
     </div>
+  );
+}
+
+function MobileVisionList({
+  visions,
+  sharedVisions,
+  onOpen,
+  onCreate,
+}: {
+  visions: Vision[];
+  sharedVisions: Vision[];
+  onOpen: (vision: Vision) => void;
+  onCreate: () => void;
+}) {
+  const groups: Array<{ id: Vision['status'] | 'shared'; label: string; description: string; items: Vision[] }> = [
+    { id: 'in-progress', label: 'Doing', description: 'Active goals that need proof next.', items: visions.filter(vision => vision.status === 'in-progress') },
+    { id: 'planning', label: 'Planning', description: 'Ideas becoming structured plans.', items: visions.filter(vision => vision.status === 'planning' || vision.status === 'idea') },
+    { id: 'completed', label: 'Completed', description: 'Finished Visions and proof archives.', items: visions.filter(vision => vision.status === 'completed') },
+    { id: 'shared', label: 'Shared With Me', description: 'Vision Team boards you can open.', items: sharedVisions },
+  ];
+
+  return (
+    <motion.div
+      key="list"
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -18 }}
+      className="space-y-5 lg:hidden"
+    >
+      <section className="rounded-[2rem] border border-accent/20 bg-accent/10 p-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Mobile List View</p>
+        <h2 className="mt-1 text-xl font-black tracking-tight text-text-main">Edit without canvas friction.</h2>
+        <p className="mt-2 text-sm font-semibold leading-5 text-text-secondary">
+          Open a Vision, review tasks and proof, or create a new board without pinching around a tiny canvas.
+        </p>
+        <button
+          type="button"
+          onClick={onCreate}
+          className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/20"
+        >
+          <Plus size={16} />
+          Create Vision
+        </button>
+      </section>
+
+      {groups.map(group => (
+        <section key={group.id} className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/60">{group.label}</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-text-secondary">{group.description}</p>
+            </div>
+            <span className="rounded-full bg-card-dark px-3 py-1.5 text-[9px] font-black text-text-secondary">
+              {group.items.length}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {group.items.map(vision => (
+              <button
+                key={`${group.id}-${vision.id}`}
+                type="button"
+                onClick={() => onOpen(vision)}
+                className="w-full rounded-2xl border border-card-border bg-app-container p-3 text-left active:scale-[0.99]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="line-clamp-2 text-sm font-black leading-snug text-text-main">{vision.title}</h3>
+                    <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-text-secondary">
+                      {vision.description || vision.tasks?.[0]?.text || 'No description yet.'}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-2xl bg-card px-3 py-2 text-xs font-black text-accent">
+                    {vision.progress || 0}%
+                  </span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-card">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, vision.progress || 0)}%` }} />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-[8px] font-black uppercase tracking-widest text-text-secondary/55">
+                  <span className="rounded-full bg-card px-2 py-1">{safeArray(vision.tasks).filter(task => !task.completed).length} tasks</span>
+                  <span className="rounded-full bg-card px-2 py-1">{safeArray(vision.elements).length} board items</span>
+                  <span className="rounded-full bg-card px-2 py-1">{safeFormat(vision.updatedAt || vision.createdAt, 'MMM d')}</span>
+                </div>
+              </button>
+            ))}
+            {group.items.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-4 text-sm font-semibold text-text-secondary">
+                Nothing here yet.
+              </div>
+            )}
+          </div>
+        </section>
+      ))}
+    </motion.div>
   );
 }
 

@@ -38,6 +38,7 @@ import { ProgressLogComposer } from "../Progress/ProgressLogComposer";
 import { formatCurrency } from "../../lib/currency";
 import { DashboardProgressPulseCard } from "../Growth/DashboardProgressPulseCard";
 import { DashboardCircleMomentumCard } from "../Circle/DashboardCircleMomentumCard";
+import { MobilePage, MobilePrimaryAction, MobileSection } from "../mobile/MobileLayout";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -905,7 +906,7 @@ export default function Dashboard() {
         onClose={() => setShowCalendarWorkspace(false)}
         onSelectDate={setSelectedDate}
       />
-      <div className="lg:hidden space-y-4">
+      <MobilePage>
         <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Home</p>
           <h1 className="mt-1 text-2xl font-black tracking-tight text-text-main">
@@ -916,52 +917,10 @@ export default function Dashboard() {
           </p>
         </section>
 
-        <button
-          type="button"
-          onClick={() => navigate('/visions')}
-          className="w-full rounded-[2rem] border border-accent/20 bg-accent/10 p-4 text-left shadow-sm"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Active Vision</p>
-              <h2 className="mt-1 line-clamp-2 text-xl font-black tracking-tight text-text-main">
-                {activeVision?.title || "Create your first Vision"}
-              </h2>
-              <p className="mt-2 line-clamp-1 text-xs font-semibold text-text-secondary">
-                {pendingTasks[0]?.text || "Set a goal and VisNova will surface your next task here."}
-              </p>
-            </div>
-            <span className="shrink-0 rounded-2xl bg-card px-3 py-2 text-sm font-black text-accent">
-              {activeVision?.progress || globalProgress}%
-            </span>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-card">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, activeVision?.progress || globalProgress)}%` }} />
-          </div>
-        </button>
-
-        <NextMoveCard
-          title={nextMove.title}
-          description={nextMove.description}
-          actionLabel={nextMove.actionLabel}
-          onAction={nextMove.onAction}
-        />
-
-        <button
-          type="button"
-          onClick={() => setShowProgressComposer(true)}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-[1.5rem] bg-accent text-[11px] font-black uppercase tracking-widest text-accent-contrast shadow-xl shadow-accent/20"
-        >
-          <Plus size={18} />
-          Log Progress
-        </button>
-
-        <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/60">Today&apos;s Focus</p>
-              <h3 className="mt-1 text-lg font-black text-text-main">Top actions</h3>
-            </div>
+        <MobileSection
+          eyebrow="Today's Focus"
+          title="Top actions"
+          action={
             <button
               type="button"
               onClick={() => navigate('/visions')}
@@ -969,7 +928,15 @@ export default function Dashboard() {
             >
               Visions
             </button>
-          </div>
+          }
+        >
+          <NextMoveCard
+            title={nextMove.title}
+            description={nextMove.description}
+            actionLabel={nextMove.actionLabel}
+            onAction={nextMove.onAction}
+            compact
+          />
           <div className="mt-3 space-y-2">
             {pendingTasks.slice(0, 3).map(task => (
               <button
@@ -996,7 +963,36 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </section>
+        </MobileSection>
+
+        <MobilePrimaryAction onClick={() => setShowProgressComposer(true)}>
+          <Plus size={18} />
+          Log Progress
+        </MobilePrimaryAction>
+
+        <button
+          type="button"
+          onClick={() => navigate('/visions')}
+          className="w-full rounded-[2rem] border border-accent/20 bg-accent/10 p-4 text-left shadow-sm"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Active Vision</p>
+              <h2 className="mt-1 line-clamp-2 text-xl font-black tracking-tight text-text-main">
+                {activeVision?.title || "Create your first Vision"}
+              </h2>
+              <p className="mt-2 line-clamp-1 text-xs font-semibold text-text-secondary">
+                {pendingTasks[0]?.text || "Set a goal and VisNova will surface your next task here."}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-2xl bg-card px-3 py-2 text-sm font-black text-accent">
+              {activeVision?.progress || globalProgress}%
+            </span>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-card">
+            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, activeVision?.progress || globalProgress)}%` }} />
+          </div>
+        </button>
 
         <section className="grid grid-cols-3 gap-2">
           <div className="rounded-2xl border border-card-border bg-card p-3">
@@ -1021,12 +1017,14 @@ export default function Dashboard() {
           onOpen={() => navigate('/growth', { state: { fromDashboard: true, section: 'tracker' } })}
         />
 
-        <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-text-secondary/60">Recent Proof</p>
-              <h3 className="mt-1 text-lg font-black text-text-main">Progress timeline</h3>
-            </div>
+        <div className="overflow-hidden rounded-[2rem] border border-card-border bg-card p-3 shadow-sm">
+          <DashboardCircleMomentumCard />
+        </div>
+
+        <MobileSection
+          eyebrow="Recent Proof"
+          title="Progress timeline"
+          action={
             <button
               type="button"
               onClick={() => navigate('/feed')}
@@ -1034,7 +1032,8 @@ export default function Dashboard() {
             >
               Feed
             </button>
-          </div>
+          }
+        >
           <div className="mt-3 space-y-3">
             {progressLogs.slice(0, 3).map(log => (
               <div key={log.id} className="flex gap-3">
@@ -1053,18 +1052,57 @@ export default function Dashboard() {
               </p>
             )}
           </div>
-        </section>
+        </MobileSection>
 
-        <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Resources</p>
-          <h3 className="mt-1 text-base font-black text-text-main">Resources for your Vision</h3>
+        <MobileSection
+          eyebrow="Upcoming Tasks"
+          title="Next moves"
+          action={
+            <button
+              type="button"
+              onClick={() => navigate('/tasks')}
+              className="rounded-full bg-card-dark px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary"
+            >
+              Tasks
+            </button>
+          }
+        >
+          <div className="space-y-2">
+            {pendingTasks.slice(0, 4).map(task => (
+              <button
+                key={`upcoming-${task.reactKey}`}
+                type="button"
+                onClick={() => {
+                  if (task.sourceType === "todo") toggleTodo(task.id || "");
+                  else toggleVisionTask(task.visionId, task.id || "");
+                }}
+                className="flex w-full items-center gap-3 rounded-2xl border border-card-border bg-app-container p-3 text-left"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                  <Zap size={16} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block line-clamp-2 text-sm font-bold leading-snug text-text-main">{task.text}</span>
+                  <span className="mt-1 block text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{task.vision}</span>
+                </span>
+              </button>
+            ))}
+            {pendingTasks.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-4 text-sm font-semibold text-text-secondary">
+                No upcoming tasks. Add one small action when you are ready.
+              </div>
+            )}
+          </div>
+        </MobileSection>
+
+        <MobileSection eyebrow="Resources" title="Resources for your Vision">
           <p className="mt-2 text-sm font-semibold leading-5 text-text-secondary">
             {moneyOverview?.topGoal
               ? `${moneyOverview.topGoal.title} is ${Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}% funded.`
               : 'Wallet and learning resources stay tucked away until you need them.'}
           </p>
-        </section>
-      </div>
+        </MobileSection>
+      </MobilePage>
       {/* Header section */}
       <div className="hidden lg:flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 px-1 sm:ml-2">
         <div id="dashboard-header">

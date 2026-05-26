@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet, Plus, User, FileText, BookOpen, PenLine, CheckCircle2 } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet, Plus, User, FileText, BookOpen, PenLine, CheckCircle2, MessageSquare } from 'lucide-react';
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -502,6 +502,24 @@ function MobileNav() {
       title: 'Add Task',
       description: 'Add one action to today or a Vision.',
       onClick: () => go('/tasks')
+    },
+    {
+      icon: MessageSquare,
+      title: 'Post Update',
+      description: 'Share progress with Feed, Circle, or privately.',
+      onClick: () => {
+        sessionStorage.setItem('visnova-open-feed-composer', 'update');
+        go('/feed');
+      }
+    },
+    {
+      icon: Bell,
+      title: 'Help Request',
+      description: 'Ask your Circle for support or accountability.',
+      onClick: () => {
+        sessionStorage.setItem('visnova-open-feed-composer', 'help_request');
+        go('/feed');
+      }
     },
     {
       icon: BookOpen,

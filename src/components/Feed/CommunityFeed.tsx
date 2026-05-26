@@ -269,6 +269,13 @@ export default function CommunityFeed() {
       setSearchParams({ tab: 'explore' });
       if (tag) setSearchQuery(`#${normalizeHashtag(tag)}`);
     };
+    const pendingComposerType = sessionStorage.getItem('visnova-open-feed-composer');
+    if (pendingComposerType) {
+      sessionStorage.setItem('visnova-open-feed-composer-type', pendingComposerType);
+      sessionStorage.removeItem('visnova-open-feed-composer');
+      setActiveTab('feed');
+      setIsComposerOpen(true);
+    }
     window.addEventListener('nav-explore', handleNavExplore);
     window.addEventListener('nav-hashtag', handleNavHashtag);
     return () => {
@@ -806,7 +813,12 @@ const extractDominantColors = (file: File, limit = 5): Promise<string[]> => {
 function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: any) => Promise<boolean> }) {
   const [content, setContent] = useState('');
   const [caption, setCaption] = useState('');
-  const [type, setType] = useState<Post['type']>('update');
+  const [type, setType] = useState<Post['type']>(() => {
+    if (typeof window === 'undefined') return 'update';
+    const requestedType = sessionStorage.getItem('visnova-open-feed-composer-type') || sessionStorage.getItem('visnova-open-feed-composer');
+    sessionStorage.removeItem('visnova-open-feed-composer-type');
+    return requestedType === 'help_request' ? 'help_request' : 'update';
+  });
   const [images, setImages] = useState<{ file: File, preview: string, uploading: boolean }[]>([]);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
@@ -955,7 +967,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-[100] flex items-stretch justify-center p-0 sm:items-center sm:p-4">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -967,9 +979,9 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-3xl bg-app-container rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden border border-card-border p-4 sm:p-8 max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto custom-scrollbar pb-[calc(1rem+env(safe-area-inset-bottom))]"
+        className="relative flex h-[100dvh] w-full max-w-3xl flex-col overflow-hidden border border-card-border bg-app-container shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem] sm:p-8"
       >
-        <div className="flex items-center justify-between mb-8">
+        <div className="sticky top-0 z-20 mb-0 flex items-center justify-between border-b border-card-border bg-app-container/95 p-4 backdrop-blur sm:static sm:mb-8 sm:border-b-0 sm:bg-transparent sm:p-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent">
                {type === 'achievement' ? <Trophy size={20} /> : type === 'milestone' ? <Flag size={20} /> : type === 'status' ? <MessageSquare size={20} /> : <Zap size={20} />}
@@ -981,9 +993,9 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
           </button>
         </div>
 
-        <div className="space-y-8">
+        <div className="flex-1 space-y-6 overflow-y-auto p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] custom-scrollbar sm:space-y-8 sm:overflow-y-auto sm:p-0 sm:pb-0">
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {(['status', 'update', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
+            {(['status', 'update', 'help_request', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
               <button
                 key={t}
                 onClick={() => setType(t)}
@@ -997,7 +1009,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
                 {t === 'achievement' && <Trophy size={12} />}
                 {t === 'milestone' && <Flag size={12} />}
                 {t === 'status' && <MessageSquare size={12} />}
-                {t}
+                {t === 'help_request' ? 'Help' : t}
               </button>
             ))}
           </div>
@@ -1137,17 +1149,17 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
           </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-6 border-t border-card-border/50">
+          <div className="sticky bottom-0 -mx-4 flex justify-end gap-3 border-t border-card-border/50 bg-app-container/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:pt-6">
             <button
               onClick={onClose}
-              className="px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-surface-muted transition-all"
+              className="min-h-12 px-5 sm:px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:bg-surface-muted transition-all"
             >
               Discard
             </button>
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || (type === 'status' ? !content.trim() : (!caption.trim() && !content.trim() && images.length === 0)) || (type === 'status' && content.trim().length > statusLimit)}
-              className="px-10 py-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+              className="min-h-12 flex-1 justify-center px-6 sm:flex-none sm:px-10 py-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
