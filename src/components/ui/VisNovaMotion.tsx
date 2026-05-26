@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/utils';
 
-type MotionVariant =
+export type MotionVariant =
   | 'notFound'
   | 'progressEmpty'
   | 'visionCreated'
@@ -13,11 +13,27 @@ type MotionVariant =
   | 'circleEmpty'
   | 'reportSent'
   | 'waitlist'
-  | 'theme';
+  | 'theme'
+  | 'postPublished'
+  | 'progressLogPosted'
+  | 'journalSaved'
+  | 'noteSaved'
+  | 'visionBoardItemAdded'
+  | 'resourceSaved'
+  | 'addedToCart'
+  | 'helpRequestPosted'
+  | 'nudgeSent'
+  | 'visionTeamInvite'
+  | 'publicPostShared'
+  | 'milestoneReached'
+  | 'weeklySprintCompleted';
 
 type VisNovaMotionProps = {
   variant: MotionVariant;
   className?: string;
+  size?: 'sm' | 'md' | 'lg';
+  decorative?: boolean;
+  ariaLabel?: string;
 };
 
 const styles = `
@@ -118,6 +134,33 @@ const styles = `
 .vn-selector-ring { transform: translateX(calc(var(--active-index) * 40px)); transition: transform .5s cubic-bezier(.34,1.56,.64,1); }
 .vn-color-wave { transform-origin: 250px 145px; animation: vnWaveExpand 15s linear infinite; }
 .vn-app-card { transform-origin: center; animation: vnCardFloat 5s ease-in-out infinite alternate; }
+.vn-action-float { transform-origin: center; animation: vnActionFloat 4.5s ease-in-out infinite alternate; }
+.vn-action-card-in { transform-box: fill-box; transform-origin: center; animation: vnActionCardIn 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-card-settle { transform-box: fill-box; transform-origin: center; animation: vnActionSettle 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-card-fly { transform-box: fill-box; transform-origin: center; animation: vnActionFly 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-card-slide { transform-box: fill-box; transform-origin: center; animation: vnActionSlide 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-board-card { transform-box: fill-box; transform-origin: center; animation: vnActionBoardCard 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-folder { transform-box: fill-box; transform-origin: bottom center; animation: vnActionSquash 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-line { stroke-dasharray: 150; stroke-dashoffset: 150; animation: vnActionDrawLine 9s ease-in-out infinite; }
+.vn-action-line-long { stroke-dasharray: 330; stroke-dashoffset: 330; animation: vnActionDrawLine 9s ease-in-out infinite; }
+.vn-action-progress { stroke-dasharray: 240; stroke-dashoffset: 240; animation: vnActionProgress 9s ease-in-out infinite; }
+.vn-action-badge { transform-box: fill-box; transform-origin: center; animation: vnActionBadge 9s cubic-bezier(.34,1.56,.64,1) infinite; }
+.vn-action-check { stroke-dasharray: 24; stroke-dashoffset: 24; animation: vnActionCheck 9s ease-out infinite; }
+.vn-action-ripple { transform-box: fill-box; transform-origin: center; animation: vnActionRipple 9s cubic-bezier(.16,1,.3,1) infinite; }
+.vn-action-sparkle { transform-box: fill-box; transform-origin: center; animation: vnActionSparkle 9s cubic-bezier(.16,1,.3,1) infinite; }
+.vn-action-dot { offset-path: path('M 280 140 Q 370 100 460 160'); animation: vnActionDotTravel 9s linear infinite; }
+.vn-action-drop { transform-box: fill-box; transform-origin: center; animation: vnActionDrop 9s cubic-bezier(.4,0,.2,1) infinite; }
+.vn-action-plane { offset-path: path('M 150 190 C 160 120, 220 70, 290 120 C 340 150, 370 120, 450 135'); offset-rotate: auto 180deg; transform-origin: center; animation: vnActionPlane 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-bubble { offset-path: path('M 160 150 Q 300 80 440 150'); transform-origin: center; animation: vnActionBubble 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-swing { transform-box: fill-box; transform-origin: 50% 5%; animation: vnActionSwing 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-pin { transform-box: fill-box; transform-origin: center; animation: vnActionPin 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-write { stroke-dasharray: 100; stroke-dashoffset: 100; animation: vnActionWrite 9s ease-in-out infinite; }
+.vn-action-pen { transform-box: fill-box; transform-origin: center; animation: vnActionPen 9s ease-in-out infinite; }
+.vn-action-bookmark { transform-box: fill-box; transform-origin: top center; animation: vnActionBookmark 9s cubic-bezier(.25,1,.5,1) infinite; }
+.vn-action-pop-1 { animation-delay: .2s; }
+.vn-action-pop-2 { animation-delay: .45s; }
+.vn-action-pop-3 { animation-delay: .7s; }
+.vn-action-pop-4 { animation-delay: .95s; }
 @keyframes vnFloatVision { from { transform: translate(150px,120px); } to { transform: translate(150px,110px) rotate(1.5deg); } }
 @keyframes vnFloatTasks { from { transform: translate(520px,100px); } to { transform: translate(520px,112px) rotate(-1deg); } }
 @keyframes vnFloatProgress { from { transform: translate(100px,310px); } to { transform: translate(100px,302px) rotate(-1.5deg); } }
@@ -185,6 +228,28 @@ const styles = `
 @keyframes vnRotateDroplet { 0%,15% { transform:rotate(0); } 20%,35% { transform:rotate(72deg); } 40%,55% { transform:rotate(144deg); } 60%,75% { transform:rotate(216deg); } 80%,95% { transform:rotate(288deg); } 100% { transform:rotate(360deg); } }
 @keyframes vnWaveExpand { 15% { transform:scale(0); opacity:0; fill:#3B82F6; } 17% { transform:scale(1.6); opacity:.15; } 20%,35% { transform:scale(0); opacity:0; fill:#D97706; } 37% { transform:scale(1.6); opacity:.15; } 40%,55% { transform:scale(0); opacity:0; fill:#10B981; } 57% { transform:scale(1.6); opacity:.15; } 60%,75% { transform:scale(0); opacity:0; fill:#9061FF; } 77% { transform:scale(1.6); opacity:.15; } 80%,95% { transform:scale(0); opacity:0; fill:var(--vn-motion-primary); } 97% { transform:scale(1.6); opacity:.15; } 100% { transform:scale(0); opacity:0; } }
 @keyframes vnCardFloat { from { transform:translateY(0); } to { transform:translateY(-4px); } }
+@keyframes vnActionFloat { from { transform:translateY(0) rotate(0); } to { transform:translateY(-4px) rotate(.45deg); } }
+@keyframes vnActionCardIn { 0% { transform:scale(.75) translateY(18px); opacity:0; } 12% { transform:scale(1.06); opacity:1; } 18%,82% { transform:scale(1); opacity:1; } 92%,100% { transform:scale(.86) translateY(16px); opacity:0; } }
+@keyframes vnActionSettle { 0%,36% { transform:scale(1); } 42% { transform:scaleY(.92) scaleX(1.04); } 48%,100% { transform:scale(1); } }
+@keyframes vnActionFly { 0%,18% { transform:translate(0,0) scale(0); opacity:0; } 28% { transform:translate(0,0) scale(1); opacity:1; } 44% { transform:translate(185px,8px) scale(.62); opacity:1; } 48%,100% { transform:translate(185px,8px) scale(.62); opacity:0; } }
+@keyframes vnActionSlide { 0% { transform:translateY(-105px) rotate(-7deg); opacity:0; } 14%,82% { transform:translateY(0) rotate(0); opacity:1; } 92%,100% { transform:translateY(24px) scale(.9); opacity:0; } }
+@keyframes vnActionBoardCard { 0% { transform:translate(-90px,-60px) scale(.6) rotate(-8deg); opacity:0; } 16% { transform:translate(0,0) scale(1.04) rotate(1deg); opacity:1; } 24%,82% { transform:translate(0,0) scale(1) rotate(0); opacity:1; } 92%,100% { transform:scale(.85); opacity:0; } }
+@keyframes vnActionSquash { 0%,13% { transform:scale(1); } 17% { transform:scaleY(.94) scaleX(1.03); } 23%,100% { transform:scale(1); } }
+@keyframes vnActionDrawLine { 0%,28% { stroke-dashoffset:150; opacity:0; } 36%,82% { stroke-dashoffset:0; opacity:.75; } 92%,100% { stroke-dashoffset:150; opacity:0; } }
+@keyframes vnActionProgress { 0% { stroke-dashoffset:240; opacity:1; } 34%,82% { stroke-dashoffset:0; opacity:1; } 92%,100% { stroke-dashoffset:240; opacity:0; } }
+@keyframes vnActionBadge { 0%,30% { transform:scale(0); opacity:0; } 40% { transform:scale(1.12); opacity:1; } 46%,82% { transform:scale(1); opacity:1; } 92%,100% { transform:scale(0); opacity:0; } }
+@keyframes vnActionCheck { 0%,36% { stroke-dashoffset:24; } 48%,82% { stroke-dashoffset:0; } 92%,100% { stroke-dashoffset:24; } }
+@keyframes vnActionRipple { 0%,28% { transform:scale(.45); opacity:0; } 36% { opacity:.75; } 48%,100% { transform:scale(2.1); opacity:0; } }
+@keyframes vnActionSparkle { 0%,38% { transform:scale(0) rotate(0); opacity:0; } 48% { transform:scale(1.2) rotate(45deg); opacity:1; } 58%,100% { transform:scale(.7) rotate(90deg); opacity:0; } }
+@keyframes vnActionDotTravel { 0%,50% { offset-distance:0%; opacity:0; transform:scale(0); } 56% { opacity:1; transform:scale(1.15); } 70% { offset-distance:100%; opacity:1; transform:scale(1); } 76%,100% { offset-distance:100%; opacity:0; transform:scale(0); } }
+@keyframes vnActionDrop { 0%,14% { transform:translateY(0); opacity:0; } 18% { opacity:1; } 28% { transform:translateY(86px); opacity:1; } 34%,100% { transform:translateY(86px) scale(0); opacity:0; } }
+@keyframes vnActionPlane { 0%,14% { offset-distance:0%; opacity:0; transform:scale(0); } 18% { opacity:1; transform:scale(1); } 40% { offset-distance:100%; opacity:1; transform:scale(1); } 46%,100% { offset-distance:100%; opacity:0; transform:scale(0); } }
+@keyframes vnActionBubble { 0%,10% { offset-distance:0%; opacity:0; transform:scale(0); } 16%,28% { opacity:1; transform:scale(1); offset-distance:0%; } 44% { offset-distance:100%; opacity:1; transform:scale(1); } 50%,100% { offset-distance:100%; opacity:0; transform:scale(0); } }
+@keyframes vnActionSwing { 0% { transform:translateY(-145px) rotate(-12deg) scale(.85); opacity:0; } 16% { transform:translateY(0) rotate(-5deg) scale(1); opacity:1; } 35% { transform:rotate(4deg); } 43% { transform:rotate(-2deg); } 52%,82% { transform:rotate(0); opacity:1; } 92%,100% { transform:scale(.9) translateY(36px); opacity:0; } }
+@keyframes vnActionPin { 0%,26% { transform:translateY(-38px); opacity:0; } 34%,82% { transform:translateY(0); opacity:1; } 92%,100% { transform:translateY(-20px); opacity:0; } }
+@keyframes vnActionWrite { 0%,18% { stroke-dashoffset:100; opacity:0; } 24% { opacity:1; } 38%,82% { stroke-dashoffset:0; opacity:1; } 92%,100% { stroke-dashoffset:100; opacity:0; } }
+@keyframes vnActionPen { 0%,15% { transform:translate(130px,125px) scale(0); opacity:0; } 20% { transform:translate(185px,120px) scale(1); opacity:1; } 28% { transform:translate(115px,150px) scale(1); } 36% { transform:translate(205px,170px) scale(1); } 42%,100% { transform:translate(220px,155px) scale(0); opacity:0; } }
+@keyframes vnActionBookmark { 0%,32% { transform:translateY(-54px); opacity:0; } 42%,82% { transform:translateY(0); opacity:1; } 92%,100% { transform:translateY(-54px); opacity:0; } }
 @media (prefers-reduced-motion: reduce) { .vn-motion * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; } }
 `;
 
@@ -459,6 +524,375 @@ function WaitlistSvg() {
   );
 }
 
+function MiniCheck({ cx, cy, r = 10 }: { cx: number; cy: number; r?: number }) {
+  return (
+    <g className="vn-action-badge">
+      <circle cx={cx} cy={cy} r={r} fill="var(--vn-motion-primary)" filter="url(#vnSoftShadow)" />
+      <path className="vn-action-check" d={`M ${cx - r * 0.4} ${cy} L ${cx - r * 0.12} ${cy + r * 0.32} L ${cx + r * 0.46} ${cy - r * 0.38}`} stroke="var(--vn-motion-contrast)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </g>
+  );
+}
+
+function MiniAvatar({ cx, cy, fill = 'var(--vn-motion-primary)' }: { cx: number; cy: number; fill?: string }) {
+  return (
+    <g filter="url(#vnSoftShadow)">
+      <circle cx={cx} cy={cy} r="18" fill={fill} />
+      <circle cx={cx} cy={cy - 6} r="5" fill="var(--vn-motion-contrast)" />
+      <path d={`M ${cx - 9} ${cy + 11} C ${cx - 9} ${cy + 6} ${cx - 5} ${cy + 3} ${cx} ${cy + 3} C ${cx + 5} ${cy + 3} ${cx + 9} ${cy + 6} ${cx + 9} ${cy + 11} Z`} fill="var(--vn-motion-contrast)" />
+    </g>
+  );
+}
+
+function VisionCardMini({ x, y }: { x: number; y: number }) {
+  return (
+    <g filter="url(#vnSoftShadow)">
+      <rect x={x} y={y} width="140" height="80" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" />
+      <circle cx={x + 30} cy={y + 40} r="12" fill="var(--vn-motion-secondary)" opacity="0.15" />
+      <circle cx={x + 30} cy={y + 40} r="7" stroke="var(--vn-motion-primary)" strokeWidth="2" />
+      <circle cx={x + 30} cy={y + 40} r="2" fill="var(--vn-motion-primary)" />
+      <rect x={x + 50} y={y + 31} width="70" height="6" rx="3" fill="var(--vn-motion-text)" opacity="0.85" />
+      <rect x={x + 50} y={y + 43} width="45" height="5" rx="2.5" fill="var(--vn-motion-secondary)" opacity="0.6" />
+    </g>
+  );
+}
+
+function PostPublishedSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Post published">
+      <BaseDefs />
+      <circle cx="300" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <path className="vn-action-line" d="M280 140 Q370 100 460 160" stroke="var(--vn-motion-border)" strokeWidth="2" strokeLinecap="round" />
+      <circle className="vn-action-dot" cx="0" cy="0" r="4.5" fill="var(--vn-motion-primary)" />
+      <g className="vn-action-float">
+        <g>
+          <circle cx="460" cy="160" r="28" stroke="var(--vn-motion-border)" strokeWidth="1.5" strokeDasharray="4 4" />
+          <circle cx="460" cy="160" r="18" fill="var(--vn-motion-secondary)" opacity="0.15" />
+          <circle cx="460" cy="160" r="11" stroke="var(--vn-motion-primary)" strokeWidth="2.5" />
+          <circle cx="460" cy="160" r="4" fill="var(--vn-motion-primary)" />
+        </g>
+        <rect x="110" y="190" width="170" height="80" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" opacity="0.25" filter="url(#vnSoftShadow)" />
+        <rect x="110" y="145" width="170" height="80" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" opacity="0.6" filter="url(#vnSoftShadow)" />
+      </g>
+      <g className="vn-action-card-in">
+        <rect x="215" y="140" width="170" height="80" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" strokeWidth="1.5" filter="url(#vnSoftShadow)" />
+        <circle cx="239" cy="164" r="8" fill="var(--vn-motion-secondary)" />
+        <rect x="253" y="158" width="60" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.8" />
+        <rect x="253" y="167" width="40" height="4" rx="2" fill="var(--vn-motion-text)" opacity="0.4" />
+        <rect x="231" y="184" width="138" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.6" />
+        <rect x="231" y="195" width="90" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.6" />
+        <rect x="315" y="156" width="34" height="12" rx="6" fill="var(--vn-motion-primary)" />
+        <text x="332" y="165" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="7" fill="var(--vn-motion-contrast)" textAnchor="middle">PROOF</text>
+        <MiniCheck cx={361} cy={196} r={10} />
+      </g>
+    </svg>
+  );
+}
+
+function ProgressLogPostedSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Proof logged">
+      <BaseDefs />
+      <circle cx="300" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <path d="M120 240 H480" stroke="var(--vn-motion-border)" strokeWidth="3" strokeLinecap="round" />
+      <path className="vn-action-progress" d="M430 240 L170 240" stroke="var(--vn-motion-primary)" strokeWidth="4" strokeLinecap="round" />
+      <circle cx="170" cy="240" r="8" fill="var(--vn-motion-primary)" stroke="var(--vn-motion-card)" strokeWidth="2.5" filter="url(#vnGlow)" />
+      <circle cx="430" cy="240" r="8" stroke="var(--vn-motion-border)" strokeWidth="2" fill="none" />
+      <circle className="vn-action-ripple" cx="430" cy="240" r="8" stroke="var(--vn-motion-primary)" strokeWidth="2" fill="none" />
+      <g className="vn-action-float">
+        <path d="M170 154 V240" stroke="var(--vn-motion-border)" strokeWidth="1.5" strokeDasharray="3 4" opacity="0.6" />
+        <path className="vn-action-line" d="M360 117 H240" stroke="var(--vn-motion-primary)" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3" />
+        <VisionCardMini x={100} y={80} />
+        <g className="vn-action-card-slide" filter="url(#vnSoftShadow)">
+          <rect x="360" y="80" width="140" height="74" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" strokeWidth="1.5" />
+          <circle cx="390" cy="117" r="10" fill="var(--vn-motion-secondary)" opacity="0.15" />
+          <rect x="410" y="108" width="65" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.85" />
+          <rect x="410" y="119" width="45" height="4" rx="2" fill="var(--vn-motion-secondary)" opacity="0.6" />
+          <MiniCheck cx={390} cy={117} r={10} />
+        </g>
+      </g>
+      <circle className="vn-action-drop" cx="430" cy="154" r="6" fill="var(--vn-motion-primary)" filter="url(#vnGlow)" />
+    </svg>
+  );
+}
+
+function JournalSavedSvg() {
+  return (
+    <svg viewBox="0 0 500 320" width="100%" height="100%" fill="none" role="img" aria-label="Journal saved">
+      <BaseDefs />
+      <circle cx="250" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <g className="vn-action-card-in" filter="url(#vnSoftShadow)">
+          <rect x="135" y="76" width="112" height="158" rx="12" fill="var(--vn-motion-primary)" />
+          <rect x="253" y="76" width="112" height="158" rx="12" fill="var(--vn-motion-primary)" />
+          <rect x="247" y="76" width="6" height="158" fill="var(--vn-motion-border)" />
+          <rect x="140" y="80" width="105" height="150" rx="10" fill="var(--vn-motion-card)" />
+          <rect x="255" y="80" width="105" height="150" rx="10" fill="var(--vn-motion-card)" />
+          <path d="M148 85 V225 M352 85 V225" stroke="var(--vn-motion-border)" strokeWidth="1" strokeDasharray="2 3" />
+          <g stroke="var(--vn-motion-text)" strokeWidth="2" strokeLinecap="round" fill="none">
+            <path className="vn-action-write" d="M268 115 Q285 113 301 116 Q317 113 325 115" />
+            <path className="vn-action-write vn-action-pop-1" d="M268 135 Q285 133 301 136 Q317 133 325 135" />
+            <path className="vn-action-write vn-action-pop-2" d="M268 155 Q285 153 301 156 Q317 153 325 155" />
+          </g>
+          <g className="vn-action-badge">
+            <rect x="178" y="140" width="28" height="20" rx="6" fill="var(--vn-motion-primary)" />
+            <path d="M184 140 V134 C184 129.5 192 129.5 192 134 V140" stroke="var(--vn-motion-primary)" strokeWidth="2" strokeLinecap="round" fill="none" />
+            <circle cx="192" cy="150" r="1.5" fill="var(--vn-motion-contrast)" />
+          </g>
+          <path className="vn-action-bookmark" d="M315 76 V125 L320 121 L325 125 V76 Z" fill="var(--vn-motion-secondary)" />
+        </g>
+        <g className="vn-action-pen">
+          <path d="M12 -12 L32 -32 L36 -28 L16 -8 Z" fill="var(--vn-motion-text)" opacity="0.8" />
+          <polygon points="12,-12 16,-8 6,-6" fill="var(--vn-motion-primary)" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+function NoteSavedSvg() {
+  return (
+    <svg viewBox="0 0 500 320" width="100%" height="100%" fill="none" role="img" aria-label="Note saved">
+      <BaseDefs />
+      <circle cx="250" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <rect x="120" y="70" width="260" height="170" rx="24" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" filter="url(#vnSoftShadow)" />
+      <g opacity="0.45">{[150, 190, 230, 270, 310, 350].map((x) => <circle key={x} cx={x} cy="105" r="1.2" fill="var(--vn-motion-border)" />)}</g>
+      <g className="vn-action-swing">
+        <path d="M180 100 H320 V190 L300 210 H180 Z" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" strokeWidth="1.2" filter="url(#vnSoftShadow)" />
+        <path d="M320 190 C310 190 300 200 300 210 C300 200 310 200 320 190 Z" fill="var(--vn-motion-secondary)" />
+        <rect x="195" y="112" width="42" height="14" rx="7" fill="var(--vn-motion-secondary)" opacity="0.2" />
+        <rect x="203" y="117" width="26" height="4" rx="2" fill="var(--vn-motion-text)" />
+        <rect x="195" y="142" width="110" height="6" rx="3" fill="var(--vn-motion-text)" opacity="0.85" />
+        <rect x="195" y="154" width="85" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.4" />
+        <rect x="195" y="166" width="60" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.4" />
+        <MiniCheck cx={290} cy={119} r={10} />
+      </g>
+      <g className="vn-action-pin">
+        <circle cx="250" cy="102" r="5" fill="var(--vn-motion-primary)" filter="url(#vnGlow)" />
+        <path d="M250 102 L253 108" stroke="var(--vn-motion-text)" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+      </g>
+    </svg>
+  );
+}
+
+function VisionBoardItemAddedSvg() {
+  return (
+    <svg viewBox="0 0 500 320" width="100%" height="100%" fill="none" role="img" aria-label="Board item added">
+      <BaseDefs />
+      <circle cx="250" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <rect x="105" y="70" width="290" height="180" rx="24" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" filter="url(#vnSoftShadow)" />
+      <path className="vn-action-line-long" d="M145 115 H355 M145 165 H355 M145 215 H355 M185 95 V235 M315 95 V235" stroke="var(--vn-motion-border)" strokeWidth="1.4" strokeDasharray="4 5" opacity="0.55" />
+      <g className="vn-action-board-card">
+        <rect x="190" y="120" width="120" height="80" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-primary)" strokeWidth="1.5" filter="url(#vnSoftShadow)" />
+        <rect x="207" y="140" width="64" height="7" rx="3.5" fill="var(--vn-motion-text)" opacity="0.85" />
+        <rect x="207" y="154" width="43" height="5" rx="2.5" fill="var(--vn-motion-secondary)" opacity="0.65" />
+        <circle cx="286" cy="145" r="10" fill="var(--vn-motion-soft)" />
+      </g>
+      <MiniCheck cx={310} cy={118} r={11} />
+    </svg>
+  );
+}
+
+function ResourceSavedSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Resource saved">
+      <BaseDefs />
+      <circle cx="300" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <path className="vn-action-line" d="M370 170 H240" stroke="var(--vn-motion-primary)" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 3" />
+        <VisionCardMini x={100} y={130} />
+        <rect x="375" y="125" width="130" height="90" rx="14" fill="var(--vn-motion-secondary)" opacity="0.15" stroke="var(--vn-motion-border)" />
+        <g className="vn-action-card-slide">
+          <rect x="390" y="130" width="100" height="65" rx="11" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" />
+          <rect x="402" y="142" width="76" height="24" rx="6" fill="var(--vn-motion-secondary)" opacity="0.1" />
+          <path d="M440 146 L442 151 H447 L443 154 L445 159 L440 156 L435 159 L437 154 L433 151 H438 Z" fill="var(--vn-motion-primary)" opacity="0.85" />
+          <rect x="402" y="174" width="50" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.85" />
+        </g>
+        <g className="vn-action-folder">
+          <path d="M380 145 V138 C380 135 383 132 387 132 H425 C429 132 432 135 432 138 V145 Z" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" />
+          <rect x="370" y="145" width="140" height="75" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" strokeWidth="1.5" filter="url(#vnSoftShadow)" />
+          <rect x="385" y="160" width="60" height="5" rx="2.5" fill="var(--vn-motion-secondary)" opacity="0.4" />
+        </g>
+        <MiniCheck cx={485} cy={145} r={9} />
+      </g>
+    </svg>
+  );
+}
+
+function AddedToCartSvg() {
+  return (
+    <svg viewBox="0 0 500 320" width="100%" height="100%" fill="none" role="img" aria-label="Added to cart">
+      <BaseDefs />
+      <circle cx="250" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <path className="vn-action-line" d="M195 170 Q275 180 345 170" stroke="var(--vn-motion-primary)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="4 4" />
+        <g className="vn-action-card-fly">
+          <rect x="110" y="120" width="100" height="66" rx="12" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" filter="url(#vnSoftShadow)" />
+          <rect x="122" y="132" width="40" height="24" rx="4" fill="var(--vn-motion-secondary)" opacity="0.2" />
+          <rect x="122" y="164" width="60" height="4" rx="2" fill="var(--vn-motion-text)" opacity="0.8" />
+        </g>
+        <path d="M315 140 H385 L378 185 C378 190 373 194 367 194 H333 C327 194 322 190 322 185 Z" fill="var(--vn-motion-secondary)" opacity="0.1" />
+        <g className="vn-action-folder">
+          <path d="M315 140 H385 L378 185 C378 190 373 194 367 194 H333 C327 194 322 190 322 185 Z" fill="var(--vn-motion-card)" stroke="var(--vn-motion-primary)" strokeWidth="2" filter="url(#vnSoftShadow)" />
+          <path d="M330 152 V183 M350 152 V186 M370 152 V183" stroke="var(--vn-motion-border)" strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M326 140 C326 122 374 122 374 140" stroke="var(--vn-motion-border)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        </g>
+        <MiniCheck cx={350} cy={165} r={9} />
+        <g className="vn-action-badge"><circle cx="376" cy="132" r="9" fill="var(--vn-motion-primary)" /><text x="376" y="135" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="9" fill="var(--vn-motion-contrast)" textAnchor="middle">1</text></g>
+      </g>
+    </svg>
+  );
+}
+
+function HelpRequestPostedSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Help request posted">
+      <BaseDefs />
+      <circle cx="300" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <path className="vn-action-line-long" d="M265 125 Q350 100 440 110 M265 125 Q345 190 440 230" stroke="var(--vn-motion-secondary)" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 4" />
+        <MiniAvatar cx={440} cy={110} fill="var(--vn-motion-secondary)" />
+        <MiniAvatar cx={440} cy={230} fill="var(--vn-motion-primary)" />
+        <circle className="vn-action-ripple" cx="440" cy="110" r="18" stroke="var(--vn-motion-primary)" strokeWidth="1.5" fill="none" />
+        <circle className="vn-action-ripple" cx="440" cy="230" r="18" stroke="var(--vn-motion-primary)" strokeWidth="1.5" fill="none" />
+        <g className="vn-action-card-in">
+          <rect x="120" y="125" width="160" height="90" rx="16" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" strokeWidth="1.5" filter="url(#vnSoftShadow)" />
+          <circle cx="145" cy="155" r="8" fill="var(--vn-motion-secondary)" opacity="0.2" />
+          <rect x="160" y="151" width="75" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.8" />
+          <rect x="137" y="178" width="125" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.4" />
+          <g className="vn-action-badge"><circle cx="265" cy="125" r="15" fill="var(--vn-motion-primary)" filter="url(#vnSoftShadow)" /><text x="265" y="130" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="14" fill="var(--vn-motion-contrast)" textAnchor="middle">?</text></g>
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+function NudgeSentSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Nudge sent">
+      <BaseDefs />
+      <circle cx="300" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <path className="vn-action-line-long" d="M160 150 Q300 80 440 150" stroke="var(--vn-motion-secondary)" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 4" />
+        <MiniAvatar cx={160} cy={180} fill="var(--vn-motion-secondary)" />
+        <MiniAvatar cx={440} cy={180} fill="var(--vn-motion-primary)" />
+        <circle className="vn-action-ripple" cx="440" cy="180" r="18" stroke="var(--vn-motion-primary)" strokeWidth="1.5" fill="none" />
+        <g className="vn-action-bubble">
+          <circle cx="0" cy="0" r="14" fill="var(--vn-motion-primary)" filter="url(#vnSoftShadow)" />
+          <path d="M0 -5 C-2.5 -7.5 -6 -5 -6 -2.5 C-6 1 -1.5 4 0 5 C1.5 4 6 1 6 -2.5 C6 -5 2.5 -7.5 0 -5 Z" fill="var(--vn-motion-contrast)" />
+        </g>
+        <MiniCheck cx={440} cy={150} r={14} />
+      </g>
+    </svg>
+  );
+}
+
+function VisionTeamInviteSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Invite link ready">
+      <BaseDefs />
+      <circle cx="300" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <VisionCardMini x={90} y={120} />
+        <path className="vn-action-line" d="M240 160 H350" stroke="var(--vn-motion-primary)" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 4" />
+        <g className="vn-action-card-in">
+          <rect x="350" y="104" width="160" height="110" rx="18" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" filter="url(#vnSoftShadow)" />
+          <rect x="372" y="127" width="82" height="7" rx="3.5" fill="var(--vn-motion-text)" opacity="0.85" />
+          <rect x="372" y="143" width="108" height="6" rx="3" fill="var(--vn-motion-secondary)" opacity="0.45" />
+          <g transform="translate(374 174)">
+            <MiniAvatar cx={0} cy={0} fill="var(--vn-motion-primary)" />
+            <MiniAvatar cx={26} cy={0} fill="var(--vn-motion-secondary)" />
+            <circle cx="52" cy="0" r="18" fill="var(--vn-motion-soft)" stroke="var(--vn-motion-border)" />
+            <text x="52" y="4" fontFamily="system-ui" fontWeight="800" fontSize="13" fill="var(--vn-motion-primary)" textAnchor="middle">+</text>
+          </g>
+          <MiniCheck cx={488} cy={112} r={10} />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+function PublicPostSharedSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Shared publicly">
+      <BaseDefs />
+      <circle cx="300" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <path className="vn-action-line-long" d="M150 190 C160 120,220 70,290 120 C340 150,370 120,450 135" stroke="var(--vn-motion-secondary)" strokeWidth="2" strokeLinecap="round" strokeDasharray="3 4" />
+        <g filter="url(#vnSoftShadow)">
+          <rect x="85" y="150" width="130" height="80" rx="16" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" />
+          <circle cx="115" cy="180" r="12" fill="var(--vn-motion-secondary)" opacity="0.2" />
+          <rect x="135" y="176" width="55" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.8" />
+        </g>
+        <rect x="385" y="145" width="130" height="80" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" opacity="0.25" filter="url(#vnSoftShadow)" />
+        <rect x="385" y="110" width="130" height="80" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" opacity="0.6" filter="url(#vnSoftShadow)" />
+        <g className="vn-action-card-in">
+          <rect x="385" y="75" width="130" height="80" rx="14" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" filter="url(#vnSoftShadow)" />
+          <rect x="414" y="90" width="45" height="4" rx="2" fill="var(--vn-motion-text)" opacity="0.8" />
+          <rect x="399" y="108" width="102" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.6" />
+          <rect x="399" y="118" width="75" height="5" rx="2.5" fill="var(--vn-motion-text)" opacity="0.6" />
+          <MiniCheck cx={501} cy={86} r={8} />
+        </g>
+        <g className="vn-action-plane">
+          <path d="M0 0 L-15 -5 L-8 -2 L-15 5 Z" fill="var(--vn-motion-primary)" />
+          <path d="M0 0 L-8 -2 L-5 3 Z" fill="var(--vn-motion-secondary)" opacity="0.85" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+function MilestoneReachedSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Milestone reached">
+      <BaseDefs />
+      <circle cx="300" cy="180" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <path d="M120 220 H480" stroke="var(--vn-motion-border)" strokeWidth="4" strokeLinecap="round" />
+        <path className="vn-action-progress" d="M150 220 H300" stroke="var(--vn-motion-primary)" strokeWidth="5" strokeLinecap="round" />
+        <circle cx="150" cy="220" r="8" fill="var(--vn-motion-primary)" stroke="var(--vn-motion-card)" strokeWidth="2.5" filter="url(#vnGlow)" />
+        <circle cx="450" cy="220" r="6" stroke="var(--vn-motion-border)" strokeWidth="2" fill="var(--vn-motion-card)" />
+        <circle className="vn-action-ripple" cx="300" cy="220" r="10" stroke="var(--vn-motion-primary)" strokeWidth="2" fill="none" />
+        <g className="vn-action-badge">
+          <circle cx="300" cy="220" r="28" fill="var(--vn-motion-secondary)" opacity="0.15" />
+          <circle cx="300" cy="220" r="28" stroke="var(--vn-motion-primary)" strokeWidth="2.2" filter="url(#vnSoftShadow)" />
+          <circle cx="300" cy="220" r="22" stroke="var(--vn-motion-border)" strokeDasharray="2 3" />
+          <path d="M300 206 L304 214 L313 214 L306 220 L309 229 L300 223 L291 229 L294 220 L287 214 L296 214 Z" fill="var(--vn-motion-primary)" />
+        </g>
+        <path className="vn-action-sparkle" d="M340 180 Q340 185 345 185 Q340 185 340 190 Q340 185 335 185 Q340 185 340 180 Z" fill="var(--vn-motion-primary)" />
+      </g>
+    </svg>
+  );
+}
+
+function WeeklySprintCompletedSvg() {
+  return (
+    <svg viewBox="0 0 600 320" width="100%" height="100%" fill="none" role="img" aria-label="Weekly Sprint completed">
+      <BaseDefs />
+      <circle cx="300" cy="160" r="110" fill="var(--vn-motion-soft)" opacity="0.7" filter="blur(35px)" />
+      <g className="vn-action-float">
+        <path d="M150 130 H390" stroke="var(--vn-motion-border)" strokeWidth="4" strokeLinecap="round" />
+        <path className="vn-action-progress" d="M150 130 H390" stroke="var(--vn-motion-primary)" strokeWidth="5" strokeLinecap="round" />
+        {[150, 190, 230, 270, 310, 350].map((cx, index) => <circle className={`vn-action-badge vn-action-pop-${Math.min(index + 1, 4)}`} key={cx} cx={cx} cy="130" r="6" fill="var(--vn-motion-primary)" />)}
+        <g fill="var(--vn-motion-text)" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="8" textAnchor="middle" opacity="0.6">
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => <text key={`${day}-${index}`} x={150 + index * 40} y="152">{day}</text>)}
+        </g>
+        <g className="vn-action-badge" filter="url(#vnSoftShadow)">
+          <rect x="330" y="95" width="110" height="70" rx="16" fill="var(--vn-motion-card)" stroke="var(--vn-motion-border)" />
+          <text x="385" y="116" fontFamily="system-ui, sans-serif" fontWeight="800" fontSize="8" fill="var(--vn-motion-text)" textAnchor="middle">SPRINT</text>
+          <text x="385" y="126" fontFamily="system-ui, sans-serif" fontWeight="700" fontSize="7" fill="var(--vn-motion-secondary)" textAnchor="middle">COMPLETE</text>
+          <MiniCheck cx={385} cy={143} r={9} />
+        </g>
+        <g className="vn-action-card-in">
+          <MiniAvatar cx={230} cy={220} />
+          <MiniAvatar cx={248} cy={220} fill="var(--vn-motion-secondary)" />
+          <rect x="294" y="216" width="80" height="6" rx="3" fill="var(--vn-motion-text)" opacity="0.75" />
+          <rect x="294" y="229" width="80" height="4" rx="2" fill="var(--vn-motion-secondary)" opacity="0.4" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
 function ThemeSvg() {
   return (
     <svg className="vn-theme-engine" viewBox="0 0 500 320" width="100%" height="100%" fill="none" role="img" aria-label="Theme preview">
@@ -500,13 +934,32 @@ const renderers: Record<MotionVariant, () => ReactNode> = {
   circleEmpty: CircleEmptySvg,
   reportSent: ReportSentSvg,
   waitlist: WaitlistSvg,
-  theme: ThemeSvg
+  theme: ThemeSvg,
+  postPublished: PostPublishedSvg,
+  progressLogPosted: ProgressLogPostedSvg,
+  journalSaved: JournalSavedSvg,
+  noteSaved: NoteSavedSvg,
+  visionBoardItemAdded: VisionBoardItemAddedSvg,
+  resourceSaved: ResourceSavedSvg,
+  addedToCart: AddedToCartSvg,
+  helpRequestPosted: HelpRequestPostedSvg,
+  nudgeSent: NudgeSentSvg,
+  visionTeamInvite: VisionTeamInviteSvg,
+  publicPostShared: PublicPostSharedSvg,
+  milestoneReached: MilestoneReachedSvg,
+  weeklySprintCompleted: WeeklySprintCompletedSvg
 };
 
-export function VisNovaMotion({ variant, className }: VisNovaMotionProps) {
+const sizeClasses = {
+  sm: 'max-w-24',
+  md: 'max-w-md',
+  lg: 'max-w-2xl'
+};
+
+export function VisNovaMotion({ variant, className, size = 'md', decorative, ariaLabel }: VisNovaMotionProps) {
   const Renderer = renderers[variant];
   return (
-    <div className={cn('vn-motion mx-auto aspect-[16/10] w-full max-w-md', className)}>
+    <div className={cn('vn-motion mx-auto aspect-[16/10] w-full', sizeClasses[size], className)} aria-hidden={decorative || undefined} aria-label={!decorative ? ariaLabel : undefined}>
       <style>{styles}</style>
       <Renderer />
     </div>

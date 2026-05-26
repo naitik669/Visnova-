@@ -790,12 +790,20 @@ function NotFoundPage() {
       <VisNovaMotion variant="notFound" className="max-w-2xl" />
       <h2 className="text-2xl font-black tracking-tight text-text-main">Lost in the Vision space?</h2>
       <p className="max-w-xs text-sm font-semibold text-text-secondary">Let's get you back.</p>
-      <button
-        onClick={() => navigate('/')}
-        className="rounded-2xl bg-accent px-6 py-3 text-xs font-black uppercase tracking-widest text-accent-contrast transition-opacity hover:opacity-90"
-      >
-        Go to Dashboard
-      </button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <button
+          onClick={() => navigate('/')}
+          className="rounded-2xl bg-accent px-6 py-3 text-xs font-black uppercase tracking-widest text-accent-contrast transition-opacity hover:opacity-90"
+        >
+          Go to Dashboard
+        </button>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-2xl border border-card-border bg-card px-6 py-3 text-xs font-black uppercase tracking-widest text-text-secondary transition-colors hover:text-accent"
+        >
+          Refresh
+        </button>
+      </div>
     </div>
   );
 }

@@ -2,12 +2,28 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useStore } from '../store/useStore';
+import { VisNovaMotion, type MotionVariant } from './ui/VisNovaMotion';
 
 const icons = {
   success: CheckCircle2,
   error: AlertTriangle,
   info: Info,
 };
+
+function getToastAnimationVariant(title: string, description?: string): MotionVariant | null {
+  const normalizedTitle = title.toLowerCase();
+  const normalizedDescription = description?.toLowerCase() || '';
+
+  if (normalizedTitle.includes('post shared')) return 'postPublished';
+  if (normalizedTitle.includes('progress logged') || normalizedTitle.includes('win logged') || normalizedTitle.includes('blocker logged')) return 'progressLogPosted';
+  if (normalizedTitle.includes('encouragement sent')) return 'nudgeSent';
+  if (normalizedTitle.includes('invite ready') || (normalizedTitle.includes('link copied') && normalizedDescription.includes('vision team'))) return 'visionTeamInvite';
+  if (normalizedTitle.includes('vision created')) return 'visionCreated';
+  if (normalizedTitle.includes('task completed')) return 'taskCompleted';
+  if (normalizedTitle.includes('weekly sprint completed')) return 'weeklySprintCompleted';
+
+  return null;
+}
 
 export default function ToastViewport() {
   const { toasts, removeToast } = useStore();
@@ -26,6 +42,7 @@ export default function ToastViewport() {
       <AnimatePresence initial={false}>
         {visibleToasts.map((toast) => {
           const Icon = icons[toast.type] || Info;
+          const animationVariant = toast.type === 'success' ? getToastAnimationVariant(toast.title, toast.description) : null;
           return (
             <motion.div
               key={toast.id}
@@ -35,9 +52,18 @@ export default function ToastViewport() {
               className="pointer-events-auto rounded-2xl border border-card-border bg-card/95 p-3 shadow-xl backdrop-blur-xl"
             >
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-xl bg-accent/10 p-2 text-accent">
-                  <Icon size={16} />
-                </div>
+                {animationVariant ? (
+                  <VisNovaMotion
+                    variant={animationVariant}
+                    size="sm"
+                    decorative
+                    className="mt-[-10px] h-16 w-16 shrink-0 max-w-none"
+                  />
+                ) : (
+                  <div className="mt-0.5 rounded-xl bg-accent/10 p-2 text-accent">
+                    <Icon size={16} />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-text-main">{toast.title}</p>
                   {toast.description && (
