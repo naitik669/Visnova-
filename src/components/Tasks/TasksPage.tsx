@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, Circle, Clock3, Filter, Flag, Link2, Plus, Search, Sparkles, Trash2, X, Zap } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Circle, Clock3, Flag, Link2, Plus, Search, Sparkles, Trash2, X, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../store/useStore';
 import type { Task, Vision } from '../../types';
@@ -144,6 +144,12 @@ export default function TasksPage() {
     { value: 'all', label: 'All Visions' },
     ...safeArray<Vision>(visions).map(vision => ({ value: vision.id, label: vision.title }))
   ];
+  const priorityOptions = [
+    { value: 'all', label: 'All Priorities' },
+    { value: 'high', label: 'High Priority' },
+    { value: 'medium', label: 'Medium Priority' },
+    { value: 'low', label: 'Low Priority' }
+  ];
   const activeMobileTasks = mobileTasksByMode.get(mobileMode) || [];
 
   return (
@@ -168,9 +174,9 @@ export default function TasksPage() {
             <div className="w-full sm:w-44">
               <SelectMenu value={visionFilter} onChange={setVisionFilter} options={visionOptions} triggerClassName="h-11 rounded-2xl bg-bg-base" />
             </div>
-            <button className="hidden h-11 items-center justify-center gap-2 rounded-2xl border border-card-border bg-bg-base px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary sm:flex">
-              <Filter size={14} /> Filters
-            </button>
+            <div className="w-full sm:w-44">
+              <SelectMenu value={priorityFilter} onChange={setPriorityFilter} options={priorityOptions} triggerClassName="h-11 rounded-2xl bg-bg-base" />
+            </div>
             <button onClick={() => setCreateOpen(true)} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-text-main px-5 text-[10px] font-black uppercase tracking-widest text-bg-base shadow-lg shadow-text-main/10">
               <Plus size={15} /> Create Task
             </button>
@@ -243,6 +249,7 @@ export default function TasksPage() {
           ))}
           {activeMobileTasks.length === 0 && <TaskEmptyState message={MOBILE_MODES.find(mode => mode.id === mobileMode)?.empty || 'No tasks here.'} />}
         </div>
+        <div className="h-[calc(5.75rem+env(safe-area-inset-bottom))]" aria-hidden="true" />
       </div>
 
       <TaskCreateModal open={createOpen} visions={visions} onClose={() => setCreateOpen(false)} onCreate={handleCreate} />
@@ -476,8 +483,8 @@ function TaskCreateModal({ open, visions, onClose, onCreate }: { open: boolean; 
       size="md"
       footer={(
         <>
-          <button onClick={onClose} className="h-11 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary">Cancel</button>
-          <button onClick={submit} disabled={!title.trim() || !visionId || saving} className="h-11 rounded-2xl bg-accent px-6 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50">
+          <button onClick={onClose} className="order-2 h-12 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary sm:order-1 sm:h-11">Cancel</button>
+          <button onClick={submit} disabled={!title.trim() || !visionId || saving} className="order-1 h-12 rounded-2xl bg-accent px-6 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50 sm:order-2 sm:h-11">
             {saving ? 'Creating...' : 'Create Task'}
           </button>
         </>
