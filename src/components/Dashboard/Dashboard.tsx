@@ -25,6 +25,9 @@ import {
   Minus,
   Wallet,
   FileText,
+  Clock3,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
@@ -255,6 +258,234 @@ function NextMoveCard({
   );
 }
 
+const dateKeyFromDate = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const startOfWeekMonday = (date: Date) => addDays(date, -((date.getDay() + 6) % 7));
+
+const sameDay = (a: Date, b: Date) => dateKeyFromDate(a) === dateKeyFromDate(b);
+
+const taskPalette = [
+  "bg-accent/20 border-accent/25 text-text-main",
+  "bg-success/15 border-success/25 text-text-main",
+  "bg-warning/20 border-warning/25 text-text-main",
+  "bg-info/15 border-info/25 text-text-main",
+  "bg-danger/10 border-danger/20 text-text-main",
+];
+
+function CalendarWorkspaceModal({
+  open,
+  selectedDate,
+  onClose,
+  onSelectDate,
+}: {
+  open: boolean;
+  selectedDate: Date;
+  onClose: () => void;
+  onSelectDate: (date: Date) => void;
+}) {
+  const { todos, addTodo, toggleTodo, deleteTodo, user } = useStore();
+  const [viewDate, setViewDate] = React.useState(selectedDate);
+  const [taskTitle, setTaskTitle] = React.useState("");
+  const [taskDate, setTaskDate] = React.useState(dateKeyFromDate(selectedDate));
+  const [search, setSearch] = React.useState("");
+
+  React.useEffect(() => {
+    if (!open) return;
+    setViewDate(selectedDate);
+    setTaskDate(dateKeyFromDate(selectedDate));
+  }, [open, selectedDate]);
+
+  const monthStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const miniCalendarDays = React.useMemo(() => {
+    const firstOffset = (monthStart.getDay() + 6) % 7;
+    return Array.from({ length: 35 }, (_, index) => addDays(monthStart, index - firstOffset));
+  }, [monthStart.getFullYear(), monthStart.getMonth()]);
+
+  const weekStart = React.useMemo(() => startOfWeekMonday(viewDate), [viewDate]);
+  const weekDays = React.useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
+  const scheduledTasks = React.useMemo(() => (
+    todos
+      .filter(task => !task.deletedAt && task.scheduledDate)
+      .filter(task => !search.trim() || task.text.toLowerCase().includes(search.trim().toLowerCase()))
+  ), [search, todos]);
+  const selectedDateKey = dateKeyFromDate(viewDate);
+  const selectedTasks = scheduledTasks.filter(task => task.scheduledDate === selectedDateKey);
+  const pendingSelected = selectedTasks.filter(task => !task.completed).length;
+
+  const createTask = () => {
+    const text = taskTitle.trim();
+    if (!text) return;
+    addTodo(text, taskDate || selectedDateKey);
+    setTaskTitle("");
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-overlay/70 p-3 backdrop-blur-xl sm:p-6" role="dialog" aria-modal="true" aria-label="Calendar workspace">
+      <div className="flex h-[min(900px,94vh)] w-full max-w-7xl overflow-hidden rounded-[2rem] border border-card-border bg-app-container shadow-2xl">
+        <aside className="hidden w-80 shrink-0 flex-col gap-4 border-r border-card-border bg-card/85 p-5 lg:flex">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.26em] text-accent">Planner</p>
+              <h2 className="mt-1 text-2xl font-black text-text-main">Calendar</h2>
+            </div>
+            <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary hover:text-text-main" aria-label="Close calendar">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-2xl border border-card-border bg-app-container px-3 py-2">
+            <Search size={15} className="text-text-secondary/60" />
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search tasks..." className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-text-main outline-none placeholder:text-text-secondary/45" />
+          </div>
+
+          <div className="rounded-[1.5rem] border border-card-border bg-app-container p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} className="rounded-xl p-2 text-text-secondary hover:bg-card hover:text-accent" aria-label="Previous month"><ChevronLeft size={16} /></button>
+              <p className="text-sm font-black text-text-main">{viewDate.toLocaleDateString([], { month: "long", year: "numeric" })}</p>
+              <button onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} className="rounded-xl p-2 text-text-secondary hover:bg-card hover:text-accent" aria-label="Next month"><ChevronRight size={16} /></button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <span key={`${day}-${index}`} className="text-[9px] font-black text-text-secondary/45">{day}</span>)}
+              {miniCalendarDays.map(day => {
+                const key = dateKeyFromDate(day);
+                const hasTask = scheduledTasks.some(task => task.scheduledDate === key);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setViewDate(day);
+                      onSelectDate(day);
+                      setTaskDate(key);
+                    }}
+                    className={cn(
+                      "relative flex h-9 items-center justify-center rounded-xl text-xs font-black transition-all",
+                      day.getMonth() !== viewDate.getMonth() && "opacity-30",
+                      sameDay(day, viewDate) ? "bg-accent text-accent-contrast" : "text-text-main hover:bg-card",
+                      sameDay(day, new Date()) && !sameDay(day, viewDate) && "ring-1 ring-accent/30"
+                    )}
+                  >
+                    {day.getDate()}
+                    {hasTask && <span className={cn("absolute bottom-1 h-1 w-1 rounded-full", sameDay(day, viewDate) ? "bg-accent-contrast" : "bg-accent")} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-card-border bg-accent p-5 text-accent-contrast shadow-lg shadow-accent/20">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Selected day</p>
+            <h3 className="mt-2 text-xl font-black">{viewDate.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}</h3>
+            <p className="mt-2 text-sm font-bold opacity-80">{pendingSelected} pending tasks</p>
+          </div>
+
+          <form
+            onSubmit={event => {
+              event.preventDefault();
+              createTask();
+            }}
+            className="rounded-[1.5rem] border border-card-border bg-app-container p-4"
+          >
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/55">Create task</p>
+            <input value={taskTitle} onChange={event => setTaskTitle(event.target.value)} placeholder="Task title" className="mt-3 h-11 w-full rounded-2xl border border-card-border bg-card px-4 text-sm font-bold outline-none focus:border-accent" />
+            <input type="date" value={taskDate} onChange={event => setTaskDate(event.target.value)} className="mt-2 h-11 w-full rounded-2xl border border-card-border bg-card px-4 text-sm font-bold outline-none focus:border-accent [color-scheme:inherit]" />
+            <button disabled={!taskTitle.trim()} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-40">
+              <Plus size={14} /> Create Event
+            </button>
+          </form>
+        </aside>
+
+        <main className="min-w-0 flex-1 overflow-y-auto bg-card p-4 sm:p-6">
+          <div className="mb-5 flex flex-col gap-4 rounded-[1.5rem] border border-card-border bg-app-container p-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setViewDate(addDays(viewDate, -7))} className="rounded-xl p-2 text-text-secondary hover:bg-card hover:text-accent" aria-label="Previous week"><ChevronLeft size={18} /></button>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Weekly view</p>
+                <h2 className="text-2xl font-black text-text-main">{viewDate.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}</h2>
+              </div>
+              <button onClick={() => setViewDate(addDays(viewDate, 7))} className="rounded-xl p-2 text-text-secondary hover:bg-card hover:text-accent" aria-label="Next week"><ChevronRight size={18} /></button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setViewDate(new Date())} className="h-10 rounded-2xl border border-card-border bg-card px-4 text-[10px] font-black uppercase tracking-widest text-text-main">Today</button>
+              <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary hover:text-text-main lg:hidden" aria-label="Close calendar"><X size={18} /></button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto pb-2">
+            <div className="grid min-w-[760px] grid-cols-7 gap-2">
+              {weekDays.map(day => (
+                <button
+                  key={dateKeyFromDate(day)}
+                  onClick={() => {
+                    setViewDate(day);
+                    onSelectDate(day);
+                    setTaskDate(dateKeyFromDate(day));
+                  }}
+                  className={cn(
+                    "rounded-2xl border p-4 text-center transition-all",
+                    sameDay(day, viewDate) ? "border-accent/40 bg-accent/10" : "border-card-border bg-surface-muted/60 hover:border-accent/25"
+                  )}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60">{day.toLocaleDateString([], { weekday: "long" })}</p>
+                  <p className="mt-1 text-3xl font-black text-text-main">{day.getDate()}</p>
+                </button>
+              ))}
+
+              {weekDays.map((day, dayIndex) => {
+                const key = dateKeyFromDate(day);
+                const dayTasks = scheduledTasks.filter(task => task.scheduledDate === key);
+                return (
+                  <div key={`tasks-${key}`} className="min-h-[520px] space-y-3 border-r border-card-border/50 pr-2 last:border-r-0">
+                    {["09 AM", "11 AM", "01 PM", "03 PM"].map((time, index) => (
+                      <div key={time} className="min-h-[118px] border-t border-card-border/60 pt-2">
+                        <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/40">{time}</p>
+                        {dayTasks.filter((_, taskIndex) => taskIndex % 4 === index).map((task, taskIndex) => (
+                          <div key={task.id} className={cn("group mb-2 rounded-2xl border p-3 shadow-sm", taskPalette[(dayIndex + taskIndex) % taskPalette.length], task.completed && "opacity-55")}>
+                            <div className="flex items-start justify-between gap-2">
+                              <button onClick={() => toggleTodo(task.id)} disabled={task.completed} className="min-w-0 text-left">
+                                <p className={cn("line-clamp-2 text-sm font-black leading-snug", task.completed && "line-through")}>{task.text}</p>
+                                <p className="mt-2 flex items-center gap-1 text-[10px] font-bold opacity-70"><Clock3 size={11} /> Synced task</p>
+                              </button>
+                              <button onClick={() => deleteTodo(task.id)} className="rounded-lg p-1 text-text-secondary opacity-0 transition-opacity hover:bg-card/60 hover:text-danger group-hover:opacity-100" aria-label="Delete task">
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[1.5rem] border border-card-border bg-app-container p-4 lg:hidden">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/55">Create task</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_160px_auto]">
+              <input value={taskTitle} onChange={event => setTaskTitle(event.target.value)} placeholder="Task title" className="h-11 rounded-2xl border border-card-border bg-card px-4 text-sm font-bold outline-none focus:border-accent" />
+              <input type="date" value={taskDate} onChange={event => setTaskDate(event.target.value)} className="h-11 rounded-2xl border border-card-border bg-card px-4 text-sm font-bold outline-none focus:border-accent [color-scheme:inherit]" />
+              <button onClick={createTask} disabled={!taskTitle.trim()} className="h-11 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-40">Add</button>
+            </div>
+          </div>
+
+          <p className="mt-4 text-xs font-semibold text-text-secondary/65">
+            Tasks created here are saved to your VisNova task data for {user.name || "you"} and appear in Dashboard, Upcoming Tasks, and the Tasks page.
+          </p>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const {
     visions,
@@ -289,6 +520,7 @@ export default function Dashboard() {
   const [dayNoteTitle, setDayNoteTitle] = React.useState("");
   const [dayNoteText, setDayNoteText] = React.useState("");
   const [dayComposer, setDayComposer] = React.useState<"task" | "note">("task");
+  const [showCalendarWorkspace, setShowCalendarWorkspace] = React.useState(false);
   const hasRequestedDashboardData = React.useRef(false);
 
   React.useEffect(() => {
@@ -666,6 +898,12 @@ export default function Dashboard() {
         open={showProgressComposer}
         onClose={() => setShowProgressComposer(false)}
         defaultVisionId={activeVision?.id}
+      />
+      <CalendarWorkspaceModal
+        open={showCalendarWorkspace}
+        selectedDate={selectedDate}
+        onClose={() => setShowCalendarWorkspace(false)}
+        onSelectDate={setSelectedDate}
       />
       <div className="lg:hidden space-y-4">
         <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
@@ -1141,6 +1379,13 @@ export default function Dashboard() {
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-success" />Task</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-accent" />Note</span>
                 <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-warning" />Journal</span>
+                <button
+                  type="button"
+                  onClick={() => setShowCalendarWorkspace(true)}
+                  className="rounded-full bg-accent/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-accent transition-colors hover:bg-accent/20"
+                >
+                  Open Calendar
+                </button>
               </div>
               <div className="grid grid-cols-7 gap-1.5 text-center text-xs relative">
                 {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d, i) => (
@@ -1178,7 +1423,10 @@ export default function Dashboard() {
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setSelectedDate(dateObj)}
+                        onClick={() => {
+                          setSelectedDate(dateObj);
+                          setShowCalendarWorkspace(true);
+                        }}
                         className={cn(
                           "relative aspect-square rounded-xl border text-sm font-black transition-all focus:outline-none focus:ring-2 focus:ring-accent/30",
                           isSelected
