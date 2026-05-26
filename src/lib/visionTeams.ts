@@ -89,6 +89,23 @@ const toComment = (row: any): VisionTeamComment => ({
   } : undefined
 });
 
+async function fetchProfilesByIds(userIds: string[]) {
+  const ids = Array.from(new Set(userIds.filter(Boolean)));
+  if (ids.length === 0) return new Map<string, any>();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, display_name, full_name, username, avatar_url, verified')
+    .in('id', ids);
+
+  if (error) {
+    console.error('Failed to load Vision Team profiles:', error);
+    return new Map<string, any>();
+  }
+
+  return new Map((data || []).map((profile: any) => [profile.id, profile]));
+}
+
 export async function ensureVisionTeam(visionId: string) {
   const { data, error } = await supabase.rpc('create_vision_team_if_missing', {
     p_vision_id: visionId,
@@ -111,10 +128,10 @@ export async function fetchVisionTeamByVision(visionId: string) {
 export async function fetchTeamBundle(teamId: string) {
   const [teamResult, membersResult, invitesResult, activityResult, commentsResult] = await Promise.all([
     supabase.from('vision_teams').select('*').eq('id', teamId).maybeSingle(),
-    supabase.from('vision_team_members').select('*, profiles:user_id(display_name, full_name, username, avatar_url, verified)').eq('team_id', teamId).eq('status', 'active').order('joined_at', { ascending: true }),
+    supabase.from('vision_team_members').select('*').eq('team_id', teamId).eq('status', 'active').order('joined_at', { ascending: true }),
     supabase.from('vision_team_invites').select('*').eq('team_id', teamId).eq('is_revoked', false).order('created_at', { ascending: false }),
     supabase.from('vision_team_activity').select('*').eq('team_id', teamId).order('created_at', { ascending: false }).limit(20),
-    supabase.from('vision_team_comments').select('*, profiles:user_id(display_name, full_name, username, avatar_url, verified)').eq('team_id', teamId).order('created_at', { ascending: false }).limit(50)
+    supabase.from('vision_team_comments').select('*').eq('team_id', teamId).order('created_at', { ascending: false }).limit(50)
   ]);
 
   if (teamResult.error) throw teamResult.error;
@@ -123,12 +140,17 @@ export async function fetchTeamBundle(teamId: string) {
   if (activityResult.error) throw activityResult.error;
   if (commentsResult.error) throw commentsResult.error;
 
+  const profileMap = await fetchProfilesByIds([
+    ...(membersResult.data || []).map((member: any) => member.user_id),
+    ...(commentsResult.data || []).map((comment: any) => comment.user_id)
+  ]);
+
   return {
     team: teamResult.data ? toTeam(teamResult.data) : null,
-    members: (membersResult.data || []).map(toMember),
+    members: (membersResult.data || []).map((member: any) => toMember({ ...member, profiles: profileMap.get(member.user_id) })),
     invites: (invitesResult.data || []).map(toInvite),
     activity: (activityResult.data || []).map(toActivity),
-    comments: (commentsResult.data || []).map(toComment)
+    comments: (commentsResult.data || []).map((comment: any) => toComment({ ...comment, profiles: profileMap.get(comment.user_id) }))
   };
 }
 
@@ -192,10 +214,11 @@ export async function addVisionTeamComment(teamId: string, message: string) {
       user_id: user.id,
       message: message.trim()
     })
-    .select('*, profiles:user_id(display_name, full_name, username, avatar_url, verified)')
+    .select('*')
     .single();
   if (error) throw error;
-  return toComment(data);
+  const profileMap = await fetchProfilesByIds([user.id]);
+  return toComment({ ...data, profiles: profileMap.get(user.id) });
 }
 
 export async function recordVisionTeamActivity(teamId: string, summary: string, actionType = 'board_updated', metadata: Record<string, any> = {}) {
