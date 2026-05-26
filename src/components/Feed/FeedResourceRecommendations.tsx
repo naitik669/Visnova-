@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, ArrowUpRight, ExternalLink, HelpCircle, Package, RefreshCw, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -116,7 +116,10 @@ export function ProductPreviewModal({
             {product.isDigital
               ? 'This digital product is delivered by a third-party creator or platform. VisNova may earn a commission.'
               : 'This product is sold and fulfilled by a third-party partner. VisNova may earn a commission.'}
-            {' '}Prices and availability can change on partner sites.
+            {' '}Prices and availability can change on partner sites.{' '}
+            <Link to="/affiliate-disclosure" className="font-black text-accent">
+              Learn more
+            </Link>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <button onClick={onSave} className="h-11 rounded-2xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast">

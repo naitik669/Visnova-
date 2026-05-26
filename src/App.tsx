@@ -23,7 +23,17 @@ import { useStore } from './store/useStore';
 import FocusOverlay from './components/Dashboard/FocusOverlay';
 import ErrorBoundary from './components/ErrorBoundary';
 import CookieNotice from './components/CookieNotice';
-import { CookiePolicyPage, PrivacyPolicyPage, SupportPage, TermsPage } from './components/Legal/LegalPages';
+import {
+  AffiliateDisclosurePage,
+  CommunityGuidelinesPage,
+  ContactPage,
+  CookiePolicyPage,
+  DataRightsPage,
+  PrivacyPolicyPage,
+  SupportPage,
+  TermsPage,
+  TrustIndexPage
+} from './components/Legal/LegalPages';
 import { isSupabaseConfigured, supabase, supabaseConfigError } from './lib/supabase';
 import { trackBetaEvent } from './lib/betaAnalytics';
 import { XpToast } from './components/ui/XpToast';
@@ -665,9 +675,16 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
   '/profile': { title: 'Profile', subtitle: 'Your public progress page' },
   '/privacy': { title: 'Privacy', subtitle: 'How VisNova handles data' },
+  '/privacy-policy': { title: 'Privacy', subtitle: 'How VisNova handles data' },
   '/terms': { title: 'Terms', subtitle: 'Rules for using VisNova' },
+  '/terms-of-service': { title: 'Terms', subtitle: 'Rules for using VisNova' },
   '/cookies': { title: 'Cookies', subtitle: 'Browser storage and cookies' },
   '/cookie-policy': { title: 'Cookie Policy', subtitle: 'Browser storage and optional tracking choices' },
+  '/affiliate-disclosure': { title: 'Affiliate Disclosure', subtitle: 'Resource and partner link transparency' },
+  '/data-rights': { title: 'Data Rights', subtitle: 'Export, deletion, and privacy requests' },
+  '/community-guidelines': { title: 'Guidelines', subtitle: 'Healthy accountability and community rules' },
+  '/contact': { title: 'Contact', subtitle: 'Support, privacy, and account help' },
+  '/trust': { title: 'Trust Center', subtitle: 'Legal and privacy pages' },
   '/support': { title: 'Support', subtitle: 'Legal, account, and help requests' },
   '/feedback': { title: 'Feedback', subtitle: 'Report bugs and beta feedback' },
   '/store': { title: 'Resources', subtitle: 'Useful tools for your current Vision' },
@@ -944,7 +961,20 @@ function AppContent() {
   }
 
   const showOnboarding = !session || (isProfileReady && !hasCompletedOnboarding) || isPasswordRecovery;
-  const isPublicLegalPath = ['/privacy', '/terms', '/cookies', '/cookie-policy', '/support'].includes(location.pathname);
+  const isPublicLegalPath = [
+    '/privacy',
+    '/privacy-policy',
+    '/terms',
+    '/terms-of-service',
+    '/cookies',
+    '/cookie-policy',
+    '/affiliate-disclosure',
+    '/data-rights',
+    '/community-guidelines',
+    '/contact',
+    '/trust',
+    '/support'
+  ].includes(location.pathname);
   const isJoinVisionTeamPath = location.pathname.startsWith('/join/vision-team/');
 
   return (
@@ -991,9 +1021,16 @@ function AppContent() {
           >
             <Routes>
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsPage />} />
+              <Route path="/terms-of-service" element={<TermsPage />} />
               <Route path="/cookies" element={<CookiePolicyPage />} />
               <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+              <Route path="/affiliate-disclosure" element={<AffiliateDisclosurePage />} />
+              <Route path="/data-rights" element={<DataRightsPage />} />
+              <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/trust" element={<TrustIndexPage />} />
               <Route path="/support" element={<SupportPage />} />
             </Routes>
           </motion.div>
@@ -1064,9 +1101,16 @@ function AppContent() {
                       <Route path="/growth" element={<MindVisualizer />} />
                       <Route path="/mind-map" element={<Navigate to="/growth" replace />} />
                       <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                       <Route path="/terms" element={<TermsPage />} />
+                      <Route path="/terms-of-service" element={<TermsPage />} />
                       <Route path="/cookies" element={<CookiePolicyPage />} />
                       <Route path="/cookie-policy" element={<CookiePolicyPage />} />
+                      <Route path="/affiliate-disclosure" element={<AffiliateDisclosurePage />} />
+                      <Route path="/data-rights" element={<DataRightsPage />} />
+                      <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />
+                      <Route path="/contact" element={<ContactPage />} />
+                      <Route path="/trust" element={<TrustIndexPage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/feedback" element={<FeedbackPage />} />
                       <Route path="*" element={<NotFoundPage />} />

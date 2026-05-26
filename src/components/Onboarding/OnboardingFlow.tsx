@@ -1844,8 +1844,8 @@ export default function OnboardingFlow() {
       <div className="h-8 sm:h-10 px-4 flex flex-wrap items-center justify-center gap-3 opacity-50 shrink-0">
          <span className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest">VisNova setup</span>
          <Link to="/cookie-policy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
-         <Link to="/privacy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy</Link>
-         <Link to="/terms" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms</Link>
+         <Link to="/privacy-policy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy</Link>
+         <Link to="/terms-of-service" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms</Link>
       </div>
     </div>
   );

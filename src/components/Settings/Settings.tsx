@@ -614,10 +614,12 @@ export default function Settings() {
                   <p className="mt-1 text-xs font-semibold text-text-secondary/60">Cookie choices can be changed anytime. Export and delete-account requests are handled through support during beta.</p>
                   <div className="mt-4 flex flex-wrap gap-3">
                     <Link to="/cookie-policy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
-                    <Link to="/privacy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy Policy</Link>
-                    <Link to="/terms" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms of Service</Link>
-                    <a href="mailto:naitik.business69@gmail.com?subject=VisNova%20data%20export%20request" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Export my data</a>
-                    <a href="mailto:naitik.business69@gmail.com?subject=VisNova%20account%20deletion%20request" className="rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-danger">Delete account request</a>
+                    <Link to="/privacy-policy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy Policy</Link>
+                    <Link to="/terms-of-service" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms of Service</Link>
+                    <Link to="/affiliate-disclosure" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Affiliate Disclosure</Link>
+                    <Link to="/community-guidelines" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Community Guidelines</Link>
+                    <Link to="/data-rights" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Data Rights</Link>
+                    <Link to="/contact" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Contact Support</Link>
                   </div>
                 </div>
               </div>
