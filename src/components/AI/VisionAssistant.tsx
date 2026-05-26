@@ -153,10 +153,10 @@ export default function VisionAssistant() {
           whileHover={{ y: -2, scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-8 left-8 lg:left-auto lg:right-12 z-[100] w-16 h-16 rounded-2xl bg-accent text-accent-contrast shadow-2xl shadow-accent/30 flex items-center justify-center transition-all"
+          className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-2xl shadow-accent/30 transition-all lg:bottom-8 lg:right-12 lg:h-16 lg:w-16"
           aria-label="Open VisNova Help"
         >
-          <HelpCircle size={28} />
+          <HelpCircle size={26} />
         </motion.button>
       )}
 
@@ -173,11 +173,11 @@ export default function VisionAssistant() {
             }}
             exit={{ opacity: 0, y: 80, scale: 0.96 }}
             className={cn(
-              "fixed bottom-8 right-8 z-[200] bg-card border border-card-border shadow-2xl flex flex-col overflow-hidden max-w-[calc(100vw-4rem)] max-h-[calc(100vh-4rem)]",
+              "fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[200] flex max-h-[calc(100dvh-7rem)] flex-col overflow-hidden border border-card-border bg-card shadow-2xl lg:inset-x-auto lg:bottom-8 lg:right-8 lg:max-h-[calc(100vh-4rem)] lg:max-w-[calc(100vw-4rem)]",
               isMinimized ? "rounded-2xl" : "rounded-[2rem]"
             )}
           >
-            <div className="p-6 border-b border-card-border flex items-center justify-between bg-surface-muted">
+            <div className="flex items-center justify-between border-b border-card-border bg-surface-muted p-4 sm:p-6">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
                   <HelpCircle size={18} />
@@ -188,24 +188,24 @@ export default function VisionAssistant() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsMinimized(!isMinimized)} className="p-2 text-text-secondary hover:text-text-main transition-colors">
+                <button onClick={() => setIsMinimized(!isMinimized)} className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-card hover:text-text-main" aria-label={isMinimized ? 'Expand help' : 'Minimize help'}>
                   {isMinimized ? <Maximize2 size={16} /> : <Shrink size={16} />}
                 </button>
-                <button onClick={() => setIsOpen(false)} className="p-2 text-text-secondary hover:text-text-main transition-colors">
+                <button onClick={() => setIsOpen(false)} className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-text-secondary transition-colors hover:bg-card hover:text-text-main" aria-label="Close help">
                   <X size={16} />
                 </button>
               </div>
             </div>
 
             {!isMinimized && (
-              <div className="grid grid-cols-1 sm:grid-cols-[190px_1fr] flex-1 min-h-0">
-                <div className="p-4 border-r border-card-border overflow-y-auto space-y-2">
+              <div className="grid min-h-0 flex-1 grid-cols-1 sm:grid-cols-[190px_1fr]">
+                <div className="flex gap-2 overflow-x-auto border-b border-card-border p-3 sm:block sm:space-y-2 sm:overflow-y-auto sm:border-b-0 sm:border-r sm:p-4">
                   {questions.map(question => (
                     <button
                       key={question.id}
                       onClick={() => showQuestion(question)}
                       className={cn(
-                        "w-full text-left p-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all",
+                        "flex min-h-11 shrink-0 items-center gap-3 rounded-xl p-3 text-left text-[10px] font-black uppercase tracking-widest transition-all sm:w-full",
                         activeQuestion === question.id ? "bg-accent text-accent-contrast" : "text-text-secondary hover:bg-surface-muted hover:text-text-main"
                       )}
                     >
@@ -215,7 +215,7 @@ export default function VisionAssistant() {
                   ))}
                 </div>
 
-                <div className="p-6 overflow-y-auto">
+                <div className="overflow-y-auto p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
                     <active.icon size={18} className="text-accent" />
                     <h4 className="text-sm font-black uppercase tracking-tight text-text-main">{active.label}</h4>
