@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet, Plus, User, FileText, BookOpen, PenLine, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet, Plus, User, FileText, BookOpen, CheckCircle2, MessageSquare } from 'lucide-react';
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -478,21 +478,21 @@ function MobileNav() {
     navigate(path);
   };
 
+  const primaryCreateAction = {
+    icon: Zap,
+    title: 'Log Progress',
+    description: 'Record what moved today and attach it to a Vision.',
+    onClick: () => {
+      closeCreate();
+      setIsProgressOpen(true);
+    }
+  };
+
   const createActions = [
-    {
-      icon: Zap,
-      title: 'Log Progress',
-      description: 'Record what you worked on today.',
-      primary: true,
-      onClick: () => {
-        closeCreate();
-        setIsProgressOpen(true);
-      }
-    },
     {
       icon: Target,
       title: 'Create Vision',
-      description: 'Start a new goal and plan the next steps.',
+      description: 'Start a goal.',
       onClick: () => {
         go('/visions');
         window.setTimeout(() => window.dispatchEvent(new Event('visnova-create-vision')), 120);
@@ -501,52 +501,48 @@ function MobileNav() {
     {
       icon: CheckCircle2,
       title: 'Add Task',
-      description: 'Add one action to today or a Vision.',
+      description: 'Plan one action.',
       onClick: () => go('/tasks')
     },
     {
       icon: MessageSquare,
       title: 'Post Update',
-      description: 'Share progress with Feed, Circle, or privately.',
+      description: 'Share a check-in.',
       onClick: () => {
         sessionStorage.setItem('visnova-open-feed-composer', 'update');
         go('/feed');
       }
     },
     {
-      icon: Bell,
-      title: 'Help Request',
-      description: 'Ask your Circle for support or accountability.',
-      onClick: () => {
-        sessionStorage.setItem('visnova-open-feed-composer', 'help_request');
-        go('/feed');
-      }
-    },
-    {
       icon: BookOpen,
       title: 'Write Journal',
-      description: 'Reflect on what changed today.',
+      description: 'Reflect privately.',
       onClick: () => go('/library?tab=journal')
     },
     {
       icon: FileText,
       title: 'Add Note',
-      description: 'Capture an idea, resource, or reference.',
+      description: 'Capture an idea.',
       onClick: () => go('/library')
     },
     {
-      icon: PenLine,
+      icon: Wallet,
       title: 'Add Resource',
-      description: 'Save learning material for your Vision.',
-      onClick: () => go('/growth')
-    },
-    {
-      icon: Clock,
-      title: 'Create Capsule',
-      description: 'Write something for your future self.',
-      onClick: () => go('/nova-clock')
+      description: 'Save goal material.',
+      onClick: () => go('/wallet')
     }
   ];
+
+  const supportCreateAction = {
+    icon: Bell,
+    title: 'Help Request',
+    description: 'Ask your Circle for support or accountability.',
+    onClick: () => {
+      sessionStorage.setItem('visnova-open-feed-composer', 'help_request');
+      go('/feed');
+    }
+  };
+  const PrimaryCreateIcon = primaryCreateAction.icon;
 
   return (
     <>
@@ -574,7 +570,7 @@ function MobileNav() {
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Create</p>
-                  <h2 className="mt-1 text-xl font-black tracking-tight text-text-main">What do you want to create?</h2>
+                  <h2 className="mt-1 text-xl font-black tracking-tight text-text-main">What do you need next?</h2>
                 </div>
                 <button
                   type="button"
@@ -585,31 +581,59 @@ function MobileNav() {
                   <X size={18} />
                 </button>
               </div>
-              <div className="space-y-2">
-                {createActions.map(action => {
-                  const Icon = action.icon;
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={primaryCreateAction.onClick}
+                  className="flex min-h-20 w-full items-center gap-3 rounded-[1.7rem] border border-accent bg-accent p-4 text-left text-accent-contrast shadow-lg shadow-accent/20 transition-all active:scale-[0.99]"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent-contrast/15">
+                    <PrimaryCreateIcon size={21} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-black tracking-tight">{primaryCreateAction.title}</span>
+                    <span className="mt-0.5 block text-xs font-semibold leading-relaxed text-accent-contrast/75">{primaryCreateAction.description}</span>
+                  </span>
+                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  {createActions.map(action => {
+                    const Icon = action.icon;
+                    return (
+                      <button
+                        key={action.title}
+                        type="button"
+                        onClick={action.onClick}
+                        className="flex min-h-28 w-full flex-col justify-between rounded-2xl border border-card-border bg-card p-3 text-left text-text-main transition-all active:scale-[0.99]"
+                      >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                          <Icon size={19} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-black leading-tight tracking-tight">{action.title}</span>
+                          <span className="mt-1 block text-[11px] font-semibold leading-snug text-text-secondary">{action.description}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {(() => {
+                  const Icon = supportCreateAction.icon;
                   return (
                     <button
-                      key={action.title}
                       type="button"
-                      onClick={action.onClick}
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all active:scale-[0.99]",
-                        action.primary
-                          ? "border-accent bg-accent text-accent-contrast shadow-lg shadow-accent/20"
-                          : "border-card-border bg-card text-text-main"
-                      )}
+                      onClick={supportCreateAction.onClick}
+                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-card-border bg-surface-muted/60 p-3 text-left text-text-main transition-all active:scale-[0.99]"
                     >
-                      <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl", action.primary ? "bg-accent-contrast/15" : "bg-accent/10 text-accent")}>
-                        <Icon size={19} />
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card text-accent">
+                        <Icon size={18} />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-black tracking-tight">{action.title}</span>
-                        <span className={cn("mt-0.5 block text-xs font-semibold", action.primary ? "text-accent-contrast/75" : "text-text-secondary")}>{action.description}</span>
+                        <span className="block text-sm font-black tracking-tight">{supportCreateAction.title}</span>
+                        <span className="mt-0.5 block text-xs font-semibold text-text-secondary">{supportCreateAction.description}</span>
                       </span>
                     </button>
                   );
-                })}
+                })()}
               </div>
             </motion.div>
           </motion.div>
