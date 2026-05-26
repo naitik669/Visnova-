@@ -86,6 +86,9 @@ export interface Vision {
   createdAt: number;
   updatedAt?: number;
   elements?: VisionElement[];
+  teamId?: string | null;
+  teamRole?: VisionTeamRole | null;
+  isShared?: boolean;
   collaborators?: {
     id: string;
     name: string;
@@ -367,6 +370,80 @@ export interface ProgressLog {
   lesson?: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+export type VisionTeamRole = 'owner' | 'admin' | 'editor' | 'viewer';
+
+export interface VisionTeam {
+  id: string;
+  visionId: string;
+  boardId?: string | null;
+  ownerId: string;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VisionTeamMember {
+  id: string;
+  teamId: string;
+  userId: string;
+  role: VisionTeamRole;
+  status: 'active' | 'pending' | 'removed';
+  invitedBy?: string | null;
+  joinedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  profile?: {
+    displayName?: string | null;
+    fullName?: string | null;
+    username?: string | null;
+    avatarUrl?: string | null;
+    verified?: boolean | null;
+  };
+}
+
+export interface VisionTeamInvite {
+  id: string;
+  teamId: string;
+  inviteToken: string;
+  role: Exclude<VisionTeamRole, 'owner'>;
+  expiresAt?: string | null;
+  maxUses?: number | null;
+  usedCount: number;
+  isRevoked: boolean;
+  requireLogin: boolean;
+  createdAt?: string;
+}
+
+export interface VisionTeamActivity {
+  id: string;
+  teamId: string;
+  actorId?: string | null;
+  actionType: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  summary: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
+export interface VisionTeamComment {
+  id: string;
+  teamId: string;
+  boardId?: string | null;
+  itemId?: string | null;
+  userId: string;
+  message: string;
+  createdAt: string;
+  updatedAt: string;
+  author?: {
+    name: string;
+    username?: string | null;
+    avatar?: string | null;
+    verified?: boolean | null;
+  };
 }
 
 export type AccountabilityVisibility = 'private' | 'circle' | 'public';

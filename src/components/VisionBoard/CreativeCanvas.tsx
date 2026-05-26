@@ -38,6 +38,7 @@ interface CreativeCanvasProps {
   vision: Vision;
   updateVision: (id: string, updates: Partial<Vision>) => void | boolean | Promise<void | boolean>;
   onActiveChange?: (active: boolean) => void;
+  readOnly?: boolean;
 }
 
 type SaveStatus = 'saved' | 'dirty' | 'saving' | 'failed';
@@ -376,7 +377,7 @@ const normalizeResourceUrl = (rawUrl: string) => {
   return parsed.toString();
 };
 
-export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVision, onActiveChange }) => {
+export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVision, onActiveChange, readOnly = false }) => {
   const addToast = useStore(state => state.addToast);
   const session = useStore(state => state.session);
   const notes = useStore(state => state.notes);
@@ -448,6 +449,14 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     };
   }, [offset.x, offset.y, scale]);
 
+  const explainReadOnly = useCallback(() => {
+    addToast({
+      type: 'info',
+      title: 'View-only access',
+      description: 'Ask the owner for edit permission to change this board.'
+    });
+  }, [addToast]);
+
   const fitToContent = useCallback((animate = false) => {
     const rect = viewportRef.current?.getBoundingClientRect();
     const width = Math.max(320, rect?.width || window.innerWidth);
@@ -481,6 +490,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [offset.x, offset.y, scale]);
 
   const persistNow = useCallback(async (nextElements?: VisionElement[], version = localVersionRef.current) => {
+    if (readOnly) {
+      setSaveStatus('saved');
+      return;
+    }
     const payload = nextElements || pendingElementsRef.current;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savingRef.current) {
@@ -512,9 +525,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         void persistNow(pendingElementsRef.current, localVersionRef.current);
       }
     }
-  }, [addToast, updateVision, vision.id]);
+  }, [addToast, readOnly, updateVision, vision.id]);
 
   const scheduleSave = useCallback((nextElements: VisionElement[]) => {
+    if (readOnly) return;
     pendingElementsRef.current = nextElements;
     dirtyRef.current = true;
     localVersionRef.current += 1;
@@ -522,9 +536,13 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setSaveStatus('dirty');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => persistNow(nextElements, version), SAVE_DELAY_MS);
-  }, [persistNow]);
+  }, [persistNow, readOnly]);
 
   const applyElements = useCallback((updater: VisionElement[] | ((current: VisionElement[]) => VisionElement[]), save = true, history = save) => {
+    if (readOnly) {
+      explainReadOnly();
+      return;
+    }
     setElements(current => {
       const rawNext = typeof updater === 'function' ? updater(current) : updater;
       const next = save ? normalizeElements(rawNext) : rawNext;
@@ -536,16 +554,17 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       if (save) scheduleSave(next);
       return next;
     });
-  }, [scheduleSave]);
+  }, [explainReadOnly, readOnly, scheduleSave]);
 
   const updateElement = useCallback((id: string, updates: Partial<VisionElement>, save = true, history = save) => {
+    if (readOnly) return;
     applyElements(current => current.map(element => element.id === id ? {
       ...element,
       ...updates,
       metadata: updates.metadata ? { ...(element.metadata || {}), ...updates.metadata } : element.metadata,
       updatedAt: Date.now()
     } : element), save, history);
-  }, [applyElements]);
+  }, [applyElements, readOnly]);
 
   const createElement = useCallback((
     type: VisionElement['type'],
@@ -554,6 +573,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     x?: number,
     y?: number
   ) => {
+    if (readOnly) {
+      explainReadOnly();
+      return null;
+    }
     const size = defaultSize(type);
     const rect = viewportRef.current?.getBoundingClientRect();
     const point = x !== undefined && y !== undefined
@@ -581,7 +604,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     setMoreToolsOpen(false);
     setImportPanelOpen(false);
     return element;
-  }, [applyElements, viewportToCanvas]);
+  }, [applyElements, explainReadOnly, readOnly, viewportToCanvas]);
 
   const applyTemplate = useCallback((template: BoardTemplateId, mode: 'replace' | 'append' = 'replace') => {
     const templateElements = createTemplateElements(template, vision);
@@ -593,15 +616,23 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [applyElements, fitToContent, vision]);
 
   const deleteElement = useCallback((id: string) => {
+    if (readOnly) {
+      explainReadOnly();
+      return;
+    }
     applyElements(current => current.filter(element => (
       element.id !== id &&
       element.metadata?.fromElementId !== id &&
       element.metadata?.toElementId !== id
     )), true, true);
     setSelectedId(current => current === id ? null : current);
-  }, [applyElements]);
+  }, [applyElements, explainReadOnly, readOnly]);
 
   const duplicateElement = useCallback((id: string) => {
+    if (readOnly) {
+      explainReadOnly();
+      return;
+    }
     const source = elements.find(element => element.id === id);
     if (!source) return;
     const now = Date.now();
@@ -617,7 +648,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     };
     applyElements(current => [...current, duplicate], true, true);
     setSelectedId(duplicate.id);
-  }, [applyElements, elements]);
+  }, [applyElements, elements, explainReadOnly, readOnly]);
 
   const moveLayer = useCallback((id: string, direction: 'forward' | 'backward') => {
     const target = elements.find(element => element.id === id);
@@ -648,6 +679,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [scheduleSave]);
 
   const importImageFile = useCallback(async (file: File, x?: number, y?: number) => {
+    if (readOnly) {
+      explainReadOnly();
+      return;
+    }
     const normalizedType = (file.type || '').toLowerCase();
     if (!ALLOWED_IMAGE_TYPES.has(normalizedType)) {
       addToast({ type: 'error', title: 'Unsupported image', description: 'Use a PNG, JPG, or WebP image.' });
@@ -673,7 +708,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     } finally {
       setIsUploading(false);
     }
-  }, [addToast, createElement, session?.user?.id, vision.id]);
+  }, [addToast, createElement, explainReadOnly, readOnly, session?.user?.id, vision.id]);
 
   const addResourceLink = useCallback(() => {
     try {
@@ -742,12 +777,13 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   }, [scheduleSave, vision.elements, vision.id]);
 
   useEffect(() => {
+    if (readOnly) return;
     const persistedElements = normalizeElements(vision.elements);
     if (persistedElements.length > 0 || elements.length > 0) return;
     if (autoTemplateVisionRef.current === vision.id) return;
     autoTemplateVisionRef.current = vision.id;
     applyTemplate('classic', 'replace');
-  }, [applyTemplate, elements.length, vision.elements, vision.id]);
+  }, [applyTemplate, elements.length, readOnly, vision.elements, vision.id]);
 
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -801,6 +837,11 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
       if (isTyping) return;
       const key = event.key.toLowerCase();
+      if (readOnly && (event.key === 'Delete' || event.key === 'Backspace' || ((event.ctrlKey || event.metaKey) && ['d', 's', 'z', 'y'].includes(key)))) {
+        event.preventDefault();
+        explainReadOnly();
+        return;
+      }
       if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId) {
         event.preventDefault();
         deleteElement(selectedId);
@@ -845,9 +886,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [deleteElement, duplicateElement, fitToContent, persistNow, restoreHistory, scale, selectedId, zoomTo]);
+  }, [deleteElement, duplicateElement, explainReadOnly, fitToContent, persistNow, readOnly, restoreHistory, scale, selectedId, zoomTo]);
 
   const startDrawing = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (readOnly) return false;
     if (activeTool !== 'pen' || event.button !== 0) return false;
     event.preventDefault();
     event.stopPropagation();

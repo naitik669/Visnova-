@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -27,9 +28,11 @@ import { Vision } from '../../types';
 import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { safeArray, safeFormat } from '../../lib/safeData';
+import { SharedWithMeCard } from '../VisionTeam/SharedWithMeCard';
 
 export default function VisionBoard() {
-  const { visions, addVision, updateVision, addActivity, addToast, session, fetchVisions, isVisionsLoading } = useStore();
+  const { visions, sharedVisions, addVision, updateVision, addActivity, addToast, session, fetchVisions, isVisionsLoading } = useStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedVision, setSelectedVision] = useState<Vision | null>(null);
   const [setupVision, setSetupVision] = useState<Vision | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,6 +62,18 @@ export default function VisionBoard() {
       setSelectedVision(latest);
     }
   }, [selectedVision, visions]);
+
+  useEffect(() => {
+    const openVisionId = searchParams.get('open');
+    if (!openVisionId || isVisionsLoading) return;
+    const target = visions.find(vision => vision.id === openVisionId);
+    if (!target) return;
+    setSelectedVision(target);
+    setIsModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('open');
+    setSearchParams(next, { replace: true });
+  }, [isVisionsLoading, searchParams, setSearchParams, visions]);
 
   const refreshRepository = async () => {
     if (!session?.user?.id) {
@@ -254,6 +269,8 @@ export default function VisionBoard() {
 
             {/* Rest of the visions */}
             <section className="space-y-12 pb-20">
+               <SharedWithMeCard visions={sharedVisions} onOpen={handleCardClick} />
+
                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-6">
                     <div className="w-12 h-12 rounded-2xl bg-surface-muted border border-card-border flex items-center justify-center text-text-secondary">

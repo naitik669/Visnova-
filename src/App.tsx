@@ -44,6 +44,7 @@ const loadProfilePage = () => import('./components/Social/ProfilePage');
 const loadSettings = () => import('./components/Settings/Settings');
 const loadFeedbackPage = () => import('./components/Support/FeedbackPage');
 const loadMoneyPage = () => import('./components/Money/MoneyPage');
+const loadJoinVisionTeamPage = () => import('./components/VisionTeam/JoinVisionTeamPage');
 
 const VisionBoard = lazy(loadVisionBoard);
 const NovaClock = lazy(loadNovaClock);
@@ -59,6 +60,7 @@ const ProfilePage = lazy(loadProfilePage);
 const Settings = lazy(loadSettings);
 const FeedbackPage = lazy(loadFeedbackPage);
 const MoneyPage = lazy(loadMoneyPage);
+const JoinVisionTeamPage = lazy(loadJoinVisionTeamPage);
 
 const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Promise<unknown> }> = [
   { match: path => path === '/feed', load: loadCommunityFeed },
@@ -67,6 +69,7 @@ const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Pro
   { match: path => path.startsWith('/store/redirect/'), load: loadStoreRedirectPage },
   { match: path => path === '/store' || path === '/resources/store', load: loadStoreResourcesPage },
   { match: path => path === '/visions' || path === '/vision', load: loadVisionBoard },
+  { match: path => path.startsWith('/join/vision-team/'), load: loadJoinVisionTeamPage },
   { match: path => path === '/tasks', load: loadTasksPage },
   { match: path => path === '/library' || path === '/notes' || path === '/journal', load: loadNotesSystem },
   { match: path => path === '/profile' || path.startsWith('/profile/'), load: loadProfilePage },
@@ -942,6 +945,7 @@ function AppContent() {
 
   const showOnboarding = !session || (isProfileReady && !hasCompletedOnboarding) || isPasswordRecovery;
   const isPublicLegalPath = ['/privacy', '/terms', '/cookies', '/cookie-policy', '/support'].includes(location.pathname);
+  const isJoinVisionTeamPath = location.pathname.startsWith('/join/vision-team/');
 
   return (
     <>
@@ -960,6 +964,21 @@ function AppContent() {
             <Routes>
               <Route path="/auth/callback" element={<AuthCallback />} />
             </Routes>
+          </motion.div>
+        ) : isJoinVisionTeamPath ? (
+          <motion.div
+            key="join-vision-team"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.98, filter: 'blur(5px)' }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="min-h-screen bg-bg-base overflow-y-auto"
+          >
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route path="/join/vision-team/:token" element={<JoinVisionTeamPage />} />
+              </Routes>
+            </Suspense>
           </motion.div>
         ) : isPublicLegalPath ? (
           <motion.div
@@ -1024,6 +1043,7 @@ function AppContent() {
                       <Route path="/resources/store" element={<StoreResourcesPage />} />
                       <Route path="/store/redirect/:productId" element={<StoreRedirectPage />} />
                       <Route path="/visions" element={<VisionBoard />} />
+                      <Route path="/join/vision-team/:token" element={<JoinVisionTeamPage />} />
                       <Route path="/vision" element={<Navigate to="/visions" replace />} />
                       <Route path="/tasks" element={<TasksPage />} />
                       <Route path="/circle/momentum" element={<CircleMomentumPage />} />

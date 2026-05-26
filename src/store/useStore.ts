@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary, FinanceTransaction, FinanceGoal, FinanceBudget, FinanceSubscription, FinanceReview, ProgressLog, GrowthTimelineEvent, AIInsight, AccountabilityPreferences, WeeklyProofSprint, AccountabilityNudge } from '../types';
+import { AppState, Vision, Activity, CircleMember, Folder, Note, Task, Post, JournalEntry, DailyActivitySource, DailyActivitySummary, FinanceTransaction, FinanceGoal, FinanceBudget, FinanceSubscription, FinanceReview, ProgressLog, GrowthTimelineEvent, AIInsight, AccountabilityPreferences, WeeklyProofSprint, AccountabilityNudge, VisionTeamRole } from '../types';
 import { rankPosts } from '../services/feedRankingService';
 import { notificationService } from '../services/notificationService';
 import { supabase, isSupabaseConfigured, getAuthRedirectUrl } from '../lib/supabase';
@@ -1976,7 +1976,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ isVisionsLoading: true });
     try {
-      const formatRows = (rows: any[], tasksData: any[] = []): Vision[] => rows.map((v: any) => {
+      const formatRows = (rows: any[], tasksData: any[] = [], teamByVisionId: Record<string, { teamId: string; role: VisionTeamRole; isShared: boolean }> = {}): Vision[] => rows.map((v: any) => {
         const visionTasks = tasksData
           .filter(t => t.vision_id === v.id)
           .map(t => ({
@@ -2019,6 +2019,9 @@ export const useStore = create<AppState>((set, get) => ({
           updatedAt: safeTime(v.updated_at, safeTime(v.created_at)),
           visibility: normalizeVisibility(v.visibility),
           deadline: v.deadline,
+          teamId: teamByVisionId[v.id]?.teamId || null,
+          teamRole: teamByVisionId[v.id]?.role || null,
+          isShared: !!teamByVisionId[v.id]?.isShared,
         };
       });
 
@@ -2053,8 +2056,53 @@ export const useStore = create<AppState>((set, get) => ({
         }
       }
 
+      let sharedVisionRows: any[] = [];
+      const teamByVisionId: Record<string, { teamId: string; role: VisionTeamRole; isShared: boolean }> = {};
+      try {
+        const { data: teamRows, error: teamError } = await supabase
+          .from('vision_team_members')
+          .select('team_id, role, vision_teams!inner(id, vision_id, owner_id)')
+          .eq('user_id', userId)
+          .eq('status', 'active');
+
+        if (teamError) {
+          const text = `${teamError.code || ''} ${teamError.message || ''}`.toLowerCase();
+          if (!text.includes('vision_team_members') && !text.includes('schema cache')) throw teamError;
+        } else {
+          (teamRows || []).forEach((row: any) => {
+            const team = Array.isArray(row.vision_teams) ? row.vision_teams[0] : row.vision_teams;
+            if (!team?.vision_id) return;
+            teamByVisionId[team.vision_id] = {
+              teamId: team.id || row.team_id,
+              role: row.role || 'viewer',
+              isShared: team.owner_id !== userId
+            };
+          });
+          const sharedIds = Object.entries(teamByVisionId)
+            .filter(([, info]) => info.isShared)
+            .map(([visionId]) => visionId);
+          if (sharedIds.length > 0) {
+            const { data: fetchedShared, error: sharedError } = await supabase
+              .from('visions')
+              .select('*')
+              .in('id', sharedIds)
+              .order('updated_at', { ascending: false });
+            if (sharedError) throw sharedError;
+            sharedVisionRows = fetchedShared || [];
+          }
+        }
+      } catch (teamError) {
+        console.warn('Vision Team lookup skipped:', teamError);
+      }
+
+      const mergedRows = new Map<string, any>();
+      [...safeVisionRows, ...sharedVisionRows].forEach(row => {
+        if (row?.id) mergedRows.set(row.id, row);
+      });
+      const allVisionRows = Array.from(mergedRows.values());
+
       // Extract vision IDs for task fetching. If task loading fails, still show the boards.
-      const visionIds = safeVisionRows.map(v => v.id).filter(Boolean);
+      const visionIds = allVisionRows.map(v => v.id).filter(Boolean);
       let tasksData: any[] = [];
       if (visionIds.length > 0) {
         const { data: fetchedTasks, error: tasksError } = await supabase
@@ -2076,7 +2124,10 @@ export const useStore = create<AppState>((set, get) => ({
         }
       }
 
-      set({ visions: formatRows(safeVisionRows, tasksData) });
+      const formattedOwned = formatRows(safeVisionRows, tasksData, teamByVisionId);
+      const formattedShared = formatRows(sharedVisionRows, tasksData, teamByVisionId);
+      const formattedAll = formatRows(allVisionRows, tasksData, teamByVisionId);
+      set({ visions: formattedAll, sharedVisions: formattedShared.length ? formattedShared : formattedOwned.filter(vision => vision.isShared) });
     } catch (error) {
       console.error('Failed to fetch visions:', error);
       get().addToast({
@@ -2580,8 +2631,6 @@ export const useStore = create<AppState>((set, get) => ({
       dbUpdates.updated_at = new Date().toISOString();
       const userId = get().session?.user?.id;
       const userEmail = get().session?.user?.email?.toLowerCase();
-      if (userId) dbUpdates.user_id = userId;
-      if (userEmail) dbUpdates.user_email = userEmail;
       const baseQuery = supabase.from('visions').update(dbUpdates).eq('id', id).select('id');
       let result = userId && userEmail
         ? await baseQuery.or(`user_id.eq.${userId},user_email.ilike.${userEmail}`)
@@ -2599,7 +2648,11 @@ export const useStore = create<AppState>((set, get) => ({
 
       const { data, error } = result;
       if (error) throw error;
-      if (!data?.length) throw new Error('Vision board was not found for this account.');
+      if (!data?.length && userId) {
+        result = await supabase.from('visions').update(dbUpdates).eq('id', id).select('id');
+      }
+      if (result.error) throw result.error;
+      if (!result.data?.length) throw new Error('Vision board was not found for this account or team role.');
       return true;
     } catch (error: any) {
       console.error('Failed to update vision:', error);

@@ -62,11 +62,13 @@ import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { CreativeCanvas } from './CreativeCanvas';
 import PublishModal from './PublishModal';
-import CollaborateModal from './CollaborateModal';
 import { supabase, uploadVisionBoardImage } from '../../lib/supabase';
 import { safeArray } from '../../lib/safeData';
 import { formatCurrency } from '../../lib/currency';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { ShareVisionModal } from '../VisionTeam/ShareVisionModal';
+import { BoardPermissionBanner } from '../VisionTeam/BoardPermissionBanner';
+import { canEditBoard } from '../../lib/visionTeams';
 
 interface VisionDetailModalProps {
   vision: Vision | null;
@@ -490,6 +492,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
   );
 
   if (!vision) return null;
+  const boardReadOnly = !!vision.teamRole && !canEditBoard(vision.teamRole);
 
   return (
     <AnimatePresence>
@@ -608,9 +611,9 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
                    <HeaderAction key="header-focus" icon={isFullscreen ? <Box size={16} /> : <Maximize2 size={16} />} onClick={() => setIsFullscreen(!isFullscreen)} label="Focus" />
                    <div className="w-px h-6 bg-card-border" />
                    <HeaderAction key="header-post-profile" icon={<Share2 size={16} />} onClick={() => setShowPostConfirm(true)} label="Post to profile" />
-                   <HeaderAction key="header-publish" icon={<Globe size={16} />} onClick={() => setShowPublishModal(true)} label="Publish" />
+                   {!vision.isShared && <HeaderAction key="header-publish" icon={<Globe size={16} />} onClick={() => setShowPublishModal(true)} label="Publish" />}
                    <HeaderAction key="header-collab" icon={<UserPlus size={16} />} onClick={() => setShowCollaborateModal(true)} label="Collaborate" />
-                   <HeaderAction key="header-purge" icon={<Trash2 size={16} />} onClick={() => setShowDeleteConfirm(true)} label="Purge" className="hover:text-danger" />
+                   {!vision.isShared && <HeaderAction key="header-purge" icon={<Trash2 size={16} />} onClick={() => setShowDeleteConfirm(true)} label="Purge" className="hover:text-danger" />}
                 </div>
                 
                 <button
@@ -624,10 +627,12 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
 
             {/* Main Canvas Area */}
             <div className="flex-1 relative min-h-0 overflow-hidden bg-bg-base/30">
+               <BoardPermissionBanner role={vision.teamRole} />
                {activeTab === 'board' ? (
                  <CreativeCanvas 
                    vision={vision} 
                    updateVision={updateVision} 
+                   readOnly={boardReadOnly}
                    onActiveChange={(active) => {
                      if (active && !isCollapsed) setIsCollapsed(true);
                    }}
@@ -645,7 +650,7 @@ export default function VisionDetailModal({ vision, isOpen, onClose }: VisionDet
             onClose={() => setShowPublishModal(false)} 
             vision={vision}
           />
-          <CollaborateModal
+          <ShareVisionModal
             isOpen={showCollaborateModal}
             onClose={() => setShowCollaborateModal(false)}
             vision={vision}
