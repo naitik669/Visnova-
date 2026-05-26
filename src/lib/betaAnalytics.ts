@@ -1,6 +1,7 @@
 import { track } from '@vercel/analytics';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { canUseAnalyticsFromStorage } from '../hooks/useCookieConsent';
+import { capturePostHogEvent } from './posthog';
 
 type AnalyticsMetadata = Record<string, string | number | boolean | null | undefined>;
 
@@ -21,6 +22,12 @@ export async function trackBetaEvent(
 
   if (typeof window !== 'undefined') {
     try {
+      capturePostHogEvent(eventType, {
+        ...cleanMetadata,
+        entity_id: entityId && uuidPattern.test(entityId) ? entityId : null,
+        route: window.location.pathname
+      });
+
       const vercelMetadata = Object.fromEntries(
         Object.entries(cleanMetadata).filter(([, value]) => (
           typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'

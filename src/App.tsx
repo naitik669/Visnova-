@@ -40,6 +40,8 @@ import { XpToast } from './components/ui/XpToast';
 import { VisNovaMotion } from './components/ui/VisNovaMotion';
 import { BrandLogo } from './components/BrandLogo';
 import { ProgressLogComposer } from './components/Progress/ProgressLogComposer';
+import { useCookieConsent } from './hooks/useCookieConsent';
+import { capturePostHogPageview, identifyPostHogUser, resetPostHogUser } from './lib/posthog';
 
 const loadVisionBoard = () => import('./components/VisionBoard/VisionBoard');
 const loadNovaClock = () => import('./components/Nova/NovaClock');
@@ -877,10 +879,12 @@ export function DeletedContentPage({ label = 'content' }: { label?: string }) {
 
 function AppContent() {
   const isOnline = useBrowserOnline();
+  const { canUseAnalytics } = useCookieConsent();
   const theme = useStore(state => state.theme);
   const isFocusMode = useStore(state => state.isFocusMode);
   const hasCompletedOnboarding = useStore(state => state.hasCompletedOnboarding);
   const profile = useStore(state => state.profile);
+  const user = useStore(state => state.user);
   const authLoading = useStore(state => state.authLoading);
   const isProfileReady = useStore(state => state.isProfileReady);
   const isAuthInitialized = useStore(state => state.isAuthInitialized);
@@ -899,6 +903,46 @@ function AppContent() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (!isOnline || !canUseAnalytics) return;
+    capturePostHogPageview(`${location.pathname}${location.search}`);
+  }, [canUseAnalytics, isOnline, location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!isOnline || !canUseAnalytics) {
+      resetPostHogUser();
+      return;
+    }
+
+    if (!session?.user?.id) {
+      resetPostHogUser();
+      return;
+    }
+
+    identifyPostHogUser(session.user.id, {
+      email: session.user.email || user.email,
+      name: profile?.name || user.name,
+      username: profile?.username || user.username,
+      role: profile?.role || user.role,
+      onboarding_completed: hasCompletedOnboarding,
+      theme
+    });
+  }, [
+    canUseAnalytics,
+    hasCompletedOnboarding,
+    isOnline,
+    profile?.name,
+    profile?.role,
+    profile?.username,
+    session?.user?.email,
+    session?.user?.id,
+    theme,
+    user.email,
+    user.name,
+    user.role,
+    user.username
+  ]);
 
   useEffect(() => {
     if (isOnline || !toasts.length) return;
