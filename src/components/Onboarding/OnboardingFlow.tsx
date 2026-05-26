@@ -1750,7 +1750,7 @@ export default function OnboardingFlow() {
   const usesIntroCard = [1, 2, 3, 11, 12, 13].includes(step);
 
   return (
-    <div className="h-screen bg-bg-base flex flex-col font-sans overflow-hidden p-3 sm:p-4">
+    <div className="flex min-h-[100dvh] flex-col overflow-hidden bg-bg-base p-2 font-sans sm:p-4">
       {/* Dynamic Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/5 rounded-full blur-[120px]" />
@@ -1758,7 +1758,7 @@ export default function OnboardingFlow() {
       </div>
 
       {/* Top Header */}
-      <div className="h-14 sm:h-16 px-2 sm:px-5 flex items-center justify-between z-10 relative shrink-0">
+      <div className="relative z-10 flex min-h-14 shrink-0 items-center justify-between px-2 py-2 sm:h-16 sm:px-5 sm:py-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
              <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
@@ -1767,21 +1767,21 @@ export default function OnboardingFlow() {
         </div>
 
         {step < 10 && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {session?.user && (
               <button
                 onClick={async () => {
                   await signOut();
                   navigate('/');
                 }}
-                className="text-[10px] font-black uppercase tracking-widest text-accent/60 hover:text-accent transition-all bg-accent/5 px-3 py-1.5 rounded-lg border border-accent/10"
+                className="rounded-lg border border-accent/10 bg-accent/5 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-accent/60 transition-all hover:text-accent"
               >
                 Sign Out
               </button>
             )}
             <button
               onClick={prevStep}
-              className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-secondary/60 hover:text-text-main transition-colors"
+              className="group flex h-10 items-center gap-1.5 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest text-text-secondary/60 transition-colors hover:text-text-main sm:gap-2"
             >
               <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
               Back
@@ -1815,7 +1815,7 @@ export default function OnboardingFlow() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-h-0 relative flex items-center justify-center">
+      <div className="relative flex min-h-0 flex-1 items-stretch justify-center sm:items-center">
         <AnimatePresence custom={direction} mode="wait">
           <motion.div
             key={step}
@@ -1824,14 +1824,14 @@ export default function OnboardingFlow() {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="absolute inset-0 flex items-center justify-center p-1 sm:p-3 overflow-hidden"
+            className="absolute inset-0 flex items-stretch justify-center overflow-hidden p-0 sm:items-center sm:p-3"
           >
             <div
               className={cn(
-                "w-full max-h-full overflow-y-auto custom-scrollbar",
+                "w-full overflow-y-auto custom-scrollbar",
                 usesIntroCard
-                  ? "max-w-[520px] rounded-[2rem] border border-card-border bg-card/90 p-5 sm:p-7 shadow-2xl shadow-accent/10 backdrop-blur-xl"
-                  : "max-w-[1180px] p-2 sm:p-6"
+                  ? "max-h-full max-w-[520px] rounded-[1.5rem] border border-card-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-accent/10 backdrop-blur-xl sm:rounded-[2rem] sm:p-7"
+                  : "max-h-full max-w-[1180px] p-1 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6"
               )}
             >
               {renderCurrentStep()}
@@ -1841,7 +1841,7 @@ export default function OnboardingFlow() {
       </div>
 
       {/* Footer Meta */}
-      <div className="h-8 sm:h-10 px-4 flex flex-wrap items-center justify-center gap-3 opacity-50 shrink-0">
+      <div className="hidden h-8 shrink-0 flex-wrap items-center justify-center gap-3 px-4 opacity-50 sm:flex sm:h-10">
          <span className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest">VisNova setup</span>
          <Link to="/cookie-policy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
          <Link to="/privacy-policy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy</Link>
