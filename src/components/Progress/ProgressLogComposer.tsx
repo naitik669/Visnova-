@@ -19,6 +19,8 @@ const LOG_TYPES: Array<{ value: ProgressLogType; label: string }> = [
   { value: 'blocker', label: 'Blocker' }
 ];
 
+const PRIMARY_LOG_TYPES = new Set<ProgressLogType>(['progress', 'win', 'blocker', 'milestone']);
+
 const VISIBILITY_OPTIONS: Array<{ value: EcosystemVisibility; label: string; helper: string; icon: typeof Lock }> = [
   { value: 'private', label: 'Private', helper: 'Only you', icon: Lock },
   { value: 'circle', label: 'Circle', helper: 'People you choose', icon: Link2 },
@@ -32,8 +34,13 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
   const [visibility, setVisibility] = useState<EcosystemVisibility>(() => getAppPreferences().progressLogVisibility as EcosystemVisibility);
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showMoreTypes, setShowMoreTypes] = useState(false);
 
   const selectedVision = useMemo(() => visions.find(vision => vision.id === visionId), [visionId, visions]);
+  const visibleLogTypes = useMemo(
+    () => LOG_TYPES.filter(type => showMoreTypes || PRIMARY_LOG_TYPES.has(type.value) || type.value === logType),
+    [logType, showMoreTypes]
+  );
 
   useEffect(() => {
     if (open) setVisionId(defaultVisionId || '');
@@ -44,6 +51,7 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
     setLogType('progress');
     setVisibility(getAppPreferences().progressLogVisibility as EcosystemVisibility);
     setVisionId(defaultVisionId || '');
+    setShowMoreTypes(false);
     onClose();
   };
 
@@ -74,14 +82,14 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
       className="h-[92dvh] rounded-t-[2rem] sm:h-auto sm:rounded-[2rem]"
       footer={
         <>
-          <button type="button" onClick={resetAndClose} className="h-11 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+          <button type="button" onClick={resetAndClose} className="order-2 h-12 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary sm:order-1 sm:h-11">
             Cancel
           </button>
           <button
             type="button"
             onClick={submit}
             disabled={!content.trim() || isSaving}
-            className="h-11 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50"
+            className="order-1 h-12 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:opacity-50 sm:order-2 sm:h-11"
           >
             {isSaving ? 'Saving...' : 'Save Proof'}
           </button>
@@ -99,22 +107,34 @@ export function ProgressLogComposer({ open, onClose, defaultVisionId }: { open: 
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {LOG_TYPES.map(type => (
+        <div className="rounded-2xl border border-card-border bg-card p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Proof Type</label>
             <button
-              key={type.value}
               type="button"
-              onClick={() => setLogType(type.value)}
-              className={cn(
-                'min-h-12 rounded-2xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors',
-                logType === type.value
-                  ? 'border-accent bg-accent text-accent-contrast'
-                  : 'border-card-border bg-card text-text-secondary hover:text-accent'
-              )}
+              onClick={() => setShowMoreTypes(value => !value)}
+              className="rounded-full bg-surface-muted px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary"
             >
-              {type.label}
+              {showMoreTypes ? 'Fewer types' : 'More types'}
             </button>
-          ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {visibleLogTypes.map(type => (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => setLogType(type.value)}
+                className={cn(
+                  'min-h-12 rounded-2xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-colors',
+                  logType === type.value
+                    ? 'border-accent bg-accent text-accent-contrast'
+                    : 'border-card-border bg-app-container text-text-secondary hover:text-accent'
+                )}
+              >
+                {type.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <MentionHashtagTextarea
