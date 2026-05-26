@@ -6,16 +6,20 @@ import App from './App.tsx';
 import './index.css';
 import { applyAppPreferences } from './lib/appPreferences.ts';
 import { useCookieConsent } from './hooks/useCookieConsent.ts';
-import { initPostHog, syncPostHogConsent } from './lib/posthog.ts';
+import { initAnalytics, optInAnalytics, optOutAnalytics } from './lib/analytics.ts';
 
 applyAppPreferences();
-initPostHog();
+initAnalytics();
 
 function ConsentedAnalytics() {
   const { canUseAnalytics } = useCookieConsent();
 
   useEffect(() => {
-    syncPostHogConsent(canUseAnalytics);
+    if (canUseAnalytics) {
+      optInAnalytics();
+    } else {
+      optOutAnalytics();
+    }
   }, [canUseAnalytics]);
 
   return canUseAnalytics ? <Analytics /> : null;

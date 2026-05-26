@@ -41,7 +41,7 @@ import { VisNovaMotion } from './components/ui/VisNovaMotion';
 import { BrandLogo } from './components/BrandLogo';
 import { ProgressLogComposer } from './components/Progress/ProgressLogComposer';
 import { useCookieConsent } from './hooks/useCookieConsent';
-import { capturePostHogPageview, identifyPostHogUser, resetPostHogUser } from './lib/posthog';
+import { identifyAnalyticsUser, resetAnalyticsUser, trackPageView } from './lib/analytics';
 
 const loadVisionBoard = () => import('./components/VisionBoard/VisionBoard');
 const loadNovaClock = () => import('./components/Nova/NovaClock');
@@ -884,7 +884,6 @@ function AppContent() {
   const isFocusMode = useStore(state => state.isFocusMode);
   const hasCompletedOnboarding = useStore(state => state.hasCompletedOnboarding);
   const profile = useStore(state => state.profile);
-  const user = useStore(state => state.user);
   const authLoading = useStore(state => state.authLoading);
   const isProfileReady = useStore(state => state.isProfileReady);
   const isAuthInitialized = useStore(state => state.isAuthInitialized);
@@ -906,25 +905,22 @@ function AppContent() {
 
   useEffect(() => {
     if (!isOnline || !canUseAnalytics) return;
-    capturePostHogPageview(`${location.pathname}${location.search}`);
-  }, [canUseAnalytics, isOnline, location.pathname, location.search]);
+    trackPageView(location.pathname);
+  }, [canUseAnalytics, isOnline, location.pathname]);
 
   useEffect(() => {
     if (!isOnline || !canUseAnalytics) {
-      resetPostHogUser();
+      resetAnalyticsUser();
       return;
     }
 
     if (!session?.user?.id) {
-      resetPostHogUser();
+      resetAnalyticsUser();
       return;
     }
 
-    identifyPostHogUser(session.user.id, {
-      email: session.user.email || user.email,
-      name: profile?.name || user.name,
-      username: profile?.username || user.username,
-      role: profile?.role || user.role,
+    identifyAnalyticsUser(session.user.id, {
+      role: profile?.role,
       onboarding_completed: hasCompletedOnboarding,
       theme
     });
@@ -932,16 +928,9 @@ function AppContent() {
     canUseAnalytics,
     hasCompletedOnboarding,
     isOnline,
-    profile?.name,
     profile?.role,
-    profile?.username,
-    session?.user?.email,
     session?.user?.id,
-    theme,
-    user.email,
-    user.name,
-    user.role,
-    user.username
+    theme
   ]);
 
   useEffect(() => {
