@@ -1,10 +1,11 @@
 import type { MoneyGoalProgressItem } from '../../lib/progressAnalytics';
 import { formatCurrency } from '../../lib/currency';
 import { safeFormat } from '../../lib/safeData';
+import { cn } from '../../lib/utils';
 
-export function MoneyGoalProgressCard({ goal }: { goal: MoneyGoalProgressItem }) {
+export function MoneyGoalProgressCard({ goal, compact = false }: { goal: MoneyGoalProgressItem; compact?: boolean }) {
   return (
-    <article className="rounded-[1.6rem] border border-card-border bg-app-container p-4">
+    <article className={cn('rounded-[1.6rem] border border-card-border bg-app-container p-4', compact && 'bg-card shadow-sm')}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="line-clamp-1 text-sm font-black text-text-main">{goal.title}</h3>

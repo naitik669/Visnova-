@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import { Check, Clock, Globe, Inbox, MessageCircle, Plus, Sparkles, Target, Users } from 'lucide-react';
@@ -22,6 +22,7 @@ const relationLabels: Record<string, string> = {
 };
 
 export default function Circle() {
+  const navigate = useNavigate();
   const { circle, user, sharedVisions, acceptVision, fetchCircleData, followingIds, toggleFollow, setSelectedProfileId } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [suggestions, setSuggestions] = useState<SuggestedUser[]>([]);
@@ -109,8 +110,32 @@ export default function Circle() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-700 pb-20 pt-2">
-      <div className="flex flex-wrap gap-2 px-2">
+    <div className="mx-auto max-w-6xl space-y-5 px-0 pb-24 pt-1 animate-in fade-in duration-700 sm:space-y-6 sm:px-0 sm:pb-20 sm:pt-2">
+      <section className="rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm lg:hidden">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Circle</p>
+        <h1 className="mt-1 text-2xl font-black text-text-main">Accountability hub</h1>
+        <p className="mt-2 text-sm font-semibold leading-relaxed text-text-secondary">
+          Check messages, ask for help, and keep momentum with your people.
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/circle/momentum')}
+            className="h-12 rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+          >
+            Momentum
+          </button>
+          <button
+            type="button"
+            onClick={() => changeTab('connections')}
+            className="h-12 rounded-2xl border border-card-border bg-app-container px-4 text-[10px] font-black uppercase tracking-widest text-text-main"
+          >
+            Partners
+          </button>
+        </div>
+      </section>
+
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = validTab === tab.id;
@@ -119,7 +144,7 @@ export default function Circle() {
               key={tab.id}
               onClick={() => changeTab(tab.id)}
               className={cn(
-                "h-11 px-4 rounded-2xl border flex items-center gap-2 transition-all",
+                "flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 transition-all",
                 active ? "bg-accent text-accent-contrast border-accent shadow-lg shadow-accent/10" : "bg-card border-card-border text-text-secondary hover:text-text-main"
               )}
             >
@@ -138,7 +163,7 @@ export default function Circle() {
       {validTab === 'connections' && (
         <section className="space-y-8">
           <div className="space-y-6">
-            <div className="flex items-center gap-3 px-2">
+            <div className="flex items-center gap-3 px-1 sm:px-2">
               <Users size={20} className="text-accent" />
               <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-main">Connections</h2>
             </div>
@@ -150,9 +175,9 @@ export default function Circle() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {circle.map((member) => (
-                  <div key={member.id} className="system-card p-6 bg-card border-card-border flex items-center justify-between gap-5 group hover:border-accent/30 transition-all">
+                  <div key={member.id} className="system-card flex flex-col gap-4 border-card-border bg-card p-4 transition-all hover:border-accent/30 sm:flex-row sm:items-center sm:justify-between sm:gap-5 sm:p-6">
                     <button onClick={() => setSelectedProfileId(member.id)} className="flex items-center gap-4 min-w-0 text-left">
-                      <img src={member.avatar} alt={member.name} className="w-16 h-16 rounded-2xl border border-card-border object-cover shadow-lg" />
+                      <img src={member.avatar} alt={member.name} className="h-14 w-14 rounded-2xl border border-card-border object-cover shadow-lg sm:h-16 sm:w-16" />
                       <div className="min-w-0">
                         <h3 className="text-base font-black text-text-main uppercase tracking-tight flex items-center gap-2 truncate">
                           {member.name}
@@ -167,7 +192,7 @@ export default function Circle() {
                     <button
                       onClick={() => toggleFollow(member.id)}
                       className={cn(
-                        "h-10 px-4 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all",
+                        "flex h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-[9px] font-black uppercase tracking-widest transition-all sm:h-10 sm:w-auto",
                         followingIds.includes(member.id)
                           ? "bg-surface-muted border border-card-border text-text-secondary"
                           : "bg-accent text-accent-contrast"
@@ -188,8 +213,8 @@ export default function Circle() {
               <div className="system-card p-8 bg-card border-card-border text-sm text-text-secondary">No suggestions right now.</div>
             ) : (
               suggestions.slice(0, 5).map((candidate) => (
-                <div key={candidate.id} className="system-card p-5 bg-card border-card-border flex items-center justify-between gap-4">
-                  <button onClick={() => setSelectedProfileId(candidate.id)} className="flex items-center gap-4 min-w-0 text-left">
+              <div key={candidate.id} className="system-card flex flex-col gap-4 border-card-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <button onClick={() => setSelectedProfileId(candidate.id)} className="flex items-center gap-4 min-w-0 text-left">
                     <img src={candidate.avatar_url} alt={candidate.display_name} className="w-12 h-12 rounded-xl border border-card-border object-cover" />
                     <div className="min-w-0">
                       <h3 className="text-sm font-black uppercase text-text-main flex items-center gap-2 truncate">
@@ -200,7 +225,7 @@ export default function Circle() {
                       <p className="text-[9px] font-bold uppercase tracking-widest text-accent/80 mt-1">{candidate.reason}</p>
                     </div>
                   </button>
-                  <button onClick={() => toggleFollow(candidate.id)} className="h-10 px-4 rounded-xl bg-accent text-accent-contrast text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                  <button onClick={() => toggleFollow(candidate.id)} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 text-[9px] font-black uppercase tracking-widest text-accent-contrast sm:h-10 sm:w-auto">
                     <Plus size={13} /> Follow
                   </button>
                 </div>
@@ -227,8 +252,8 @@ export default function Circle() {
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {sharedVisions.map((vision) => (
-                <div key={vision.id} className="system-card p-6 bg-accent/[0.03] border-accent/20 flex items-center justify-between group">
-                  <div className="flex items-center gap-6">
+                <div key={vision.id} className="system-card flex flex-col gap-4 border-accent/20 bg-accent/[0.03] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                  <div className="flex items-center gap-4 sm:gap-6">
                     <div className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-accent-contrast">
                       <Target size={20} />
                     </div>
@@ -239,7 +264,7 @@ export default function Circle() {
                   </div>
                   <button
                     onClick={() => acceptVision(vision.id)}
-                    className="px-6 py-2 bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-accent/20"
+                    className="h-11 rounded-xl bg-accent px-6 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/20 transition-all hover:scale-105 active:scale-95"
                   >
                     Accept Vision
                   </button>

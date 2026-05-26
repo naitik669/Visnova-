@@ -1,10 +1,11 @@
 import type { VisionProgressItem } from '../../lib/progressAnalytics';
 import { safeFormat } from '../../lib/safeData';
+import { cn } from '../../lib/utils';
 import { VisNovaMotion } from '../ui/VisNovaMotion';
 
-export function VisionProgressBreakdown({ items }: { items: VisionProgressItem[] }) {
+export function VisionProgressBreakdown({ items, compact = false }: { items: VisionProgressItem[]; compact?: boolean }) {
   return (
-    <section className="rounded-[2rem] border border-card-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)]">
+    <section className={cn('rounded-[2rem] border border-card-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)]', compact && 'rounded-[1.5rem] p-4 shadow-sm')}>
       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-text-secondary">Vision progress</p>
       <h2 className="mt-1 text-lg font-black text-text-main">Active breakdown</h2>
       <div className="mt-5 space-y-3">
@@ -14,7 +15,7 @@ export function VisionProgressBreakdown({ items }: { items: VisionProgressItem[]
               <div className="min-w-0">
                 <p className="line-clamp-1 text-sm font-black text-text-main">{item.vision.title}</p>
                 <p className="mt-1 text-[11px] font-semibold text-text-secondary">
-                  {item.logs} logs · {item.completed}/{item.totalTasks} tasks · last {safeFormat(item.lastActivity, 'MMM d')}
+                  {item.logs} logs / {item.completed}/{item.totalTasks} tasks / last {safeFormat(item.lastActivity, 'MMM d')}
                 </p>
               </div>
               <span className="text-sm font-black text-accent">{item.vision.progress || 0}%</span>

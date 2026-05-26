@@ -40,15 +40,15 @@ function EntryAvatar({ entry }: { entry: CircleMomentumEntry }) {
 function StatTile({ label, value, icon: Icon, wide = false }: { label: string; value: string | number; icon: typeof Award; wide?: boolean }) {
   return (
     <div className={cn(
-      'rounded-[1.4rem] border border-card-border bg-card p-4 shadow-sm',
+      'rounded-[1.3rem] border border-card-border bg-card p-3 shadow-sm sm:rounded-[1.4rem] sm:p-4',
       wide && 'sm:col-span-2 lg:col-span-1'
     )}>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3 sm:gap-4">
         <div>
-          <p className="text-3xl font-black text-text-main">{value}</p>
-          <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/50">{label}</p>
+          <p className="text-2xl font-black text-text-main sm:text-3xl">{value}</p>
+          <p className="mt-2 text-[9px] font-black uppercase tracking-widest text-text-secondary/50 sm:mt-3 sm:text-[10px]">{label}</p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent sm:h-10 sm:w-10">
           <Icon size={17} />
         </div>
       </div>
@@ -210,22 +210,22 @@ export default function CircleMomentumPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-      <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 pb-24 sm:gap-5 sm:pb-20">
+      <header className="rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm md:flex md:flex-row md:items-end md:justify-between md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Weekly Momentum</p>
-          <h1 className="mt-1 text-3xl font-black text-text-main">Circle Momentum</h1>
-          <p className="mt-1 max-w-2xl text-sm font-semibold text-text-secondary/70">
+          <h1 className="mt-1 text-2xl font-black text-text-main sm:text-3xl">Circle Momentum</h1>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-text-secondary/70 md:mt-1">
             Friendly progress across your accountability circle.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 md:mt-0 md:flex-wrap md:overflow-visible md:pb-0">
           {ranges.map(item => (
             <button
               key={item.value}
               onClick={() => setRange(item.value)}
               className={cn(
-                'h-10 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest transition-all',
+                'h-10 shrink-0 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest transition-all',
                 range === item.value ? 'bg-accent text-accent-contrast shadow-sm' : 'border border-card-border bg-card text-text-secondary'
               )}
             >
@@ -235,7 +235,7 @@ export default function CircleMomentumPage() {
         </div>
       </header>
 
-      <section className="rounded-[1.6rem] border border-card-border bg-card p-5 shadow-sm">
+      <section className="rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm sm:rounded-[1.6rem] sm:p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Weekly Proof Sprint</p>
@@ -254,7 +254,7 @@ export default function CircleMomentumPage() {
           </div>
           <button
             onClick={() => sprint ? navigate('/') : createWeeklyProofSprint()}
-            className="h-11 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+            className="h-11 w-full rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast md:w-auto"
           >
             {sprint ? 'Log Proof' : 'Start Sprint'}
           </button>
@@ -264,7 +264,7 @@ export default function CircleMomentumPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <StatTile label="Circle members" value={entries.length} icon={Users} />
         <StatTile label="Active this window" value={activeEntries.length} icon={Zap} />
         <StatTile label="Your score" value={currentUserEntry?.momentumScore || 0} icon={Target} />
@@ -275,17 +275,17 @@ export default function CircleMomentumPage() {
         />
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <section className="hidden grid-cols-1 gap-4 sm:grid lg:grid-cols-3">
         <FeaturedMomentumCard entry={entries[0]} featured />
         <FeaturedMomentumCard entry={entries[1]} />
         <FeaturedMomentumCard entry={entries[2]} />
       </section>
 
-      <section className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
-        <div className="rounded-[1.6rem] border border-card-border bg-card p-4 shadow-sm md:p-5">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px] lg:gap-5">
+        <div className="rounded-[1.5rem] border border-card-border bg-card p-3 shadow-sm sm:rounded-[1.6rem] sm:p-4 md:p-5">
           <div className="mb-2 flex items-center justify-between gap-4 px-2">
             <div>
-              <h2 className="text-2xl font-black text-text-main">Weekly Momentum</h2>
+              <h2 className="text-xl font-black text-text-main sm:text-2xl">Weekly Momentum</h2>
               <p className="mt-1 text-xs font-semibold text-text-secondary/60">
                 Your private work counts for you. Circle members show shared proof only.
               </p>
@@ -330,7 +330,7 @@ export default function CircleMomentumPage() {
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-[1.6rem] border border-card-border bg-card p-5 shadow-sm">
+          <div className="rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm sm:rounded-[1.6rem] sm:p-5">
             <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/50">Your position</p>
             <div className="mt-3 flex items-end justify-between gap-4">
               <h2 className="text-3xl font-black text-text-main">

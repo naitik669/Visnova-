@@ -1,8 +1,9 @@
 import type { ProgressPulseData } from '../../lib/progressAnalytics';
+import { cn } from '../../lib/utils';
 
-export function DayOneVsNowCard({ pulse, activeVisionCount }: { pulse: ProgressPulseData; activeVisionCount: number }) {
+export function DayOneVsNowCard({ pulse, activeVisionCount, compact = false }: { pulse: ProgressPulseData; activeVisionCount: number; compact?: boolean }) {
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-card-border bg-gradient-to-br from-card via-app-container to-accent/10 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)]">
+    <section className={cn('overflow-hidden rounded-[2rem] border border-card-border bg-gradient-to-br from-card via-app-container to-accent/10 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)]', compact && 'rounded-[1.5rem] p-4 shadow-sm')}>
       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-text-secondary">Look what changed.</p>
       <div className="mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-[1.5rem] bg-card/75 p-4">

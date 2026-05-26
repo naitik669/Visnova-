@@ -9,9 +9,9 @@ const intensityClass = (total: number) => {
   return 'bg-accent';
 };
 
-export function ConsistencyHeatmap({ data }: { data: HeatmapPoint[] }) {
+export function ConsistencyHeatmap({ data, compact = false }: { data: HeatmapPoint[]; compact?: boolean }) {
   return (
-    <section className="rounded-[2rem] border border-card-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)]">
+    <section className={cn('rounded-[2rem] border border-card-border bg-card p-5 shadow-[0_18px_60px_rgba(0,0,0,0.07)]', compact && 'rounded-[1.5rem] p-4 shadow-sm')}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.18em] text-text-secondary">Consistency</p>
@@ -25,7 +25,7 @@ export function ConsistencyHeatmap({ data }: { data: HeatmapPoint[] }) {
             <div
               key={day.key}
               title={`${day.label}: ${day.total} activities`}
-              className={cn('h-7 w-7 rounded-[10px] border border-white/70 shadow-sm', intensityClass(day.total))}
+              className={cn(compact ? 'h-6 w-6 rounded-lg' : 'h-7 w-7 rounded-[10px]', 'border border-white/70 shadow-sm', intensityClass(day.total))}
             />
           ))}
         </div>
