@@ -53,17 +53,19 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
         }
       };
       return (
-        <div className="min-h-screen bg-bg-base flex items-center justify-center p-6">
-          <div className="max-w-2xl rounded-3xl border border-card-border bg-card p-6 text-center space-y-4">
-            <VisNovaMotion variant="error" className="max-w-sm" />
-            <h1 className="text-xl font-black text-text-main">Something didn't load right.</h1>
-            <p className="text-sm font-semibold text-text-secondary">Refresh the page and we'll try again.</p>
+        <div className="min-h-screen w-screen bg-bg-base px-5 py-8 text-center text-text-main">
+          <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl flex-col items-center justify-center">
+            <VisNovaMotion variant="error" size="lg" className="w-full max-w-3xl" />
+            <div className="mt-[-1rem] flex max-w-xl flex-col items-center gap-3">
+              <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Something didn't load right.</h1>
+              <p className="text-sm font-semibold leading-6 text-text-secondary sm:text-base">Refresh the page and we'll try again.</p>
+            </div>
             {isDebugVisible && (
-              <pre className="max-h-64 overflow-auto rounded-2xl bg-surface-muted p-3 text-left text-xs whitespace-pre-wrap text-text-secondary">
+              <pre className="mt-5 max-h-64 w-full max-w-3xl overflow-auto rounded-2xl bg-surface-muted p-3 text-left text-xs whitespace-pre-wrap text-text-secondary">
                 {JSON.stringify(details, null, 2)}
               </pre>
             )}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-6 grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-3">
               <button onClick={() => window.location.reload()} className="min-h-11 px-4 py-3 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest leading-tight">
                 Refresh
               </button>
@@ -75,7 +77,7 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
               </button>
             </div>
             {isDebugVisible && (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="mt-2 grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2">
                 <button onClick={copyErrorDetails} className="min-h-11 px-4 py-3 rounded-2xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest leading-tight">
                   Copy error details
                 </button>

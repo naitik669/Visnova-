@@ -2598,6 +2598,10 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addToast: (toast) => {
+    if (toast.type === 'error' && typeof navigator !== 'undefined' && !navigator.onLine) {
+      return;
+    }
+
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     playInteractionSound(toast.type === 'success' ? 'success' : toast.type === 'error' ? 'error' : 'info');
     set((state) => ({

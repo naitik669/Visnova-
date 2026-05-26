@@ -808,6 +808,55 @@ function NotFoundPage() {
   );
 }
 
+function useBrowserOnline() {
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
+
+  return isOnline;
+}
+
+function OfflinePage() {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen w-screen bg-bg-base px-5 py-8 text-center text-text-main">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl flex-col items-center justify-center">
+        <VisNovaMotion variant="error" size="lg" className="w-full max-w-3xl" />
+        <div className="mt-[-1rem] flex max-w-xl flex-col items-center gap-3">
+          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">No internet connection.</h1>
+          <p className="text-sm font-semibold leading-6 text-text-secondary sm:text-base">
+            VisNova needs a connection to sync your workspace. Check your network, then try again.
+          </p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-2xl bg-accent px-6 py-3 text-xs font-black uppercase tracking-widest text-accent-contrast transition-opacity hover:opacity-90"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="rounded-2xl border border-card-border bg-card px-6 py-3 text-xs font-black uppercase tracking-widest text-text-secondary transition-colors hover:text-accent"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DeletedContentPage({ label = 'content' }: { label?: string }) {
   const navigate = useNavigate();
   return (
@@ -827,6 +876,7 @@ export function DeletedContentPage({ label = 'content' }: { label?: string }) {
 }
 
 function AppContent() {
+  const isOnline = useBrowserOnline();
   const theme = useStore(state => state.theme);
   const isFocusMode = useStore(state => state.isFocusMode);
   const hasCompletedOnboarding = useStore(state => state.hasCompletedOnboarding);
@@ -838,6 +888,8 @@ function AppContent() {
   const tutorialCompleted = useStore(state => state.tutorialCompleted);
   const session = useStore(state => state.session);
   const signOut = useStore(state => state.signOut);
+  const toasts = useStore(state => state.toasts);
+  const removeToast = useStore(state => state.removeToast);
   const [profileWaitTimedOut, setProfileWaitTimedOut] = useState(false);
   const location = useLocation();
   
@@ -848,10 +900,15 @@ function AppContent() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    if (isOnline || !toasts.length) return;
+    toasts.forEach((toast) => removeToast(toast.id));
+  }, [isOnline, removeToast, toasts]);
+
   // Auth Initialization
   useEffect(() => {
-    if (isSupabaseConfigured()) initializeAuth();
-  }, [initializeAuth]);
+    if (isOnline && isSupabaseConfigured()) initializeAuth();
+  }, [initializeAuth, isOnline]);
 
   useEffect(() => {
     if (!session || isProfileReady || profile) {
@@ -864,7 +921,7 @@ function AppContent() {
   }, [isProfileReady, profile, session]);
 
   useEffect(() => {
-    if (!session?.user?.id || !isSupabaseConfigured()) return;
+    if (!isOnline || !session?.user?.id || !isSupabaseConfigured()) return;
     const today = new Date().toISOString().slice(0, 10);
     const sessionKey = `visnova_session_started_${session.user.id}_${today}`;
     const returnKey = `visnova_day_return_${session.user.id}_${today}`;
@@ -890,10 +947,10 @@ function AppContent() {
       localStorage.setItem(day7Key, 'true');
       trackBetaEvent(session.user.id, 'day_7_return', { day: 7 });
     }
-  }, [session?.user?.id]);
+  }, [isOnline, session?.user?.id]);
 
   useEffect(() => {
-    if (!session?.user?.id || !hasCompletedOnboarding || !isProfileReady || isPasswordRecovery || isAuthCallbackPath) return;
+    if (!isOnline || !session?.user?.id || !hasCompletedOnboarding || !isProfileReady || isPasswordRecovery || isAuthCallbackPath) return;
 
     const commonRouteTimer = window.setTimeout(() => {
       ['/feed', '/circle', '/visions', '/library'].forEach(preloadRoute);
@@ -907,10 +964,14 @@ function AppContent() {
       window.clearTimeout(commonRouteTimer);
       window.clearTimeout(secondaryRouteTimer);
     };
-  }, [session?.user?.id, hasCompletedOnboarding, isProfileReady, isPasswordRecovery, isAuthCallbackPath]);
+  }, [isOnline, session?.user?.id, hasCompletedOnboarding, isProfileReady, isPasswordRecovery, isAuthCallbackPath]);
 
   if (!isSupabaseConfigured()) {
     return <SupabaseConfigScreen />;
+  }
+
+  if (!isOnline) {
+    return <OfflinePage />;
   }
 
   if (authLoading && !isAuthInitialized && !isAuthCallbackPath) {
