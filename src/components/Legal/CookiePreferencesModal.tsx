@@ -24,9 +24,11 @@ function ToggleRow({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-4 rounded-2xl border border-card-border bg-card p-4 text-left transition hover:border-accent/40"
+      role="switch"
+      aria-checked={checked}
+      className="flex min-h-[5.5rem] w-full items-center justify-between gap-4 rounded-2xl border border-card-border bg-card p-4 text-left transition hover:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
     >
-      <span>
+      <span className="min-w-0">
         <span className="block text-sm font-black text-text-main">{title}</span>
         <span className="mt-1 block text-xs font-semibold leading-relaxed text-text-secondary">{description}</span>
       </span>
@@ -79,19 +81,19 @@ export function CookiePreferencesModal({ open, onClose, onSaved }: CookiePrefere
       subtitle="Essential storage stays on for login, security, and core app functionality. Optional choices are yours."
       footer={
         <>
-          <button type="button" onClick={handleRejectOptional} className="h-11 w-full rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main sm:w-auto">
-            Reject optional
+          <button type="button" onClick={handleSave} className="h-11 w-full rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-sm shadow-accent/20 sm:w-auto">
+            Save choices
           </button>
           <button type="button" onClick={handleAcceptAll} className="h-11 w-full rounded-2xl border border-accent/30 bg-accent/10 px-5 text-[10px] font-black uppercase tracking-widest text-accent sm:w-auto">
             Accept all
           </button>
-          <button type="button" onClick={handleSave} className="h-11 w-full rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:w-auto">
-            Save choices
+          <button type="button" onClick={handleRejectOptional} className="h-11 w-full rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main sm:w-auto">
+            Reject optional
           </button>
         </>
       }
     >
-      <div className="space-y-4 bg-app-container p-4 sm:p-6">
+      <div className="space-y-4 bg-app-container p-4 pb-6 sm:p-6">
         <div className="rounded-2xl border border-card-border bg-card p-4">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
