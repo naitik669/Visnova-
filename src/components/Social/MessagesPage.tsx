@@ -596,11 +596,11 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto h-[calc(100dvh-8.5rem)] min-h-[540px] max-h-[calc(100dvh-6.5rem)] overflow-hidden animate-in fade-in duration-700">
-      <div className="h-full min-h-0 grid grid-cols-1 grid-rows-[minmax(190px,32%)_minmax(0,1fr)] lg:grid-cols-[360px_1fr] lg:grid-rows-1 gap-4 lg:gap-6">
-        <aside className="bg-card border border-card-border rounded-[2rem] overflow-hidden flex flex-col h-full min-h-0">
-          <div className="shrink-0 p-5 border-b border-card-border">
-            <div className="flex items-center gap-3 mb-4">
+    <div className="mx-auto h-[calc(100dvh-8.25rem)] min-h-0 w-full max-w-7xl overflow-hidden pb-1 animate-in fade-in duration-700 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[540px] lg:max-h-[calc(100dvh-6.5rem)] lg:pb-0">
+      <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(150px,28%)_minmax(0,1fr)] gap-3 lg:grid-cols-[360px_1fr] lg:grid-rows-1 lg:gap-6">
+        <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-card-border bg-card lg:rounded-[2rem]">
+          <div className="shrink-0 border-b border-card-border p-4 lg:p-5">
+            <div className="mb-3 flex items-center gap-3 lg:mb-4">
               <div className="w-10 h-10 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
                 <MessageCircle size={20} />
               </div>
@@ -636,7 +636,7 @@ export default function MessagesPage() {
             </div>
           )}
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 space-y-2">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-2.5 lg:p-3">
             {isLoadingConversations ? (
               <div className="py-16 flex justify-center"><Loader2 className="animate-spin text-accent" size={24} /></div>
             ) : conversations.length === 0 ? (
@@ -648,7 +648,7 @@ export default function MessagesPage() {
                 key={conversation.id}
                 onClick={() => setSelected(conversation)}
                 className={cn(
-                  'w-full flex items-center gap-3 p-4 rounded-2xl text-left transition-colors',
+                  'w-full flex items-center gap-3 rounded-2xl p-3 text-left transition-colors lg:p-4',
                   selected?.id === conversation.id ? 'bg-accent/10 border border-accent/20' : 'hover:bg-surface-muted border border-transparent'
                 )}
               >
@@ -667,13 +667,13 @@ export default function MessagesPage() {
           </div>
         </aside>
 
-        <section className="bg-card border border-card-border rounded-[2rem] overflow-hidden flex flex-col h-full min-h-0">
+        <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.5rem] border border-card-border bg-card lg:rounded-[2rem]">
           {selected ? (
             <>
-              <header className="h-20 shrink-0 border-b border-card-border px-6 flex items-center gap-4">
+              <header className="flex h-16 shrink-0 items-center gap-3 border-b border-card-border px-4 sm:h-20 sm:gap-4 sm:px-6">
                 <img src={avatarFor(selected.profile)} className="w-11 h-11 rounded-xl border border-card-border" alt={selectedTitle} />
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-text-main">{selectedTitle}</h3>
+                  <h3 className="truncate text-sm font-black uppercase tracking-widest text-text-main">{selectedTitle}</h3>
                   <p className="text-[9px] font-bold uppercase tracking-widest text-accent">@{selected.profile.username || 'user'}</p>
                 </div>
                 <button
@@ -686,7 +686,7 @@ export default function MessagesPage() {
                 </button>
               </header>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 bg-app-container/40">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-app-container/40 p-3 sm:p-6">
                 {isLoadingMessages ? (
                   <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-accent" size={24} /></div>
                 ) : messages.length === 0 ? (
@@ -713,7 +713,7 @@ export default function MessagesPage() {
                       )}
                       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn('group flex items-start gap-2', isMine ? 'justify-end' : 'justify-start')}>
                         {!isMine && <MessageActions message={message} isMine={isMine} openMenuId={openMenuId} setOpenMenuId={setOpenMenuId} setReplyTo={setReplyTo} deleteMessage={deleteMessage} copyMessage={copyMessage} setReportMessage={setReportMessage} resendMessage={sendMessage} />}
-                        <div className={cn('max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed border', isMine ? 'bg-accent text-accent-contrast border-accent' : 'bg-card text-text-main border-card-border', deleted && 'bg-surface-muted text-text-secondary border-card-border italic')}>
+                        <div className={cn('max-w-[88%] rounded-2xl border px-4 py-3 text-sm leading-relaxed sm:max-w-[82%]', isMine ? 'bg-accent text-accent-contrast border-accent' : 'bg-card text-text-main border-card-border', deleted && 'bg-surface-muted text-text-secondary border-card-border italic')}>
                           {repliedTo && (
                             <div className={cn('mb-2 rounded-xl border-l-2 px-3 py-2 text-xs', isMine ? 'bg-accent-contrast/10 border-accent-contrast/40 text-accent-contrast/75' : 'bg-surface-muted border-accent/50 text-text-secondary')}>
                               <p className="font-black uppercase tracking-widest text-[9px]">{repliedTo.user_id === currentUserId ? 'You' : selectedTitle}</p>
@@ -788,7 +788,7 @@ export default function MessagesPage() {
                 <div ref={messagesEndRef} className="h-1" aria-hidden="true" />
               </div>
 
-              <footer className="shrink-0 p-4 sm:p-5 border-t border-card-border bg-card">
+              <footer className="shrink-0 border-t border-card-border bg-card p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-5">
                 {replyTo && (
                   <div className="mb-3 flex items-center gap-3 rounded-2xl bg-surface-muted border border-card-border px-4 py-3">
                     <Reply size={14} className="text-accent shrink-0" />
@@ -801,7 +801,7 @@ export default function MessagesPage() {
                     </button>
                   </div>
                 )}
-                <div className="flex items-end gap-3">
+                <div className="flex items-end gap-2 sm:gap-3">
                   <MentionHashtagTextarea
                     value={messageText}
                     onChange={handleMessageTextChange}
@@ -814,12 +814,12 @@ export default function MessagesPage() {
                     }}
                     placeholder={`Message @${selected.profile.username || 'user'}...`}
                     className="flex-1"
-                    textareaClassName="w-full h-12 max-h-24 overflow-y-auto rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-medium outline-none resize-none focus:border-accent/50"
+                    textareaClassName="w-full h-11 sm:h-12 max-h-24 overflow-y-auto rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm font-medium outline-none resize-none focus:border-accent/50"
                   />
                   <button
                     onClick={() => sendMessage()}
                     disabled={isSending || !messageText.trim()}
-                    className="h-12 w-12 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center shadow-lg shadow-accent/20 disabled:opacity-50"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-lg shadow-accent/20 disabled:opacity-50 sm:h-12 sm:w-12"
                     aria-label="Send message"
                   >
                     {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
