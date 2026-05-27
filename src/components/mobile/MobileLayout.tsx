@@ -15,6 +15,14 @@ type MobileSectionProps = {
   contentClassName?: string;
 };
 
+type MobileEmptyStateProps = {
+  icon?: ReactNode;
+  title: string;
+  description: string;
+  action?: ReactNode;
+  className?: string;
+};
+
 export function MobilePage({ children, className }: MobilePageProps) {
   return (
     <div className={cn("mx-auto flex w-full max-w-[480px] flex-col gap-4 lg:hidden", className)}>
@@ -67,5 +75,31 @@ export function MobilePrimaryAction({
     >
       {children}
     </button>
+  );
+}
+
+export function MobileEmptyState({
+  icon,
+  title,
+  description,
+  action,
+  className,
+}: MobileEmptyStateProps) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-64 flex-col items-center justify-center rounded-[2rem] border border-dashed border-card-border bg-card p-6 text-center shadow-sm",
+        className,
+      )}
+    >
+      {icon && (
+        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+          {icon}
+        </div>
+      )}
+      <h3 className="text-base font-black leading-tight text-text-main">{title}</h3>
+      <p className="mt-2 max-w-xs text-sm font-semibold leading-6 text-text-secondary/70">{description}</p>
+      {action && <div className="mt-5 w-full max-w-xs">{action}</div>}
+    </div>
   );
 }

@@ -11,6 +11,7 @@ import MessagesPage from '../Social/MessagesPage';
 import { safeFormat, safeString, safeTime } from '../../lib/safeData';
 import { normalizeVisibility } from '../../lib/appPreferences';
 import CommunitySpaces from '../Community/CommunitySpaces';
+import { MobileEmptyState } from '../mobile/MobileLayout';
 
 const relationLabels: Record<string, string> = {
   following: 'Following',
@@ -169,9 +170,20 @@ export default function Circle() {
             </div>
 
             {circle.length === 0 ? (
-              <div className="system-card p-12 bg-card border-dashed border-card-border text-center">
-                <p className="text-sm font-bold text-text-secondary">Your circle is empty. Follow people to build your circle.</p>
-              </div>
+              <MobileEmptyState
+                icon={<Users size={24} />}
+                title="Build your Circle."
+                description="Follow people to create a small accountability loop around your goals."
+                action={
+                  <button
+                    type="button"
+                    onClick={() => changeTab('activity')}
+                    className="flex h-12 w-full items-center justify-center rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+                  >
+                    Find activity
+                  </button>
+                }
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {circle.map((member) => (
@@ -210,7 +222,12 @@ export default function Circle() {
           <div className="space-y-5">
             <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-main px-2">Suggested Builders</h2>
             {suggestions.length === 0 ? (
-              <div className="system-card p-8 bg-card border-card-border text-sm text-text-secondary">No suggestions right now.</div>
+              <MobileEmptyState
+                icon={<Sparkles size={24} />}
+                title="No suggestions right now."
+                description="As more builders share progress, suggestions will appear here."
+                className="min-h-48"
+              />
             ) : (
               suggestions.slice(0, 5).map((candidate) => (
               <div key={candidate.id} className="system-card flex flex-col gap-4 border-card-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
@@ -246,9 +263,11 @@ export default function Circle() {
             <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-main">Requests</h2>
           </div>
           {sharedVisions.length === 0 ? (
-            <div className="system-card p-12 bg-card border-dashed border-card-border text-center">
-              <p className="text-sm font-bold text-text-secondary">No collaboration or message requests right now.</p>
-            </div>
+            <MobileEmptyState
+              icon={<Inbox size={24} />}
+              title="No requests right now."
+              description="Collaboration invites, Vision Team requests, and message requests will collect here."
+            />
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {sharedVisions.map((vision) => (
@@ -279,7 +298,20 @@ export default function Circle() {
         <section className="space-y-5">
           <h2 className="text-sm font-black uppercase tracking-[0.2em] text-text-main px-2">Activity</h2>
           {activity.length === 0 ? (
-            <div className="system-card p-8 bg-card border-card-border text-sm text-text-secondary">No recent circle activity.</div>
+            <MobileEmptyState
+              icon={<Sparkles size={24} />}
+              title="No recent Circle activity."
+              description="When your Circle posts visible proof or updates, you will see it here."
+              action={
+                <button
+                  type="button"
+                  onClick={() => navigate('/feed')}
+                  className="flex h-12 w-full items-center justify-center rounded-2xl border border-card-border bg-app-container px-5 text-[10px] font-black uppercase tracking-widest text-text-main"
+                >
+                  Open Feed
+                </button>
+              }
+            />
           ) : (
             activity.map((post) => (
               <button key={post.id} onClick={() => setSelectedProfileId(post.author.id)} className="system-card p-5 bg-card border-card-border w-full text-left hover:border-accent/30 transition-all">
