@@ -15,7 +15,7 @@ function slugify(label: string) {
 
 function LegalUpdatedBadge() {
   return (
-    <span className="inline-flex h-9 items-center rounded-full border border-accent/15 bg-accent/10 px-4 text-[10px] font-black uppercase tracking-widest text-accent">
+    <span className="inline-flex min-h-9 items-center rounded-full border border-accent/15 bg-accent/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-accent">
       Last updated {lastUpdated}
     </span>
   );
@@ -36,7 +36,7 @@ function LegalCallout({
     danger: 'border-danger/20 bg-danger/10 text-danger'
   }[tone];
   return (
-    <div className={cn('rounded-3xl border p-5 text-sm font-semibold leading-7', toneClass)}>
+    <div className={cn('rounded-[1.5rem] border p-4 text-sm font-semibold leading-7 sm:rounded-3xl sm:p-5', toneClass)}>
       {title && <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-text-main">{title}</p>}
       {children}
     </div>
@@ -45,8 +45,8 @@ function LegalCallout({
 
 function LegalSection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-24 space-y-4 border-b border-card-border/60 pb-8 last:border-b-0">
-      <h2 className="text-xl font-black tracking-tight text-text-main sm:text-2xl">{title}</h2>
+    <section id={id} className="scroll-mt-28 space-y-4 border-b border-card-border/60 pb-7 last:border-b-0 sm:scroll-mt-24 sm:pb-8">
+      <h2 className="text-lg font-black tracking-tight text-text-main sm:text-2xl">{title}</h2>
       <div className="space-y-4 text-sm font-semibold leading-7 text-text-secondary sm:text-[15px]">
         {children}
       </div>
@@ -57,14 +57,14 @@ function LegalSection({ id, title, children }: { id: string; title: string; chil
 function LegalTableOfContents({ items }: { items: TocItem[] }) {
   return (
     <aside className="lg:sticky lg:top-8 lg:self-start">
-      <div className="rounded-[1.75rem] border border-card-border bg-card/90 p-5 shadow-xl shadow-accent/5">
+      <div className="rounded-[1.5rem] border border-card-border bg-card/90 p-4 shadow-xl shadow-accent/5 sm:rounded-[1.75rem] sm:p-5">
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Contents</p>
-        <nav className="mt-4 space-y-1">
+        <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
           {items.map(item => (
             <a
               key={item.id}
               href={`#${item.id}`}
-              className="block rounded-2xl px-3 py-2 text-xs font-bold text-text-secondary transition hover:bg-accent/10 hover:text-accent"
+              className="flex h-10 shrink-0 items-center rounded-2xl border border-card-border bg-app-container px-3 text-xs font-bold text-text-secondary transition hover:bg-accent/10 hover:text-accent lg:block lg:h-auto lg:border-0 lg:bg-transparent lg:py-2"
             >
               {item.label}
             </a>
@@ -77,7 +77,7 @@ function LegalTableOfContents({ items }: { items: TocItem[] }) {
 
 function LegalContactCard() {
   return (
-    <div className="rounded-[2rem] border border-card-border bg-card p-6 shadow-xl shadow-accent/5">
+    <div className="rounded-[1.75rem] border border-card-border bg-card p-4 shadow-xl shadow-accent/5 sm:rounded-[2rem] sm:p-6">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Questions or requests</p>
@@ -88,7 +88,7 @@ function LegalContactCard() {
         </div>
         <a
           href={`mailto:${supportEmail}`}
-          className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+          className="inline-flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-sm shadow-accent/20 sm:w-auto"
         >
           <Mail size={16} />
           Email support
@@ -109,12 +109,12 @@ function RelatedLegalLinks() {
     { to: '/contact', label: 'Contact' }
   ];
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
       {links.map(link => (
         <Link
           key={link.to}
           to={link.to}
-          className="inline-flex h-10 items-center rounded-xl border border-card-border bg-card px-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:border-accent/30 hover:text-accent"
+          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-card-border bg-card px-3 py-2 text-center text-[10px] font-black uppercase tracking-widest text-text-secondary hover:border-accent/30 hover:text-accent sm:justify-start"
         >
           {link.label}
         </Link>
@@ -139,20 +139,20 @@ function LegalShell({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-7xl pb-20">
-      <header className="overflow-hidden rounded-[2.25rem] border border-card-border bg-card p-6 shadow-2xl shadow-accent/5 sm:p-8 lg:p-10">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto max-w-7xl pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-20">
+      <header className="overflow-hidden rounded-[1.75rem] border border-card-border bg-card p-5 shadow-2xl shadow-accent/5 sm:rounded-[2.25rem] sm:p-8 lg:p-10">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <Link to="/" className="inline-flex items-center gap-3 text-text-main">
               <BrandLogo className="h-6 w-6" />
               <span className="text-sm font-black uppercase tracking-[0.28em]">VisNova</span>
             </Link>
-            <div className="mt-8 flex items-center gap-3 text-accent">
+            <div className="mt-7 flex items-center gap-3 text-accent sm:mt-8">
               <div className="grid h-11 w-11 place-items-center rounded-2xl bg-accent/10">{icon}</div>
               <p className="text-[10px] font-black uppercase tracking-[0.34em]">{eyebrow}</p>
             </div>
-            <h1 className="mt-4 text-4xl font-black tracking-tight text-text-main sm:text-5xl">{title}</h1>
-            <p className="mt-4 max-w-2xl text-base font-semibold leading-8 text-text-secondary">{summary}</p>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-text-main sm:text-5xl">{title}</h1>
+            <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-text-secondary sm:text-base sm:leading-8">{summary}</p>
           </div>
           <div className="space-y-3">
             <LegalUpdatedBadge />
@@ -166,11 +166,11 @@ function LegalShell({
       <div className="mt-8 grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
         <LegalTableOfContents items={sections} />
         <main className="space-y-8">
-          <div className="rounded-[2rem] border border-card-border bg-card p-6 shadow-xl shadow-accent/5 sm:p-8">
-            <div className="space-y-8">{children}</div>
+          <div className="rounded-[1.75rem] border border-card-border bg-card p-4 shadow-xl shadow-accent/5 sm:rounded-[2rem] sm:p-8">
+            <div className="space-y-7 sm:space-y-8">{children}</div>
           </div>
           <LegalContactCard />
-          <div className="rounded-[2rem] border border-card-border bg-surface-muted/70 p-5">
+          <div className="rounded-[1.75rem] border border-card-border bg-surface-muted/70 p-4 sm:rounded-[2rem] sm:p-5">
             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.28em] text-text-secondary/60">Related trust pages</p>
             <RelatedLegalLinks />
             <p className="mt-4 text-xs font-semibold text-text-secondary/60">Last updated {lastUpdated}</p>
@@ -595,12 +595,12 @@ export function TrustIndexPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl pb-20">
-      <header className="rounded-[2.25rem] border border-card-border bg-card p-8 shadow-2xl shadow-accent/5">
+    <div className="mx-auto max-w-7xl pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-20">
+      <header className="rounded-[1.75rem] border border-card-border bg-card p-5 shadow-2xl shadow-accent/5 sm:rounded-[2.25rem] sm:p-8">
         <BrandLogo className="h-6 w-6" />
-        <p className="mt-8 text-[10px] font-black uppercase tracking-[0.35em] text-accent">VisNova Trust Center</p>
-        <h1 className="mt-3 text-4xl font-black tracking-tight text-text-main sm:text-5xl">Legal, privacy, and community trust.</h1>
-        <p className="mt-4 max-w-2xl text-base font-semibold leading-8 text-text-secondary">
+        <p className="mt-7 text-[10px] font-black uppercase tracking-[0.35em] text-accent sm:mt-8">VisNova Trust Center</p>
+        <h1 className="mt-3 text-3xl font-black tracking-tight text-text-main sm:text-5xl">Legal, privacy, and community trust.</h1>
+        <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-text-secondary sm:text-base sm:leading-8">
           Clear policies for a beta product built around private progress, intentional sharing, and respectful accountability.
         </p>
       </header>
@@ -608,15 +608,17 @@ export function TrustIndexPage() {
         {cards.map(card => {
           const Icon = card.icon;
           return (
-            <Link key={card.to} to={card.to} className="group rounded-[2rem] border border-card-border bg-card p-6 shadow-xl shadow-accent/5 transition hover:-translate-y-0.5 hover:border-accent/30">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-accent/10 text-accent">
+            <Link key={card.to} to={card.to} className="group flex min-h-36 gap-4 rounded-[1.75rem] border border-card-border bg-card p-4 shadow-xl shadow-accent/5 transition hover:-translate-y-0.5 hover:border-accent/30 sm:block sm:min-h-0 sm:rounded-[2rem] sm:p-6">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent/10 text-accent">
                 <Icon size={22} />
               </div>
-              <h2 className="mt-5 text-xl font-black text-text-main">{card.title}</h2>
-              <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">{card.desc}</p>
-              <span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-accent">
-                Open <ArrowRight size={13} />
-              </span>
+              <div className="min-w-0">
+                <h2 className="text-lg font-black text-text-main sm:mt-5 sm:text-xl">{card.title}</h2>
+                <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">{card.desc}</p>
+                <span className="mt-4 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-accent sm:mt-5">
+                  Open <ArrowRight size={13} />
+                </span>
+              </div>
             </Link>
           );
         })}
