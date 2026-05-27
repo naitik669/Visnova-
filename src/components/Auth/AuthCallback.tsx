@@ -113,8 +113,8 @@ export default function AuthCallback() {
 
   if (error) {
     return (
-      <div className="flex min-h-[100dvh] w-screen items-center justify-center bg-bg-base p-4 text-center">
-        <div className="w-full max-w-md rounded-[1.75rem] border border-card-border bg-card p-5 shadow-2xl sm:p-6">
+      <div className="flex min-h-[100dvh] w-screen items-center justify-center bg-bg-base p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] text-center">
+        <div className="w-full max-w-md rounded-[1.75rem] border border-card-border bg-card p-5 shadow-2xl shadow-accent/5 sm:p-6">
           <BrandLogo className="mx-auto h-14 w-14 rounded-2xl shadow-lg shadow-accent/15" />
           <h1 className="mt-5 text-xl font-black text-text-main">Verification issue</h1>
           <p className="mt-2 text-sm font-semibold leading-relaxed text-text-secondary">{error}</p>
@@ -130,16 +130,18 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] w-screen flex-col items-center justify-center bg-bg-base p-6 text-center">
-      <BrandLogo className="mb-7 h-14 w-14 rounded-2xl shadow-lg shadow-accent/15" />
-      <motion.div 
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-        className="mb-8 h-12 w-12 rounded-full border-4 border-accent/10 border-t-accent"
-      />
-      <div className="space-y-2 animate-pulse">
-        <h2 className="text-sm font-black uppercase tracking-[0.28em] text-text-main sm:tracking-[0.4em]">Setting up your workspace...</h2>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary opacity-60">{status}</p>
+    <div className="flex min-h-[100dvh] w-screen flex-col items-center justify-center bg-bg-base p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] text-center">
+      <div className="w-full max-w-md rounded-[1.75rem] border border-card-border bg-card p-6 shadow-2xl shadow-accent/5">
+        <BrandLogo className="mx-auto mb-7 h-14 w-14 rounded-2xl shadow-lg shadow-accent/15" />
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          className="mx-auto mb-8 h-12 w-12 rounded-full border-4 border-accent/10 border-t-accent"
+        />
+        <div className="space-y-2 animate-pulse">
+          <h2 className="text-sm font-black uppercase tracking-[0.24em] text-text-main sm:tracking-[0.4em]">Setting up your workspace...</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary opacity-60">{status}</p>
+        </div>
       </div>
     </div>
   );
