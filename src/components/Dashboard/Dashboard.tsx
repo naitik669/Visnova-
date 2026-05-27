@@ -144,7 +144,19 @@ function DashboardActivityChart({ data }: { data: Array<{ name: string; output: 
     const y = top + plotHeight - (Math.max(0, item.output) / max) * plotHeight;
     return { ...item, x, y };
   });
-  const linePath = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+  const linePath = points.reduce((path, point, index) => {
+    if (index === 0) return `M ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+
+    const previous = points[index - 1];
+    const beforePrevious = points[index - 2] || previous;
+    const next = points[index + 1] || point;
+    const controlOneX = previous.x + (point.x - beforePrevious.x) / 6;
+    const controlOneY = previous.y + (point.y - beforePrevious.y) / 6;
+    const controlTwoX = point.x - (next.x - previous.x) / 6;
+    const controlTwoY = point.y - (next.y - previous.y) / 6;
+
+    return `${path} C ${controlOneX.toFixed(1)} ${controlOneY.toFixed(1)} ${controlTwoX.toFixed(1)} ${controlTwoY.toFixed(1)} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+  }, "");
   const areaPath = `${linePath} L ${width} ${height - bottom} L 0 ${height - bottom} Z`;
 
   return (
@@ -172,7 +184,6 @@ function DashboardActivityChart({ data }: { data: Array<{ name: string; output: 
       <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       {points.map((point) => (
         <g key={point.name}>
-          <circle cx={point.x} cy={point.y} r="3.5" fill="var(--card)" stroke="var(--accent)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
           <text x={point.x} y={height - 7} textAnchor="middle" className="fill-text-secondary text-[10px] font-bold opacity-60">
             {point.name}
           </text>

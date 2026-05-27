@@ -3,13 +3,25 @@ import { Brain } from 'lucide-react';
 function sparklinePath(values: number[], width = 220, height = 58) {
   const max = Math.max(...values, 1);
   const step = values.length > 1 ? width / (values.length - 1) : width;
-  return values
-    .map((value, index) => {
-      const x = index * step;
-      const y = height - (Math.max(0, value) / max) * (height - 8) - 4;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(' ');
+  const points = values.map((value, index) => {
+    const x = index * step;
+    const y = height - (Math.max(0, value) / max) * (height - 8) - 4;
+    return { x, y };
+  });
+
+  return points.reduce((path, point, index) => {
+    if (index === 0) return `M ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+
+    const previous = points[index - 1];
+    const beforePrevious = points[index - 2] || previous;
+    const next = points[index + 1] || point;
+    const controlOneX = previous.x + (point.x - beforePrevious.x) / 6;
+    const controlOneY = previous.y + (point.y - beforePrevious.y) / 6;
+    const controlTwoX = point.x - (next.x - previous.x) / 6;
+    const controlTwoY = point.y - (next.y - previous.y) / 6;
+
+    return `${path} C ${controlOneX.toFixed(1)} ${controlOneY.toFixed(1)} ${controlTwoX.toFixed(1)} ${controlTwoY.toFixed(1)} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
+  }, '');
 }
 
 export function DashboardProgressPulseCard({
