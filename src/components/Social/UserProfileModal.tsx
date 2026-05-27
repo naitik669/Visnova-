@@ -210,16 +210,16 @@ export default function UserProfileModal() {
                           setSelectedProfileId(null);
                           navigate('/profile?tab=settings');
                         }}
-                        className="h-11 px-5 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center gap-2 shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest"
+                        className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-xl shadow-accent/20 transition-all hover:scale-[1.02] active:scale-95 sm:w-auto"
                       >
                         <Zap size={16} /> Edit Profile
                       </button>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto sm:flex-wrap">
                         <button
                           onClick={handleFollow}
                           className={cn(
-                            'h-11 px-5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all flex items-center gap-2',
+                            'flex h-11 items-center justify-center gap-2 rounded-2xl px-5 text-[10px] font-black uppercase tracking-widest shadow-xl transition-all',
                             isFollowing
                               ? 'bg-surface-muted text-text-secondary border border-card-border'
                               : 'bg-accent text-accent-contrast shadow-accent/20 hover:scale-105 active:scale-95'
@@ -290,20 +290,20 @@ export default function UserProfileModal() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-6">
-              <div className="sm:col-span-3 p-5 bg-card/70 rounded-2xl border border-card-border/70 min-h-32">
+            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-5 sm:gap-4">
+              <div className="min-h-24 rounded-2xl border border-card-border/70 bg-card/70 p-4 sm:col-span-3 sm:min-h-32 sm:p-5">
                 <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest mb-1">Bio</p>
                 <p className="text-[13px] font-medium text-text-main leading-relaxed line-clamp-5">{bio}</p>
               </div>
               <div className="sm:col-span-2 grid grid-cols-2 gap-3">
-                <div className="p-4 bg-card/70 rounded-2xl border border-card-border/70 min-h-32 flex flex-col justify-between">
+                <div className="flex min-h-24 flex-col justify-between rounded-2xl border border-card-border/70 bg-card/70 p-3 sm:min-h-32 sm:p-4">
                   <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center border border-accent/20">
                     <Users size={20} />
                   </div>
                   <p className="text-[9px] font-black text-text-secondary/40 uppercase tracking-widest">Followers</p>
                   <p className="text-lg font-black text-text-main tabular-nums">{followersCount.toLocaleString()}</p>
                 </div>
-                <div className="p-4 bg-card/70 rounded-2xl border border-card-border/70 min-h-32 flex flex-col justify-between">
+                <div className="flex min-h-24 flex-col justify-between rounded-2xl border border-card-border/70 bg-card/70 p-3 sm:min-h-32 sm:p-4">
                   <div className="w-10 h-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center border border-danger/20">
                     <Heart size={20} />
                   </div>
