@@ -151,7 +151,7 @@ export default function StoreResourcesPage() {
 
   if (!STORE_RECOMMENDATIONS_ENABLED) {
     return (
-      <div className="mx-auto max-w-2xl rounded-[2rem] border border-card-border bg-card p-8 text-center shadow-sm">
+      <div className="mx-auto max-w-2xl rounded-[1.75rem] border border-card-border bg-card p-5 text-center shadow-sm sm:rounded-[2rem] sm:p-8">
         <h1 className="text-2xl font-black text-text-main">Resource recommendations are off</h1>
         <p className="mt-3 text-sm font-semibold text-text-secondary">You can keep using VisNova without the resource layer.</p>
       </div>
@@ -159,8 +159,8 @@ export default function StoreResourcesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 pb-10">
-      <div className="rounded-[2rem] border border-card-border bg-card p-5 shadow-sm md:p-6">
+    <div className="mx-auto max-w-7xl space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:space-y-5 sm:pb-10">
+      <div className="rounded-[1.75rem] border border-card-border bg-card p-4 shadow-sm sm:rounded-[2rem] md:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-3">
             <button onClick={() => navigate(-1)} className="mt-1 flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-muted text-text-secondary">
@@ -168,7 +168,7 @@ export default function StoreResourcesPage() {
             </button>
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Resources</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-text-main">For your Vision</h1>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-text-main sm:text-3xl">For your Vision</h1>
               <p className="mt-2 max-w-xl text-sm font-semibold leading-relaxed text-text-secondary">
                 Browse useful templates, creator tools, study kits, and startup resources without adding Store to the main navigation.
               </p>
@@ -180,7 +180,7 @@ export default function StoreResourcesPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-[2rem] border border-card-border bg-card p-4 shadow-sm md:flex-row md:items-center">
+      <div className="flex flex-col gap-3 rounded-[1.75rem] border border-card-border bg-card p-3 shadow-sm sm:rounded-[2rem] sm:p-4 md:flex-row md:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl bg-surface-muted px-4 py-3">
           <Search size={16} className="text-text-secondary" />
           <input
@@ -190,7 +190,7 @@ export default function StoreResourcesPage() {
             className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-text-main outline-none placeholder:text-text-secondary/50"
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
           {categories.map(item => (
             <button
               key={item}
@@ -204,20 +204,20 @@ export default function StoreResourcesPage() {
       </div>
 
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
-            <div key={index} className="h-72 animate-pulse rounded-[2rem] bg-card" />
+            <div key={index} className="h-56 animate-pulse rounded-[1.75rem] bg-card sm:h-72 sm:rounded-[2rem]" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {filteredProducts.map(product => (
             <button
               key={product.id}
               onClick={() => setSelectedProduct(product)}
-              className="group overflow-hidden rounded-[2rem] border border-card-border bg-card text-left shadow-sm transition-all hover:-translate-y-1 hover:border-accent/30 hover:shadow-xl"
+              className="group overflow-hidden rounded-[1.75rem] border border-card-border bg-card text-left shadow-sm transition-all hover:-translate-y-1 hover:border-accent/30 hover:shadow-xl sm:rounded-[2rem]"
             >
-              <div className="h-40 bg-surface-muted">
+              <div className="h-32 bg-surface-muted sm:h-40">
                 {product.imageUrl ? (
                   <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
@@ -226,7 +226,7 @@ export default function StoreResourcesPage() {
                   </div>
                 )}
               </div>
-              <div className="space-y-3 p-4">
+              <div className="space-y-3 p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-base font-black text-text-main">{product.title}</p>
@@ -253,7 +253,7 @@ export default function StoreResourcesPage() {
       )}
 
       {!loading && filteredProducts.length === 0 && (
-        <div className="rounded-[2rem] border border-dashed border-card-border bg-card p-8 text-center">
+        <div className="rounded-[1.75rem] border border-dashed border-card-border bg-card p-6 text-center sm:rounded-[2rem] sm:p-8">
           <SlidersHorizontal className="mx-auto text-accent" size={28} />
           <h2 className="mt-4 text-xl font-black text-text-main">No matching resources</h2>
           <p className="mt-2 text-sm font-semibold text-text-secondary">Try another category or search term.</p>

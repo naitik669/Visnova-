@@ -66,17 +66,17 @@ export function ProductPreviewModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[260] flex items-center justify-center bg-black/45 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[260] flex items-end justify-center bg-black/45 p-0 backdrop-blur-md sm:items-center sm:p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-card-border bg-card shadow-2xl"
+        className="max-h-[94dvh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] border border-card-border bg-card shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative h-48 bg-accent/5">
+        <div className="relative h-36 bg-accent/5 sm:h-48">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.title} className="h-full w-full object-cover" />
           ) : (
@@ -92,10 +92,10 @@ export function ProductPreviewModal({
             <X size={16} />
           </button>
         </div>
-        <div className="space-y-5 p-6">
+        <div className="space-y-4 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:space-y-5 sm:p-6">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">{product.partnerName || 'Partner resource'}</p>
-            <h3 className="mt-2 text-2xl font-black tracking-tight text-text-main">{product.title}</h3>
+            <h3 className="mt-2 text-xl font-black tracking-tight text-text-main sm:text-2xl">{product.title}</h3>
             <p className="mt-2 text-sm font-semibold leading-relaxed text-text-secondary">{product.description || product.shortDescription}</p>
           </div>
           <div className="flex flex-wrap gap-2">
