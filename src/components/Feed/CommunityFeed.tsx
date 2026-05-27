@@ -49,6 +49,7 @@ import { SharedPostEmbed } from './SharedPostEmbed';
 import { FeedResourceRecommendations } from './FeedResourceRecommendations';
 import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
 import { renderSocialText } from '../../utils/parseSocialText';
+import { MobileEmptyState } from '../mobile/MobileLayout';
 
 const normalizeHashtag = (tag: string) => tag.replace(/^#/, '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 const extractHashtags = (text: string) => {
@@ -447,23 +448,19 @@ export default function CommunityFeed() {
       const currentEmptyMsg = activeTab === 'saved' ? 'No saved posts yet.' : emptyMessages[feedSubTab];
 
       return (
-        <div className="py-20 flex flex-col items-center justify-center text-center px-4 border-2 border-dashed border-card-border rounded-[2.5rem]">
-           <div className="w-20 h-20 rounded-[2rem] bg-accent/5 text-accent flex items-center justify-center mb-6">
-              <Users size={32} />
-           </div>
-           <h3 className="text-xl font-black text-text-main uppercase tracking-tight mb-2">No Posts Found</h3>
-           <p className="text-text-secondary/60 text-xs font-medium max-w-xs uppercase tracking-widest leading-relaxed">
-              {currentEmptyMsg}
-           </p>
-           {activeTab === 'feed' && !searchQuery && (
-             <button 
-               onClick={() => setIsComposerOpen(true)}
-               className="mt-8 px-8 h-12 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-105 active:scale-95 transition-all"
-             >
-                Share First Update
-             </button>
-           )}
-        </div>
+        <MobileEmptyState
+          icon={<Users size={24} />}
+          title="No posts found."
+          description={currentEmptyMsg}
+          action={activeTab === 'feed' && !searchQuery ? (
+            <button 
+              onClick={() => setIsComposerOpen(true)}
+              className="flex h-12 w-full items-center justify-center rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast shadow-xl shadow-accent/20 active:scale-95"
+            >
+              Share first update
+            </button>
+          ) : undefined}
+        />
       );
     }
 

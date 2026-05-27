@@ -55,6 +55,7 @@ import { SelectMenu } from '../ui/SelectMenu';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
 import { ProfileRoleSelect } from '../ProfileRoleSelect';
+import { MobileEmptyState } from '../mobile/MobileLayout';
 
 type SocialProfile = {
   id: string;
@@ -707,9 +708,20 @@ export default function ProfilePage() {
                   />
                 ))}
                 {visibleProfilePosts.length === 0 && (
-                   <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black bg-card rounded-[2.5rem] border border-dashed border-card-border">
-                      No posts yet.
-                   </div>
+                  <MobileEmptyState
+                    icon={<LayoutGrid size={24} />}
+                    title="No posts yet."
+                    description={isOwnProfile ? 'Share a progress update when you are ready to make proof visible.' : 'This profile has not shared visible posts yet.'}
+                    action={isOwnProfile ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/feed')}
+                        className="flex h-12 w-full items-center justify-center rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+                      >
+                        Share update
+                      </button>
+                    ) : undefined}
+                  />
                 )}
               </div>
             </div>
@@ -728,9 +740,20 @@ export default function ProfilePage() {
                 />
               ))}
               {visibleProfilePosts.length === 0 && (
-                 <div className="text-center py-24 opacity-30  text-xs uppercase tracking-[0.4em] font-black">
-                    No posts yet.
-                 </div>
+                <MobileEmptyState
+                  icon={<MessageSquare size={24} />}
+                  title="No posts yet."
+                  description={isOwnProfile ? 'Post a win, help request, or proof log to start your profile activity.' : 'No visible profile posts are available yet.'}
+                  action={isOwnProfile ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/feed')}
+                      className="flex h-12 w-full items-center justify-center rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+                    >
+                      Open Feed
+                    </button>
+                  ) : undefined}
+                />
               )}
             </div>
           )}
@@ -754,9 +777,24 @@ export default function ProfilePage() {
                   <div className="w-8 h-8 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
                 </div>
               ) : (activeTab === 'followers' ? followers : following).length === 0 ? (
-                <div className="text-center py-24 opacity-40 text-xs uppercase tracking-[0.4em] font-black border border-dashed border-card-border rounded-[2rem]">
-                  {activeTab === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
-                </div>
+                <MobileEmptyState
+                  icon={<Users size={24} />}
+                  title={activeTab === 'followers' ? 'No followers yet.' : 'Not following anyone yet.'}
+                  description={
+                    activeTab === 'followers'
+                      ? 'Followers will appear here when people connect with this profile.'
+                      : 'Follow builders from Feed or Circle to shape your accountability network.'
+                  }
+                  action={isOwnProfile && activeTab === 'following' ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/circle?tab=connections')}
+                      className="flex h-12 w-full items-center justify-center rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+                    >
+                      Find people
+                    </button>
+                  ) : undefined}
+                />
               ) : (
                 (activeTab === 'followers' ? followers : following).map(profileItem => (
                   <div key={profileItem.id} className="system-card p-5 bg-card border-card-border flex items-center gap-4">
@@ -817,9 +855,12 @@ export default function ProfilePage() {
                 />
               ))}
               {archivedProfilePosts.length === 0 && (
-                 <div className="text-center py-24 opacity-30 text-xs uppercase tracking-[0.4em] font-black">
-                    No archived posts
-                 </div>
+                <MobileEmptyState
+                  icon={<Archive size={24} />}
+                  title="No archived posts."
+                  description="Posts you archive from your profile will collect here."
+                  className="min-h-56"
+                />
               )}
             </div>
           )}
