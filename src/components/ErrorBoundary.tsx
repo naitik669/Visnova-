@@ -53,8 +53,8 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
         }
       };
       return (
-        <div className="min-h-screen w-screen bg-bg-base px-5 py-8 text-center text-text-main">
-          <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl flex-col items-center justify-center">
+        <div className="min-h-[100dvh] w-screen bg-bg-base px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] text-center text-text-main">
+          <div className="mx-auto flex min-h-[calc(100dvh_-_2.5rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] w-full max-w-5xl flex-col items-center justify-center">
             <VisNovaMotion variant="error" size="lg" className="w-full max-w-3xl" />
             <div className="mt-[-1rem] flex max-w-xl flex-col items-center gap-3">
               <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Something didn't load right.</h1>

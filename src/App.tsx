@@ -843,7 +843,7 @@ function RouteFallback() {
 
 function SupabaseConfigScreen() {
   return (
-    <div className="h-screen w-screen bg-bg-base flex items-center justify-center p-6">
+    <div className="flex min-h-[100dvh] w-screen items-center justify-center bg-bg-base p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))]">
       <div className="max-w-lg rounded-[2rem] border border-card-border bg-card p-8 text-center shadow-2xl">
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-danger/10 text-danger">
           <X size={22} />
@@ -863,7 +863,7 @@ function SupabaseConfigScreen() {
 function NotFoundPage() {
   const navigate = useNavigate();
   return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 p-8 text-center">
+    <div className="flex min-h-[calc(100dvh-7rem)] flex-col items-center justify-center gap-4 p-6 pb-[calc(6rem+env(safe-area-inset-bottom))] text-center sm:p-8 sm:pb-8">
       <VisNovaMotion variant="notFound" className="max-w-2xl" />
       <h2 className="text-2xl font-black tracking-tight text-text-main">Lost in the Vision space?</h2>
       <p className="max-w-xs text-sm font-semibold text-text-secondary">Let's get you back.</p>
@@ -942,8 +942,8 @@ function useIsMobileViewport() {
 function OfflinePage({ hasNetworkIssue = false }: { hasNetworkIssue?: boolean }) {
   const navigate = useNavigate();
   return (
-    <div className="min-h-[100dvh] w-screen bg-bg-base px-5 py-8 text-center text-text-main">
-      <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-5xl flex-col items-center justify-center">
+    <div className="min-h-[100dvh] w-screen bg-bg-base px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] text-center text-text-main">
+      <div className="mx-auto flex min-h-[calc(100dvh_-_2.5rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] w-full max-w-5xl flex-col items-center justify-center">
         <VisNovaMotion variant="error" size="lg" className="w-full max-w-3xl" ariaLabel="Connection interrupted animation" />
         <div className="mt-[-1rem] flex w-full max-w-xl flex-col items-center gap-3 pb-[env(safe-area-inset-bottom)]">
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Something didn't load right.</h1>
@@ -1131,7 +1131,7 @@ function AppContent() {
 
   if (authLoading && !isAuthInitialized && !isAuthCallbackPath) {
     return (
-      <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6 px-6 text-center">
+      <div className="flex min-h-[100dvh] w-screen flex-col items-center justify-center space-y-6 bg-bg-base px-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] text-center">
          <VisNovaMotion variant="progressLoader" className="max-w-xs" />
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">VisNova</span>
@@ -1145,7 +1145,7 @@ function AppContent() {
   // refreshes happen in the background so the app never blanks mid-session.
   if (session && !isProfileReady && !profile) {
     return (
-      <div className="h-screen w-screen bg-bg-base flex flex-col items-center justify-center space-y-6 px-6 text-center">
+      <div className="flex min-h-[100dvh] w-screen flex-col items-center justify-center space-y-6 bg-bg-base px-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] text-center">
          <VisNovaMotion variant={profileWaitTimedOut ? 'error' : 'progressLoader'} className="max-w-xs" />
          <div className="flex flex-col items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-text-main opacity-80">Loading</span>
