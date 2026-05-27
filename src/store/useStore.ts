@@ -933,7 +933,7 @@ export const useStore = create<AppState>((set, get) => ({
     totalTime: 0,
     label: '',
   },
-    theme: (localStorage.getItem('theme') as 'light' | 'dark' | 'midnight' | 'graphite' | 'forest-dark' | 'plum-dark' | 'flare' | 'pastel' | 'green' | 'yellow' | 'sage' | 'ember') || 'sage',
+    theme: (localStorage.getItem('theme') as 'light' | 'dark' | 'midnight' | 'graphite' | 'forest-dark' | 'plum-dark' | 'flare' | 'pastel' | 'green' | 'yellow' | 'sage' | 'ember') || 'pastel',
   session: null,
   selectedProfileId: null,
   isDashboardLoading: false,
