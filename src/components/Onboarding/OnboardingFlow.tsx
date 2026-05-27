@@ -144,6 +144,8 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
             placeholder="strategist@visnova.ai"
             value={email}
             onChange={e => setEmail(e.target.value)}
+            autoComplete="email"
+            inputMode="email"
             className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:border-accent transition-all font-medium"
           />
         </div>
@@ -163,12 +165,17 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
               placeholder="Enter password"
               value={password}
               onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') void handleLogin();
+              }}
+              autoComplete="current-password"
               className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:border-accent transition-all font-medium pr-12"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
+              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -532,6 +539,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             placeholder="Enter your name"
             value={name}
             onChange={e => setName(e.target.value)}
+            autoComplete="name"
             className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
             autoFocus
           />
@@ -543,6 +551,8 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             placeholder="yourmail@example.com"
             value={email}
             onChange={e => setEmail(e.target.value)}
+            autoComplete="email"
+            inputMode="email"
             className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
           />
         </div>
@@ -557,6 +567,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
                 setPassword(e.target.value);
                 if (passwordError) setPasswordError('');
               }}
+              autoComplete="new-password"
               className={cn(
                 "w-full h-12 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
                 passwordError ? "border-accent/40 bg-accent/[0.02]" : "border-card-border focus:border-accent"
@@ -565,7 +576,8 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
+              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -582,6 +594,10 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
                 setConfirmPassword(e.target.value);
                 if (passwordError) setPasswordError('');
               }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') void handleManualNext();
+              }}
+              autoComplete="new-password"
               className={cn(
                 "w-full h-12 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
                 passwordError ? "border-accent/40 bg-accent/[0.02]" : "border-card-border focus:border-accent"
@@ -590,7 +606,8 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40 hover:opacity-100 transition-opacity"
+              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
+              aria-label={showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'}
             >
               {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -1750,7 +1767,7 @@ export default function OnboardingFlow() {
   const usesIntroCard = [1, 2, 3, 11, 12, 13].includes(step);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col overflow-hidden bg-bg-base p-2 font-sans sm:p-4">
+    <div className="flex min-h-[100dvh] flex-col overflow-hidden bg-bg-base p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] font-sans sm:p-4">
       {/* Dynamic Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/5 rounded-full blur-[120px]" />
@@ -1795,7 +1812,7 @@ export default function OnboardingFlow() {
                 onClick={handleForceStart}
                 className="text-[9px] font-black uppercase tracking-widest text-accent/40 hover:text-accent transition-all hover:scale-105 active:scale-95 px-3 py-1.5 rounded-lg border border-accent/10 hover:bg-accent/5"
               >
-                Skip to Dashbord
+                Skip to Dashboard
               </button>
             )}
            {step < 10 && (
@@ -1830,8 +1847,8 @@ export default function OnboardingFlow() {
               className={cn(
                 "w-full overflow-y-auto custom-scrollbar",
                 usesIntroCard
-                  ? "max-h-full max-w-[520px] rounded-[1.5rem] border border-card-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-accent/10 backdrop-blur-xl sm:rounded-[2rem] sm:p-7"
-                  : "max-h-full max-w-[1180px] p-1 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6"
+                  ? "max-h-full max-w-[520px] rounded-[1.5rem] border border-card-border bg-card/95 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-2xl shadow-accent/10 backdrop-blur-xl sm:rounded-[2rem] sm:p-7"
+                  : "max-h-full max-w-[1180px] p-1 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:p-6"
               )}
             >
               {renderCurrentStep()}
