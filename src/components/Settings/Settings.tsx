@@ -291,7 +291,7 @@ export default function Settings() {
                     Switch themes anytime. Your workspace keeps the same structure while the mood adapts to how you like to build.
                   </p>
                 </div>
-                <VisNovaMotion variant="theme" className="max-w-[220px]" />
+                <VisNovaMotion variant="theme" className="hidden max-w-[220px] sm:block" />
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
                 {themes.map(item => (
@@ -309,7 +309,7 @@ export default function Settings() {
                       '--theme-preview-muted': item.preview.muted
                     } as CSSProperties}
                     className={cn(
-                      'group relative min-h-52 overflow-hidden rounded-3xl border-2 p-0 text-left transition-all duration-500',
+                      'group relative min-h-44 overflow-hidden rounded-3xl border-2 p-0 text-left transition-all duration-500 sm:min-h-52',
                       theme === item.id ? 'border-accent shadow-2xl shadow-accent/10' : 'border-card-border bg-card opacity-80 hover:opacity-100 hover:border-accent/30'
                     )}
                   >
@@ -328,7 +328,7 @@ export default function Settings() {
                       }}
                     />
 
-                    <div className="relative z-10 flex min-h-52 flex-col justify-between p-6">
+                    <div className="relative z-10 flex min-h-44 flex-col justify-between p-5 sm:min-h-52 sm:p-6">
                       <div className="flex items-start justify-between gap-4">
                         <div className={cn('flex h-14 w-14 items-center justify-center rounded-2xl shadow-xl transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105', item.color)}>
                           <item.icon size={26} />
@@ -371,10 +371,10 @@ export default function Settings() {
                 <ToggleRow label="Subtle sounds" desc="Play soft sounds for toasts and setting interactions." checked={notificationPrefs.sound} onChange={value => updateNotificationPrefs({ ...notificationPrefs, sound: value })} />
               </div>
               <div className="mt-5 flex flex-wrap gap-3 border-t border-card-border pt-5">
-                <button onClick={requestBrowserNotifications} className="h-11 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+                <button onClick={requestBrowserNotifications} className="h-12 w-full rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:h-11 sm:w-auto">
                   Enable Browser Permission
                 </button>
-                <button onClick={() => playInteractionSound('message')} className="h-11 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                <button onClick={() => playInteractionSound('message')} className="h-12 w-full rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary sm:h-11 sm:w-auto">
                   Test Sound
                 </button>
               </div>
@@ -434,10 +434,10 @@ export default function Settings() {
                   <ToggleRow label="Beta tips" desc="Show guidance for unfinished beta flows." checked={preferencePrefs.betaTips} onChange={value => updatePreferencePrefs({ ...preferencePrefs, betaTips: value })} />
                 </div>
                 <div className="flex flex-col gap-3 border-t border-card-border pt-5 sm:flex-row sm:flex-wrap">
-                  <button onClick={restartTutorial} className="flex h-11 items-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+                  <button onClick={restartTutorial} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:h-11 sm:w-auto">
                     <Monitor size={14} /> Restart Tour
                   </button>
-                  <button onClick={handleResetLocalPrefs} className="flex h-11 items-center gap-2 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                  <button onClick={handleResetLocalPrefs} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-secondary sm:h-11 sm:w-auto">
                     <RotateCcw size={14} /> Reset Local Preferences
                   </button>
                 </div>
@@ -614,7 +614,7 @@ export default function Settings() {
                         </p>
                       )}
                     </div>
-                    <button onClick={openPreferences} className="h-11 w-full shrink-0 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast md:w-auto">
+                    <button onClick={openPreferences} className="h-12 w-full shrink-0 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast md:h-11 md:w-auto">
                       Manage cookie preferences
                     </button>
                   </div>
@@ -624,13 +624,13 @@ export default function Settings() {
                   <h3 className="text-sm font-black text-text-main">Legal and data controls</h3>
                   <p className="mt-1 text-xs font-semibold text-text-secondary/60">Cookie choices can be changed anytime. Export and delete-account requests are handled through support during beta.</p>
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
-                    <Link to="/cookie-policy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
-                    <Link to="/privacy-policy" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy Policy</Link>
-                    <Link to="/terms-of-service" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms of Service</Link>
-                    <Link to="/affiliate-disclosure" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Affiliate Disclosure</Link>
-                    <Link to="/community-guidelines" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Community Guidelines</Link>
-                    <Link to="/data-rights" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Data Rights</Link>
-                    <Link to="/contact" className="rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Contact Support</Link>
+                    <Link to="/cookie-policy" className="flex min-h-12 items-center rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
+                    <Link to="/privacy-policy" className="flex min-h-12 items-center rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy Policy</Link>
+                    <Link to="/terms-of-service" className="flex min-h-12 items-center rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms of Service</Link>
+                    <Link to="/affiliate-disclosure" className="flex min-h-12 items-center rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Affiliate Disclosure</Link>
+                    <Link to="/community-guidelines" className="flex min-h-12 items-center rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Community Guidelines</Link>
+                    <Link to="/data-rights" className="flex min-h-12 items-center rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Data Rights</Link>
+                    <Link to="/contact" className="flex min-h-12 items-center rounded-2xl border border-card-border bg-app-container px-4 py-3 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Contact Support</Link>
                   </div>
                 </div>
               </div>
