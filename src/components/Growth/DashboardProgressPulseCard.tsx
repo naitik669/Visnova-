@@ -3,13 +3,15 @@ import { Brain } from 'lucide-react';
 function sparklinePath(values: number[], width = 220, height = 58) {
   const max = Math.max(...values, 1);
   const step = values.length > 1 ? width / (values.length - 1) : width;
-  return values
-    .map((value, index) => {
-      const x = index * step;
-      const y = height - (Math.max(0, value) / max) * (height - 8) - 4;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(' ');
+  const points = values.map((value, index) => {
+    const x = index * step;
+    const y = height - (Math.max(0, value) / max) * (height - 10) - 5;
+    return { x, y };
+  });
+  return {
+    line: points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' '),
+    points,
+  };
 }
 
 export function DashboardProgressPulseCard({
@@ -26,7 +28,7 @@ export function DashboardProgressPulseCard({
   onOpen: () => void;
 }) {
   const data = [currentStreak, totalProofLogs % 10, tasksDone, weeklyScore / 10, Math.max(1, weeklyScore / 8)];
-  const linePath = sparklinePath(data);
+  const { line: linePath, points } = sparklinePath(data);
   const areaPath = `${linePath} L 220 58 L 0 58 Z`;
 
   return (
@@ -57,8 +59,23 @@ export function DashboardProgressPulseCard({
                 <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.01} />
               </linearGradient>
             </defs>
+            {[14, 29, 44].map(y => (
+              <line key={y} x1="0" x2="220" y1={y} y2={y} stroke="var(--border)" strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            ))}
             <path d={areaPath} fill="url(#dashboardPulseFill)" />
             <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            {points.map(point => (
+              <circle
+                key={`${point.x}-${point.y}`}
+                cx={point.x}
+                cy={point.y}
+                r="3.5"
+                fill="var(--card)"
+                stroke="var(--accent)"
+                strokeWidth="2"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
           </svg>
         </div>
         <span className="mb-1 rounded-full bg-accent px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-accent-contrast">
