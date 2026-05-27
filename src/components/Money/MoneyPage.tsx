@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   CreditCard,
   Edit3,
+  Loader2,
   PiggyBank,
   Plus,
   Target,
@@ -373,7 +374,7 @@ export default function MoneyPage() {
                 <button onClick={() => setModal('goal')} className="h-10 px-3 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest">New Goal</button>
               </div>
               {activeGoals.length === 0 ? (
-                <EmptyState title="No saving goals yet." description="Create a savings goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} />
+                <EmptyState icon={<PiggyBank size={24} />} title="No saving goals yet." description="Create a savings goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} />
               ) : (
                 <div className="space-y-3">
                   {activeGoals.slice(0, 4).map(goal => <GoalRow key={goal.id} goal={goal} visions={visions} onContribute={() => setContributionGoal(goal)} onEdit={() => { setEditingGoal(goal); setModal('goal'); }} onDelete={() => deleteFinanceGoal(goal.id)} />)}
@@ -389,7 +390,7 @@ export default function MoneyPage() {
                   {moneyOverview.upcomingSubscriptions.map(sub => <SubscriptionRow key={sub.id} subscription={sub} visions={visions} onEdit={() => { setEditingSubscription(sub); setModal('subscription'); }} onDelete={() => deleteFinanceSubscription(sub.id)} />)}
                 </div>
               ) : (
-                <EmptyState title="No upcoming subscriptions." description="Add recurring payments before they surprise you." action="Add Subscription" onClick={() => setModal('subscription')} />
+                <EmptyState icon={<CreditCard size={24} />} title="No upcoming subscriptions." description="Add recurring payments before they surprise you." action="Add Subscription" onClick={() => setModal('subscription')} />
               )}
             </section>
           </div>
@@ -412,7 +413,7 @@ export default function MoneyPage() {
             </div>
           </div>
           {visibleTransactions.length === 0 ? (
-            <EmptyState title="No transactions yet." description="Start by adding income, expense, or a saving contribution." action="Add Income" onClick={() => setModal('income')} />
+            <EmptyState icon={<Wallet size={24} />} title="No transactions yet." description="Start by adding income, expense, or a saving contribution." action="Add Income" onClick={() => setModal('income')} />
           ) : (
             <div className="space-y-3">
               {visibleTransactions.map(transaction => (
@@ -426,7 +427,7 @@ export default function MoneyPage() {
       {activeTab === 'goals' && (
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {financeGoals.length === 0 ? (
-            <div className="md:col-span-2 xl:col-span-3"><EmptyState title="No saving goals yet." description="Create a savings goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} /></div>
+            <div className="md:col-span-2 xl:col-span-3"><EmptyState icon={<Target size={24} />} title="No saving goals yet." description="Create a savings goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} /></div>
           ) : financeGoals.map(goal => (
             <GoalCard key={goal.id} goal={goal} visions={visions} onContribute={() => setContributionGoal(goal)} onEdit={() => { setEditingGoal(goal); setModal('goal'); }} onDelete={() => deleteFinanceGoal(goal.id)} />
           ))}
@@ -443,7 +444,7 @@ export default function MoneyPage() {
             <button onClick={() => setModal('subscription')} className="h-11 rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:h-10">Add Subscription</button>
           </div>
           <div className="space-y-3">
-            {financeSubscriptions.length ? financeSubscriptions.map(sub => <SubscriptionRow key={sub.id} subscription={sub} visions={visions} onEdit={() => { setEditingSubscription(sub); setModal('subscription'); }} onDelete={() => deleteFinanceSubscription(sub.id)} />) : <EmptyState title="No subscriptions tracked." description="Add recurring payments before they surprise you." action="Add Subscription" onClick={() => setModal('subscription')} />}
+            {financeSubscriptions.length ? financeSubscriptions.map(sub => <SubscriptionRow key={sub.id} subscription={sub} visions={visions} onEdit={() => { setEditingSubscription(sub); setModal('subscription'); }} onDelete={() => deleteFinanceSubscription(sub.id)} />) : <EmptyState icon={<CreditCard size={24} />} title="No subscriptions tracked." description="Add recurring payments before they surprise you." action="Add Subscription" onClick={() => setModal('subscription')} />}
           </div>
         </section>
       )}
@@ -458,7 +459,7 @@ export default function MoneyPage() {
             <button onClick={() => setModal('budget')} className="h-11 rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:h-10">Add Budget</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {financeBudgets.length ? financeBudgets.map(budget => <BudgetCard key={budget.id} budget={budget} transactions={financeTransactions} onDelete={() => deleteFinanceBudget(budget.id)} />) : <div className="md:col-span-2 xl:col-span-3"><EmptyState title="No budgets set." description="Set limits for categories you want to control." action="Add Budget" onClick={() => setModal('budget')} /></div>}
+            {financeBudgets.length ? financeBudgets.map(budget => <BudgetCard key={budget.id} budget={budget} transactions={financeTransactions} onDelete={() => deleteFinanceBudget(budget.id)} />) : <div className="md:col-span-2 xl:col-span-3"><EmptyState icon={<Wallet size={24} />} title="No budgets set." description="Set limits for categories you want to control." action="Add Budget" onClick={() => setModal('budget')} /></div>}
           </div>
         </section>
       )}
@@ -482,7 +483,12 @@ export default function MoneyPage() {
         </section>
       )}
 
-      {isMoneyLoading && <p className="text-center text-[10px] font-black uppercase tracking-widest text-text-secondary">Refreshing Wallet...</p>}
+      {isMoneyLoading && (
+        <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-card-border bg-card px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary shadow-sm">
+          <Loader2 size={13} className="animate-spin text-accent" />
+          Refreshing Wallet...
+        </div>
+      )}
 
       <ResponsiveModal open={!!modal || !!contributionGoal} onClose={closeModal} title={modalTitle(modal, editingTransaction, editingGoal, editingSubscription, contributionGoal)} subtitle="Wallet is private by default." size="md">
         <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
@@ -525,12 +531,13 @@ function MetricCard({ icon: Icon, label, value, tone }: { icon: any; label: stri
   );
 }
 
-function EmptyState({ title, description, action, onClick }: { title: string; description: string; action: string; onClick: () => void }) {
+function EmptyState({ icon, title, description, action, onClick }: { icon?: React.ReactNode; title: string; description: string; action: string; onClick: () => void }) {
   return (
-    <div className="rounded-[2rem] border border-dashed border-card-border bg-surface-muted/40 p-6 text-center">
-      <p className="text-sm font-black text-text-main">{title}</p>
-      <p className="mt-1 text-xs font-medium text-text-secondary">{description}</p>
-      <button onClick={onClick} className="mt-4 h-10 px-4 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest">{action}</button>
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-[2rem] border border-dashed border-card-border bg-surface-muted/40 p-6 text-center">
+      {icon && <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">{icon}</div>}
+      <p className="text-base font-black text-text-main">{title}</p>
+      <p className="mt-2 max-w-xs text-sm font-semibold leading-6 text-text-secondary/70">{description}</p>
+      <button onClick={onClick} className="mt-5 flex h-12 w-full max-w-xs items-center justify-center rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast">{action}</button>
     </div>
   );
 }
