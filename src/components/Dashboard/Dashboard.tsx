@@ -131,11 +131,12 @@ function FirstVisionPrompt({ onCreate, onFeed }: { onCreate: () => void; onFeed:
   );
 }
 
-function DashboardActivityChart({ data }: { data: Array<{ name: string; output: number }> }) {
+function DashboardActivityChart({ data }: { data: Array<{ name: string; output: number; tasksDone: number }> }) {
+  const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
   const width = 420;
-  const height = 140;
-  const top = 12;
-  const bottom = 30;
+  const height = 112;
+  const top = 10;
+  const bottom = 10;
   const max = Math.max(...data.map((item) => item.output), 1);
   const plotHeight = height - top - bottom;
   const step = data.length > 1 ? width / (data.length - 1) : width;
@@ -158,38 +159,72 @@ function DashboardActivityChart({ data }: { data: Array<{ name: string; output: 
     return `${path} C ${controlOneX.toFixed(1)} ${controlOneY.toFixed(1)} ${controlTwoX.toFixed(1)} ${controlTwoY.toFixed(1)} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
   }, "");
   const areaPath = `${linePath} L ${width} ${height - bottom} L 0 ${height - bottom} Z`;
+  const activePoint = activeIndex === null ? null : points[activeIndex];
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label="Weekly output activity chart">
-      <defs>
-        <linearGradient id="dashboardActivityFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
-        </linearGradient>
-      </defs>
-      {[0.25, 0.5, 0.75].map((ratio) => (
-        <line
-          key={ratio}
-          x1="0"
-          x2={width}
-          y1={top + plotHeight * ratio}
-          y2={top + plotHeight * ratio}
-          stroke="var(--card-border)"
-          strokeWidth="1"
-          vectorEffect="non-scaling-stroke"
-          opacity="0.55"
-        />
-      ))}
-      <path d={areaPath} fill="url(#dashboardActivityFill)" />
-      <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-      {points.map((point) => (
-        <g key={point.name}>
-          <text x={point.x} y={height - 7} textAnchor="middle" className="fill-text-secondary text-[10px] font-bold opacity-60">
+    <div className="relative flex h-full min-h-0 flex-col" onMouseLeave={() => setActiveIndex(null)}>
+      <div className="relative min-h-0 flex-1">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" preserveAspectRatio="none" role="img" aria-label="Weekly output activity chart">
+          <defs>
+            <linearGradient id="dashboardActivityFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          {[0.25, 0.5, 0.75].map((ratio) => (
+            <line
+              key={ratio}
+              x1="0"
+              x2={width}
+              y1={top + plotHeight * ratio}
+              y2={top + plotHeight * ratio}
+              stroke="var(--card-border)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+              opacity="0.55"
+            />
+          ))}
+          <path d={areaPath} fill="url(#dashboardActivityFill)" />
+          <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          {points.map((point, index) => (
+            <circle
+              key={point.name}
+              cx={point.x}
+              cy={point.y}
+              r="14"
+              fill="transparent"
+              className="cursor-pointer"
+              onMouseEnter={() => setActiveIndex(index)}
+              onFocus={() => setActiveIndex(index)}
+              tabIndex={0}
+            />
+          ))}
+        </svg>
+
+        {activePoint && (
+          <div
+            className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-2xl border border-card-border bg-card-elevated px-3 py-2 text-xs shadow-xl shadow-black/15"
+            style={{
+              left: `clamp(56px, ${(activePoint.x / width) * 100}%, calc(100% - 56px))`,
+              top: `${Math.max(14, (activePoint.y / height) * 100)}%`,
+            }}
+          >
+            <p className="font-black text-text-main">{activePoint.name}</p>
+            <p className="mt-1 whitespace-nowrap font-semibold text-text-secondary">
+              {activePoint.tasksDone} {activePoint.tasksDone === 1 ? 'task' : 'tasks'} done
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-7 pt-2">
+        {points.map(point => (
+          <span key={point.name} className="text-center text-[13px] font-black leading-none tracking-normal text-text-secondary/60">
             {point.name}
-          </text>
-        </g>
-      ))}
-    </svg>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -782,6 +817,7 @@ export default function Dashboard() {
       return {
         name: d.toLocaleDateString([], { weekday: "short" }),
         output,
+        tasksDone: day ? day.taskCount + day.todoCount : 0,
         focus: Math.min(100, 30 + output * 0.8),
       };
     });
