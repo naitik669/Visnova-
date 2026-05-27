@@ -79,7 +79,7 @@ export default function NeuralAssistant() {
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           onClick={() => setIsOpen(true)}
-          className="group fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-2xl shadow-accent/40 transition-all active:scale-90 lg:bottom-8 lg:right-12 lg:h-16 lg:w-16"
+          className="group fixed bottom-8 right-12 z-[100] hidden h-16 w-16 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-2xl shadow-accent/40 transition-all active:scale-90 lg:flex"
           aria-label="Open Quick Help"
         >
           <div className="absolute inset-0 bg-accent rounded-2xl animate-ping opacity-20 pointer-events-none" />
@@ -101,7 +101,7 @@ export default function NeuralAssistant() {
             }}
             exit={{ opacity: 0, y: 100, scale: 0.9, filter: 'blur(10px)' }}
             className={cn(
-              "fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[200] flex max-h-[calc(100dvh-7rem)] flex-col overflow-hidden border border-card-border bg-card shadow-2xl lg:inset-x-auto lg:bottom-8 lg:right-8 lg:max-h-[calc(100vh-4rem)] lg:max-w-[calc(100vw-4rem)]",
+              "fixed bottom-8 right-8 z-[200] hidden max-h-[calc(100vh-4rem)] max-w-[calc(100vw-4rem)] flex-col overflow-hidden border border-card-border bg-card shadow-2xl lg:flex",
               isMinimized ? "rounded-2xl" : "rounded-[2.5rem]"
             )}
           >
@@ -191,7 +191,7 @@ export default function NeuralAssistant() {
                         className="h-14 w-full rounded-2xl border border-card-border bg-surface-muted pl-4 pr-12 text-sm font-medium text-text-main transition-all placeholder:text-text-secondary/40 focus:border-accent/40 focus:outline-none sm:pl-6"
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-text-secondary">
-                        <kbd className="px-1.5 py-0.5 rounded border border-white/10 text-[9px] bg-white/5">⏎</kbd>
+                        <kbd className="px-1.5 py-0.5 rounded border border-white/10 text-[9px] bg-white/5">Enter</kbd>
                       </div>
                     </div>
                     <button

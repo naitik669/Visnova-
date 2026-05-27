@@ -157,7 +157,7 @@ export default function VisionAssistant() {
           whileHover={{ y: -2, scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-2xl shadow-accent/30 transition-all lg:bottom-8 lg:right-12 lg:h-16 lg:w-16"
+          className="fixed bottom-8 right-12 z-[100] hidden h-16 w-16 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-2xl shadow-accent/30 transition-all lg:flex"
           aria-label="Open VisNova Help"
         >
           <HelpCircle size={26} />
@@ -177,7 +177,7 @@ export default function VisionAssistant() {
             }}
             exit={{ opacity: 0, y: 80, scale: 0.96 }}
             className={cn(
-              "fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[200] flex max-h-[calc(100dvh-7rem)] flex-col overflow-hidden border border-card-border bg-card shadow-2xl lg:inset-x-auto lg:bottom-8 lg:right-8 lg:max-h-[calc(100vh-4rem)] lg:max-w-[calc(100vw-4rem)]",
+              "fixed bottom-8 right-8 z-[200] hidden max-h-[calc(100vh-4rem)] max-w-[calc(100vw-4rem)] flex-col overflow-hidden border border-card-border bg-card shadow-2xl lg:flex",
               isMinimized ? "rounded-2xl" : "rounded-[2rem]"
             )}
           >
