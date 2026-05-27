@@ -384,7 +384,9 @@ export default function NotesSystem() {
         {/* Content Section */}
         <div className={cn(
           "flex-1 overflow-y-auto custom-scrollbar transition-all duration-700",
-          activeTab === 'journal' ? "px-2 sm:px-4 md:px-8 py-3 sm:py-4" : "px-3 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-4 sm:py-8"
+          activeTab === 'journal'
+            ? "px-2 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 sm:py-4 md:px-8"
+            : "px-3 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:py-8 lg:px-8 xl:px-10 2xl:px-12"
         )}>
           <header className="flex w-full flex-col gap-4 border-b border-card-border/30 pb-5 mb-5 sm:pb-8 sm:mb-8 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 min-w-0">
@@ -405,7 +407,7 @@ export default function NotesSystem() {
                         setSelectedNoteId(null);
                       }}
                       className={cn(
-                        "h-9 px-3 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                        "h-11 px-4 sm:h-9 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                         activeTab === tab.value ? "bg-card text-accent shadow-sm" : "text-text-secondary/45 hover:text-text-main"
                       )}
                     >
@@ -428,7 +430,7 @@ export default function NotesSystem() {
                           if (filter.value === 'all') setSelectedFolder(null);
                         }}
                         className={cn(
-                          "h-9 px-3 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                          "h-11 px-4 sm:h-9 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
                           sidebarFilter === filter.value ? "bg-card text-accent shadow-sm" : "text-text-secondary/45 hover:text-text-main"
                         )}
                       >
@@ -439,7 +441,7 @@ export default function NotesSystem() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+              <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-4 shrink-0">
                 <div className="relative group hidden sm:block">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/40 group-focus-within:text-accent transition-colors" />
                   <input
@@ -451,10 +453,11 @@ export default function NotesSystem() {
                 </div>
                 <button
                   onClick={() => activeTab === 'audio' ? setIsAudioModalOpen(true) : handleCreateNote(activeTab === 'journal' ? 'journal' : 'normal')}
-                  className="h-11 px-4 rounded-2xl bg-accent text-accent-contrast shadow-lg shadow-accent/10 hover:scale-105 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                  className="h-12 flex-1 justify-center rounded-2xl bg-accent px-4 text-accent-contrast shadow-lg shadow-accent/10 transition-all active:scale-[0.98] sm:h-11 sm:flex-none sm:justify-start sm:hover:scale-105 text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                  aria-label={activeTab === 'audio' ? 'Create audio note' : activeTab === 'journal' ? 'Create journal entry' : 'Create new note'}
                 >
                   {activeTab === 'audio' ? <Mic size={18} /> : <Plus size={18} />}
-                  <span className="hidden sm:inline">{activeTab === 'audio' ? 'Audio Note' : activeTab === 'journal' ? 'Journal Entry' : 'New Note'}</span>
+                  <span>{activeTab === 'audio' ? 'Audio Note' : activeTab === 'journal' ? 'Journal Entry' : 'New Note'}</span>
                 </button>
               </div>
           </header>
@@ -656,7 +659,7 @@ export default function NotesSystem() {
                         }}
                       />
                     ) : filteredNotes.length === 0 ? (
-                      <div className="h-96 flex flex-col items-center justify-center bg-card rounded-[2rem] border border-card-border/50 shadow-sm">
+                      <div className="min-h-[22rem] flex flex-col items-center justify-center bg-card rounded-[2rem] border border-card-border/50 px-5 text-center shadow-sm sm:h-96 sm:px-6">
                         <div className="w-20 h-20 rounded-3xl bg-surface-muted flex items-center justify-center mb-6 text-text-secondary/20">
                           {activeTab === 'audio' ? <Mic size={40} /> : <BookOpen size={40} />}
                         </div>
@@ -1390,7 +1393,7 @@ function JournalSpread({ selectedDate, setSelectedDate, entry, streak, onSave, o
             </div>
 
             {/* Metadata & Actions */}
-            <div className="sticky bottom-0 -mx-4 border-t border-card-border/30 bg-card/95 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0">
+            <div className="sticky bottom-0 -mx-4 border-t border-card-border/30 bg-card/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-secondary/30">
                   {isSaving ? (
@@ -2900,7 +2903,11 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
     >
       <div className="flex min-h-16 flex-col gap-4 border-b border-card-border/60 bg-app-container/95 px-3 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-md sm:min-h-20 sm:flex-row sm:items-center sm:justify-between sm:px-0 sm:pt-0">
          <div className="flex items-center gap-4 sm:gap-6">
-           <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/5 text-accent transition-all hover:bg-accent hover:text-white active:scale-90">
+           <button
+             onClick={onClose}
+             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/5 text-accent transition-all hover:bg-accent hover:text-white active:scale-90 sm:h-10 sm:w-10"
+             aria-label="Back to library"
+           >
               <ChevronRight className="rotate-180" size={18} />
            </button>
            <div className="min-w-0 space-y-0.5">
@@ -2914,7 +2921,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
            <button
              onClick={() => setIsIconPickerOpen(open => !open)}
              className={cn(
-               "h-10 min-w-10 rounded-xl border px-3 text-lg transition-all",
+               "h-11 min-w-11 rounded-xl border px-3 text-lg transition-all sm:h-10 sm:min-w-10",
                isIconPickerOpen || note.icon ? "border-accent/30 bg-accent/10 text-accent" : "border-card-border bg-transparent text-text-secondary/45 hover:text-text-main"
              )}
              aria-label="Choose note icon"
@@ -2924,7 +2931,8 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
            </button>
            <button 
              onClick={() => updateNote(note.id, { isFavorite: !note.isFavorite })}
-             className={cn("w-10 h-10 rounded-xl border flex items-center justify-center transition-all", note.isFavorite ? "bg-accent/10 border-accent/30 text-accent" : "bg-transparent border-card-border text-text-secondary/45 hover:text-text-main")}
+             className={cn("h-11 w-11 rounded-xl border flex items-center justify-center transition-all sm:h-10 sm:w-10", note.isFavorite ? "bg-accent/10 border-accent/30 text-accent" : "bg-transparent border-card-border text-text-secondary/45 hover:text-text-main")}
+             aria-label={note.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             >
               <Star size={16} className={note.isFavorite ? "fill-accent" : ""} />
            </button>
@@ -2932,7 +2940,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             onClick={isRecording ? stopRecording : startRecording}
             disabled={isAudioUploading}
             className={cn(
-              "h-10 px-4 sm:px-5 rounded-xl flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50",
+              "h-11 px-4 sm:h-10 sm:px-5 rounded-xl flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-50",
               isRecording ? "bg-danger text-white" : "bg-accent/5 text-accent hover:bg-accent hover:text-white"
             )}
            >
@@ -2942,7 +2950,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
            <button
             onClick={() => audioInputRef.current?.click()}
             disabled={isAudioUploading || isRecording}
-            className="h-10 px-4 sm:px-5 rounded-xl bg-surface-muted text-text-secondary flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest hover:bg-accent/5 hover:text-accent transition-all disabled:opacity-50"
+            className="h-11 px-4 sm:h-10 sm:px-5 rounded-xl bg-surface-muted text-text-secondary flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest hover:bg-accent/5 hover:text-accent transition-all disabled:opacity-50"
            >
               <Upload size={12} />
               Audio
@@ -2961,7 +2969,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-0 sm:pb-24 sm:pt-10 md:pt-12">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-5 sm:px-0 sm:pb-24 sm:pt-10 md:pt-12">
         <div className="w-full space-y-7 sm:space-y-12">
           {note.note_type === 'journal' && (
             <h4 className="text-xs font-black text-[#ccc] uppercase tracking-widest">{safeFormat(note.createdAt, 'EEEE, MMM dd')}</h4>
@@ -3030,7 +3038,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => runEditorCommand('bold')}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-muted text-text-main transition-colors hover:bg-accent hover:text-accent-contrast"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-muted text-text-main transition-colors hover:bg-accent hover:text-accent-contrast sm:h-9 sm:w-9"
               title="Bold selected text"
             >
               <Bold size={15} />
@@ -3039,7 +3047,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => runEditorCommand('italic')}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-muted text-text-main transition-colors hover:bg-accent hover:text-accent-contrast"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-muted text-text-main transition-colors hover:bg-accent hover:text-accent-contrast sm:h-9 sm:w-9"
               title="Italic selected text"
             >
               <Italic size={15} />
@@ -3048,7 +3056,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => runEditorCommand('formatBlock', 'h2')}
-              className="flex h-9 items-center rounded-xl bg-surface-muted px-3 text-[10px] font-black uppercase tracking-widest text-text-main transition-colors hover:bg-accent hover:text-accent-contrast"
+              className="flex h-11 items-center rounded-xl bg-surface-muted px-4 text-[10px] font-black uppercase tracking-widest text-text-main transition-colors hover:bg-accent hover:text-accent-contrast sm:h-9 sm:px-3"
               title="Turn selected line into a title"
             >
               Title
@@ -3059,7 +3067,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => setIsSizeMenuOpen(open => !open)}
                 className={cn(
-                  "flex h-9 items-center gap-2 rounded-xl border px-3 text-[10px] font-black uppercase tracking-widest transition-colors",
+                  "flex h-11 items-center gap-2 rounded-xl border px-4 text-[10px] font-black uppercase tracking-widest transition-colors sm:h-9 sm:px-3",
                   isSizeMenuOpen ? "border-accent/30 bg-accent/10 text-accent" : "border-card-border bg-surface-muted text-text-main hover:bg-accent hover:text-accent-contrast"
                 )}
                 title="Change selected text size"
@@ -3113,7 +3121,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={insertStickyNote}
-              className="flex h-9 items-center gap-2 rounded-xl bg-surface-muted px-3 text-[10px] font-black uppercase tracking-widest text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+              className="flex h-11 items-center gap-2 rounded-xl bg-surface-muted px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent sm:h-9 sm:px-3"
             >
               <StickyNote size={14} /> Sticky
             </button>
@@ -3121,7 +3129,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={insertChecklist}
-              className="flex h-9 items-center gap-2 rounded-xl bg-surface-muted px-3 text-[10px] font-black uppercase tracking-widest text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent"
+              className="flex h-11 items-center gap-2 rounded-xl bg-surface-muted px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent sm:h-9 sm:px-3"
             >
               <ListChecks size={14} /> Checklist
             </button>
@@ -3130,7 +3138,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={deleteSelectedEditorBlock}
-                className="ml-auto flex h-9 items-center gap-2 rounded-xl bg-danger/10 px-3 text-[10px] font-black uppercase tracking-widest text-danger transition-colors hover:bg-danger hover:text-white"
+                className="ml-auto flex h-11 items-center gap-2 rounded-xl bg-danger/10 px-4 text-[10px] font-black uppercase tracking-widest text-danger transition-colors hover:bg-danger hover:text-white sm:h-9 sm:px-3"
               >
                 <Trash2 size={14} /> Delete Block
               </button>
@@ -3168,7 +3176,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 }
                 saveEditorContent();
               }}
-              className="note-paper-editor min-h-[55dvh] w-full px-3 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:min-h-[calc(100vh-22rem)] sm:px-6 sm:text-lg lg:px-8"
+              className="note-paper-editor min-h-[62dvh] w-full px-3 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:min-h-[calc(100vh-22rem)] sm:px-6 sm:text-lg lg:px-8"
               data-placeholder="Log details..."
             />
           </div>
@@ -3238,14 +3246,14 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
               ))}
             </div>
 
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">
-              <div className="flex items-center gap-6">
+            <div className="flex flex-col gap-4 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
                 <span>Created {safeFormat(note.createdAt, 'MMM dd, yyyy')}</span>
                 <span>Type: {note.note_type === 'normal' ? 'normal note' : note.note_type === 'audio' ? 'audio note' : note.note_type}</span>
               </div>
               <button 
                 onClick={() => setShowDeleteConfirm(true)}
-                className="text-red-400 hover:text-red-600 transition-colors flex items-center gap-2"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-danger/20 bg-danger/5 text-danger transition-colors hover:bg-danger hover:text-white sm:h-auto sm:w-auto sm:justify-start sm:border-0 sm:bg-transparent sm:text-red-400 sm:hover:bg-transparent sm:hover:text-red-600"
               >
                     <Trash2 size={12} /> Delete Note
               </button>
