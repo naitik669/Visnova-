@@ -59,6 +59,7 @@ const loadSettings = () => import('./components/Settings/Settings');
 const loadFeedbackPage = () => import('./components/Support/FeedbackPage');
 const loadMoneyPage = () => import('./components/Money/MoneyPage');
 const loadJoinVisionTeamPage = () => import('./components/VisionTeam/JoinVisionTeamPage');
+const loadLandingPage = () => import('./components/Landing/LandingPage');
 
 const VisionBoard = lazy(loadVisionBoard);
 const NovaClock = lazy(loadNovaClock);
@@ -75,6 +76,7 @@ const Settings = lazy(loadSettings);
 const FeedbackPage = lazy(loadFeedbackPage);
 const MoneyPage = lazy(loadMoneyPage);
 const JoinVisionTeamPage = lazy(loadJoinVisionTeamPage);
+const LandingPage = lazy(loadLandingPage);
 
 const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Promise<unknown> }> = [
   { match: path => path === '/feed', load: loadCommunityFeed },
@@ -841,6 +843,54 @@ function RouteFallback() {
   );
 }
 
+function EntryRedirect() {
+  const navigate = useNavigate();
+  const session = useStore(state => state.session);
+  const authLoading = useStore(state => state.authLoading);
+  const isAuthInitialized = useStore(state => state.isAuthInitialized);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const routeUser = async () => {
+      if (authLoading && !isAuthInitialized) return;
+
+      if (session?.user) {
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+
+      if (isSupabaseConfigured()) {
+        const {
+          data: { session: currentSession }
+        } = await supabase.auth.getSession();
+
+        if (cancelled) return;
+        if (currentSession?.user) {
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+      }
+
+      const hasSeenLanding = localStorage.getItem('visnova_landing_seen') === 'true';
+      navigate(hasSeenLanding ? '/auth' : '/landing', { replace: true });
+    };
+
+    void routeUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, isAuthInitialized, navigate, session?.user]);
+
+  return (
+    <div className="flex min-h-[100dvh] w-screen flex-col items-center justify-center gap-4 bg-[#F7F7FB] text-center">
+      <VisNovaMotion variant="progressLoader" className="max-w-xs" />
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#6D5DF6]">Opening VisNova</p>
+    </div>
+  );
+}
+
 function SupabaseConfigScreen() {
   return (
     <div className="flex min-h-[100dvh] w-screen items-center justify-center bg-bg-base p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))]">
@@ -1013,10 +1063,29 @@ function AppContent() {
   
   const isPasswordRecovery = sessionStorage.getItem('visnova-auth-link-mode') === 'recovery' || new URLSearchParams(window.location.search).get('mode') === 'reset-password';
   const isAuthCallbackPath = location.pathname === '/auth/callback';
+  const isEntryPath = location.pathname === '/';
+  const isLandingPath = location.pathname === '/landing';
+  const isAuthPath = location.pathname === '/auth' || location.pathname === '/login' || location.pathname === '/signup';
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (!session?.user?.id || !isSupabaseConfigured()) return;
+    if (localStorage.getItem('visnova_landing_seen') !== 'true') return;
+
+    const storageKey = `visnova_landing_seen_synced_${session.user.id}`;
+    if (localStorage.getItem(storageKey) === 'true') return;
+
+    supabase
+      .from('profiles')
+      .update({ has_seen_landing: true })
+      .eq('id', session.user.id)
+      .then(({ error }) => {
+        if (!error) localStorage.setItem(storageKey, 'true');
+      });
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!isOnline || !canUseAnalytics) return;
@@ -1120,6 +1189,16 @@ function AppContent() {
       window.clearTimeout(secondaryRouteTimer);
     };
   }, [isOnline, session?.user?.id, hasCompletedOnboarding, isProfileReady, isPasswordRecovery, isAuthCallbackPath, isMobileViewport]);
+
+  if (isLandingPath) {
+    return (
+      <>
+        <ToastViewport />
+        <CookieNotice />
+        <LandingPage />
+      </>
+    );
+  }
 
   if (!isSupabaseConfigured()) {
     return <SupabaseConfigScreen />;
@@ -1245,7 +1324,9 @@ function AppContent() {
               <Route path="/support" element={<SupportPage />} />
             </Routes>
           </motion.div>
-        ) : showOnboarding ? (
+        ) : isEntryPath ? (
+          <EntryRedirect />
+        ) : showOnboarding || (!session && isAuthPath) ? (
           <motion.div
             key="onboarding"
             initial={{ opacity: 0 }}
@@ -1256,6 +1337,10 @@ function AppContent() {
           >
             <Routes>
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/" element={<EntryRedirect />} />
+              <Route path="/auth" element={<OnboardingFlow />} />
+              <Route path="/login" element={<OnboardingFlow />} />
+              <Route path="/signup" element={<OnboardingFlow />} />
               <Route path="*" element={<OnboardingFlow />} />
             </Routes>
           </motion.div>
@@ -1290,8 +1375,11 @@ function AppContent() {
                 >
                   <Suspense fallback={<RouteFallback />}>
                     <Routes>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                      <Route path="/" element={<EntryRedirect />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/signup" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/feed" element={<CommunityFeed />} />
                       <Route path="/post/:postId" element={<PostThreadPage />} />
                       <Route path="/store" element={<StoreResourcesPage />} />
