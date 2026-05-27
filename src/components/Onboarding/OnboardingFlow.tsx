@@ -452,7 +452,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
       if (!limit.allowed) throw new Error(formatRetryAfter(limit.retryAfterMs));
       const defaultAvatar = getRandomVisNovaAvatar(`${normalizedEmail}-${Date.now()}`);
       
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const redirectUrl = getAuthRedirectUrl();
       const { data, error: signupError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
@@ -703,7 +703,7 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
       await supabase.auth.resend({
         type: 'signup',
         email: normalizedEmail,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` }
+        options: { emailRedirectTo: getAuthRedirectUrl() }
       });
       setError('A new verification link has been dispatched to your inbox.');
     } catch (err: any) {

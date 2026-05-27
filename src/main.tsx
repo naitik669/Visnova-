@@ -7,9 +7,11 @@ import './index.css';
 import { applyAppPreferences } from './lib/appPreferences.ts';
 import { useCookieConsent } from './hooks/useCookieConsent.ts';
 import { initAnalytics, optInAnalytics, optOutAnalytics } from './lib/analytics.ts';
+import { setupDeepLinks } from './lib/deepLinks.ts';
 
 applyAppPreferences();
 initAnalytics();
+setupDeepLinks();
 
 function ConsentedAnalytics() {
   const { canUseAnalytics } = useCookieConsent();

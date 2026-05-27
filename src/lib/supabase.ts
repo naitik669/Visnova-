@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { validateFile } from './security';
+import { getPlatformAuthRedirectUrl } from './capacitor';
 
 const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const envSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -56,7 +57,7 @@ export const getAuthRedirectUrl = (path = '/auth/callback') => {
   const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   const baseUrl = (browserOrigin || (isUsableAppUrl(configuredAppUrl) ? configuredAppUrl : '')).replace(/\/$/, '');
   const nextPath = path.startsWith('/') ? path : `/${path}`;
-  return `${baseUrl}${nextPath}`;
+  return getPlatformAuthRedirectUrl(`${baseUrl}${nextPath}`);
 };
 
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {

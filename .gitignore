@@ -3,6 +3,9 @@
 !.env.example
 dist
 node_modules
+android/**/build/
+android/.gradle/
+android/local.properties
 .tools
 *.pem
 *.key
