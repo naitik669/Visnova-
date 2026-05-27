@@ -29,6 +29,7 @@ import { cn } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { safeArray, safeFormat } from '../../lib/safeData';
 import { SharedWithMeCard } from '../VisionTeam/SharedWithMeCard';
+import { MobileEmptyState } from '../mobile/MobileLayout';
 
 export default function VisionBoard() {
   const { visions, sharedVisions, addVision, updateVision, addActivity, addToast, session, fetchVisions, isVisionsLoading } = useStore();
@@ -287,13 +288,22 @@ export default function VisionBoard() {
               </div>
 
               {activeVisionBoards.length === 0 && (
-                  <div className="relative z-10 flex min-h-48 flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-accent/20 bg-card/40 px-8 py-10 text-center transition-all duration-700 hover:border-accent/40">
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
-                      <Compass size={24} />
-                    </div>
-                    <h3 className="text-lg font-black uppercase tracking-tight text-text-main">No vision boards yet</h3>
-                    <p className="mt-2 max-w-xs text-sm font-medium text-text-secondary">Create or edit a Vision Board and it will appear here.</p>
-                  </div>
+                <MobileEmptyState
+                  icon={<Compass size={24} />}
+                  title="No Vision Boards yet."
+                  description="Create or edit a Vision Board and your active boards will appear here."
+                  className="relative z-10 min-h-56 bg-card/60 transition-all duration-700 hover:border-accent/40"
+                  action={
+                    <button
+                      type="button"
+                      onClick={handleAddNew}
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+                    >
+                      <Plus size={16} />
+                      Create Vision
+                    </button>
+                  }
+                />
                 )}
             </section>
 
@@ -340,17 +350,31 @@ export default function VisionBoard() {
                   ))}
                </div>
                {repositoryVisions.length === 0 && (
-                 <div className="rounded-[2rem] border border-dashed border-card-border p-10 text-center">
-                   <p className="text-sm font-bold text-text-secondary">No saved vision boards yet.</p>
-                   <button
-                     onClick={refreshRepository}
-                     disabled={isRefreshing}
-                     className="mt-5 h-11 px-5 rounded-2xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2 disabled:opacity-60"
-                   >
-                     {isRefreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                     Refresh boards
-                   </button>
-                 </div>
+                <MobileEmptyState
+                  icon={<Layers size={24} />}
+                  title="No saved Vision Boards yet."
+                  description="Create your first Vision or refresh if your boards are not showing."
+                  action={
+                    <div className="grid gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddNew}
+                        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast"
+                      >
+                        <Plus size={16} />
+                        Create Vision
+                      </button>
+                      <button
+                        onClick={refreshRepository}
+                        disabled={isRefreshing}
+                        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-card-border bg-app-container px-5 text-[10px] font-black uppercase tracking-widest text-text-main disabled:opacity-60"
+                      >
+                        {isRefreshing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                        Refresh boards
+                      </button>
+                    </div>
+                  }
+                />
                )}
             </section>
 
@@ -530,9 +554,11 @@ function MobileVisionList({
               </button>
             ))}
             {group.items.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-4 text-sm font-semibold text-text-secondary">
-                Nothing here yet.
-              </div>
+              <MobileEmptyState
+                title={`No ${group.label.toLowerCase()} boards.`}
+                description={group.description}
+                className="min-h-44 bg-app-container p-5 shadow-none"
+              />
             )}
           </div>
         </section>
