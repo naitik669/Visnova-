@@ -27,6 +27,7 @@ import {
   FileText,
   Clock3,
   Trash2,
+  Target,
   X,
 } from "lucide-react";
 import { useStore } from "../../store/useStore";
@@ -38,7 +39,7 @@ import { ProgressLogComposer } from "../Progress/ProgressLogComposer";
 import { formatCurrency } from "../../lib/currency";
 import { DashboardProgressPulseCard } from "../Growth/DashboardProgressPulseCard";
 import { DashboardCircleMomentumCard } from "../Circle/DashboardCircleMomentumCard";
-import { MobilePage, MobilePrimaryAction, MobileSection } from "../mobile/MobileLayout";
+import { MobilePage } from "../mobile/MobileLayout";
 
 const CircularProgress = ({
   value,
@@ -995,202 +996,190 @@ export default function Dashboard() {
         onClose={() => setShowCalendarWorkspace(false)}
         onSelectDate={setSelectedDate}
       />
-      <MobilePage>
-        <section className="rounded-[2rem] border border-card-border bg-card p-4 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Home</p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-text-main">
-            Good day, {(user.name || "Visionary").split(" ")[0]}
-          </h1>
-          <p className="mt-2 text-sm font-semibold leading-5 text-text-secondary">
-            Pick one action, log proof, and keep your active Vision moving.
-          </p>
-        </section>
-
-        <MobileSection
-          eyebrow="Today's Focus"
-          title="Top actions"
-          action={
-            <button
-              type="button"
-              onClick={() => navigate('/visions')}
-              className="rounded-full bg-accent/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-accent"
-            >
-              Visions
-            </button>
-          }
-        >
-          <NextMoveCard
-            title={nextMove.title}
-            description={nextMove.description}
-            actionLabel={nextMove.actionLabel}
-            onAction={nextMove.onAction}
-            compact
-          />
-          <div className="mt-3 space-y-2">
-            {pendingTasks.slice(0, 3).map(task => (
-              <button
-                key={task.reactKey}
-                type="button"
-                onClick={() => {
-                  if (task.sourceType === "todo") toggleTodo(task.id || "");
-                  else toggleVisionTask(task.visionId, task.id || "");
-                }}
-                className="flex w-full items-start gap-3 rounded-2xl border border-card-border bg-app-container p-3 text-left"
-              >
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent/40 text-accent">
-                  {task.completed && <CheckCircle2 size={13} />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block line-clamp-2 text-sm font-bold leading-snug text-text-main">{task.text}</span>
-                  <span className="mt-1 block text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{task.vision}</span>
-                </span>
-              </button>
-            ))}
-            {pendingTasks.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-4 text-sm font-semibold text-text-secondary">
-                No tasks yet. Create a Vision or add one action for today.
-              </div>
-            )}
+      <MobilePage className="max-w-[430px] gap-3 bg-[#f7fbf8] px-4 py-3 text-[#17211b]">
+        <section className="flex items-center justify-between gap-4 pt-1">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold leading-none text-[#69766d]">Good morning,</p>
+            <h1 className="mt-1 truncate text-[22px] font-black leading-none tracking-tight text-[#162018]">
+              {(user.name || "Visionary").split(" ")[0]}!
+            </h1>
+            <p className="mt-1 text-[11px] font-semibold text-[#89948c]">Make today visibly productive.</p>
           </div>
-        </MobileSection>
-
-        <MobilePrimaryAction onClick={() => setShowProgressComposer(true)}>
-          <Plus size={18} />
-          Log Progress
-        </MobilePrimaryAction>
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+            className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-4 border-white bg-[#eceff1] shadow-lg shadow-[#162018]/10"
+            aria-label="Open profile"
+          >
+            <img
+              src={user.avatar || `https://api.dicebear.com/7.x/shapes/svg?seed=${user.id || 'visnova'}`}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#34c77b]" />
+          </button>
+        </section>
 
         <button
           type="button"
-          onClick={() => navigate('/visions')}
-          className="w-full rounded-[2rem] border border-accent/20 bg-accent/10 p-4 text-left shadow-sm"
+          onClick={() => navigate('/growth', { state: { fromDashboard: true, section: 'tracker' } })}
+          className="overflow-hidden rounded-[1.8rem] border border-[#eadcff] bg-[#f0e4ff] p-4 text-left shadow-[0_16px_42px_rgba(116,73,166,0.13)]"
         >
-          <div className="flex items-start justify-between gap-3">
+          <div className="grid grid-cols-[1fr_96px] items-center gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Active Vision</p>
-              <h2 className="mt-1 line-clamp-2 text-xl font-black tracking-tight text-text-main">
-                {activeVision?.title || "Create your first Vision"}
-              </h2>
-              <p className="mt-2 line-clamp-1 text-xs font-semibold text-text-secondary">
-                {pendingTasks[0]?.text || "Set a goal and VisNova will surface your next task here."}
+              <p className="text-[12px] font-black leading-tight text-[#32223f]">Weekly Progress</p>
+              <p className="mt-1 text-[10px] font-semibold text-[#7a6b89]">Your proof sprint</p>
+              <p className="mt-2 text-[40px] font-black leading-none tracking-tight text-[#9a6cff]">{Math.round(weeklyScore || 0)}%</p>
+              <div className="mt-3 h-2.5 max-w-[150px] overflow-hidden rounded-full bg-white/70">
+                <div className="h-full rounded-full bg-[#9a6cff]" style={{ width: `${Math.min(100, Math.round(weeklyScore || 0))}%` }} />
+              </div>
+              <p className="mt-2 text-[10px] font-bold text-[#7a6b89]">
+                {Math.min(7, weeklyProgressLogs.length)} of 7 proof days active
               </p>
             </div>
-            <span className="shrink-0 rounded-2xl bg-card px-3 py-2 text-sm font-black text-accent">
-              {activeVision?.progress || globalProgress}%
-            </span>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-card">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, activeVision?.progress || globalProgress)}%` }} />
+            <div className="flex flex-col items-center gap-2">
+              <div
+                className="flex h-[86px] w-[86px] items-center justify-center rounded-full p-2 shadow-inner"
+                style={{ background: `conic-gradient(#9a6cff ${Math.min(100, Math.round(weeklyScore || 0)) * 3.6}deg, rgba(154,108,255,0.18) 0deg)` }}
+              >
+                <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#f7f0ff]">
+                  <Zap size={17} className="text-[#9a6cff]" />
+                  <span className="mt-1 text-[10px] font-black text-[#32223f]">On Track</span>
+                </div>
+              </div>
+            </div>
           </div>
         </button>
 
-        <section className="grid grid-cols-3 gap-2">
-          <div className="rounded-2xl border border-card-border bg-card p-3">
-            <p className="text-xl font-black text-warning">{currentStreak}</p>
-            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Streak</p>
+        <section className="grid grid-cols-3 gap-2.5">
+          {[
+            { icon: FileText, label: "Proof", value: progressLogs.length, detail: `${weeklyProgressLogs.length} this week`, tint: "bg-[#eaf5ff] text-[#2d9ae8]" },
+            { icon: CheckCircle2, label: "Tasks", value: completedTasksThisWeek.length, detail: `${pendingTasks.length} pending`, tint: "bg-[#eef8ef] text-[#34a86b]" },
+            { icon: Wallet, label: "Resources", value: activeMoneyGoals[0]?.progress ?? 0, detail: activeMoneyGoals[0] ? "funded" : "ready", suffix: activeMoneyGoals[0] ? "%" : "", tint: "bg-[#fff3dc] text-[#e3a12b]" },
+          ].map(item => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => item.label === 'Resources' ? navigate('/growth', { state: { section: 'resources' } }) : navigate(item.label === 'Tasks' ? '/tasks' : '/growth')}
+              className="rounded-[1.35rem] border border-[#ecf0ec] bg-white p-3 text-left shadow-[0_10px_26px_rgba(24,32,26,0.06)]"
+            >
+              <div className={cn("mb-2 flex h-7 w-7 items-center justify-center rounded-full", item.tint)}>
+                <item.icon size={14} />
+              </div>
+              <p className="text-[20px] font-black leading-none text-[#17211b]">{item.value}{item.suffix || ""}</p>
+              <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-[#8b958e]">{item.label}</p>
+              <p className="mt-0.5 truncate text-[9px] font-semibold text-[#a5aea7]">{item.detail}</p>
+            </button>
+          ))}
+        </section>
+
+        <section className="rounded-[1.8rem] border border-[#ecf0ec] bg-white p-4 shadow-[0_12px_30px_rgba(24,32,26,0.07)]">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[13px] font-black text-[#17211b]">
+              {new Date().toLocaleDateString([], { month: "long", year: "numeric" })}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowCalendarWorkspace(true)}
+              className="text-[10px] font-black text-[#9a6cff]"
+            >
+              View calendar
+            </button>
           </div>
-          <div className="rounded-2xl border border-card-border bg-card p-3">
-            <p className="text-xl font-black text-text-main">{weeklyProgressLogs.length}</p>
-            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Logs</p>
-          </div>
-          <div className="rounded-2xl border border-card-border bg-card p-3">
-            <p className="text-xl font-black text-success">{completedTasksThisWeek.length}</p>
-            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-text-secondary/50">Done</p>
+          <div className="grid grid-cols-7 gap-1.5">
+            {chartData.map((day, index) => {
+              const date = addDays(new Date(), index - 6);
+              const isToday = sameDay(date, new Date());
+              return (
+                <button
+                  key={`${day.name}-${index}`}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(date);
+                    setShowCalendarWorkspace(true);
+                  }}
+                  className={cn(
+                    "flex min-h-12 flex-col items-center justify-center rounded-2xl text-center transition-colors",
+                    isToday ? "bg-[#9a6cff] text-white shadow-lg shadow-[#9a6cff]/25" : "bg-[#f7faf7] text-[#59655d]"
+                  )}
+                >
+                  <span className="text-[8px] font-black uppercase">{day.name.slice(0, 1)}</span>
+                  <span className="mt-1 text-[11px] font-black">{date.getDate()}</span>
+                  {!isToday && day.output > 0 && <span className="mt-1 h-1 w-1 rounded-full bg-[#9a6cff]" />}
+                </button>
+              );
+            })}
           </div>
         </section>
 
-        <DashboardProgressPulseCard
-          currentStreak={currentStreak}
-          totalProofLogs={progressLogs.length}
-          weeklyScore={Math.min(100, Math.round(weeklyScore || 0))}
-          tasksDone={completedTasksThisWeek.length}
-          onOpen={() => navigate('/growth', { state: { fromDashboard: true, section: 'tracker' } })}
-        />
-
-        <div className="overflow-hidden rounded-[2rem] border border-card-border bg-card p-3 shadow-sm">
-          <DashboardCircleMomentumCard />
-        </div>
-
-        <MobileSection
-          eyebrow="Recent Proof"
-          title="Progress timeline"
-          action={
-            <button
-              type="button"
-              onClick={() => navigate('/feed')}
-              className="rounded-full bg-card-dark px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary"
-            >
-              Feed
-            </button>
-          }
-        >
-          <div className="mt-3 space-y-3">
-            {progressLogs.slice(0, 3).map(log => (
-              <div key={log.id} className="flex gap-3">
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
-                <div className="min-w-0">
-                  <p className="line-clamp-2 text-sm font-semibold leading-5 text-text-main">{log.content}</p>
-                  <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/45">
-                    {safeFormat(log.createdAt, 'MMM d')} - {log.visibility}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {progressLogs.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-card-border bg-app-container p-4 text-sm font-semibold text-text-secondary">
-                No proof yet. Log your first progress update to start the timeline.
-              </p>
-            )}
+        <section className="rounded-[1.8rem] border border-[#ecf0ec] bg-white p-4 shadow-[0_12px_30px_rgba(24,32,26,0.07)]">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-[13px] font-black text-[#17211b]">Recent Progress</h2>
+            <button type="button" onClick={() => navigate('/feed')} className="text-[10px] font-black text-[#9a6cff]">See all</button>
           </div>
-        </MobileSection>
-
-        <MobileSection
-          eyebrow="Upcoming Tasks"
-          title="Next moves"
-          action={
-            <button
-              type="button"
-              onClick={() => navigate('/tasks')}
-              className="rounded-full bg-card-dark px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-text-secondary"
-            >
-              Tasks
-            </button>
-          }
-        >
-          <div className="space-y-2">
-            {pendingTasks.slice(0, 4).map(task => (
-              <button
-                key={`upcoming-${task.reactKey}`}
-                type="button"
-                onClick={() => {
-                  if (task.sourceType === "todo") toggleTodo(task.id || "");
-                  else toggleVisionTask(task.visionId, task.id || "");
-                }}
-                className="flex w-full items-center gap-3 rounded-2xl border border-card-border bg-app-container p-3 text-left"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-                  <Zap size={16} />
+          <div className="space-y-3">
+            {progressLogs.slice(0, 3).map((log, index) => (
+              <button key={log.id} type="button" onClick={() => navigate('/growth')} className="flex w-full items-center gap-3 text-left">
+                <span className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                  index === 0 ? "bg-[#f0e4ff] text-[#9a6cff]" : index === 1 ? "bg-[#eaf5ff] text-[#2d9ae8]" : "bg-[#eef8ef] text-[#34a86b]"
+                )}>
+                  {index === 0 ? <Brain size={15} /> : index === 1 ? <FileText size={15} /> : <CheckCircle2 size={15} />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block line-clamp-2 text-sm font-bold leading-snug text-text-main">{task.text}</span>
-                  <span className="mt-1 block text-[9px] font-black uppercase tracking-widest text-text-secondary/50">{task.vision}</span>
+                  <span className="block truncate text-[12px] font-black text-[#17211b]">{log.content || "Progress logged"}</span>
+                  <span className="mt-0.5 block truncate text-[10px] font-semibold text-[#8b958e]">{activeVision?.title || log.visibility}</span>
+                </span>
+                <span className="shrink-0 text-[9px] font-bold text-[#a5aea7]">{safeFormat(log.createdAt, 'h:mm a')}</span>
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f2edff] text-[#9a6cff]">
+                  <CheckCircle2 size={12} />
                 </span>
               </button>
             ))}
-            {pendingTasks.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-card-border bg-app-container p-4 text-sm font-semibold text-text-secondary">
-                No upcoming tasks. Add one small action when you are ready.
-              </div>
+            {progressLogs.length === 0 && (
+              <button
+                type="button"
+                onClick={() => setShowProgressComposer(true)}
+                className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-[#dfe7e1] bg-[#f7faf7] p-3 text-left"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f0e4ff] text-[#9a6cff]"><Plus size={15} /></span>
+                <span>
+                  <span className="block text-[12px] font-black text-[#17211b]">Log your first proof</span>
+                  <span className="text-[10px] font-semibold text-[#8b958e]">Your progress story starts here.</span>
+                </span>
+              </button>
             )}
           </div>
-        </MobileSection>
+        </section>
 
-        <MobileSection eyebrow="Resources" title="Resources for your Vision">
-          <p className="mt-2 text-sm font-semibold leading-5 text-text-secondary">
-            {moneyOverview?.topGoal
-              ? `${moneyOverview.topGoal.title} is ${Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}% funded.`
-              : 'Wallet and learning resources stay tucked away until you need them.'}
-          </p>
-        </MobileSection>
+        <button
+          type="button"
+          onClick={nextMove.onAction}
+          className="overflow-hidden rounded-[1.8rem] border border-[#cdebe1] bg-[#dff5ed] p-4 text-left shadow-[0_14px_34px_rgba(52,168,107,0.13)]"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#bdebdc] text-[#1e8b5b]">
+                <Target size={20} />
+              </div>
+              <p className="text-[13px] font-black text-[#17211b]">Today's Focus</p>
+              <h3 className="mt-1 line-clamp-2 text-[16px] font-black leading-snug text-[#284336]">{nextMove.title}</h3>
+              <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-5 text-[#638071]">{nextMove.description}</p>
+            </div>
+            <span className="rounded-full bg-white/80 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-[#4f826b]">
+              {nextMove.actionLabel}
+            </span>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowProgressComposer(true)}
+          className="sticky bottom-3 z-20 flex min-h-14 w-full items-center justify-center gap-2 rounded-[1.5rem] bg-[#9a6cff] px-4 text-[11px] font-black uppercase tracking-widest text-white shadow-[0_18px_44px_rgba(154,108,255,0.32)] active:scale-[0.99]"
+        >
+          <Plus size={18} />
+          Log Progress
+        </button>
       </MobilePage>
       {/* Header section */}
       <div className="hidden lg:flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 px-1 sm:ml-2">
