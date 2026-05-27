@@ -441,26 +441,26 @@ export default function PostThreadPage() {
 
   return (
     <>
-    <div className="w-full max-w-5xl mx-auto pb-10 animate-in fade-in duration-500">
-      <button onClick={goBackToSource} className="mb-5 h-11 px-4 rounded-xl bg-card border border-card-border text-text-secondary hover:text-text-main flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+    <div className="mx-auto w-full max-w-5xl pb-[calc(7rem+env(safe-area-inset-bottom))] animate-in fade-in duration-500 sm:pb-10">
+      <button onClick={goBackToSource} className="mb-4 flex h-11 items-center gap-2 rounded-xl border border-card-border bg-card px-4 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-text-main sm:mb-5">
         <ArrowLeft size={16} /> Back
       </button>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6">
-        <article className="bg-card border border-card-border rounded-[2rem] overflow-hidden shadow-sm">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-6">
+        <article className="overflow-hidden rounded-[1.5rem] border border-card-border bg-card shadow-sm sm:rounded-[2rem]">
           {firstImage ? (
             <div className="bg-surface-muted/70 border-b border-card-border">
-              <img src={firstImage.url} alt="Post media" className="mx-auto max-h-[460px] w-full object-contain" />
+              <img src={firstImage.url} alt="Post media" className="mx-auto max-h-[320px] w-full object-contain sm:max-h-[460px]" />
             </div>
           ) : (
-            <div className="h-40 bg-surface-muted flex items-center justify-center text-text-secondary/30">
+            <div className="flex h-28 items-center justify-center bg-surface-muted text-text-secondary/30 sm:h-40">
               <ImageIcon size={34} />
             </div>
           )}
-          <div className="p-6 space-y-5">
+          <div className="space-y-4 p-4 sm:space-y-5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-              <img src={post.author.avatar} alt={post.author.name} className="w-12 h-12 rounded-2xl object-cover border border-card-border" />
+              <img src={post.author.avatar} alt={post.author.name} className="h-11 w-11 rounded-2xl border border-card-border object-cover sm:h-12 sm:w-12" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <Link to={`/profile?user=${post.author.id}`} className="text-sm font-black uppercase tracking-widest text-text-main truncate hover:text-accent">
@@ -468,7 +468,7 @@ export default function PostThreadPage() {
                   </Link>
                   <VerifiedBadge verified={post.author.verified} size={15} />
                 </div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-text-secondary/50 sm:text-[10px]">
                   {post.author.handle} - {post.timestamp}
                   {post.editedAt && <span> - Edited {safeFormat(post.editedAt, 'MMM d, h:mm a')}</span>}
                 </p>
@@ -476,7 +476,7 @@ export default function PostThreadPage() {
               </div>
               {session?.user?.id && (
                 <div ref={menuRef} className="relative z-50 shrink-0">
-                  <button onClick={() => setIsMenuOpen(open => !open)} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/50 hover:text-text-main" aria-label="Post options">
+                  <button onClick={() => setIsMenuOpen(open => !open)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-muted text-text-secondary/50 hover:text-text-main" aria-label="Post options">
                     <MoreHorizontal size={18} />
                   </button>
                   <AnimatePresence>
@@ -511,7 +511,7 @@ export default function PostThreadPage() {
             {(post.caption || post.content) && (
               <div className="space-y-3">
                 {post.caption && (
-                  <p className="text-lg font-black text-text-main leading-snug">
+                  <p className="text-base font-black leading-snug text-text-main sm:text-lg">
                     {renderSocialText(post.caption, post.mentions, {
                       onMentionClick: userId => useStore.getState().setSelectedProfileId(userId),
                       onHashtagClick: tag => navigate(`/feed?tab=explore&tag=${encodeURIComponent(tag)}`)
@@ -519,7 +519,7 @@ export default function PostThreadPage() {
                   </p>
                 )}
                 {post.content && (
-                  <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
                     {renderSocialText(post.content, post.mentions, {
                       onMentionClick: userId => useStore.getState().setSelectedProfileId(userId),
                       onHashtagClick: tag => navigate(`/feed?tab=explore&tag=${encodeURIComponent(tag)}`)
@@ -537,26 +537,26 @@ export default function PostThreadPage() {
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-2 border-t border-card-border">
-              <button onClick={toggleThreadLike} className={cn('flex items-center gap-2 text-xs font-black uppercase tracking-widest', post.isLiked ? 'text-red-500' : 'text-text-secondary hover:text-red-500')}>
+            <div className="flex items-center gap-3 border-t border-card-border pt-2 sm:gap-4">
+              <button onClick={toggleThreadLike} className={cn('flex min-h-10 items-center gap-2 text-xs font-black uppercase tracking-widest', post.isLiked ? 'text-red-500' : 'text-text-secondary hover:text-red-500')}>
                 <Heart size={18} /> {post.likes}
               </button>
-              <div className="flex items-center gap-2 text-text-secondary text-xs font-black uppercase tracking-widest">
+              <div className="flex min-h-10 items-center gap-2 text-xs font-black uppercase tracking-widest text-text-secondary">
                 <MessageSquare size={18} /> {post.comments}
               </div>
-              <button onClick={toggleThreadSave} className={cn('ml-auto flex items-center gap-2 text-xs font-black uppercase tracking-widest', post.isSaved ? 'text-accent' : 'text-text-secondary hover:text-accent')}>
+              <button onClick={toggleThreadSave} className={cn('ml-auto flex min-h-10 items-center gap-2 text-xs font-black uppercase tracking-widest', post.isSaved ? 'text-accent' : 'text-text-secondary hover:text-accent')}>
                 <Bookmark size={18} /> {post.isSaved ? 'Saved' : 'Save'}
               </button>
             </div>
           </div>
         </article>
 
-        <section className="bg-card border border-card-border rounded-[2rem] overflow-hidden flex flex-col min-h-[560px]">
-          <div className="p-5 border-b border-card-border">
+        <section className="flex max-h-[calc(100dvh-8rem)] min-h-[460px] flex-col overflow-hidden rounded-[1.5rem] border border-card-border bg-card sm:rounded-[2rem] xl:min-h-[560px]">
+          <div className="border-b border-card-border p-4 sm:p-5">
             <h2 className="text-sm font-black uppercase tracking-widest text-text-main">Comments</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/40 mt-1">Thread for this post</p>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-app-container/30">
+          <div className="flex-1 space-y-4 overflow-y-auto bg-app-container/30 p-4 sm:p-5">
             {comments.length === 0 ? (
               <div className="h-full min-h-64 flex items-center justify-center text-center">
                 <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/40">No comments yet.</p>
@@ -589,7 +589,7 @@ export default function PostThreadPage() {
               </>
             )}
           </div>
-          <div className="p-4 border-t border-card-border bg-card">
+          <div className="border-t border-card-border bg-card p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4">
             {replyTo && (
               <div className="mb-3 flex items-center gap-3 rounded-2xl border border-card-border bg-surface-muted px-4 py-3">
                 <Reply size={14} className="text-accent shrink-0" />
@@ -601,18 +601,18 @@ export default function PostThreadPage() {
                 </button>
               </div>
             )}
-            <div className="flex items-end gap-3">
+            <div className="flex items-end gap-2 sm:gap-3">
               <MentionHashtagTextarea
                 value={commentText}
                 onChange={setCommentText}
                 placeholder={replyTo ? `Reply to ${replyTo.author.name}...` : 'Write a comment...'}
                 className="flex-1"
-                textareaClassName="w-full min-h-12 max-h-32 resize-none rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm outline-none focus:border-accent/50"
+                textareaClassName="w-full min-h-11 sm:min-h-12 max-h-32 resize-none rounded-2xl bg-surface-muted border border-card-border px-4 py-3 text-sm outline-none focus:border-accent/50"
               />
               <button
                 onClick={submitComment}
                 disabled={isCommenting || !commentText.trim()}
-                className={cn('h-12 w-12 rounded-2xl bg-accent text-accent-contrast flex items-center justify-center disabled:opacity-50', isCommenting && 'cursor-wait')}
+                className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-contrast disabled:opacity-50 sm:h-12 sm:w-12', isCommenting && 'cursor-wait')}
               >
                 {isCommenting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
               </button>
