@@ -39,7 +39,7 @@ export function XpToast() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
-            className="fixed bottom-28 right-4 z-[300] w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-accent/30 bg-accent p-4 text-accent-contrast shadow-2xl shadow-accent/25 lg:bottom-8"
+            className="fixed inset-x-3 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] z-[300] rounded-2xl border border-accent/30 bg-accent p-4 text-accent-contrast shadow-2xl shadow-accent/25 sm:inset-x-auto sm:right-4 sm:w-[min(20rem,calc(100vw-2rem))] lg:bottom-8"
           >
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -67,7 +67,7 @@ export function XpToast() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[320] flex items-center justify-center bg-overlay/70 p-6 backdrop-blur-md"
+            className="fixed inset-0 z-[320] flex min-h-[100dvh] items-center justify-center bg-overlay/70 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] backdrop-blur-md"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 16 }}
