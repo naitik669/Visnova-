@@ -589,7 +589,7 @@ function MobileNav() {
               exit={{ y: 42, opacity: 0 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
               id={createSheetPanelId}
-              className="absolute bottom-0 left-0 right-0 max-h-[82dvh] overflow-y-auto rounded-t-[2rem] border-t border-card-border bg-app-container p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"
+              className="absolute bottom-0 left-0 right-0 max-h-[min(82dvh,36rem)] overflow-y-auto overscroll-contain rounded-t-[2rem] border-t border-card-border bg-app-container p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"
               role="dialog"
               aria-modal="true"
               aria-labelledby={createSheetTitleId}
@@ -603,7 +603,7 @@ function MobileNav() {
                 <button
                   type="button"
                   onClick={closeCreate}
-                  className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-2xl bg-card text-text-secondary"
+                  className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-2xl bg-card text-text-secondary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 active:bg-surface-muted"
                   aria-label="Close create menu"
                 >
                   <X size={18} />
@@ -613,7 +613,7 @@ function MobileNav() {
                 <button
                   type="button"
                   onClick={primaryCreateAction.onClick}
-                  className="flex min-h-20 w-full items-center gap-3 rounded-[1.7rem] border border-accent bg-accent p-4 text-left text-accent-contrast shadow-lg shadow-accent/20 transition-all active:scale-[0.99]"
+                  className="flex min-h-20 w-full items-center gap-3 rounded-[1.7rem] border border-accent bg-accent p-4 text-left text-accent-contrast shadow-lg shadow-accent/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/35 active:scale-[0.99]"
                 >
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent-contrast/15">
                     <PrimaryCreateIcon size={21} />
@@ -631,7 +631,7 @@ function MobileNav() {
                         key={action.title}
                         type="button"
                         onClick={action.onClick}
-                        className="flex min-h-28 w-full flex-col justify-between rounded-2xl border border-card-border bg-card p-3 text-left text-text-main transition-all active:scale-[0.99]"
+                        className="flex min-h-28 w-full flex-col justify-between rounded-2xl border border-card-border bg-card p-3 text-left text-text-main transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/25 active:scale-[0.99]"
                       >
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
                           <Icon size={19} />
@@ -650,7 +650,7 @@ function MobileNav() {
                     <button
                       type="button"
                       onClick={supportCreateAction.onClick}
-                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-card-border bg-surface-muted/60 p-3 text-left text-text-main transition-all active:scale-[0.99]"
+                      className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-card-border bg-surface-muted/60 p-3 text-left text-text-main transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/25 active:scale-[0.99]"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card text-accent">
                         <Icon size={18} />
@@ -668,7 +668,7 @@ function MobileNav() {
         )}
       </AnimatePresence>
 
-      <nav className="fixed bottom-0 left-0 right-0 min-h-[5rem] bg-sidebar/95 backdrop-blur-xl border-t border-card-border lg:hidden grid grid-cols-5 gap-1 px-2 pt-2 pb-[calc(0.6rem+env(safe-area-inset-bottom))] z-[80] transition-colors duration-500">
+      <nav className="fixed bottom-0 left-0 right-0 z-[80] grid min-h-[5rem] grid-cols-5 gap-1 border-t border-card-border bg-sidebar/95 px-2 pb-[calc(0.6rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl transition-colors duration-500 lg:hidden">
         {primaryItems.slice(0, 2).map((item) => {
           const Icon = item.icon;
           const active = isRouteActive(location.pathname, item.path);
@@ -681,7 +681,7 @@ function MobileNav() {
               onTouchStart={() => preloadRoute(item.path)}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
+                "relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-black tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/25",
                 active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
               )}
             >
@@ -694,7 +694,7 @@ function MobileNav() {
         <button
           type="button"
           onClick={() => setIsCreateOpen(true)}
-          className="relative -mt-5 mx-auto flex h-16 w-16 flex-col items-center justify-center rounded-[1.4rem] bg-accent text-accent-contrast shadow-xl shadow-accent/25 ring-4 ring-app-container active:scale-95 transition-transform"
+          className="relative -mt-5 mx-auto flex h-16 w-16 flex-col items-center justify-center rounded-[1.4rem] bg-accent text-accent-contrast shadow-xl shadow-accent/25 ring-4 ring-app-container transition-transform focus:outline-none focus-visible:ring-4 focus-visible:ring-accent/30 active:scale-95"
           aria-label="Create"
           aria-expanded={isCreateOpen}
           aria-controls={isCreateOpen ? createSheetPanelId : undefined}
@@ -715,7 +715,7 @@ function MobileNav() {
               onTouchStart={() => preloadRoute(item.path)}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                "min-h-12 rounded-2xl flex flex-col items-center justify-center gap-1 text-[10px] font-black tracking-wide transition-all relative",
+                "relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-black tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/25",
                 active ? "text-accent bg-accent/10" : "text-text-secondary/60 active:bg-surface-muted"
               )}
             >

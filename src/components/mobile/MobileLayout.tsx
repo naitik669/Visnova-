@@ -25,7 +25,7 @@ type MobileEmptyStateProps = {
 
 export function MobilePage({ children, className }: MobilePageProps) {
   return (
-    <div className={cn("mx-auto flex w-full max-w-[480px] flex-col gap-4 lg:hidden", className)}>
+    <div className={cn("mx-auto flex w-full max-w-[480px] flex-col gap-4 overflow-x-clip lg:hidden", className)}>
       {children}
     </div>
   );
@@ -40,7 +40,12 @@ export function MobileSection({
   contentClassName,
 }: MobileSectionProps) {
   return (
-    <section className={cn("rounded-[2rem] border border-card-border bg-card p-4 shadow-sm", className)}>
+    <section
+      className={cn(
+        "overflow-hidden rounded-[1.75rem] border border-card-border bg-card p-4 shadow-sm",
+        className,
+      )}
+    >
       {(eyebrow || title || action) && (
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -68,7 +73,7 @@ export function MobilePrimaryAction({
     <button
       type="button"
       className={cn(
-        "flex min-h-14 w-full items-center justify-center gap-2 rounded-[1.5rem] bg-accent px-4 text-[11px] font-black uppercase tracking-widest text-accent-contrast shadow-xl shadow-accent/20 active:scale-[0.99]",
+        "flex min-h-14 w-full items-center justify-center gap-2 rounded-[1.5rem] bg-accent px-4 text-[11px] font-black uppercase tracking-widest text-accent-contrast shadow-xl shadow-accent/20 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/35 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60",
         className,
       )}
       {...props}
@@ -88,12 +93,12 @@ export function MobileEmptyState({
   return (
     <div
       className={cn(
-        "flex min-h-64 flex-col items-center justify-center rounded-[2rem] border border-dashed border-card-border bg-card p-6 text-center shadow-sm",
+        "flex min-h-56 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-card-border bg-card p-5 text-center shadow-sm",
         className,
       )}
     >
       {icon && (
-        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
           {icon}
         </div>
       )}
