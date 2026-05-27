@@ -1042,7 +1042,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         {primaryTools}
       </div>
 
-      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-[165] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:hidden">
+      <div className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] left-1/2 z-[165] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border border-card-border bg-card/95 p-1.5 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:hidden">
         <CanvasQuickButton icon={<Brush size={17} />} label="Pen" onClick={() => setActiveTool(activeTool === 'pen' ? 'select' : 'pen')} active={activeTool === 'pen'} compact />
         <CanvasQuickButton icon={<Eraser size={17} />} label="Eraser" onClick={() => setActiveTool(activeTool === 'eraser' ? 'select' : 'eraser')} active={activeTool === 'eraser'} compact />
         <CanvasQuickButton icon={<Type size={17} />} label="Text" onClick={() => createElement('text', 'Write anything', { fontSize: '22px' })} compact />
@@ -1167,7 +1167,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         ))}
       </div>
 
-      <div className="absolute bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-3 z-[170] w-60 rounded-2xl border border-card-border bg-card/95 p-2 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:bottom-5 md:right-5" data-no-pan>
+      <div className="absolute bottom-[calc(10.25rem+env(safe-area-inset-bottom))] right-3 z-[170] w-60 rounded-2xl border border-card-border bg-card/95 p-2 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:bottom-5 md:right-5" data-no-pan>
         <div className="grid h-14 grid-cols-[44px_1fr_44px] items-center rounded-xl bg-bg-base/50">
           <ControlButton onClick={() => zoomTo(scale - (scale <= 0.25 ? 0.03 : 0.12))} icon={<Minus size={22} />} label="Zoom Out" compact />
           <span className="text-center text-lg font-black tabular-nums text-text-main">{Math.round(scale * 100)}%</span>
@@ -1911,7 +1911,7 @@ function SavePill({ status, lastSavedAt, onRetry }: { status: SaveStatus; lastSa
   const label = status === 'saving' ? 'Saving...' : status === 'dirty' ? 'Unsaved changes' : status === 'failed' ? 'Failed to save' : lastSavedAt ? `Saved ${lastSavedAt}` : 'Saved';
   return (
     <div className={cn(
-      'absolute right-3 top-3 z-[180] flex items-center gap-2 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest shadow-lg backdrop-blur-md',
+      'absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-[180] flex items-center gap-2 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest shadow-lg backdrop-blur-md md:top-3',
       status === 'saving' && 'border-accent/20 bg-accent/10 text-accent',
       status === 'dirty' && 'border-warning/20 bg-warning/10 text-warning',
       status === 'failed' && 'border-danger/20 bg-danger/10 text-danger',
@@ -1953,7 +1953,7 @@ function CanvasQuickButton({
       disabled={loading}
       className={cn(
         'flex shrink-0 items-center justify-center rounded-full font-black uppercase tracking-widest transition-all disabled:opacity-50',
-        compact ? 'h-10 gap-1 px-2 text-[7px]' : 'h-9 gap-1 px-2.5 text-[7px]',
+        compact ? 'h-11 min-w-11 gap-1 px-3 text-[7px]' : 'h-9 gap-1 px-2.5 text-[7px]',
         active ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/20' : 'text-text-secondary hover:bg-accent/10 hover:text-accent'
       )}
       title={label}
