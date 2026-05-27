@@ -213,11 +213,12 @@ export default function LandingPage() {
   const explore = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F7F7FB] font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#6751F3] px-2 py-2 font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white sm:px-6 sm:py-8">
+      <div className="mx-auto min-h-screen max-w-[1500px] overflow-hidden rounded-[1.8rem] border border-white/35 bg-white shadow-[0_40px_140px_rgba(28,18,91,0.22)] sm:rounded-[2.4rem]">
       <nav
         className={cn(
           'sticky top-0 z-50 border-b transition-all duration-300',
-          scrolled ? 'border-[#E6E8F2]/80 bg-white/82 shadow-lg shadow-[#191941]/5 backdrop-blur-xl' : 'border-transparent bg-[#F7F7FB]/75 backdrop-blur-md'
+          scrolled ? 'border-[#E6E8F2]/80 bg-white/86 shadow-lg shadow-[#191941]/5 backdrop-blur-xl' : 'border-transparent bg-white/82 backdrop-blur-md'
         )}
       >
         <div className={cn('mx-auto flex max-w-7xl items-center justify-between px-5 transition-all duration-300', scrolled ? 'h-16' : 'h-20')}>
@@ -251,7 +252,7 @@ export default function LandingPage() {
       </nav>
 
       <main>
-        <section id="hero" className="relative overflow-hidden px-5 pb-16 pt-16 sm:pt-20">
+        <section id="hero" className="relative overflow-hidden bg-[radial-gradient(circle_at_50%_24%,#EEF4FF_0%,#FFFFFF_36%,#F8F7FF_100%)] px-5 pb-16 pt-16 sm:pt-20">
           <div className="absolute left-[-10%] top-10 h-80 w-80 rounded-full bg-[#DDE7FF] blur-3xl" />
           <div className="absolute right-[-12%] top-28 h-96 w-96 rounded-full bg-[#E8DFFF] blur-3xl" />
           <div className="relative mx-auto max-w-7xl text-center">
@@ -259,7 +260,7 @@ export default function LandingPage() {
               <span className="inline-flex items-center gap-2 rounded-full border border-[#E6E8F2] bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[#6D5DF6] shadow-sm">
                 <Sparkles size={14} /> Vision-to-reality OS
               </span>
-              <h1 className="mx-auto mt-7 max-w-5xl text-5xl font-black leading-[0.95] tracking-[-0.055em] text-[#131323] sm:text-7xl lg:text-8xl">
+              <h1 className="mx-auto mt-7 max-w-4xl text-5xl font-black leading-[0.95] tracking-[-0.055em] text-[#131323] sm:text-7xl lg:text-[5.9rem]">
                 Turn your vision into visible progress.
               </h1>
               <p className="mx-auto mt-6 max-w-2xl text-lg font-medium leading-8 text-[#5F6273]">
@@ -275,7 +276,7 @@ export default function LandingPage() {
               </div>
             </Reveal>
 
-            <div className="relative mt-14">
+            <div className="relative mx-auto mt-14 max-w-6xl">
               {floatingChips.map((chip, index) => (
                 <motion.span
                   key={chip}
@@ -300,7 +301,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="px-5 py-6">
+        <section className="bg-white px-5 py-8">
           <Reveal className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-3 rounded-full border border-[#E6E8F2] bg-white p-3 shadow-sm">
             {trustPills.map(label => (
               <span key={label} className="rounded-full bg-[#F7F7FB] px-4 py-2 text-xs font-black uppercase tracking-widest text-[#777A8F]">
@@ -310,7 +311,7 @@ export default function LandingPage() {
           </Reveal>
         </section>
 
-        <section id="features" className="px-5 py-20">
+        <section id="features" className="bg-white px-5 py-20">
           <div className="mx-auto max-w-7xl">
             <Reveal className="mx-auto max-w-3xl text-center">
               <h2 className="text-4xl font-black tracking-[-0.04em] sm:text-5xl">Everything you need to build your future in one place.</h2>
@@ -495,6 +496,7 @@ export default function LandingPage() {
           © VisNova 2026. All rights reserved.
         </div>
       </footer>
+      </div>
     </div>
   );
 }
