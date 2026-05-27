@@ -113,7 +113,7 @@ function LeaderboardRow({ entry, showCounts }: { entry: CircleMomentumEntry; sho
   const sendNudge = useStore(state => state.sendNudge);
   const hasActivityCounts = entry.progressLogsCount + entry.completedTasksCount + entry.proofUploadsCount > 0;
   return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-card-border/70 px-2 py-4 last:border-0 md:grid-cols-[72px_1.3fr_0.7fr_0.7fr_0.7fr_auto]">
+    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border border-card-border/60 bg-app-container/45 px-3 py-3 last:border-card-border/60 sm:rounded-none sm:border-x-0 sm:border-t-0 sm:bg-transparent sm:px-2 sm:py-4 sm:last:border-0 md:grid-cols-[72px_1.3fr_0.7fr_0.7fr_0.7fr_auto]">
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-app-container text-xs font-black text-text-main">{entry.rank}</span>
       </div>
@@ -140,15 +140,16 @@ function LeaderboardRow({ entry, showCounts }: { entry: CircleMomentumEntry; sho
       <div className="col-span-3 flex gap-2 md:col-span-1 md:justify-end">
         <button
           onClick={() => navigate(entry.isCurrentUser ? '/' : `/profile/${entry.userId}`)}
-          className="inline-flex h-9 items-center gap-1 rounded-2xl border border-card-border bg-card px-3 text-[9px] font-black uppercase tracking-widest text-text-main"
+          className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-2xl border border-card-border bg-card px-3 text-[9px] font-black uppercase tracking-widest text-text-main md:h-9 md:flex-none"
         >
           Proof <ChevronRight size={12} />
         </button>
         {!entry.isCurrentUser && (
           <button
             onClick={() => sendNudge(entry.userId, hasActivityCounts ? 'celebrate_progress' : 'encouragement')}
-            className="inline-flex h-9 items-center justify-center rounded-2xl bg-accent/10 px-3 text-accent"
+            className="inline-flex h-11 w-14 items-center justify-center rounded-2xl bg-accent/10 px-3 text-accent md:h-9 md:w-auto"
             title="Send encouragement"
+            aria-label={`Send encouragement to ${entry.displayName}`}
           >
             <MessageCircle size={13} />
           </button>
@@ -194,7 +195,7 @@ export default function CircleMomentumPage() {
 
   if (isHidden) {
     return (
-      <div className="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center text-center">
+      <div className="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] text-center sm:px-0 sm:pb-0">
         <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-accent/10 text-accent">
           <ShieldCheck size={28} />
         </div>
@@ -202,7 +203,7 @@ export default function CircleMomentumPage() {
         <p className="mt-3 max-w-xl text-sm font-semibold leading-relaxed text-text-secondary/70">
           Circle Momentum only uses progress you choose to share with your Circle. Private logs stay yours only.
         </p>
-        <button onClick={() => navigate('/settings')} className="mt-6 rounded-2xl bg-accent px-6 py-3 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+        <button onClick={() => navigate('/settings')} className="mt-6 flex h-12 w-full items-center justify-center rounded-2xl bg-accent px-6 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:w-auto">
           Manage privacy
         </button>
       </div>
@@ -210,7 +211,7 @@ export default function CircleMomentumPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 pb-24 sm:gap-5 sm:pb-20">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:gap-5 sm:pb-20">
       <header className="rounded-[1.5rem] border border-card-border bg-card p-4 shadow-sm md:flex md:flex-row md:items-end md:justify-between md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Weekly Momentum</p>
@@ -225,7 +226,7 @@ export default function CircleMomentumPage() {
               key={item.value}
               onClick={() => setRange(item.value)}
               className={cn(
-                'h-10 shrink-0 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest transition-all',
+                'h-11 shrink-0 rounded-2xl px-4 text-[10px] font-black uppercase tracking-widest transition-all md:h-10',
                 range === item.value ? 'bg-accent text-accent-contrast shadow-sm' : 'border border-card-border bg-card text-text-secondary'
               )}
             >
@@ -254,7 +255,7 @@ export default function CircleMomentumPage() {
           </div>
           <button
             onClick={() => sprint ? navigate('/') : createWeeklyProofSprint()}
-            className="h-11 w-full rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast md:w-auto"
+            className="h-12 w-full rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast md:h-11 md:w-auto"
           >
             {sprint ? 'Log Proof' : 'Start Sprint'}
           </button>
@@ -317,10 +318,10 @@ export default function CircleMomentumPage() {
                   Add accountability partners or log your first visible proof to start the weekly board.
                 </p>
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
-                  <button onClick={() => navigate('/circle?tab=connections')} className="rounded-2xl bg-accent px-5 py-3 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+                  <button onClick={() => navigate('/circle?tab=connections')} className="flex h-11 items-center justify-center rounded-2xl bg-accent px-5 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
                     Add connections
                   </button>
-                  <button onClick={() => navigate('/')} className="rounded-2xl border border-card-border bg-card px-5 py-3 text-[10px] font-black uppercase tracking-widest text-text-main">
+                  <button onClick={() => navigate('/')} className="flex h-11 items-center justify-center rounded-2xl border border-card-border bg-card px-5 text-[10px] font-black uppercase tracking-widest text-text-main">
                     Log your proof
                   </button>
                 </div>
