@@ -152,9 +152,10 @@ export default function NotesSystem() {
   const [folderViewer, setFolderViewer] = useState<FolderType | null>(null);
 
   useEffect(() => {
+    if (!session?.user?.id) return;
     fetchFolders();
     fetchNotes();
-  }, []);
+  }, [fetchFolders, fetchNotes, session?.user?.id]);
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');

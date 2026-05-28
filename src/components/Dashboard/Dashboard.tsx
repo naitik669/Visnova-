@@ -602,6 +602,7 @@ export default function Dashboard() {
     progressLogs,
     growthTimelineEvents,
     aiInsights,
+    session,
   } = useStore();
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = React.useState(new Date());
@@ -611,14 +612,14 @@ export default function Dashboard() {
   const [dayNoteText, setDayNoteText] = React.useState("");
   const [dayComposer, setDayComposer] = React.useState<"task" | "note">("task");
   const [showCalendarWorkspace, setShowCalendarWorkspace] = React.useState(false);
-  const hasRequestedDashboardData = React.useRef(false);
+  const lastDashboardDataUserId = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (!hasRequestedDashboardData.current) {
-      hasRequestedDashboardData.current = true;
-      fetchDashboardData();
-    }
-  }, [fetchDashboardData]);
+    const userId = session?.user?.id;
+    if (!userId || lastDashboardDataUserId.current === userId) return;
+    lastDashboardDataUserId.current = userId;
+    fetchDashboardData();
+  }, [fetchDashboardData, session?.user?.id]);
 
   const [focusNote, setFocusNote] = React.useState(user.statusNote || "");
   const [isEditingFocus, setIsEditingFocus] = React.useState(false);

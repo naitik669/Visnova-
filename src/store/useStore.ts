@@ -801,6 +801,9 @@ function privateStateReset() {
 
 let authSubscription: { unsubscribe: () => void } | null = null;
 let circleDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let dataRealtimeChannel: any = null;
+let dataRealtimeUserId: string | null = null;
+const dataRefreshTimers: Record<string, ReturnType<typeof setTimeout> | undefined> = {};
 
 const scheduleCircleRefresh = (get: () => AppState) => {
   if (circleDebounceTimer) clearTimeout(circleDebounceTimer);
@@ -808,6 +811,61 @@ const scheduleCircleRefresh = (get: () => AppState) => {
     get().fetchCircleData().catch(error => console.error('Failed to refresh circle:', error));
     circleDebounceTimer = null;
   }, 500);
+};
+
+const scheduleDataRefresh = (key: string, refresh: () => void) => {
+  if (dataRefreshTimers[key]) clearTimeout(dataRefreshTimers[key]);
+  dataRefreshTimers[key] = setTimeout(() => {
+    refresh();
+    dataRefreshTimers[key] = undefined;
+  }, 350);
+};
+
+const teardownUserDataRealtime = () => {
+  Object.keys(dataRefreshTimers).forEach((key) => {
+    if (dataRefreshTimers[key]) clearTimeout(dataRefreshTimers[key]);
+    dataRefreshTimers[key] = undefined;
+  });
+  if (dataRealtimeChannel) {
+    supabase.removeChannel(dataRealtimeChannel);
+    dataRealtimeChannel = null;
+  }
+  dataRealtimeUserId = null;
+};
+
+const setupUserDataRealtime = (get: () => AppState, userId: string) => {
+  if (!userId || dataRealtimeUserId === userId) return;
+  teardownUserDataRealtime();
+  dataRealtimeUserId = userId;
+
+  const refreshNotes = () => scheduleDataRefresh('notes', () => {
+    get().fetchNotes().catch(error => console.error('Realtime notes refresh failed:', error));
+    get().fetchJournalEntries().catch(error => console.error('Realtime journal refresh failed:', error));
+  });
+  const refreshFolders = () => scheduleDataRefresh('folders', () => get().fetchFolders().catch(error => console.error('Realtime folder refresh failed:', error)));
+  const refreshTodos = () => scheduleDataRefresh('todos', () => get().fetchTodos().catch(error => console.error('Realtime todo refresh failed:', error)));
+  const refreshVisions = () => scheduleDataRefresh('visions', () => get().fetchVisions().catch(error => console.error('Realtime vision refresh failed:', error)));
+  const refreshProgress = () => scheduleDataRefresh('progress', () => {
+    get().fetchProgressLogs().catch(error => console.error('Realtime progress refresh failed:', error));
+    get().fetchGrowthTimeline().catch(error => console.error('Realtime timeline refresh failed:', error));
+  });
+  const refreshMoney = () => scheduleDataRefresh('money', () => get().fetchMoneyOverview().catch(error => console.error('Realtime money refresh failed:', error)));
+
+  dataRealtimeChannel = supabase
+    .channel(`visnova-data:${userId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: `user_id=eq.${userId}` }, refreshNotes)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'folders', filter: `user_id=eq.${userId}` }, refreshFolders)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'todos', filter: `user_id=eq.${userId}` }, refreshTodos)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${userId}` }, refreshTodos)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'visions', filter: `user_id=eq.${userId}` }, refreshVisions)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'progress_logs', filter: `user_id=eq.${userId}` }, refreshProgress)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_goals', filter: `user_id=eq.${userId}` }, refreshMoney)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'finance_transactions', filter: `user_id=eq.${userId}` }, refreshMoney)
+    .subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.warn('VisNova data realtime unavailable:', status);
+      }
+    });
 };
 
 function toLocalPost(row: any, draft: any, author: AppState['user']): Post {
@@ -943,13 +1001,17 @@ export const useStore = create<AppState>((set, get) => ({
   setSession: (session) => {
     set({ session, authUser: session?.user || null, isAuthInitialized: true });
     if (session?.user) {
+      setupUserDataRealtime(get, session.user.id);
       get().loadUserProfile(session.user.id);
+    } else {
+      teardownUserDataRealtime();
     }
   },
 
   initializeAuth: async () => {
     const existingState = get();
     if (existingState.isAuthInitialized && existingState.session?.user && existingState.isProfileReady) {
+      setupUserDataRealtime(get, existingState.session.user.id);
       get().loadUserProfile(existingState.session.user.id).catch(error => console.error('Background profile refresh failed:', error));
       return;
     }
@@ -968,9 +1030,11 @@ export const useStore = create<AppState>((set, get) => ({
         'Starting VisNova'
       );
       if (!session?.user) {
+        teardownUserDataRealtime();
         set({ ...privateStateReset(), authLoading: false, profileLoading: false, isProfileReady: true, isAuthInitialized: true });
       } else {
         set({ session, authUser: session.user, isAuthInitialized: true, isProfileReady: false });
+        setupUserDataRealtime(get, session.user.id);
         try {
           await withTimeout(get().ensureCurrentUserProfile(), PROFILE_QUERY_TIMEOUT_MS, 'Preparing your profile');
           await get().loadUserProfile(session.user.id);
@@ -987,6 +1051,7 @@ export const useStore = create<AppState>((set, get) => ({
       
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
         if (event === 'SIGNED_OUT' || !newSession?.user) {
+          teardownUserDataRealtime();
           set({ ...privateStateReset(), authLoading: false, profileLoading: false, isProfileReady: true, isAuthInitialized: true });
           return;
         }
@@ -1002,6 +1067,7 @@ export const useStore = create<AppState>((set, get) => ({
           profileLoading: true,
           isProfileReady: shouldBlockForProfile ? false : state.isProfileReady || hasUsableProfile
         }));
+        setupUserDataRealtime(get, newSession.user.id);
 
         if (event === 'SIGNED_IN') {
           try {
@@ -1055,6 +1121,7 @@ export const useStore = create<AppState>((set, get) => ({
         Promise.allSettled([
           get().fetchVisions(),
           get().fetchTodos(),
+          get().fetchNotes(),
           get().fetchJournalEntries(),
           get().fetchUserStreak(),
           get().fetchWeeklyActivity(),
@@ -1069,7 +1136,6 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     runBackground('Dashboard profile refresh', () => get().loadUserProfile(userId));
-    runBackground('Dashboard notes refresh', () => get().fetchNotes());
     runBackground('Dashboard feed context refresh', () => get().fetchFeedContext());
     runBackground('Dashboard circle refresh', () => get().fetchCircleData());
     runBackground('Dashboard notifications refresh', () => get().fetchNotifications());
