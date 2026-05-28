@@ -47,6 +47,7 @@ import { VisNovaMotion } from '../ui/VisNovaMotion';
 type SettingsSection = 'profile' | 'themes' | 'notifications' | 'preferences' | 'privacy';
 
 const themes = [
+  { id: 'lavender', icon: Sparkles, label: 'Lavender', desc: 'Premium VisNova default', color: 'bg-[#6D5DF6] text-white', preview: { bg: '#f7f7fb', card: '#ffffff', accent: '#6d5df6', text: '#131323', muted: '#f3f0ff' } },
   { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main', preview: { bg: '#f8f5f1', card: '#ffffff', accent: '#111827', text: '#1f2937', muted: '#e7e2da' } },
   { id: 'ember', icon: Zap, label: 'Ember', desc: 'Clean light orange accent', color: 'bg-[#fb5a12] text-white', preview: { bg: '#f6f4f1', card: '#ffffff', accent: '#fb5a12', text: '#1f130c', muted: '#f3f0eb' } },
   { id: 'dark', icon: Moon, label: 'Dark', desc: 'Optimized for deep work', color: 'bg-[#18191C] text-[#fafaf9]', preview: { bg: '#101114', card: '#18191c', accent: '#818cf8', text: '#fafaf9', muted: '#292b31' } },

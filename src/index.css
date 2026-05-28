@@ -172,8 +172,32 @@ body::-webkit-scrollbar-button:single-button,
   --shadow-hover: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.05);
 }
 
-:root {
-  /* Default Theme (Pastel) */
+:root,
+[data-theme='lavender'] {
+  /* Default Theme (Lavender) */
+  --accent: #6D5DF6;
+  --accent-rgb: 109, 93, 246;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(109, 93, 246, 0.12);
+  --success: #28B98E;
+  --warning: #B07A36;
+  --danger: #BE5672;
+  --bg-base: #F7F7FB;
+  --app-container: #FAF8FF;
+  --card: #FFFFFF;
+  --card-dark: #F3F0FF;
+  --card-elevated: #FFFFFF;
+  --card-border: rgba(109, 93, 246, 0.14);
+  --text-main: #131323;
+  --text-secondary: #5F6273;
+  --sidebar: #F3F0FF;
+  --sidebar-text: #5F6273;
+  --surface-muted: rgba(109, 93, 246, 0.07);
+  --surface-strong: rgba(19, 19, 35, 0.08);
+  --overlay: rgba(19, 19, 35, 0.42);
+}
+
+[data-theme='pastel'] {
   --accent: #5D4361;
   --accent-rgb: 93, 67, 97;
   --accent-contrast: #FFF7F0;

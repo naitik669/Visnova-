@@ -489,6 +489,7 @@ export default function ProfilePage() {
   }, [editData.username, isEditingProfile, profile?.username, currentUser.username, session?.user?.id]);
 
   const themes = [
+    { id: 'lavender', icon: Sparkles, label: 'Lavender', desc: 'Premium VisNova default', color: 'bg-[#6D5DF6] text-white' },
     { id: 'light', icon: Sun, label: 'Light', desc: 'High contrast clarity', color: 'bg-card text-text-main' },
     { id: 'ember', icon: Zap, label: 'Ember', desc: 'Clean light orange accent', color: 'bg-[#fb5a12] text-white' },
     { id: 'dark', icon: Moon, label: 'Dark', desc: 'Optimized for deep work', color: 'bg-[#18191C] text-accent-contrast' },

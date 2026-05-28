@@ -727,7 +727,7 @@ export interface AppState {
   moveVision: (id: string, newStatus: Vision['status']) => void;
   reorderVisions: (visions: Vision[]) => void;
   addActivity: (activity: Omit<Activity, 'id' | 'timestamp' | 'userId'> & { userId?: string }) => void;
-  setTheme: (theme: 'light' | 'dark' | 'midnight' | 'graphite' | 'forest-dark' | 'plum-dark' | 'flare' | 'pastel' | 'green' | 'yellow' | 'sage' | 'ember') => void;
+  setTheme: (theme: 'lavender' | 'light' | 'dark' | 'midnight' | 'graphite' | 'forest-dark' | 'plum-dark' | 'flare' | 'pastel' | 'green' | 'yellow' | 'sage' | 'ember') => void;
   completeTutorial: () => void;
   restartTutorial: () => void;
   updateVitals: (vitals: Partial<Vitals>) => void;
@@ -792,7 +792,7 @@ export interface AppState {
   isFocusMode: boolean;
   focusSession: FocusSession;
   toasts: ToastMessage[];
-  theme: 'light' | 'dark' | 'midnight' | 'graphite' | 'forest-dark' | 'plum-dark' | 'flare' | 'pastel' | 'green' | 'yellow' | 'sage' | 'ember';
+  theme: 'lavender' | 'light' | 'dark' | 'midnight' | 'graphite' | 'forest-dark' | 'plum-dark' | 'flare' | 'pastel' | 'green' | 'yellow' | 'sage' | 'ember';
 }
 
 export interface Post {

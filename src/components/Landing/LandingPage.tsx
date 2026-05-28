@@ -4,7 +4,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   ArrowRight,
+  BarChart3,
   BookOpen,
+  Brain,
   CalendarDays,
   CheckCircle2,
   Flame,
@@ -39,54 +41,18 @@ const trustBrands = [
 ];
 
 const featureCards = [
-  {
-    icon: Star,
-    title: 'Vision Planning',
-    copy: 'Define your purpose, set meaningful goals, and create the life you truly want.',
-  },
-  {
-    icon: Target,
-    title: 'Daily Progress',
-    copy: 'Log your daily actions and turn small wins into real momentum.',
-  },
-  {
-    icon: LayoutDashboard,
-    title: 'Progress Pulse',
-    copy: 'Visualize your growth, track milestones, and celebrate every win.',
-  },
-  {
-    icon: CalendarDays,
-    title: 'Tasks & Calendar',
-    copy: 'Organize your day, manage tasks, and stay focused on what matters.',
-  },
-  {
-    icon: BookOpen,
-    title: 'Journals & Notes',
-    copy: 'Write thoughts, capture ideas, and reflect to gain powerful clarity.',
-  },
-  {
-    icon: Users,
-    title: 'Guide & Accountability',
-    copy: 'Stay accountable with smart insights and gentle nudges that keep you going.',
-  },
+  { icon: Star, title: 'Vision Planning', copy: 'Define your purpose, set meaningful goals, and create the life you truly want.' },
+  { icon: Target, title: 'Daily Progress', copy: 'Log your daily actions and turn small wins into real momentum.' },
+  { icon: LayoutDashboard, title: 'Progress Pulse', copy: 'Visualize your growth, track milestones, and celebrate every win.' },
+  { icon: CalendarDays, title: 'Tasks & Calendar', copy: 'Organize your day, manage tasks, and stay focused on what matters.' },
+  { icon: BookOpen, title: 'Journals & Notes', copy: 'Write thoughts, capture ideas, and reflect to gain powerful clarity.' },
+  { icon: Users, title: 'Guide & Accountability', copy: 'Stay accountable with smart insights and gentle nudges that keep you going.' },
 ];
 
 const steps = [
-  {
-    icon: Sparkles,
-    title: 'Clarify Your Vision',
-    copy: 'Define what you want and break it into clear goals.',
-  },
-  {
-    icon: ListChecks,
-    title: 'Plan Your Actions',
-    copy: 'Set smart, actionable steps and schedule your time.',
-  },
-  {
-    icon: Target,
-    title: 'Log Proof & Grow',
-    copy: 'Take action, log your proof, and let your progress grow.',
-  },
+  { icon: Sparkles, title: 'Clarify Your Vision', copy: 'Define what you want and break it into clear goals.' },
+  { icon: ListChecks, title: 'Plan Your Actions', copy: 'Set smart, actionable steps and schedule your time.' },
+  { icon: Target, title: 'Log Proof & Grow', copy: 'Take action, log your proof, and let your progress grow.' },
 ];
 
 const testimonials = [
@@ -117,10 +83,10 @@ function markLandingSeen() {
 function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.6, ease: 'easeOut', delay }}
+      initial={{ opacity: 0, y: 28, filter: 'blur(6px)' }}
+      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      viewport={{ once: true, margin: '-90px' }}
+      transition={{ duration: 0.7, ease: 'easeOut', delay }}
       className={className}
     >
       {children}
@@ -129,102 +95,190 @@ function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; 
 }
 
 function HeroDashboardMockup() {
-  const sidebarIcons = [Sparkles, LayoutDashboard, Users, Target, CalendarDays, BookOpen, CheckCircle2, Zap];
-  const bars = [28, 42, 36, 54, 48, 62, 44, 70, 52, 38, 46, 66];
+  const sidebarIcons = [LayoutDashboard, Target, Users, BarChart3, CheckCircle2, BookOpen, Sparkles, Zap];
+  const streakDays = ['T', 'F', 'S', 'S', 'M', 'T', 'W', 'T', 'F', 'S', 'S', 'M', 'T', 'W'];
+  const sparkline = 'M4 62 C42 58 66 42 96 24 C126 6 150 8 186 0';
 
   return (
-    <Reveal className="relative mx-auto mt-16 w-full max-w-5xl">
-      <div className="absolute -left-12 top-10 hidden h-40 w-40 rounded-full border border-[#DDD6FE]/70 lg:block" />
-      <div className="absolute -right-16 top-24 hidden h-48 w-48 rounded-full border border-[#DDD6FE]/70 lg:block" />
-      <div className="relative overflow-hidden rounded-[2rem] border border-[#E7E1FF] bg-[#F8F6FF]/95 p-3 shadow-[0_34px_100px_rgba(83,63,174,0.16)] sm:rounded-[2.6rem] sm:p-4">
-        <div className="grid min-h-[420px] grid-cols-[56px_1fr] rounded-[1.6rem] border border-white bg-white/72 shadow-inner shadow-white sm:grid-cols-[74px_1fr]">
-          <aside className="flex flex-col items-center gap-4 border-r border-[#ECE8FF] bg-[#F5F1FF] py-6">
-            {sidebarIcons.map((Icon, index) => (
-              <div
-                key={index}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-2xl text-[#8B7CFF]',
-                  index === 1 ? 'bg-white text-[#6D5DF6] shadow-sm' : 'bg-transparent'
-                )}
-              >
-                <Icon className="h-4 w-4" />
+    <Reveal className="relative mx-auto mt-16 w-full max-w-7xl">
+      <motion.div
+        aria-hidden="true"
+        className="absolute -left-10 top-16 hidden h-56 w-56 rounded-full border border-[#DCD4FF] lg:block"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+      />
+      <motion.div
+        aria-hidden="true"
+        className="absolute -right-8 top-6 hidden h-44 w-44 rounded-full border border-[#E8E1FF] lg:block"
+        animate={{ rotate: -360 }}
+        transition={{ duration: 24, repeat: Infinity, ease: 'linear' }}
+      />
+      <motion.div
+        className="relative overflow-hidden rounded-[2rem] border border-[#E8E1FF] bg-[#F7F3FF] p-3 shadow-[0_36px_120px_rgba(74,55,137,0.18)] sm:rounded-[2.8rem] sm:p-5"
+        whileHover={{ y: -6, scale: 1.006 }}
+        transition={{ type: 'spring', stiffness: 180, damping: 22 }}
+      >
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/90 to-transparent" />
+        <div className="relative grid min-h-[520px] grid-cols-[58px_1fr] gap-5 rounded-[2rem] bg-[#FBF8FF] sm:grid-cols-[74px_1fr]">
+          <aside className="flex flex-col items-center justify-between rounded-l-[2rem] border-r border-[#E3D9F0] bg-[#EFE7F4] py-6">
+            <div className="flex flex-col items-center gap-5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#D8C9E0] text-[#62456B]">
+                <span className="h-3 w-3 rounded-full bg-[#62456B]" />
               </div>
-            ))}
-          </aside>
-          <div className="p-5 sm:p-8">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h3 className="text-2xl font-black tracking-[-0.04em] text-[#14142B]">Hello, Naitik! <span className="text-lg">👋</span></h3>
-                <p className="mt-1 text-sm font-medium text-[#777B94]">Good progress. Let’s keep building momentum.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#14142B] shadow-sm"><Flame className="mr-1 inline h-3.5 w-3.5 text-[#FF9D42]" />2 Day Streak</span>
-                <span className="hidden rounded-full bg-white px-4 py-2 text-xs font-black text-[#14142B] shadow-sm sm:inline-flex">1220 XP · Level 7</span>
-                <img className="h-9 w-9 rounded-full object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="Profile" />
-              </div>
-            </div>
-
-            <div className="mt-8 grid gap-4 lg:grid-cols-3">
-              <div className="rounded-[1.4rem] border border-[#ECE8FF] bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-black text-[#14142B]">Today’s Focus</p>
-                  <CalendarDays className="h-4 w-4 text-[#8B7CFF]" />
-                </div>
-                <h4 className="mt-5 text-base font-black text-[#14142B]">Landing Page</h4>
-                <p className="mt-1 text-xs font-medium text-[#777B94]">Finalize your content and hero sections.</p>
-                <button className="mt-6 w-full rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[#6D5DF6]/20">
-                  Log Today’s Proof
-                </button>
-              </div>
-              <div className="rounded-[1.4rem] border border-[#ECE8FF] bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-black text-[#14142B]">Progress Pulse</p>
-                  <Sparkles className="h-4 w-4 text-[#8B7CFF]" />
-                </div>
-                <p className="mt-5 text-4xl font-black tracking-[-0.06em] text-[#6D5DF6]">90%</p>
-                <p className="text-xs font-bold text-[#777B94]">Plan Progress</p>
-                <div className="mt-4 h-2 rounded-full bg-[#ECE8FF]">
-                  <div className="h-full w-[90%] rounded-full bg-[#6D5DF6]" />
-                </div>
-                <div className="mt-5 flex items-end gap-1">
-                  {bars.map((height, index) => (
-                    <span key={index} className="flex-1 rounded-full bg-[#C8BEFF]" style={{ height }} />
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-[1.4rem] border border-[#ECE8FF] bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-black text-[#14142B]">Focus Streak</p>
-                  <TrendingUp className="h-4 w-4 text-[#8B7CFF]" />
-                </div>
-                <p className="mt-5 text-4xl font-black tracking-[-0.06em] text-[#14142B]">2</p>
-                <p className="text-xs font-bold text-[#777B94]">Day Streak</p>
-                <div className="mt-5 flex gap-2">
-                  {Array.from({ length: 8 }).map((_, index) => (
-                    <span key={index} className={cn('flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-black', index < 6 ? 'bg-[#6D5DF6] text-white' : 'bg-[#EEE9FF] text-[#8B7CFF]')}>✓</span>
-                  ))}
-                </div>
-                <p className="mt-4 text-xs font-bold text-[#777B94]">Longest: 8 Days</p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                ['Proof Logged', '12', 'This week'],
-                ['Tasks Completed', '8', 'This week'],
-                ['Focus Score', '85%', 'This week'],
-                ['Environment Score', 'High', 'This week'],
-              ].map(([label, value, sub]) => (
-                <div key={label} className="rounded-[1.3rem] border border-[#ECE8FF] bg-white p-5 shadow-sm">
-                  <p className="text-xs font-bold text-[#777B94]">{label}</p>
-                  <p className="mt-3 text-2xl font-black tracking-[-0.04em] text-[#14142B]">{value}</p>
-                  <p className="mt-1 text-xs font-bold text-[#777B94]">{sub}</p>
-                </div>
+              {sidebarIcons.map((Icon, index) => (
+                <motion.div
+                  key={index}
+                  className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-2xl text-[#9B88A6]',
+                    index === 7 && 'bg-[#62456B] text-white shadow-lg shadow-[#62456B]/25'
+                  )}
+                  whileHover={{ scale: 1.12, x: 3 }}
+                >
+                  <Icon className="h-5 w-5" />
+                </motion.div>
               ))}
+            </div>
+            <img className="h-10 w-10 rounded-full object-cover ring-4 ring-white" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80" alt="Profile" />
+          </aside>
+
+          <div className="grid gap-5 p-5 text-left lg:grid-cols-[1fr_420px] lg:p-8">
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.34em] text-[#9C8EA5]">System Operational</p>
+                  <h3 className="mt-2 text-4xl font-black uppercase tracking-[-0.055em] text-[#2A1934] sm:text-5xl">Hello, Naitik!</h3>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <motion.span whileHover={{ y: -2 }} className="inline-flex items-center gap-2 rounded-full border border-[#E5CFCB] bg-[#FFF6F1] px-5 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#A67A3A]">
+                    <Flame className="h-4 w-4" /> 2 Day Streak
+                  </motion.span>
+                  <motion.span whileHover={{ y: -2 }} className="inline-flex items-center gap-2 rounded-full border border-[#EEE8F5] bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#62456B]">
+                    <TrendingUp className="h-4 w-4 text-[#4F8F71]" /> 1520 XP - Level 7
+                  </motion.span>
+                </div>
+              </div>
+
+              <div className="grid gap-5 xl:grid-cols-[1fr_300px_260px]">
+                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] border border-[#E2D5E6] bg-white/78 p-7 shadow-[0_16px_50px_rgba(67,47,78,0.08)]">
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-[#9C8EA5]">Command Center</p>
+                  <div className="mt-7 flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                      <h4 className="text-4xl font-medium tracking-[-0.06em] text-[#2A1934]">Locking Beta</h4>
+                      <p className="mt-4 max-w-md text-base font-bold leading-7 text-[#8B7C91]">Pick the next action, log proof, and keep this Vision moving.</p>
+                    </div>
+                    <button className="rounded-2xl bg-[#62456B] px-8 py-4 text-sm font-black uppercase tracking-wider text-white shadow-[0_16px_30px_rgba(98,69,107,0.22)]">
+                      + Log Progress
+                    </button>
+                  </div>
+                  <div className="mt-6 rounded-[1.6rem] border border-[#D9CDDE] bg-[#FAF7FC] p-5">
+                    <div className="flex items-center gap-4">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#62456B] text-white"><Zap className="h-6 w-6" /></span>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.25em] text-[#8B7C91]">Next Move</p>
+                        <p className="mt-1 text-xl font-black text-[#2A1934]">Log today's proof</p>
+                        <p className="mt-1 text-sm font-bold text-[#6F5B76]">Add one update. Private is fine; visible progress starts with the record.</p>
+                      </div>
+                    </div>
+                    <div className="mt-5 h-14 rounded-2xl bg-[#62456B] text-center text-sm font-black uppercase tracking-wider leading-[3.5rem] text-white">+ Log Progress</div>
+                  </div>
+                </motion.div>
+
+                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] bg-[#D8C4DC] p-6 shadow-[0_18px_50px_rgba(98,69,107,0.14)]">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.28em] text-[#62456B]">Streak Fire</p>
+                      <p className="mt-4 text-5xl font-black text-[#A67A3A]">2</p>
+                    </div>
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-[#BEA9C5] bg-[#E4D2E7] text-[#A67A3A]">
+                      <Flame className="h-8 w-8" />
+                    </div>
+                  </div>
+                  <div className="mt-6 grid grid-cols-7 gap-2">
+                    {streakDays.map((day, index) => (
+                      <motion.span
+                        key={`${day}-${index}`}
+                        className={cn('flex h-9 w-9 items-center justify-center rounded-xl text-xs font-black', index % 3 === 0 || index % 3 === 1 ? 'bg-[#A77B3A] text-white' : 'bg-white/75 text-[#9C8EA5]')}
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        whileInView={{ scale: 1, opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: index * 0.025 }}
+                      >
+                        {day}
+                      </motion.span>
+                    ))}
+                  </div>
+                  <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-[#62456B]">Longest streak: 6 days</p>
+                  <div className="mt-5 grid grid-cols-3 gap-3">
+                    {['7D', '30D', '100D'].map(label => <span key={label} className="rounded-xl bg-white/70 py-3 text-center text-xs font-black text-[#B9A9BE]">{label}</span>)}
+                  </div>
+                </motion.div>
+
+                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] bg-[#D8C4DC] p-7 text-center shadow-[0_18px_50px_rgba(98,69,107,0.14)]">
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-[#62456B]">Total Progress</p>
+                  <p className="mt-6 text-5xl font-black tracking-[-0.06em] text-[#62456B]">90%</p>
+                  <div className="mt-6 h-3 rounded-full bg-[#E9DDEA]">
+                    <motion.div className="h-full rounded-full bg-[#62456B]" initial={{ width: 0 }} whileInView={{ width: '90%' }} viewport={{ once: true }} transition={{ duration: 1.1, ease: 'easeOut' }} />
+                  </div>
+                  <p className="mt-6 text-base font-black leading-7 text-[#62456B]">9 / 10 Milestones<br />Secured</p>
+                </motion.div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  ['Trajectory', 'Day 2 - Artist'],
+                  ['System Efficiency', 'High Performance'],
+                  ['Level 7', '1520 / 2100 XP - 580 XP to next'],
+                ].map(([label, value], index) => (
+                  <motion.div key={label} whileHover={{ y: -3 }} className={cn('rounded-[1.5rem] border border-[#E2D5E6] bg-white/75 p-5', index === 2 && 'md:col-span-3')}>
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-[#B8AABA]">{label}</p>
+                    <p className="mt-2 text-lg font-black text-[#2A1934]">{value}</p>
+                    {index === 2 && <div className="mt-4 h-3 rounded-full bg-[#F1EAF4]"><div className="h-full w-[13%] rounded-full bg-[#62456B]" /></div>}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] border border-[#E2D5E6] bg-white/78 p-7 shadow-[0_16px_50px_rgba(67,47,78,0.08)]">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.26em] text-[#62456B]">Progress Pulse</p>
+                    <h4 className="mt-4 text-3xl font-black tracking-[-0.05em] text-[#2A1934]">Growth Tracker</h4>
+                    <p className="mt-3 text-base font-black text-[#6F5B76]">2-day streak - 3 logs - 100% weekly</p>
+                  </div>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8DDEA] text-[#62456B]">
+                    <Brain className="h-7 w-7" />
+                  </div>
+                </div>
+                <div className="mt-7 flex items-end gap-5">
+                  <svg viewBox="0 0 190 70" className="h-24 flex-1 overflow-visible">
+                    <defs>
+                      <linearGradient id="lavenderPulseFill" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#62456B" stopOpacity="0.28" />
+                        <stop offset="100%" stopColor="#62456B" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path d={`${sparkline} L186 70 L4 70 Z`} fill="url(#lavenderPulseFill)" />
+                    <motion.path d={sparkline} fill="none" stroke="#62456B" strokeWidth="4" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease: 'easeInOut' }} />
+                  </svg>
+                  <button className="rounded-2xl bg-[#62456B] px-6 py-4 text-xs font-black uppercase tracking-wider text-white">View Full Tracker</button>
+                </div>
+              </motion.div>
+
+              <motion.div whileHover={{ y: -4 }} className="min-h-[300px] rounded-[2rem] border border-[#E2D5E6] bg-white/78 p-7 shadow-[0_16px_50px_rgba(67,47,78,0.08)]">
+                <div className="flex items-center justify-between border-b border-[#E9E0ED] pb-5">
+                  <h4 className="text-2xl font-black text-[#2A1934]">To-Do List</h4>
+                  <span className="text-xs font-black uppercase tracking-wider text-[#A597AA]">1 Pending</span>
+                </div>
+                <div className="mt-8 flex items-center gap-4">
+                  <span className="h-6 w-6 rounded-lg border border-[#C7B8CD]" />
+                  <p className="text-xl font-medium text-[#2A1934]">Lock the Beta for VisNova</p>
+                </div>
+              </motion.div>
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </Reveal>
   );
 }
@@ -282,24 +336,29 @@ export default function LandingPage() {
               </button>
             ))}
           </div>
-          <button onClick={goAuth} className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-5 py-3 text-sm font-black text-white shadow-[0_14px_28px_rgba(109,93,246,0.26)] transition hover:-translate-y-0.5">
+          <motion.button
+            onClick={goAuth}
+            className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-5 py-3 text-sm font-black text-white shadow-[0_14px_28px_rgba(109,93,246,0.26)]"
+            whileHover={{ y: -2, scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
             Launch App <ArrowRight className="ml-1 inline h-4 w-4" />
-          </button>
+          </motion.button>
         </div>
       </nav>
 
       <main>
         <section id="hero" className="relative overflow-hidden px-5 pb-14 pt-16 text-center sm:pt-20">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_0%,#F0ECFF_0%,#FFFFFF_44%,#FFFFFF_100%)]" />
-          <div className="absolute left-[14%] top-28 h-2 w-2 rotate-45 bg-[#B8AEFF]" />
-          <div className="absolute right-[21%] top-40 h-2 w-2 rotate-45 bg-[#B8AEFF]" />
+          <motion.div className="absolute left-[14%] top-28 h-2 w-2 rotate-45 bg-[#B8AEFF]" animate={{ y: [0, -10, 0], opacity: [0.35, 1, 0.35] }} transition={{ duration: 4, repeat: Infinity }} />
+          <motion.div className="absolute right-[21%] top-40 h-2 w-2 rotate-45 bg-[#B8AEFF]" animate={{ y: [0, 12, 0], opacity: [0.35, 1, 0.35] }} transition={{ duration: 4.5, repeat: Infinity }} />
           <div className="absolute left-[8%] top-[420px] hidden h-64 w-[520px] -rotate-12 rounded-[50%] border border-[#DDD6FE]/70 lg:block" />
           <div className="absolute right-[8%] top-[420px] hidden h-64 w-[520px] rotate-12 rounded-[50%] border border-[#DDD6FE]/70 lg:block" />
 
           <Reveal className="mx-auto max-w-4xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#F4F0FF] px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6D5DF6]">
+            <motion.span className="inline-flex items-center gap-2 rounded-full bg-[#F4F0FF] px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6D5DF6]" whileHover={{ scale: 1.04 }}>
               <Sparkles className="h-3.5 w-3.5" /> 538+ plans in progress <ArrowRight className="h-3.5 w-3.5" />
-            </span>
+            </motion.span>
             <h1 className="mt-8 text-5xl font-black leading-[1.04] tracking-[-0.07em] text-[#12122B] sm:text-6xl lg:text-7xl">
               Your <span className="bg-gradient-to-r from-[#6D5DF6] to-[#9D8CFF] bg-clip-text text-transparent">Vision.</span>
               <br />
@@ -309,12 +368,12 @@ export default function LandingPage() {
               VisNova helps you see your future, plan with clarity, and build daily proof toward the life you want.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <button onClick={goAuth} className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-8 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(109,93,246,0.28)] transition hover:-translate-y-0.5">
+              <motion.button onClick={goAuth} className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-8 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(109,93,246,0.28)]" whileHover={{ y: -3, scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                 Start Your Journey <ArrowRight className="ml-2 inline h-4 w-4" />
-              </button>
-              <button onClick={() => explore('features')} className="rounded-2xl border border-[#E1E4F0] bg-white px-8 py-4 text-sm font-black text-[#111126] shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+              </motion.button>
+              <motion.button onClick={() => explore('features')} className="rounded-2xl border border-[#E1E4F0] bg-white px-8 py-4 text-sm font-black text-[#111126] shadow-sm" whileHover={{ y: -3, scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                 Explore Features <ArrowRight className="ml-2 inline h-4 w-4" />
-              </button>
+              </motion.button>
             </div>
           </Reveal>
 
@@ -325,11 +384,11 @@ export default function LandingPage() {
           <Reveal className="mx-auto max-w-5xl text-center">
             <p className="text-sm font-bold text-[#66708A]">Trusted by visionaries building their best life.</p>
             <div className="mt-8 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
-              {trustBrands.map(([label, Icon]) => (
-                <div key={label as string} className="flex items-center justify-center gap-3 text-[#81869E]">
+              {trustBrands.map(([label, Icon], index) => (
+                <motion.div key={label as string} className="flex items-center justify-center gap-3 text-[#81869E]" whileHover={{ y: -4, color: '#6D5DF6' }} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.05 }}>
                   <Icon className="h-5 w-5" />
                   <span className="text-base font-black">{label as string}</span>
-                </div>
+                </motion.div>
               ))}
             </div>
           </Reveal>
@@ -345,7 +404,7 @@ export default function LandingPage() {
           <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-2 lg:grid-cols-3">
             {featureCards.map((feature, index) => (
               <Reveal key={feature.title} delay={index * 0.04}>
-                <article className="group min-h-[214px] rounded-[1.5rem] border border-[#E6E8F2] bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.04)] transition hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(109,93,246,0.12)]">
+                <motion.article className="group min-h-[214px] rounded-[1.5rem] border border-[#E6E8F2] bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.04)]" whileHover={{ y: -8, rotateX: 2, rotateY: -2, boxShadow: '0 24px 70px rgba(109,93,246,0.14)' }}>
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F0ECFF] text-[#6D5DF6]">
                     <feature.icon className="h-6 w-6" />
                   </div>
@@ -354,7 +413,7 @@ export default function LandingPage() {
                   <button onClick={() => explore('how')} className="mt-6 text-sm font-black text-[#6D5DF6]">
                     Learn more <ArrowRight className="ml-1 inline h-4 w-4 transition group-hover:translate-x-1" />
                   </button>
-                </article>
+                </motion.article>
               </Reveal>
             ))}
           </div>
@@ -367,11 +426,11 @@ export default function LandingPage() {
                 ['72%', 'Stronger Consistency', Flame, 'text-[#FF9D42]'],
                 ['Faster', 'Goal Clarity', TrendingUp, 'text-[#6D5DF6]'],
               ].map(([value, label, Icon, color], index) => (
-                <div key={label as string} className={cn('px-5', index > 0 && 'lg:border-l lg:border-[#E6E8F2]')}>
+                <motion.div key={label as string} className={cn('px-5', index > 0 && 'lg:border-l lg:border-[#E6E8F2]')} whileHover={{ y: -4 }}>
                   <Icon className={cn('mx-auto h-8 w-8', color as string)} />
                   <p className="mt-4 text-3xl font-black tracking-[-0.05em] text-[#12122B]">{value as string}</p>
                   <p className="mt-1 text-sm font-bold text-[#66708A]">{label as string}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </Reveal>
@@ -388,14 +447,14 @@ export default function LandingPage() {
             <div className="absolute left-[20%] right-[20%] top-14 hidden border-t-2 border-dashed border-[#D7D0FF] md:block" />
             {steps.map((step, index) => (
               <Reveal key={step.title} delay={index * 0.08} className="relative">
-                <article className="relative rounded-[1.5rem] border border-[#E6E8F2] bg-white p-8 text-center shadow-[0_18px_60px_rgba(32,30,70,0.05)]">
+                <motion.article className="relative rounded-[1.5rem] border border-[#E6E8F2] bg-white p-8 text-center shadow-[0_18px_60px_rgba(32,30,70,0.05)]" whileHover={{ y: -7 }}>
                   <span className="absolute left-6 top-6 flex h-8 w-8 items-center justify-center rounded-full bg-[#6D5DF6] text-sm font-black text-white">{index + 1}</span>
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F0ECFF] text-[#6D5DF6]">
                     <step.icon className="h-7 w-7" />
                   </div>
                   <h3 className="mt-8 text-lg font-black text-[#12122B]">{step.title}</h3>
                   <p className="mt-3 text-sm font-medium leading-6 text-[#66708A]">{step.copy}</p>
-                </article>
+                </motion.article>
               </Reveal>
             ))}
           </div>
@@ -411,8 +470,8 @@ export default function LandingPage() {
           <div id="testimonials" className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
             {testimonials.map((testimonial, index) => (
               <Reveal key={testimonial.name} delay={index * 0.05}>
-                <article className="rounded-[1.5rem] border border-[#E6E8F2] bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.05)]">
-                  <p className="text-base font-semibold leading-7 text-[#2A2A40]">“{testimonial.quote}”</p>
+                <motion.article className="rounded-[1.5rem] border border-[#E6E8F2] bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.05)]" whileHover={{ y: -6 }}>
+                  <p className="text-base font-semibold leading-7 text-[#2A2A40]">"{testimonial.quote}"</p>
                   <div className="mt-8 flex items-center gap-3">
                     <img className="h-11 w-11 rounded-full object-cover" src={testimonial.image} alt={testimonial.name} />
                     <div>
@@ -420,7 +479,7 @@ export default function LandingPage() {
                       <p className="text-sm font-bold text-[#66708A]">{testimonial.role}</p>
                     </div>
                   </div>
-                </article>
+                </motion.article>
               </Reveal>
             ))}
           </div>
@@ -435,9 +494,9 @@ export default function LandingPage() {
                 <p className="mt-2 text-sm font-semibold text-[#66708A]">Start your journey with VisNova now.</p>
               </div>
             </div>
-            <button onClick={goAuth} className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-7 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(109,93,246,0.26)] transition hover:-translate-y-0.5">
+            <motion.button onClick={goAuth} className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-7 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(109,93,246,0.26)]" whileHover={{ y: -3, scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               Launch VisNova <ArrowRight className="ml-2 inline h-4 w-4" />
-            </button>
+            </motion.button>
           </Reveal>
         </section>
       </main>
