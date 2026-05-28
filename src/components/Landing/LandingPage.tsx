@@ -8,10 +8,13 @@ import {
   BookOpen,
   Brain,
   CalendarDays,
+  ChevronDown,
   CheckCircle2,
   Flame,
   LayoutDashboard,
   ListChecks,
+  Plug,
+  ShieldCheck,
   Sparkles,
   Star,
   Target,
@@ -27,9 +30,9 @@ const navLinks = [
   ['Home', 'hero'],
   ['Features', 'features'],
   ['How It Works', 'how'],
-  ['Pricing', 'beta'],
+  ['Pricing', 'pricing'],
   ['About', 'why'],
-  ['Resources', 'features'],
+  ['Resources', 'integrations'],
 ];
 
 const trustBrands = [
@@ -49,10 +52,57 @@ const featureCards = [
   { icon: Users, title: 'Guide & Accountability', copy: 'Stay accountable with smart insights and gentle nudges that keep you going.' },
 ];
 
+const workflowCards = [
+  { icon: Star, title: 'Create your Vision', copy: 'Name the future you want and choose the first visible milestone.' },
+  { icon: Users, title: 'Build your Circle', copy: 'Invite people who should see your progress and keep you accountable.' },
+  { icon: CheckCircle2, title: 'Manage proof together', copy: 'Turn tasks, journals, notes, and resources into a clear progress trail.' },
+];
+
 const steps = [
   { icon: Sparkles, title: 'Clarify Your Vision', copy: 'Define what you want and break it into clear goals.' },
   { icon: ListChecks, title: 'Plan Your Actions', copy: 'Set smart, actionable steps and schedule your time.' },
   { icon: Target, title: 'Log Proof & Grow', copy: 'Take action, log your proof, and let your progress grow.' },
+];
+
+const integrations = [
+  ['Notes', BookOpen],
+  ['Tasks', CheckCircle2],
+  ['Circle', Users],
+  ['Journal', Sparkles],
+  ['Resources', Plug],
+  ['Progress', BarChart3],
+  ['Proof', ShieldCheck],
+];
+
+const pricingPlans = [
+  {
+    name: 'Starter',
+    price: 'Free',
+    copy: 'For getting your first Vision moving.',
+    items: ['1 active Vision', 'Daily proof logs', 'Notes and journal basics', 'Private progress timeline'],
+  },
+  {
+    name: 'Builder',
+    price: '$8',
+    copy: 'For consistent builders and beta teams.',
+    featured: true,
+    items: ['Unlimited Visions', 'Growth Tracker insights', 'Circle accountability', 'Vision Board templates', 'Resource goals'],
+  },
+  {
+    name: 'Circle',
+    price: '$18',
+    copy: 'For creators, founders, and small accountability groups.',
+    items: ['Shared proof sprints', 'Circle Momentum board', 'Advanced privacy controls', 'Priority beta access'],
+  },
+];
+
+const faqs = [
+  ['Is VisNova another task manager?', 'No. Tasks are one layer. VisNova connects goals, proof, reflection, resources, and accountability around your Vision.'],
+  ['Can I keep progress private?', 'Yes. Private is the default. You choose what becomes Circle-visible or public.'],
+  ['Who is VisNova for?', 'Students, creators, founders, developers, freelancers, and anyone turning long-term ambition into visible execution.'],
+  ['Does it replace notes and journals?', 'It can, but the bigger idea is linking notes and reflections back to the Vision they support.'],
+  ['Is the beta paid?', 'The beta can start free while we test the core loop and refine the product with early builders.'],
+  ['Can I use it on mobile?', 'Yes. The main loop is designed to work from a phone: create, focus, log proof, and return tomorrow.'],
 ];
 
 const testimonials = [
@@ -310,7 +360,8 @@ export default function LandingPage() {
   const explore = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#FBFAFF] font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#D8D8DA] px-3 py-5 font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-[1120px] overflow-hidden rounded-[2rem] bg-[#F7F7FB] shadow-[0_34px_120px_rgba(38,38,52,0.14)]">
       <nav
         className={cn(
           'sticky top-0 z-50 transition-all duration-300',
@@ -380,6 +431,35 @@ export default function LandingPage() {
           <HeroDashboardMockup />
         </section>
 
+        <section className="px-5 pb-20">
+          <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-3">
+            {workflowCards.map((item, index) => (
+              <Reveal key={item.title} delay={index * 0.06}>
+                <motion.article
+                  className="h-full rounded-[1.65rem] border border-[#E3E6F0] bg-white p-5 shadow-[0_18px_50px_rgba(41,42,65,0.07)]"
+                  whileHover={{ y: -7, boxShadow: '0 26px 70px rgba(109,93,246,0.12)' }}
+                >
+                  <div className="rounded-[1.25rem] border border-[#EDF0F7] bg-[#F8F9FF] p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#EEF0FF] text-[#6D5DF6]">
+                        <item.icon className="h-5 w-5" />
+                      </span>
+                      <div className="h-2 flex-1 rounded-full bg-[#ECEFF8]" />
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <div className="h-2.5 w-3/4 rounded-full bg-[#DDE2F2]" />
+                      <div className="h-2.5 w-1/2 rounded-full bg-[#EEF0F7]" />
+                    </div>
+                  </div>
+                  <p className="mt-5 text-xs font-black uppercase tracking-[0.16em] text-[#6D5DF6]">Step 0{index + 1}</p>
+                  <h3 className="mt-2 text-lg font-black tracking-[-0.03em] text-[#131323]">{item.title}</h3>
+                  <p className="mt-2 text-sm font-medium leading-6 text-[#697084]">{item.copy}</p>
+                </motion.article>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
         <section className="border-y border-[#EEF0F7] bg-white px-5 py-12">
           <Reveal className="mx-auto max-w-5xl text-center">
             <p className="text-sm font-bold text-[#66708A]">Trusted by visionaries building their best life.</p>
@@ -401,15 +481,35 @@ export default function LandingPage() {
             <p className="mt-4 text-lg font-medium text-[#66708A]">All-in-one tools to plan, grow, and show up for your goals.</p>
           </Reveal>
 
-          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-2">
             {featureCards.map((feature, index) => (
               <Reveal key={feature.title} delay={index * 0.04}>
-                <motion.article className="group min-h-[214px] rounded-[1.5rem] border border-[#E6E8F2] bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.04)]" whileHover={{ y: -8, rotateX: 2, rotateY: -2, boxShadow: '0 24px 70px rgba(109,93,246,0.14)' }}>
+                <motion.article className={cn('group min-h-[214px] rounded-[1.5rem] border border-[#E6E8F2] bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.04)]', index === 2 && 'md:row-span-2 md:min-h-[450px]', index === 5 && 'md:bg-[#F5F3FF]')} whileHover={{ y: -8, rotateX: 2, rotateY: -2, boxShadow: '0 24px 70px rgba(109,93,246,0.14)' }}>
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F0ECFF] text-[#6D5DF6]">
                     <feature.icon className="h-6 w-6" />
                   </div>
                   <h3 className="mt-7 text-xl font-black tracking-[-0.03em] text-[#12122B]">{feature.title}</h3>
                   <p className="mt-3 text-sm font-medium leading-6 text-[#66708A]">{feature.copy}</p>
+                  {index === 2 && (
+                    <div className="mt-10 rounded-[1.4rem] bg-[#F6F4FF] p-5">
+                      <div className="flex items-end gap-2">
+                        {[30, 44, 38, 64, 52, 82, 58].map((height, barIndex) => (
+                          <motion.span
+                            key={barIndex}
+                            className="flex-1 rounded-t-2xl bg-gradient-to-t from-[#6D5DF6] to-[#B9B0FF]"
+                            initial={{ height: 10 }}
+                            whileInView={{ height }}
+                            viewport={{ once: true }}
+                            transition={{ delay: barIndex * 0.05, duration: 0.55 }}
+                          />
+                        ))}
+                      </div>
+                      <div className="mt-5 flex items-center justify-between">
+                        <span className="text-xs font-black uppercase tracking-widest text-[#7A7F95]">Weekly proof</span>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#6D5DF6]">+18%</span>
+                      </div>
+                    </div>
+                  )}
                   <button onClick={() => explore('how')} className="mt-6 text-sm font-black text-[#6D5DF6]">
                     Learn more <ArrowRight className="ml-1 inline h-4 w-4 transition group-hover:translate-x-1" />
                   </button>
@@ -433,6 +533,43 @@ export default function LandingPage() {
                 </motion.div>
               ))}
             </div>
+          </Reveal>
+        </section>
+
+        <section id="integrations" className="px-5 pb-24">
+          <Reveal className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6D5DF6]">Integrated Workspace</p>
+            <h2 className="mt-4 text-4xl font-black tracking-[-0.05em] text-[#12122B] sm:text-5xl">Stay Connected With Your Favorite Growth Layers</h2>
+            <p className="mt-4 text-lg font-medium text-[#66708A]">Every note, task, resource, and proof log connects back to the Vision it supports.</p>
+          </Reveal>
+          <Reveal className="relative mx-auto mt-12 flex min-h-[260px] max-w-4xl items-center justify-center overflow-hidden rounded-[2rem] border border-[#E6E8F2] bg-white shadow-[0_22px_80px_rgba(32,30,70,0.05)]">
+            <div className="absolute h-48 w-48 rounded-full border border-dashed border-[#DCD6FF]" />
+            <div className="absolute h-72 w-72 rounded-full border border-dashed border-[#ECE8FF]" />
+            <motion.div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-[1.6rem] bg-gradient-to-br from-[#6D5DF6] to-[#9B8CFF] text-white shadow-[0_18px_50px_rgba(109,93,246,0.3)]" whileHover={{ scale: 1.08, rotate: 3 }}>
+              <BrandLogo className="h-14 w-14" />
+            </motion.div>
+            {integrations.map(([label, Icon], index) => {
+              const positions = [
+                'left-[16%] top-[22%]',
+                'left-[27%] bottom-[18%]',
+                'left-[45%] top-[14%]',
+                'right-[28%] bottom-[18%]',
+                'right-[16%] top-[24%]',
+                'right-[42%] top-[58%]',
+                'left-[12%] bottom-[42%]',
+              ];
+              return (
+                <motion.div
+                  key={label as string}
+                  className={cn('absolute hidden h-12 w-12 items-center justify-center rounded-2xl border border-[#E6E8F2] bg-white text-[#6D5DF6] shadow-lg shadow-[#1F1D46]/5 sm:flex', positions[index])}
+                  animate={{ y: [0, index % 2 ? -8 : 8, 0] }}
+                  transition={{ duration: 4 + index * 0.2, repeat: Infinity, ease: 'easeInOut' }}
+                  title={label as string}
+                >
+                  <Icon className="h-5 w-5" />
+                </motion.div>
+              );
+            })}
           </Reveal>
         </section>
 
@@ -485,6 +622,68 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <section id="pricing" className="bg-[#F1F2F6] px-5 py-24">
+          <Reveal className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6D5DF6]">Pricing Plans</p>
+            <h2 className="mt-4 text-4xl font-black tracking-[-0.05em] text-[#12122B] sm:text-5xl">Choose the Perfect Plan</h2>
+            <p className="mt-4 text-lg font-medium text-[#66708A]">Start simple, then grow into deeper tracking and accountability as your Vision expands.</p>
+          </Reveal>
+
+          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
+            {pricingPlans.map((plan, index) => (
+              <Reveal key={plan.name} delay={index * 0.06}>
+                <motion.article
+                  className={cn(
+                    'h-full rounded-[1.7rem] border bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.05)]',
+                    plan.featured ? 'border-[#6D5DF6] ring-4 ring-[#6D5DF6]/10' : 'border-[#E6E8F2]'
+                  )}
+                  whileHover={{ y: -8 }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-xl font-black text-[#12122B]">{plan.name}</h3>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-[#66708A]">{plan.copy}</p>
+                    </div>
+                    {plan.featured && <span className="rounded-full bg-[#6D5DF6] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">Beta</span>}
+                  </div>
+                  <p className="mt-8 text-5xl font-black tracking-[-0.06em] text-[#12122B]">{plan.price}<span className="text-sm font-bold text-[#66708A]">{plan.price.startsWith('$') ? '/mo' : ''}</span></p>
+                  <button onClick={goAuth} className={cn('mt-7 h-12 w-full rounded-2xl text-sm font-black transition', plan.featured ? 'bg-[#6D5DF6] text-white shadow-lg shadow-[#6D5DF6]/20' : 'bg-[#F4F5FA] text-[#12122B] hover:bg-[#EEEFFE]')}>
+                    Start now
+                  </button>
+                  <div className="mt-7 space-y-3">
+                    {plan.items.map(item => (
+                      <div key={item} className="flex items-center gap-3 text-sm font-semibold text-[#66708A]">
+                        <CheckCircle2 className="h-4 w-4 text-[#6D5DF6]" />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.article>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-[#F1F2F6] px-5 pb-24">
+          <Reveal className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6D5DF6]">FAQ</p>
+            <h2 className="mt-4 text-4xl font-black tracking-[-0.05em] text-[#12122B] sm:text-5xl">Frequently Asked Questions</h2>
+          </Reveal>
+          <div className="mx-auto mt-10 grid max-w-5xl gap-3 md:grid-cols-2">
+            {faqs.map(([question, answer], index) => (
+              <Reveal key={question} delay={index * 0.03}>
+                <details className="group rounded-2xl border border-[#E2E5EE] bg-white px-5 py-4 shadow-sm">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-black text-[#12122B]">
+                    {question}
+                    <ChevronDown className="h-4 w-4 text-[#6D5DF6] transition group-open:rotate-180" />
+                  </summary>
+                  <p className="mt-3 text-sm font-medium leading-6 text-[#66708A]">{answer}</p>
+                </details>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
         <section id="beta" className="px-5 pb-12">
           <Reveal className="mx-auto flex max-w-5xl flex-col gap-6 rounded-[1.6rem] border border-[#E2DAFF] bg-gradient-to-r from-[#F3F0FF] to-[#F8F6FF] p-8 shadow-[0_22px_80px_rgba(109,93,246,0.13)] sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-5">
@@ -515,6 +714,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 }
