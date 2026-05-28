@@ -187,12 +187,12 @@ type NavItem = {
 const mainNavBase: NavItem[] = [
   { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
   { icon: Compass, label: 'Feed', path: '/feed' },
-  { icon: Users, label: 'Circle', path: '/circle' },
+  { icon: Users, label: 'Circle', path: '/circle', id: 'nav-circle' },
   { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
-  { icon: CheckCircle2, label: 'Tasks', path: '/tasks' },
-  { icon: LibraryBig, label: 'Library', path: '/library' },
-  { icon: GraduationCap, label: 'Growth', path: '/growth' },
-  { icon: Wallet, label: 'Wallet', path: '/wallet' },
+  { icon: CheckCircle2, label: 'Tasks', path: '/tasks', id: 'nav-tasks' },
+  { icon: LibraryBig, label: 'Library', path: '/library', id: 'nav-library' },
+  { icon: GraduationCap, label: 'Growth', path: '/growth', id: 'nav-growth' },
+  { icon: Wallet, label: 'Wallet', path: '/wallet', id: 'nav-money' },
   { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
 ];
 

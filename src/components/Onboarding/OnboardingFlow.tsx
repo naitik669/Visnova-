@@ -1,6 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ComponentProps, type ReactNode } from 'react';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
-import { ArrowLeft, CheckCircle2, KeyRound, Mail, Zap, Eye, EyeOff, Image as ImageIcon, Users, Plus, Sparkles, Target } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  KeyRound,
+  Mail,
+  Zap,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Users,
+  Plus,
+  Sparkles,
+  Target,
+  Lock,
+  Palette,
+  ShieldCheck,
+  ListChecks,
+  Activity,
+  CircleDot,
+  NotebookPen,
+  WandSparkles,
+  ChevronRight,
+  type LucideIcon
+} from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -10,6 +33,7 @@ import { trackBetaEvent } from '../../lib/betaAnalytics';
 import { getRandomVisNovaAvatar } from '../../lib/avatarLibrary';
 import { PROFILE_ROLE_CATEGORIES } from '../../lib/profileRoles';
 import { BrandLogo } from '../BrandLogo';
+import { getOnboardingPath, ONBOARDING_FEATURE_CHIPS, ONBOARDING_PATHS, type OnboardingPathId } from '../../lib/onboardingConfig';
 
 type ProfileChoice = 'male' | 'female' | 'custom';
 
@@ -786,6 +810,542 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
   );
 }
 
+type SetupStepId = 'welcome' | 'path' | 'vision' | 'task' | 'privacy' | 'theme' | 'proof' | 'complete';
+
+const SETUP_STEPS: Array<{ id: SetupStepId; label: string; icon: LucideIcon }> = [
+  { id: 'welcome', label: 'Start', icon: Sparkles },
+  { id: 'path', label: 'Path', icon: CircleDot },
+  { id: 'vision', label: 'Vision', icon: Target },
+  { id: 'task', label: 'Action', icon: ListChecks },
+  { id: 'privacy', label: 'Privacy', icon: ShieldCheck },
+  { id: 'theme', label: 'Theme', icon: Palette },
+  { id: 'proof', label: 'Proof', icon: Activity },
+  { id: 'complete', label: 'Ready', icon: CheckCircle2 }
+];
+
+const SETUP_STEP_TO_INDEX: Record<number, number> = {
+  3: 0,
+  4: 1,
+  5: 2,
+  6: 3,
+  7: 4,
+  8: 5,
+  9: 6,
+  9.35: 7
+};
+
+const THEME_OPTIONS = [
+  { id: 'lavender', label: 'Lavender Focus', desc: 'Clean, premium, and calm.', accent: '#6D5DF6', bg: '#F7F7FB' },
+  { id: 'dark', label: 'Dark Dream', desc: 'Low-light focus mode.', accent: '#818CF8', bg: '#111827' },
+  { id: 'sage', label: 'Sage Calm', desc: 'Soft green clarity.', accent: '#8DA482', bg: '#F4F7F1' },
+  { id: 'pastel', label: 'Soft Cream', desc: 'Warm creative planning.', accent: '#5D4361', bg: '#FFF7F0' }
+] as const;
+
+const PRIVACY_OPTIONS = [
+  { id: 'private', title: 'Private', desc: 'Only you.', icon: Lock },
+  { id: 'circle', title: 'Circle', desc: 'Trusted accountability partners.', icon: Users },
+  { id: 'public', title: 'Public', desc: 'Visible on profile and feed.', icon: Sparkles }
+] as const;
+
+function SetupProgressRail({ activeIndex }: { activeIndex: number }) {
+  const percent = Math.round(((activeIndex + 1) / SETUP_STEPS.length) * 100);
+  return (
+    <aside className="hidden w-56 shrink-0 flex-col justify-between rounded-[2rem] border border-white/70 bg-white/62 p-5 shadow-[0_20px_70px_rgba(109,93,246,0.12)] backdrop-blur-2xl lg:flex">
+      <div>
+        <div className="flex items-center gap-3">
+          <BrandLogo className="h-11 w-11 rounded-2xl shadow-lg shadow-accent/15" />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-accent">Setup</p>
+            <p className="text-sm font-black text-text-main">{percent}% ready</p>
+          </div>
+        </div>
+        <div className="mt-7 space-y-2">
+          {SETUP_STEPS.map((item, index) => {
+            const Icon = item.icon;
+            const isActive = index === activeIndex;
+            const isDone = index < activeIndex;
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-black transition-all',
+                  isActive ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/20' : isDone ? 'bg-accent/10 text-accent' : 'text-text-secondary/55'
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="rounded-3xl bg-accent/10 p-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-accent">Activation goal</p>
+        <p className="mt-2 text-sm font-bold leading-5 text-text-main">Create one Vision, one next move, and your first proof habit.</p>
+      </div>
+    </aside>
+  );
+}
+
+function MobileSetupProgress({ activeIndex }: { activeIndex: number }) {
+  return (
+    <div className="mb-4 lg:hidden">
+      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.18em] text-text-secondary/60">
+        <span>Step {activeIndex + 1} of {SETUP_STEPS.length}</span>
+        <span>{SETUP_STEPS[activeIndex]?.label}</span>
+      </div>
+      <div className="mt-3 flex gap-1.5">
+        {SETUP_STEPS.map((step, index) => (
+          <span
+            key={step.id}
+            className={cn(
+              'h-1.5 flex-1 rounded-full transition-colors',
+              index <= activeIndex ? 'bg-accent' : 'bg-card-border'
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FeatureBriefChips() {
+  const icons = [Target, ListChecks, Activity, Sparkles, Users, NotebookPen];
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {ONBOARDING_FEATURE_CHIPS.map((chip, index) => {
+        const Icon = icons[index] || Sparkles;
+        return (
+          <motion.div
+            key={chip.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05, duration: 0.35 }}
+            className="rounded-2xl border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur-xl"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                <Icon className="h-4 w-4" />
+              </span>
+              <p className="text-xs font-black text-text-main">{chip.label}</p>
+            </div>
+            <p className="mt-2 text-[11px] font-semibold leading-4 text-text-secondary">{chip.copy}</p>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionTitle, taskTitle, selectedTheme }: {
+  variant: SetupStepId;
+  title?: string;
+  subtitle?: string;
+  selectedPath?: OnboardingPathId;
+  visionTitle?: string;
+  taskTitle?: string;
+  selectedTheme?: string;
+}) {
+  const path = getOnboardingPath(selectedPath);
+  const theme = THEME_OPTIONS.find(item => item.id === selectedTheme) || THEME_OPTIONS[0];
+  const orbitItems = ['Vision', 'Action', 'Proof', 'Pulse'];
+  const cards = [
+    { label: 'Vision', text: visionTitle || 'Launch your first system', icon: Target },
+    { label: 'Action', text: taskTitle || 'Pick one next move', icon: ListChecks },
+    { label: 'Proof', text: 'Log what changed today', icon: Activity }
+  ];
+
+  return (
+    <div className="relative min-h-[360px] overflow-hidden rounded-[2.4rem] border border-white/80 bg-gradient-to-br from-white/90 via-[#F8F6FF]/90 to-[#EAF7FF]/80 p-5 shadow-[0_30px_90px_rgba(109,93,246,0.18)] sm:min-h-[520px] sm:p-7">
+      <motion.div
+        aria-hidden="true"
+        className="absolute -left-14 -top-12 h-44 w-44 rounded-full bg-[#C9EFFF]/70 blur-3xl"
+        animate={{ x: [0, 18, 0], y: [0, 12, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        aria-hidden="true"
+        className="absolute -right-16 top-12 h-52 w-52 rounded-full bg-[#F2C6FF]/70 blur-3xl"
+        animate={{ x: [0, -14, 0], y: [0, 16, 0] }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <div className="relative z-10 flex h-full flex-col justify-between">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">{title || 'VisNova setup'}</p>
+            <h3 className="mt-2 max-w-sm text-2xl font-black tracking-tight text-text-main sm:text-4xl">{subtitle || path.tone}</h3>
+          </div>
+          <motion.div
+            className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/80 text-accent shadow-xl sm:flex"
+            animate={{ rotate: variant === 'path' ? [0, 8, -8, 0] : 0 }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <WandSparkles className="h-6 w-6" />
+          </motion.div>
+        </div>
+
+        <div className="relative mx-auto my-8 flex w-full max-w-sm justify-center sm:my-10">
+          <motion.div
+            className="relative h-[300px] w-[190px] rounded-[2.4rem] border-[8px] border-white bg-white shadow-[0_30px_70px_rgba(37,22,61,0.18)] sm:h-[360px] sm:w-[230px]"
+            initial={{ y: 18, opacity: 0, rotate: -2 }}
+            animate={{ y: 0, opacity: 1, rotate: variant === 'complete' ? 0 : -1 }}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="absolute left-1/2 top-3 h-5 w-16 -translate-x-1/2 rounded-full bg-text-main" />
+            <div
+              className="h-full overflow-hidden rounded-[1.8rem] p-4"
+              style={{ background: `linear-gradient(160deg, ${theme.bg}, #ffffff 58%, rgba(var(--accent-rgb),0.12))` }}
+            >
+              <div className="mt-8 space-y-3">
+                {variant === 'path' ? (
+                  <div className="text-center">
+                    <path.icon className="mx-auto h-12 w-12 text-accent" />
+                    <p className="mt-4 text-xl font-black text-text-main">{path.label}</p>
+                    <p className="mt-2 text-xs font-bold leading-5 text-text-secondary">{path.description}</p>
+                  </div>
+                ) : variant === 'privacy' ? (
+                  <div className="flex h-48 flex-col items-center justify-center rounded-[1.5rem] bg-white/80">
+                    <ShieldCheck className="h-16 w-16 text-accent" />
+                    <p className="mt-4 text-center text-sm font-black text-text-main">Private by default</p>
+                    <p className="mt-2 text-center text-xs font-bold text-text-secondary">Shared by choice.</p>
+                  </div>
+                ) : variant === 'proof' ? (
+                  <div className="space-y-5 pt-4">
+                    <div className="rounded-2xl bg-accent p-4 text-accent-contrast">
+                      <p className="text-[10px] font-black uppercase tracking-widest">Proof</p>
+                      <p className="mt-2 text-sm font-black">Updated my first move today.</p>
+                    </div>
+                    <div className="relative h-24">
+                      <div className="absolute left-5 top-0 h-full w-1 rounded-full bg-accent/15" />
+                      {[0, 1, 2].map(i => (
+                        <motion.div
+                          key={i}
+                          className="absolute left-3 flex items-center gap-3"
+                          style={{ top: i * 34 }}
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.12 }}
+                        >
+                          <span className="h-5 w-5 rounded-full border-4 border-white bg-accent shadow" />
+                          <span className="text-xs font-bold text-text-secondary">Progress dot</span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {cards.map((card, index) => {
+                      const Icon = card.icon;
+                      return (
+                        <motion.div
+                          key={card.label}
+                          initial={{ opacity: 0, x: index % 2 ? 16 : -16 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="rounded-2xl border border-card-border bg-white/85 p-3 shadow-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <div>
+                              <p className="text-[9px] font-black uppercase tracking-widest text-accent">{card.label}</p>
+                              <p className="line-clamp-2 text-xs font-black text-text-main">{card.text}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+
+          {orbitItems.map((item, index) => (
+            <motion.div
+              key={item}
+              className="absolute rounded-full border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-black text-text-main shadow-lg"
+              style={{
+                left: index % 2 === 0 ? '2%' : '70%',
+                top: `${18 + index * 20}%`
+              }}
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 3 + index * 0.4, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              {item}
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="relative z-10">
+          <FeatureBriefChips />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SetupCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-[2rem] border border-white/80 bg-white/82 p-5 shadow-[0_24px_80px_rgba(109,93,246,0.14)] backdrop-blur-2xl sm:p-7">
+      {children}
+    </div>
+  );
+}
+
+function SetupShell({ step, children, visualProps }: { step: number; children: ReactNode; visualProps: ComponentProps<typeof OnboardingVisualScene> }) {
+  const activeIndex = SETUP_STEP_TO_INDEX[step] ?? 0;
+  return (
+    <div className="w-full">
+      <MobileSetupProgress activeIndex={activeIndex} />
+      <div className="flex w-full gap-5">
+        <SetupProgressRail activeIndex={activeIndex} />
+        <div className="grid min-h-[620px] flex-1 gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.8fr)]">
+          <OnboardingVisualScene {...visualProps} />
+          <SetupCard>{children}</SetupCard>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SetupWelcomeScreen({ nextStep }: { nextStep: () => void }) {
+  return (
+    <div className="flex h-full flex-col justify-center space-y-6">
+      <div className="space-y-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">90-second setup</p>
+        <h2 className="text-4xl font-black tracking-tight text-text-main sm:text-5xl">Let&apos;s build your growth system.</h2>
+        <p className="text-base font-semibold leading-7 text-text-secondary">VisNova works best when your Vision, actions, proof, and progress live in one place.</p>
+      </div>
+      <div className="grid gap-3">
+        {[
+          ['Vision', 'Choose what you are building.'],
+          ['Action', 'Pick one move small enough for today.'],
+          ['Proof', 'Log what actually changed.']
+        ].map(([title, copy], index) => (
+          <motion.div
+            key={title}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.08 }}
+            className="rounded-2xl border border-card-border bg-surface-muted p-4"
+          >
+            <p className="text-sm font-black text-text-main">{title}</p>
+            <p className="mt-1 text-xs font-semibold text-text-secondary">{copy}</p>
+          </motion.div>
+        ))}
+      </div>
+      <button onClick={nextStep} className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 transition-transform active:scale-[0.98]">
+        Start setup <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function SetupPathScreen({ selectedPath, setSelectedPath, nextStep }: { selectedPath: OnboardingPathId; setSelectedPath: (path: OnboardingPathId) => void; nextStep: () => void }) {
+  return (
+    <div className="flex h-full flex-col justify-center space-y-5">
+      <div className="space-y-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Choose your path</p>
+        <h2 className="text-3xl font-black tracking-tight text-text-main sm:text-4xl">What are you building right now?</h2>
+        <p className="text-sm font-semibold leading-6 text-text-secondary">Your path tunes examples, suggestions, and dashboard copy.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {ONBOARDING_PATHS.map(path => {
+          const Icon = path.icon;
+          const selected = selectedPath === path.id;
+          return (
+            <button
+              key={path.id}
+              onClick={() => setSelectedPath(path.id)}
+              className={cn(
+                'rounded-2xl border p-4 text-left transition-all active:scale-[0.98]',
+                selected ? 'border-accent bg-accent text-accent-contrast shadow-xl shadow-accent/20' : 'border-card-border bg-card hover:border-accent/35'
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              <p className="mt-3 text-sm font-black">{path.label}</p>
+              <p className={cn('mt-1 text-xs font-semibold leading-5', selected ? 'text-accent-contrast/80' : 'text-text-secondary')}>{path.description}</p>
+            </button>
+          );
+        })}
+      </div>
+      <button onClick={nextStep} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 active:scale-[0.98]">
+        Continue
+      </button>
+    </div>
+  );
+}
+
+function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { selectedPath: OnboardingPathId; title: string; setTitle: (value: string) => void; nextStep: () => void }) {
+  const path = getOnboardingPath(selectedPath);
+  return (
+    <div className="flex h-full flex-col justify-center space-y-5">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">First Vision</p>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">What Vision should move first?</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Start with one thing. You can add more later.</p>
+      </div>
+      <input
+        autoFocus
+        maxLength={120}
+        value={title}
+        onChange={event => setTitle(event.target.value)}
+        placeholder="Launch beta, learn coding, improve focus..."
+        className="h-14 rounded-2xl border border-card-border bg-card px-5 text-sm font-black text-text-main outline-none transition-all placeholder:text-text-secondary/40 focus:border-accent focus:ring-4 focus:ring-accent/10"
+      />
+      <div className="flex flex-wrap gap-2">
+        {path.visionSuggestions.map(suggestion => (
+          <button
+            key={suggestion}
+            onClick={() => setTitle(suggestion)}
+            className="rounded-full border border-card-border bg-surface-muted px-4 py-2 text-[11px] font-black text-text-secondary transition-colors hover:border-accent hover:text-accent"
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+      <button onClick={nextStep} disabled={!title.trim()} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+        Create Vision
+      </button>
+    </div>
+  );
+}
+
+function SetupTaskScreen({ selectedPath, taskTitle, setTaskTitle, nextStep }: { selectedPath: OnboardingPathId; taskTitle: string; setTaskTitle: (value: string) => void; nextStep: () => void }) {
+  const path = getOnboardingPath(selectedPath);
+  return (
+    <div className="flex h-full flex-col justify-center space-y-5">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Next move</p>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">What is small enough to do today?</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">A tiny next action beats a perfect plan.</p>
+      </div>
+      <input
+        autoFocus
+        maxLength={160}
+        value={taskTitle}
+        onChange={event => setTaskTitle(event.target.value)}
+        placeholder="Write first draft, fix one bug, study 25 minutes..."
+        className="h-14 rounded-2xl border border-card-border bg-card px-5 text-sm font-black text-text-main outline-none transition-all placeholder:text-text-secondary/40 focus:border-accent focus:ring-4 focus:ring-accent/10"
+      />
+      <div className="space-y-2">
+        {path.taskSuggestions.slice(0, 4).map(suggestion => (
+          <button
+            key={suggestion}
+            onClick={() => setTaskTitle(suggestion)}
+            className="flex w-full items-center gap-3 rounded-2xl border border-card-border bg-surface-muted p-3 text-left text-sm font-bold text-text-main transition-colors hover:border-accent"
+          >
+            <span className="h-5 w-5 rounded-lg border-2 border-accent/25 bg-card" />
+            {suggestion}
+          </button>
+        ))}
+      </div>
+      <button onClick={nextStep} disabled={!taskTitle.trim()} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+        Add Action
+      </button>
+    </div>
+  );
+}
+
+function SetupPrivacyScreen({ visibility, setVisibility, nextStep }: { visibility: 'private' | 'circle' | 'public'; setVisibility: (value: 'private' | 'circle' | 'public') => void; nextStep: () => void }) {
+  return (
+    <div className="flex h-full flex-col justify-center space-y-5">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Privacy default</p>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Who should see your progress?</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Private journals, notes, messages, and private logs stay private unless you choose to share them.</p>
+      </div>
+      <div className="space-y-3">
+        {PRIVACY_OPTIONS.map(option => {
+          const Icon = option.icon;
+          const selected = visibility === option.id;
+          return (
+            <button
+              key={option.id}
+              onClick={() => setVisibility(option.id)}
+              className={cn('flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all', selected ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10' : 'border-card-border bg-card')}
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent"><Icon className="h-5 w-5" /></span>
+              <span>
+                <span className="block text-sm font-black text-text-main">{option.title}</span>
+                <span className="block text-xs font-semibold text-text-secondary">{option.desc}</span>
+              </span>
+              {selected && <CheckCircle2 className="ml-auto h-5 w-5 text-accent" />}
+            </button>
+          );
+        })}
+      </div>
+      <button onClick={nextStep} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 active:scale-[0.98]">
+        Save Privacy
+      </button>
+    </div>
+  );
+}
+
+function SetupThemeScreen({ selectedTheme, setSelectedTheme, nextStep }: { selectedTheme: string; setSelectedTheme: (value: string) => void; nextStep: () => void }) {
+  return (
+    <div className="flex h-full flex-col justify-center space-y-5">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Theme</p>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Make VisNova feel like yours.</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Lavender Focus is the VisNova default.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {THEME_OPTIONS.map(theme => {
+          const selected = selectedTheme === theme.id;
+          return (
+            <button
+              key={theme.id}
+              onClick={() => setSelectedTheme(theme.id)}
+              className={cn('rounded-2xl border p-4 text-left transition-all', selected ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10' : 'border-card-border bg-card')}
+            >
+              <div className="mb-4 flex gap-2 rounded-2xl border border-card-border bg-white p-2">
+                <span className="h-10 flex-1 rounded-xl" style={{ background: theme.bg }} />
+                <span className="h-10 w-12 rounded-xl" style={{ background: theme.accent }} />
+              </div>
+              <p className="text-sm font-black text-text-main">{theme.label}</p>
+              <p className="mt-1 text-xs font-semibold text-text-secondary">{theme.desc}</p>
+            </button>
+          );
+        })}
+      </div>
+      <button onClick={nextStep} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 active:scale-[0.98]">
+        Apply Theme
+      </button>
+    </div>
+  );
+}
+
+function SetupProofScreen({ proofContent, setProofContent, onLogProof, onSkip, isSaving }: { proofContent: string; setProofContent: (value: string) => void; onLogProof: () => void; onSkip: () => void; isSaving: boolean }) {
+  return (
+    <div className="flex h-full flex-col justify-center space-y-5">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Log proof</p>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Progress starts when you log proof.</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Tasks show intention. Proof shows movement.</p>
+      </div>
+      <div className="rounded-3xl border border-card-border bg-surface-muted p-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary/60">Example</p>
+        <p className="mt-2 text-sm font-black text-text-main">Updated hero, CTA, and onboarding copy.</p>
+      </div>
+      <textarea
+        value={proofContent}
+        onChange={event => setProofContent(event.target.value)}
+        placeholder="What did you do today? You can keep it private."
+        className="min-h-28 rounded-2xl border border-card-border bg-card p-4 text-sm font-bold leading-6 text-text-main outline-none transition-all placeholder:text-text-secondary/40 focus:border-accent focus:ring-4 focus:ring-accent/10"
+      />
+      <button onClick={onLogProof} disabled={!proofContent.trim() || isSaving} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+        {isSaving ? 'Logging...' : 'Log First Proof'}
+      </button>
+      <button onClick={onSkip} disabled={isSaving} className="text-xs font-black uppercase tracking-widest text-text-secondary/55 hover:text-accent">
+        I&apos;ll do this later
+      </button>
+    </div>
+  );
+}
+
 function Screen2({ interests, toggleInterest, interestOptions, nextStep }: any) {
   return (
     <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
@@ -1501,19 +2061,14 @@ function Screen9({ handleForceStart }: { handleForceStart: () => void }) {
 export default function OnboardingFlow() {
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
-  const { completeOnboarding, addToast, session, signOut, addVision } = useStore();
+  const { completeOnboarding, addToast, session, signOut, addVision, addVisionTask, createProgressLog, setTheme } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const verifiedLogin = searchParams.get('verified') === 'true';
 
   const handleForceStart = async () => {
-    if (!username) {
-        setStep(8);
-        addToast({ type: 'info', title: 'Finalization required', description: 'Please set your identity handle first.' });
-        return;
-    }
-    await handleComplete();
+    await handleComplete(false);
   };
 
   // Save step to backend (removed localStorage sync)
@@ -1539,6 +2094,16 @@ export default function OnboardingFlow() {
   const [gender, setGender] = useState<ProfileChoice>('male');
   const [role, setRole] = useState('');
   const [avatar, setAvatar] = useState(() => getRandomVisNovaAvatar());
+  const [onboardingPath, setOnboardingPath] = useState<OnboardingPathId>('builder');
+  const [firstVisionTitle, setFirstVisionTitle] = useState('');
+  const [firstTaskTitle, setFirstTaskTitle] = useState('');
+  const [defaultVisibility, setDefaultVisibility] = useState<'private' | 'circle' | 'public'>('private');
+  const [selectedTheme, setSelectedTheme] = useState('lavender');
+  const [proofContent, setProofContent] = useState('');
+  const [firstVisionId, setFirstVisionId] = useState<string | null>(null);
+  const [firstTaskId, setFirstTaskId] = useState<string | null>(null);
+  const [hasLoggedFirstProof, setHasLoggedFirstProof] = useState(false);
+  const [isOnboardingSaving, setIsOnboardingSaving] = useState(false);
 
   // Sync state from session
   useEffect(() => {
@@ -1626,13 +2191,18 @@ export default function OnboardingFlow() {
     });
   }, []);
 
-  const handleComplete = async (hasInitialVision = false) => {
-    if (!username || username.trim().length === 0) {
-        if (step !== 8) setStep(8);
-        addToast({ type: 'info', title: 'Username required', description: 'Please choose a unique identifying handle before proceeding.' });
-        return;
-    }
-    
+  const getGeneratedUsername = () => {
+    const base = (username || email.split('@')[0] || name || 'visionary')
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 16) || 'visionary';
+    const suffix = session?.user?.id?.replace(/-/g, '').slice(0, 6) || Math.random().toString(36).slice(2, 8);
+    return `${base}_${suffix}`.slice(0, 24);
+  };
+
+  const handleComplete = async (hasInitialVision = Boolean(firstVisionId)) => {
     setStep(9.5);
 
     try {
@@ -1641,15 +2211,21 @@ export default function OnboardingFlow() {
       await completeOnboarding({
         name: name || 'Visionary Explorer',
         email: email || currentUser?.email || 'explorer@visnova.ai',
-        interests,
-        intent,
+        interests: Array.from(new Set([onboardingPath, ...interests])).filter(Boolean),
+        intent: firstVisionTitle || intent,
         commitment,
-        username,
+        username: getGeneratedUsername(),
         bio,
         gender,
-        role,
+        role: role || getOnboardingPath(onboardingPath).label,
         avatar,
-        hasInitialVision
+        hasInitialVision,
+        userType: onboardingPath,
+        defaultVisibility,
+        selectedTheme,
+        firstVisionId,
+        firstTaskId,
+        hasLoggedFirstProof
       });
     } catch (err) {
       console.error('Finalization failed:', err);
@@ -1657,22 +2233,34 @@ export default function OnboardingFlow() {
     }
   };
 
-  const handleCreateFirstVision = async (visionTitle: string) => {
+  const createFirstVisionIfNeeded = async (overrideTitle?: string) => {
+    if (firstVisionId) return firstVisionId;
+    const cleanTitle = sanitizeText(overrideTitle || firstVisionTitle || intent || 'My first Vision').slice(0, 120) || 'My first Vision';
+    const vision = await addVision({
+      title: cleanTitle,
+      description: getOnboardingPath(onboardingPath).tone,
+      progress: 0,
+      status: 'planning',
+      category: onboardingPath,
+      tags: Array.from(new Set([onboardingPath, ...interests])).filter(Boolean),
+      tasks: [],
+      notes: '',
+      proof: [],
+      elements: [],
+      visibility: defaultVisibility
+    });
+    setFirstVisionId(vision.id);
+    trackBetaEvent(session?.user?.id, 'onboarding_vision_created', { path: onboardingPath });
+    return vision.id;
+  };
+
+  const handleCreateFirstVision = async (overrideTitle?: string) => {
     try {
-      const cleanTitle = sanitizeText(visionTitle).slice(0, 120) || 'My first Vision';
-      await addVision({
-        title: cleanTitle,
-        description: commitment ? `Commitment level: ${commitment}` : '',
-        progress: 0,
-        status: 'planning',
-        tags: interests,
-        tasks: [],
-        notes: '',
-        proof: [],
-        elements: [],
-        visibility: 'private'
-      });
-      await handleComplete(true);
+      const nextTitle = overrideTitle || firstVisionTitle;
+      if (!nextTitle.trim()) return;
+      if (overrideTitle) setFirstVisionTitle(overrideTitle);
+      await createFirstVisionIfNeeded(nextTitle);
+      nextStep(6);
     } catch (err) {
       console.error('Failed to create first Vision:', err);
       addToast({
@@ -1681,6 +2269,77 @@ export default function OnboardingFlow() {
         description: err instanceof Error ? err.message : 'Could not create your first Vision.'
       });
     }
+  };
+
+  const handleCreateFirstTask = async () => {
+    if (!firstTaskTitle.trim()) return;
+    setIsOnboardingSaving(true);
+    try {
+      const visionId = await createFirstVisionIfNeeded();
+      if (!firstTaskId) {
+        const task = await addVisionTask(visionId, {
+          text: sanitizeText(firstTaskTitle, 160),
+          description: 'Created during onboarding.',
+          status: 'today',
+          priority: 'medium',
+          progressPercent: 0,
+          tags: [onboardingPath],
+          checklist: [],
+          visibility: defaultVisibility
+        } as any);
+        if (task && typeof task !== 'boolean') {
+          setFirstTaskId(task.id);
+          trackBetaEvent(session?.user?.id, 'onboarding_task_created', { path: onboardingPath });
+        }
+      }
+      nextStep(7);
+    } catch (err) {
+      console.error('Failed to create first task:', err);
+      addToast({ type: 'error', title: 'Action failed', description: 'Could not create your first next move.' });
+    } finally {
+      setIsOnboardingSaving(false);
+    }
+  };
+
+  const handlePrivacyContinue = () => {
+    trackBetaEvent(session?.user?.id, 'onboarding_privacy_selected', { visibility: defaultVisibility });
+    nextStep(8);
+  };
+
+  const handleThemeContinue = () => {
+    setTheme(selectedTheme as any);
+    trackBetaEvent(session?.user?.id, 'onboarding_theme_selected', { theme: selectedTheme });
+    nextStep(9);
+  };
+
+  const handleLogFirstProof = async () => {
+    if (!proofContent.trim()) return;
+    setIsOnboardingSaving(true);
+    try {
+      const visionId = await createFirstVisionIfNeeded();
+      const saved = await createProgressLog({
+        content: proofContent,
+        visionId,
+        taskId: firstTaskId || undefined,
+        visibility: defaultVisibility,
+        logType: 'progress',
+        metadata: { source: 'onboarding_first_proof', path: onboardingPath }
+      } as any);
+      if (saved) {
+        setHasLoggedFirstProof(true);
+        trackBetaEvent(session?.user?.id, 'onboarding_first_proof_logged', { path: onboardingPath });
+      }
+      nextStep(9.35);
+    } finally {
+      setIsOnboardingSaving(false);
+    }
+  };
+
+  const setupVisualBase = {
+    selectedPath: onboardingPath,
+    visionTitle: firstVisionTitle,
+    taskTitle: firstTaskTitle,
+    selectedTheme
   };
 
 
@@ -1732,14 +2391,94 @@ export default function OnboardingFlow() {
         />;
       case 13: return <ScreenResetPassword nextStep={nextStep} />;
       case 2: return <ScreenVerify email={email} nextStep={nextStep} onChangeEmail={() => nextStep(1)} />;
-      case 3: return <Screen2 interests={interests} toggleInterest={toggleInterest} interestOptions={interestOptions} nextStep={nextStep} />;
-      case 4: return <Screen3 intent={intent} setIntent={setIntent} nextStep={nextStep} />;
-      case 5: return <Screen4 commitment={commitment} setCommitment={setCommitment} nextStep={nextStep} />;
-      case 6: return <Screen5 interests={interests} intent={intent} nextStep={nextStep} />;
-      case 7: return <Screen6 nextStep={nextStep} />;
-      case 8: return <Screen7 avatar={avatar} setAvatar={setAvatar} name={name} setName={setName} username={username} setUsername={setUsername} bio={bio} setBio={setBio} gender={gender} setGender={setGender} currentUserId={session?.user?.id} nextStep={nextStep} />;
-      case 9: return <Screen8 role={role} setRole={setRole} ROLE_CATEGORIES={PROFILE_ROLE_CATEGORIES} nextStep={() => nextStep(9.25)} />;
-      case 9.25: return <ScreenCreateFirstVision onCreate={handleCreateFirstVision} onSkip={() => handleComplete(false)} />;
+      case 3:
+        return (
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'welcome', title: 'Start small', subtitle: 'Build your system one proof log at a time.' }}>
+            <SetupWelcomeScreen nextStep={() => {
+              trackBetaEvent(session?.user?.id, 'onboarding_started', { source: 'setup_welcome' });
+              nextStep(4);
+            }} />
+          </SetupShell>
+        );
+      case 4:
+        return (
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'path', title: 'Personalize', subtitle: getOnboardingPath(onboardingPath).tone }}>
+            <SetupPathScreen selectedPath={onboardingPath} setSelectedPath={(path) => {
+              setOnboardingPath(path);
+              trackBetaEvent(session?.user?.id, 'onboarding_path_selected', { path });
+            }} nextStep={() => nextStep(5)} />
+          </SetupShell>
+        );
+      case 5:
+        return (
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'vision', title: 'Your Vision', subtitle: firstVisionTitle || 'Name the future you want to move first.' }}>
+            <SetupVisionScreen selectedPath={onboardingPath} title={firstVisionTitle} setTitle={setFirstVisionTitle} nextStep={handleCreateFirstVision} />
+          </SetupShell>
+        );
+      case 6:
+        return (
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'task', title: 'Your next move', subtitle: firstTaskTitle || 'Make it small enough to do today.' }}>
+            <SetupTaskScreen selectedPath={onboardingPath} taskTitle={firstTaskTitle} setTaskTitle={setFirstTaskTitle} nextStep={handleCreateFirstTask} />
+          </SetupShell>
+        );
+      case 7:
+        return (
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'privacy', title: 'Private by default', subtitle: 'You control what becomes visible.' }}>
+            <SetupPrivacyScreen visibility={defaultVisibility} setVisibility={setDefaultVisibility} nextStep={handlePrivacyContinue} />
+          </SetupShell>
+        );
+      case 8:
+        return (
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'theme', title: 'Your workspace', subtitle: 'A calm interface for repeat progress.' }}>
+            <SetupThemeScreen selectedTheme={selectedTheme} setSelectedTheme={setSelectedTheme} nextStep={handleThemeContinue} />
+          </SetupShell>
+        );
+      case 9:
+        return (
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'proof', title: 'Proof habit', subtitle: 'Tasks show intention. Proof shows movement.' }}>
+            <SetupProofScreen
+              proofContent={proofContent}
+              setProofContent={setProofContent}
+              onLogProof={handleLogFirstProof}
+              onSkip={() => {
+                trackBetaEvent(session?.user?.id, 'onboarding_first_proof_prompt_seen', { skipped: true, path: onboardingPath });
+                nextStep(9.35);
+              }}
+              isSaving={isOnboardingSaving}
+            />
+          </SetupShell>
+        );
+      case 9.25: return <ScreenCreateFirstVision onCreate={(title) => handleCreateFirstVision(title)} onSkip={() => handleComplete(false)} />;
+      case 9.35:
+        return (
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'complete', title: 'You are set', subtitle: 'Your first growth system is ready.' }}>
+            <div className="flex h-full flex-col justify-center space-y-5">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Ready</p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Your system is ready.</h2>
+                <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Go to Dashboard and keep today&apos;s proof visible.</p>
+              </div>
+              <div className="space-y-3">
+                {[
+                  ['Vision created', firstVisionTitle || 'Your first Vision'],
+                  ['Next move ready', firstTaskTitle || 'Your first action'],
+                  ['Proof habit', hasLoggedFirstProof ? 'First proof logged' : "Log today's proof from Dashboard"]
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center gap-3 rounded-2xl border border-card-border bg-surface-muted p-4">
+                    <CheckCircle2 className="h-5 w-5 text-accent" />
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest text-accent">{label}</p>
+                      <p className="text-sm font-black text-text-main">{value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => handleComplete(true)} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 active:scale-[0.98]">
+                Go to Dashboard
+              </button>
+            </div>
+          </SetupShell>
+        );
       case 9.5: return <Screen9 handleForceStart={handleForceStart} />;
       case 10: return null; 
       default:
@@ -1764,7 +2503,7 @@ export default function OnboardingFlow() {
     }
   };
 
-  const usesIntroCard = [1, 2, 3, 11, 12, 13].includes(step);
+  const usesIntroCard = [1, 2, 11, 12, 13].includes(step);
 
   return (
     <div className="flex min-h-[100dvh] flex-col overflow-hidden bg-bg-base p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] font-sans sm:p-4">

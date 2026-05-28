@@ -4,13 +4,18 @@ import {
   ChevronRight, 
   ChevronLeft, 
   X, 
-  ArrowRight, 
   Target, 
   Sparkles,
   Zap,
   LayoutDashboard,
-  Rocket,
-  CheckCircle2
+  CheckCircle2,
+  Activity,
+  ListChecks,
+  NotebookPen,
+  Users,
+  WalletCards,
+  ShieldCheck,
+  CircleDot
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -28,41 +33,78 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: 'body',
     title: 'Welcome to VisNova',
-    content: "Let's take a quick walk through your new visionary command center. We'll show you how to turn your boldest ideas into reality.",
+    content: 'A short guide to the loop: choose a Vision, do one next move, log proof, and watch momentum become visible.',
     icon: Sparkles
   },
   {
     target: '#nav-dashboard',
-    title: 'Dashboard Pulse',
-    content: 'Track your daily trajectory, cognitive vitals, and system growth from here.',
+    title: 'Command Center',
+    content: 'Your Dashboard keeps today simple: active Vision, next move, and the Log Proof action.',
     icon: LayoutDashboard,
-    route: '/'
+    route: '/dashboard'
+  },
+  {
+    target: 'body',
+    title: 'Log Proof',
+    content: 'Tasks show intention. Proof shows what actually changed. This is the habit VisNova is built around.',
+    icon: Activity,
+    route: '/dashboard'
+  },
+  {
+    target: '#nav-growth',
+    title: 'Progress Pulse',
+    content: 'Progress Pulse turns logs, tasks, streaks, resources, and deadlines into a visible growth layer.',
+    icon: Zap,
+    route: '/growth'
   },
   {
     target: '#nav-vision',
-    title: 'Goal Ecosystem',
-    content: 'Manage your high-impact vision boards and map out long-term strategic milestones.',
+    title: 'Vision Board',
+    content: 'Build a visual plan with sections, notes, tasks, resources, and proof connected to your Vision.',
     icon: Target,
     route: '/visions'
   },
   {
-    target: '#add-vision-btn',
-    title: 'Manifest New Vision',
-    content: 'Create your first vision here. Define milestones and activate tracking for this sector.',
-    icon: Rocket,
-    route: '/visions'
+    target: '#nav-tasks',
+    title: 'Tasks',
+    content: 'Organize next moves by status, then turn finished work into progress proof.',
+    icon: ListChecks,
+    route: '/tasks'
   },
   {
-    target: '#nav-focus',
-    title: 'Deep Sprint Protocol',
-    content: 'Activate mission-critical focus mode to eliminate cognitive noise and execute with precision.',
-    icon: Zap
+    target: '#nav-library',
+    title: 'Notes & Journal',
+    content: 'Capture ideas and reflection, then connect them back to the Vision they support.',
+    icon: NotebookPen,
+    route: '/library'
+  },
+  {
+    target: '#nav-circle',
+    title: 'Circle Momentum',
+    content: 'Accountability stays friendly: see visible momentum from your Circle without exposing private logs.',
+    icon: Users,
+    route: '/circle/momentum'
+  },
+  {
+    target: '#nav-money',
+    title: 'Resources & Money',
+    content: 'Track what a Vision needs, save resources, and keep money goals connected to progress.',
+    icon: WalletCards,
+    route: '/money'
   },
   {
     target: 'body',
-    title: "Mission Briefing Complete",
-    content: "System stabilized. You're now authorized to build. Start by manifesting your first vision.",
-    icon: Sparkles
+    title: 'Privacy Controls',
+    content: 'VisNova is private by default. You choose what stays private, Circle-visible, or public.',
+    icon: ShieldCheck,
+    route: '/settings'
+  },
+  {
+    target: 'body',
+    title: 'You are ready',
+    content: 'Start with one proof log today. Small proof, repeated, becomes the story of your growth.',
+    icon: CircleDot,
+    route: '/dashboard'
   }
 ];
 
@@ -78,7 +120,7 @@ export function InteractiveTour() {
 
   useEffect(() => {
     if (!tutorialCompleted && hasCompletedOnboarding) {
-      const timer = setTimeout(() => setIsVisible(true), 1000);
+      const timer = setTimeout(() => setIsVisible(true), 900);
       return () => clearTimeout(timer);
     } else if (tutorialCompleted) {
       setIsVisible(false);
@@ -221,7 +263,7 @@ export function InteractiveTour() {
                   y={targetRect.top - 8} 
                   width={targetRect.width + 16} 
                   height={targetRect.height + 16} 
-                  rx="16" 
+              rx="24"
                   fill="black" 
                 />
               )}
@@ -230,7 +272,7 @@ export function InteractiveTour() {
           <rect 
             width="100%" 
             height="100%" 
-            fill="rgba(0, 0, 0, 0.4)" 
+            fill="rgba(37, 22, 61, 0.34)"
             mask="url(#tour-mask)" 
             className="transition-all duration-500"
           />
@@ -249,13 +291,13 @@ export function InteractiveTour() {
               width: targetRect.width + 16,
               height: targetRect.height + 16,
             }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="absolute rounded-2xl border-2 border-accent z-[10000] pointer-events-none"
+            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute rounded-[1.6rem] border border-accent/80 z-[10000] pointer-events-none shadow-[0_0_0_8px_rgba(var(--accent-rgb),0.08)]"
           >
              <motion.div 
-               animate={{ opacity: [0.1, 0.2, 0.1] }}
-               transition={{ duration: 2, repeat: Infinity }}
-               className="absolute inset-0 bg-accent rounded-[14px]"
+               animate={{ opacity: [0.06, 0.12, 0.06] }}
+               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+               className="absolute inset-0 rounded-[1.5rem] bg-accent"
              />
           </motion.div>
         )}
@@ -266,7 +308,7 @@ export function InteractiveTour() {
         <motion.div
           ref={tooltipRef}
           key={currentStep}
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          initial={{ opacity: 0, y: 14, scale: 0.98 }}
           animate={{ 
             opacity: 1, 
             scale: 1,
@@ -275,17 +317,17 @@ export function InteractiveTour() {
             x: targetRect && tooltipPos.position !== 'center' ? 0 : '-50%',
             y: targetRect && tooltipPos.position !== 'center' ? 0 : '-50%'
           }}
-          transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+          transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
           className={cn(
-            "w-[calc(100vw-40px)] sm:w-[400px] bg-card border border-card-border p-6 sm:p-10 rounded-[2.5rem] shadow-2xl pointer-events-auto relative z-[10001] backdrop-blur-xl",
+            "w-[calc(100vw-32px)] sm:w-[420px] bg-card/95 border border-card-border p-5 sm:p-7 rounded-[2rem] shadow-2xl pointer-events-auto relative z-[10001] backdrop-blur-xl",
             targetRect && tooltipPos.position === 'center' && "fixed"
           )}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shadow-inner">
-                <Icon size={24} />
+              <div className="w-11 h-11 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shadow-inner">
+                <Icon size={22} />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">VisNova Tutorial</span>
@@ -298,23 +340,23 @@ export function InteractiveTour() {
               onClick={handleSkip}
               className="group h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary/40 hover:text-danger hover:bg-danger/5 transition-all flex items-center gap-2 border border-transparent hover:border-danger/10"
             >
-              Skip Tutorial
-              <X size={14} className="group-hover:rotate-90 transition-transform" />
+              Skip
+              <X size={14} />
             </button>
           </div>
 
           {/* Content */}
-          <div className="space-y-4 mb-10">
-            <h3 className="text-2xl font-black tracking-tight text-text-main uppercase leading-tight">
+          <div className="space-y-3 mb-7">
+            <h3 className="text-2xl font-black tracking-tight text-text-main leading-tight">
               {step.title}
             </h3>
-            <p className="text-sm text-text-secondary font-medium leading-relaxed">
+            <p className="text-sm text-text-secondary font-semibold leading-relaxed">
               {step.content}
             </p>
           </div>
 
           {/* Progress Bar */}
-          <div className="flex gap-1.5 mb-8">
+          <div className="flex gap-1.5 mb-7">
             {TOUR_STEPS.map((_, i) => (
               <div 
                 key={`tour-dot-${i}`} 
@@ -332,7 +374,7 @@ export function InteractiveTour() {
               {currentStep > 0 && (
                 <button
                   onClick={handleBack}
-                  className="px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-text-secondary hover:text-text-main transition-colors flex items-center gap-2"
+                className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-text-secondary hover:text-text-main transition-colors flex items-center gap-2"
                 >
                   <ChevronLeft size={16} /> Back
                 </button>
@@ -342,7 +384,7 @@ export function InteractiveTour() {
             <div className="flex gap-3">
               <button
                 onClick={handleNext}
-                className="px-10 py-4 bg-text-main text-bg-base text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-3 group"
+                className="px-8 py-4 bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-[0.22em] rounded-2xl active:scale-[0.98] transition-all shadow-2xl shadow-accent/20 flex items-center gap-3 group"
               >
                 {currentStep === TOUR_STEPS.length - 1 ? (
                   <>

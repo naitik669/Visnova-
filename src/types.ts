@@ -787,7 +787,7 @@ export interface AppState {
   deleteVisionTask: (visionId: string, taskId: string) => Promise<boolean>;
   acceptVision: (visionId: string) => Promise<void>;
   fetchUser: () => Promise<void>;
-  completeOnboarding: (data: { name: string, email: string, interests: string[], intent: string, commitment: string, username?: string, gender?: 'male' | 'female' | 'custom', bio?: string, tags?: string[], avatar?: string, role?: string, password?: string, hasInitialVision?: boolean }) => Promise<void>;
+  completeOnboarding: (data: { name: string, email: string, interests: string[], intent: string, commitment: string, username?: string, gender?: 'male' | 'female' | 'custom', bio?: string, tags?: string[], avatar?: string, role?: string, password?: string, hasInitialVision?: boolean, userType?: string, defaultVisibility?: 'private' | 'circle' | 'public', selectedTheme?: string, firstVisionId?: string | null, firstTaskId?: string | null, hasLoggedFirstProof?: boolean }) => Promise<void>;
   session: any | null;
   isFocusMode: boolean;
   focusSession: FocusSession;

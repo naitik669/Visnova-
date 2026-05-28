@@ -5627,7 +5627,25 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   completeOnboarding: async (data: any) => {
-    const { name, email, interests, intent, commitment, username, bio, avatar, role, gender, hasInitialVision } = data;
+    const {
+      name,
+      email,
+      interests,
+      intent,
+      commitment,
+      username,
+      bio,
+      avatar,
+      role,
+      gender,
+      hasInitialVision,
+      userType,
+      defaultVisibility,
+      selectedTheme,
+      firstVisionId,
+      firstTaskId,
+      hasLoggedFirstProof
+    } = data;
     const session = get().session;
     const userId = session?.user?.id;
 
@@ -5670,14 +5688,59 @@ export const useStore = create<AppState>((set, get) => ({
         onboarding_completed_at: new Date().toISOString(),
         main_goal: intent || '',
         interests: interests || [],
+        user_type: userType || null,
+        default_visibility: normalizeVisibility(defaultVisibility || getDefaultVisibility()),
+        progress_log_default_visibility: normalizeVisibility(defaultVisibility || getDefaultVisibility()),
+        selected_theme: selectedTheme || get().theme || 'lavender',
+        first_vision_id: firstVisionId || null,
+        first_task_id: firstTaskId || null,
+        metadata: {
+          ...(get().profile?.metadata || {}),
+          onboarding: {
+            path: userType || null,
+            has_logged_first_proof: Boolean(hasLoggedFirstProof),
+            completed_version: 'activation_v2'
+          }
+        },
         updated_at: new Date().toISOString()
       };
 
-      const { error: profileError } = await supabase
+      let { error: profileError } = await supabase
         .from('profiles')
         .upsert(profilePayload, { onConflict: 'id' });
 
+      if (profileError) {
+        const missingOptionalOnboardingColumn = [
+          'user_type',
+          'selected_theme',
+          'first_vision_id',
+          'first_task_id',
+          'metadata',
+          'default_visibility',
+          'progress_log_default_visibility'
+        ].some(column => isMissingColumnError(profileError, column));
+
+        if (missingOptionalOnboardingColumn) {
+          const legacyPayload = { ...profilePayload } as any;
+          delete legacyPayload.user_type;
+          delete legacyPayload.default_visibility;
+          delete legacyPayload.progress_log_default_visibility;
+          delete legacyPayload.selected_theme;
+          delete legacyPayload.first_vision_id;
+          delete legacyPayload.first_task_id;
+          delete legacyPayload.metadata;
+          const retry = await supabase
+            .from('profiles')
+            .upsert(legacyPayload, { onConflict: 'id' });
+          profileError = retry.error;
+        }
+      }
+
       if (profileError) throw profileError;
+
+      if (selectedTheme) {
+        get().setTheme(selectedTheme as any);
+      }
 
       if (intent?.trim() && !hasInitialVision) {
         const visionPayload: any = {
@@ -5736,7 +5799,11 @@ export const useStore = create<AppState>((set, get) => ({
       get().addToast({ type: 'success', title: 'Onboarding complete', description: 'Welcome to VisNova.' });
       trackBetaEvent(userId, 'onboarding_completed', {
         interests_count: Array.isArray(interests) ? interests.length : 0,
-        created_initial_vision: Boolean(hasInitialVision || intent?.trim())
+        created_initial_vision: Boolean(hasInitialVision || intent?.trim()),
+        path: userType || null,
+        selected_theme: selectedTheme || null,
+        default_visibility: defaultVisibility || null,
+        first_proof_logged: Boolean(hasLoggedFirstProof)
       });
       trackBetaEvent(userId, 'signup_completed', {
         interests_count: Array.isArray(interests) ? interests.length : 0,
