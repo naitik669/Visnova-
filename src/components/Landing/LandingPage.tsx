@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, useScroll, useTransform } from 'motion/react';
 import {
   ArrowRight,
   BarChart3,
@@ -110,10 +110,10 @@ function markLandingSeen() {
 function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 28, filter: 'blur(6px)' }}
-      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      initial={{ opacity: 0, y: 34, scale: 0.98, filter: 'blur(8px)' }}
+      whileInView={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
       viewport={{ once: true, margin: '-90px' }}
-      transition={{ duration: 0.7, ease: 'easeOut', delay }}
+      transition={{ duration: 0.78, ease: [0.22, 1, 0.36, 1], delay }}
       className={className}
     >
       {children}
@@ -313,6 +313,10 @@ function HeroDashboardMockup() {
 export default function LandingPage() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const { scrollYProgress } = useScroll();
+  const heroGlowY = useTransform(scrollYProgress, [0, 0.24], [0, 90]);
+  const heroMockupY = useTransform(scrollYProgress, [0, 0.28], [0, -42]);
+  const heroOrbitOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0.35]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 18);
@@ -338,6 +342,10 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#FBFAFF] font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white">
+      <motion.div
+        className="fixed left-0 top-0 z-[70] h-1 w-full origin-left bg-gradient-to-r from-[#6D5DF6] via-[#8B7CFF] to-[#C8BFFF]"
+        style={{ scaleX: scrollYProgress }}
+      />
       <nav
         className={cn(
           'sticky top-0 z-50 transition-all duration-300',
@@ -377,10 +385,15 @@ export default function LandingPage() {
       <main>
         <section id="hero" className="relative overflow-hidden px-5 pb-14 pt-16 text-center sm:pt-20">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_0%,#F0ECFF_0%,#FFFFFF_44%,#FFFFFF_100%)]" />
+          <motion.div
+            aria-hidden="true"
+            className="absolute left-1/2 top-32 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-[#DCD6FF]/45 blur-3xl"
+            style={{ y: heroGlowY }}
+          />
           <motion.div className="absolute left-[14%] top-28 h-2 w-2 rotate-45 bg-[#B8AEFF]" animate={{ y: [0, -10, 0], opacity: [0.35, 1, 0.35] }} transition={{ duration: 4, repeat: Infinity }} />
           <motion.div className="absolute right-[21%] top-40 h-2 w-2 rotate-45 bg-[#B8AEFF]" animate={{ y: [0, 12, 0], opacity: [0.35, 1, 0.35] }} transition={{ duration: 4.5, repeat: Infinity }} />
-          <div className="absolute left-[8%] top-[420px] hidden h-64 w-[520px] -rotate-12 rounded-[50%] border border-[#DDD6FE]/70 lg:block" />
-          <div className="absolute right-[8%] top-[420px] hidden h-64 w-[520px] rotate-12 rounded-[50%] border border-[#DDD6FE]/70 lg:block" />
+          <motion.div style={{ y: heroMockupY, opacity: heroOrbitOpacity }} className="absolute left-[8%] top-[420px] hidden h-64 w-[520px] -rotate-12 rounded-[50%] border border-[#DDD6FE]/70 lg:block" />
+          <motion.div style={{ y: heroMockupY, opacity: heroOrbitOpacity }} className="absolute right-[8%] top-[420px] hidden h-64 w-[520px] rotate-12 rounded-[50%] border border-[#DDD6FE]/70 lg:block" />
 
           <Reveal className="mx-auto max-w-4xl">
             <motion.span className="inline-flex items-center gap-2 rounded-full bg-[#F4F0FF] px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6D5DF6]" whileHover={{ scale: 1.04 }}>
@@ -413,6 +426,10 @@ export default function LandingPage() {
               <Reveal key={item.title} delay={index * 0.06}>
                 <motion.article
                   className="h-full rounded-[1.65rem] border border-[#E3E6F0] bg-white p-5 shadow-[0_18px_50px_rgba(41,42,65,0.07)]"
+                  initial={{ opacity: 0, y: 28, rotateX: -8 }}
+                  whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+                  viewport={{ once: true, margin: '-100px' }}
+                  transition={{ duration: 0.7, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
                   whileHover={{ y: -7, boxShadow: '0 26px 70px rgba(109,93,246,0.12)' }}
                 >
                   <div className="rounded-[1.25rem] border border-[#EDF0F7] bg-[#F8F9FF] p-4">
@@ -450,7 +467,15 @@ export default function LandingPage() {
           </Reveal>
         </section>
 
-        <section id="features" className="px-5 py-24">
+        <section id="features" className="relative overflow-hidden px-5 py-24">
+          <motion.div
+            aria-hidden="true"
+            className="absolute right-[-8rem] top-20 h-80 w-80 rounded-full bg-[#EEE9FF] blur-3xl"
+            initial={{ opacity: 0, scale: 0.75 }}
+            whileInView={{ opacity: 0.8, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1 }}
+          />
           <Reveal className="mx-auto max-w-3xl text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6D5DF6]">+ Powerful Features</p>
             <h2 className="mt-4 text-4xl font-black tracking-[-0.05em] text-[#12122B] sm:text-5xl">Everything You Need to Grow</h2>
@@ -461,9 +486,15 @@ export default function LandingPage() {
             {featureCards.map((feature, index) => (
               <Reveal key={feature.title} delay={index * 0.04}>
                 <motion.article className={cn('group min-h-[214px] rounded-[1.5rem] border border-[#E6E8F2] bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.04)]', index === 2 && 'md:row-span-2 md:min-h-[450px]', index === 5 && 'md:bg-[#F5F3FF]')} whileHover={{ y: -8, rotateX: 2, rotateY: -2, boxShadow: '0 24px 70px rgba(109,93,246,0.14)' }}>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F0ECFF] text-[#6D5DF6]">
+                  <motion.div
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F0ECFF] text-[#6D5DF6]"
+                    initial={{ scale: 0.5, rotate: -14 }}
+                    whileInView={{ scale: 1, rotate: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ type: 'spring', stiffness: 220, damping: 16, delay: index * 0.04 }}
+                  >
                     <feature.icon className="h-6 w-6" />
-                  </div>
+                  </motion.div>
                   <h3 className="mt-7 text-xl font-black tracking-[-0.03em] text-[#12122B]">{feature.title}</h3>
                   <p className="mt-3 text-sm font-medium leading-6 text-[#66708A]">{feature.copy}</p>
                   {index === 2 && (
@@ -519,8 +550,8 @@ export default function LandingPage() {
             <p className="mt-4 text-lg font-medium text-[#66708A]">Every note, task, resource, and proof log connects back to the Vision it supports.</p>
           </Reveal>
           <Reveal className="relative mx-auto mt-12 flex min-h-[260px] max-w-4xl items-center justify-center overflow-hidden rounded-[2rem] border border-[#E6E8F2] bg-white shadow-[0_22px_80px_rgba(32,30,70,0.05)]">
-            <div className="absolute h-48 w-48 rounded-full border border-dashed border-[#DCD6FF]" />
-            <div className="absolute h-72 w-72 rounded-full border border-dashed border-[#ECE8FF]" />
+            <motion.div className="absolute h-48 w-48 rounded-full border border-dashed border-[#DCD6FF]" animate={{ rotate: 360 }} transition={{ duration: 32, repeat: Infinity, ease: 'linear' }} />
+            <motion.div className="absolute h-72 w-72 rounded-full border border-dashed border-[#ECE8FF]" animate={{ rotate: -360 }} transition={{ duration: 44, repeat: Infinity, ease: 'linear' }} />
             <motion.div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-[1.6rem] bg-gradient-to-br from-[#6D5DF6] to-[#9B8CFF] text-white shadow-[0_18px_50px_rgba(109,93,246,0.3)]" whileHover={{ scale: 1.08, rotate: 3 }}>
               <BrandLogo className="h-14 w-14" />
             </motion.div>
@@ -557,7 +588,13 @@ export default function LandingPage() {
           </Reveal>
 
           <div className="relative mx-auto mt-14 grid max-w-5xl gap-8 md:grid-cols-3">
-            <div className="absolute left-[20%] right-[20%] top-14 hidden border-t-2 border-dashed border-[#D7D0FF] md:block" />
+            <motion.div
+              className="absolute left-[20%] right-[20%] top-14 hidden origin-left border-t-2 border-dashed border-[#D7D0FF] md:block"
+              initial={{ scaleX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            />
             {steps.map((step, index) => (
               <Reveal key={step.title} delay={index * 0.08} className="relative">
                 <motion.article className="relative rounded-[1.5rem] border border-[#E6E8F2] bg-white p-8 text-center shadow-[0_18px_60px_rgba(32,30,70,0.05)]" whileHover={{ y: -7 }}>
@@ -606,13 +643,13 @@ export default function LandingPage() {
           <div className="mx-auto mt-10 grid max-w-5xl gap-3 md:grid-cols-2">
             {faqs.map(([question, answer], index) => (
               <Reveal key={question} delay={index * 0.03}>
-                <details className="group rounded-2xl border border-[#E2E5EE] bg-white px-5 py-4 shadow-sm">
+                <motion.details className="group rounded-2xl border border-[#E2E5EE] bg-white px-5 py-4 shadow-sm" whileHover={{ y: -3, borderColor: '#CFC7FF' }}>
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-black text-[#12122B]">
                     {question}
                     <ChevronDown className="h-4 w-4 text-[#6D5DF6] transition group-open:rotate-180" />
                   </summary>
                   <p className="mt-3 text-sm font-medium leading-6 text-[#66708A]">{answer}</p>
-                </details>
+                </motion.details>
               </Reveal>
             ))}
           </div>
