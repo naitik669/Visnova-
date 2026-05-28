@@ -30,7 +30,6 @@ const navLinks = [
   ['Home', 'hero'],
   ['Features', 'features'],
   ['How It Works', 'how'],
-  ['Pricing', 'pricing'],
   ['About', 'why'],
   ['Resources', 'integrations'],
 ];
@@ -72,28 +71,6 @@ const integrations = [
   ['Resources', Plug],
   ['Progress', BarChart3],
   ['Proof', ShieldCheck],
-];
-
-const pricingPlans = [
-  {
-    name: 'Starter',
-    price: 'Free',
-    copy: 'For getting your first Vision moving.',
-    items: ['1 active Vision', 'Daily proof logs', 'Notes and journal basics', 'Private progress timeline'],
-  },
-  {
-    name: 'Builder',
-    price: '$8',
-    copy: 'For consistent builders and beta teams.',
-    featured: true,
-    items: ['Unlimited Visions', 'Growth Tracker insights', 'Circle accountability', 'Vision Board templates', 'Resource goals'],
-  },
-  {
-    name: 'Circle',
-    price: '$18',
-    copy: 'For creators, founders, and small accountability groups.',
-    items: ['Shared proof sprints', 'Circle Momentum board', 'Advanced privacy controls', 'Priority beta access'],
-  },
 ];
 
 const faqs = [
@@ -172,15 +149,15 @@ function HeroDashboardMockup() {
         <div className="relative grid min-h-[520px] grid-cols-[58px_1fr] gap-5 rounded-[2rem] bg-[#FBF8FF] sm:grid-cols-[74px_1fr]">
           <aside className="flex flex-col items-center justify-between rounded-l-[2rem] border-r border-[#E3D9F0] bg-[#EFE7F4] py-6">
             <div className="flex flex-col items-center gap-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#D8C9E0] text-[#62456B]">
-                <span className="h-3 w-3 rounded-full bg-[#62456B]" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E5DFFF] text-[#6D5DF6]">
+                <span className="h-3 w-3 rounded-full bg-[#6D5DF6]" />
               </div>
               {sidebarIcons.map((Icon, index) => (
                 <motion.div
                   key={index}
                   className={cn(
                     'flex h-10 w-10 items-center justify-center rounded-2xl text-[#9B88A6]',
-                    index === 7 && 'bg-[#62456B] text-white shadow-lg shadow-[#62456B]/25'
+                    index === 7 && 'bg-[#6D5DF6] text-white shadow-lg shadow-[#6D5DF6]/25'
                   )}
                   whileHover={{ scale: 1.12, x: 3 }}
                 >
@@ -195,51 +172,51 @@ function HeroDashboardMockup() {
             <div className="space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.34em] text-[#9C8EA5]">System Operational</p>
-                  <h3 className="mt-2 text-4xl font-black uppercase tracking-[-0.055em] text-[#2A1934] sm:text-5xl">Hello, Naitik!</h3>
+                  <p className="text-xs font-black uppercase tracking-[0.34em] text-[#9B8CFF]">System Operational</p>
+                  <h3 className="mt-2 text-4xl font-black uppercase tracking-[-0.055em] text-[#111126] sm:text-5xl">Hello, Naitik!</h3>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <motion.span whileHover={{ y: -2 }} className="inline-flex items-center gap-2 rounded-full border border-[#E5CFCB] bg-[#FFF6F1] px-5 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#A67A3A]">
+                  <motion.span whileHover={{ y: -2 }} className="inline-flex items-center gap-2 rounded-full border border-[#E6DFFF] bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#6D5DF6]">
                     <Flame className="h-4 w-4" /> 2 Day Streak
                   </motion.span>
-                  <motion.span whileHover={{ y: -2 }} className="inline-flex items-center gap-2 rounded-full border border-[#EEE8F5] bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#62456B]">
-                    <TrendingUp className="h-4 w-4 text-[#4F8F71]" /> 1520 XP - Level 7
+                  <motion.span whileHover={{ y: -2 }} className="inline-flex items-center gap-2 rounded-full border border-[#EEE8FF] bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#5F6273]">
+                    <TrendingUp className="h-4 w-4 text-[#24B07A]" /> 1520 XP - Level 7
                   </motion.span>
                 </div>
               </div>
 
               <div className="grid gap-5 xl:grid-cols-[1fr_300px_260px]">
-                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] border border-[#E2D5E6] bg-white/78 p-7 shadow-[0_16px_50px_rgba(67,47,78,0.08)]">
-                  <p className="text-xs font-black uppercase tracking-[0.28em] text-[#9C8EA5]">Command Center</p>
+                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] border border-[#E6DFFF] bg-white/88 p-7 shadow-[0_16px_50px_rgba(109,93,246,0.08)]">
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-[#9B8CFF]">Command Center</p>
                   <div className="mt-7 flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
                     <div>
-                      <h4 className="text-4xl font-medium tracking-[-0.06em] text-[#2A1934]">Locking Beta</h4>
-                      <p className="mt-4 max-w-md text-base font-bold leading-7 text-[#8B7C91]">Pick the next action, log proof, and keep this Vision moving.</p>
+                      <h4 className="text-4xl font-medium tracking-[-0.06em] text-[#111126]">Locking Beta</h4>
+                      <p className="mt-4 max-w-md text-base font-bold leading-7 text-[#6F7284]">Pick the next action, log proof, and keep this Vision moving.</p>
                     </div>
-                    <button className="rounded-2xl bg-[#62456B] px-8 py-4 text-sm font-black uppercase tracking-wider text-white shadow-[0_16px_30px_rgba(98,69,107,0.22)]">
+                    <button className="rounded-2xl bg-[#6D5DF6] px-8 py-4 text-sm font-black uppercase tracking-wider text-white shadow-[0_16px_30px_rgba(109,93,246,0.24)]">
                       + Log Progress
                     </button>
                   </div>
-                  <div className="mt-6 rounded-[1.6rem] border border-[#D9CDDE] bg-[#FAF7FC] p-5">
+                  <div className="mt-6 rounded-[1.6rem] border border-[#DDD5FF] bg-[#F5F2FF] p-5">
                     <div className="flex items-center gap-4">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#62456B] text-white"><Zap className="h-6 w-6" /></span>
+                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#6D5DF6] text-white"><Zap className="h-6 w-6" /></span>
                       <div>
-                        <p className="text-xs font-black uppercase tracking-[0.25em] text-[#8B7C91]">Next Move</p>
-                        <p className="mt-1 text-xl font-black text-[#2A1934]">Log today's proof</p>
-                        <p className="mt-1 text-sm font-bold text-[#6F5B76]">Add one update. Private is fine; visible progress starts with the record.</p>
+                        <p className="text-xs font-black uppercase tracking-[0.25em] text-[#6D5DF6]">Next Move</p>
+                        <p className="mt-1 text-xl font-black text-[#111126]">Log today's proof</p>
+                        <p className="mt-1 text-sm font-bold text-[#5F6273]">Add one update. Private is fine; visible progress starts with the record.</p>
                       </div>
                     </div>
-                    <div className="mt-5 h-14 rounded-2xl bg-[#62456B] text-center text-sm font-black uppercase tracking-wider leading-[3.5rem] text-white">+ Log Progress</div>
+                    <div className="mt-5 h-14 rounded-2xl bg-[#6D5DF6] text-center text-sm font-black uppercase tracking-wider leading-[3.5rem] text-white">+ Log Progress</div>
                   </div>
                 </motion.div>
 
-                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] bg-[#D8C4DC] p-6 shadow-[0_18px_50px_rgba(98,69,107,0.14)]">
+                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] bg-[#F0ECFF] p-6 shadow-[0_18px_50px_rgba(109,93,246,0.12)]">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-[0.28em] text-[#62456B]">Streak Fire</p>
-                      <p className="mt-4 text-5xl font-black text-[#A67A3A]">2</p>
+                      <p className="text-xs font-black uppercase tracking-[0.28em] text-[#5F6273]">Streak Fire</p>
+                      <p className="mt-4 text-5xl font-black text-[#B47A30]">2</p>
                     </div>
-                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-[#BEA9C5] bg-[#E4D2E7] text-[#A67A3A]">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-[#DDD5FF] bg-white/65 text-[#B47A30]">
                       <Flame className="h-8 w-8" />
                     </div>
                   </div>
@@ -247,7 +224,7 @@ function HeroDashboardMockup() {
                     {streakDays.map((day, index) => (
                       <motion.span
                         key={`${day}-${index}`}
-                        className={cn('flex h-9 w-9 items-center justify-center rounded-xl text-xs font-black', index % 3 === 0 || index % 3 === 1 ? 'bg-[#A77B3A] text-white' : 'bg-white/75 text-[#9C8EA5]')}
+                        className={cn('flex h-9 w-9 items-center justify-center rounded-xl text-xs font-black', index % 3 === 0 || index % 3 === 1 ? 'bg-[#B47A30] text-white' : 'bg-white/85 text-[#A5A0B6]')}
                         initial={{ scale: 0.8, opacity: 0 }}
                         whileInView={{ scale: 1, opacity: 1 }}
                         viewport={{ once: true }}
@@ -257,19 +234,19 @@ function HeroDashboardMockup() {
                       </motion.span>
                     ))}
                   </div>
-                  <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-[#62456B]">Longest streak: 6 days</p>
+                  <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-[#5F6273]">Longest streak: 6 days</p>
                   <div className="mt-5 grid grid-cols-3 gap-3">
-                    {['7D', '30D', '100D'].map(label => <span key={label} className="rounded-xl bg-white/70 py-3 text-center text-xs font-black text-[#B9A9BE]">{label}</span>)}
+                    {['7D', '30D', '100D'].map(label => <span key={label} className="rounded-xl bg-white/75 py-3 text-center text-xs font-black text-[#B7B1C9]">{label}</span>)}
                   </div>
                 </motion.div>
 
-                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] bg-[#D8C4DC] p-7 text-center shadow-[0_18px_50px_rgba(98,69,107,0.14)]">
-                  <p className="text-xs font-black uppercase tracking-[0.28em] text-[#62456B]">Total Progress</p>
-                  <p className="mt-6 text-5xl font-black tracking-[-0.06em] text-[#62456B]">90%</p>
-                  <div className="mt-6 h-3 rounded-full bg-[#E9DDEA]">
-                    <motion.div className="h-full rounded-full bg-[#62456B]" initial={{ width: 0 }} whileInView={{ width: '90%' }} viewport={{ once: true }} transition={{ duration: 1.1, ease: 'easeOut' }} />
+                <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] bg-[#F0ECFF] p-7 text-center shadow-[0_18px_50px_rgba(109,93,246,0.12)]">
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-[#5F6273]">Total Progress</p>
+                  <p className="mt-6 text-5xl font-black tracking-[-0.06em] text-[#6D5DF6]">90%</p>
+                  <div className="mt-6 h-3 rounded-full bg-[#DDD6FF]">
+                    <motion.div className="h-full rounded-full bg-[#6D5DF6]" initial={{ width: 0 }} whileInView={{ width: '90%' }} viewport={{ once: true }} transition={{ duration: 1.1, ease: 'easeOut' }} />
                   </div>
-                  <p className="mt-6 text-base font-black leading-7 text-[#62456B]">9 / 10 Milestones<br />Secured</p>
+                  <p className="mt-6 text-base font-black leading-7 text-[#5F6273]">9 / 10 Milestones<br />Secured</p>
                 </motion.div>
               </div>
 
@@ -279,24 +256,24 @@ function HeroDashboardMockup() {
                   ['System Efficiency', 'High Performance'],
                   ['Level 7', '1520 / 2100 XP - 580 XP to next'],
                 ].map(([label, value], index) => (
-                  <motion.div key={label} whileHover={{ y: -3 }} className={cn('rounded-[1.5rem] border border-[#E2D5E6] bg-white/75 p-5', index === 2 && 'md:col-span-3')}>
+                  <motion.div key={label} whileHover={{ y: -3 }} className={cn('rounded-[1.5rem] border border-[#E6DFFF] bg-white/80 p-5', index === 2 && 'md:col-span-3')}>
                     <p className="text-xs font-black uppercase tracking-[0.24em] text-[#B8AABA]">{label}</p>
-                    <p className="mt-2 text-lg font-black text-[#2A1934]">{value}</p>
-                    {index === 2 && <div className="mt-4 h-3 rounded-full bg-[#F1EAF4]"><div className="h-full w-[13%] rounded-full bg-[#62456B]" /></div>}
+                    <p className="mt-2 text-lg font-black text-[#111126]">{value}</p>
+                    {index === 2 && <div className="mt-4 h-3 rounded-full bg-[#EFEAFF]"><div className="h-full w-[13%] rounded-full bg-[#6D5DF6]" /></div>}
                   </motion.div>
                 ))}
               </div>
             </div>
 
             <div className="space-y-5">
-              <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] border border-[#E2D5E6] bg-white/78 p-7 shadow-[0_16px_50px_rgba(67,47,78,0.08)]">
+              <motion.div whileHover={{ y: -4 }} className="rounded-[2rem] border border-[#E6DFFF] bg-white/88 p-7 shadow-[0_16px_50px_rgba(109,93,246,0.08)]">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.26em] text-[#62456B]">Progress Pulse</p>
-                    <h4 className="mt-4 text-3xl font-black tracking-[-0.05em] text-[#2A1934]">Growth Tracker</h4>
-                    <p className="mt-3 text-base font-black text-[#6F5B76]">2-day streak - 3 logs - 100% weekly</p>
+                    <p className="text-xs font-black uppercase tracking-[0.26em] text-[#6D5DF6]">Progress Pulse</p>
+                    <h4 className="mt-4 text-3xl font-black tracking-[-0.05em] text-[#111126]">Growth Tracker</h4>
+                    <p className="mt-3 text-base font-black text-[#5F6273]">2-day streak - 3 logs - 100% weekly</p>
                   </div>
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E8DDEA] text-[#62456B]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#EEE9FF] text-[#6D5DF6]">
                     <Brain className="h-7 w-7" />
                   </div>
                 </div>
@@ -304,25 +281,25 @@ function HeroDashboardMockup() {
                   <svg viewBox="0 0 190 70" className="h-24 flex-1 overflow-visible">
                     <defs>
                       <linearGradient id="lavenderPulseFill" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#62456B" stopOpacity="0.28" />
-                        <stop offset="100%" stopColor="#62456B" stopOpacity="0" />
+                        <stop offset="0%" stopColor="#6D5DF6" stopOpacity="0.28" />
+                        <stop offset="100%" stopColor="#6D5DF6" stopOpacity="0" />
                       </linearGradient>
                     </defs>
                     <path d={`${sparkline} L186 70 L4 70 Z`} fill="url(#lavenderPulseFill)" />
-                    <motion.path d={sparkline} fill="none" stroke="#62456B" strokeWidth="4" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease: 'easeInOut' }} />
+                    <motion.path d={sparkline} fill="none" stroke="#6D5DF6" strokeWidth="4" strokeLinecap="round" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease: 'easeInOut' }} />
                   </svg>
-                  <button className="rounded-2xl bg-[#62456B] px-6 py-4 text-xs font-black uppercase tracking-wider text-white">View Full Tracker</button>
+                  <button className="rounded-2xl bg-[#6D5DF6] px-6 py-4 text-xs font-black uppercase tracking-wider text-white">View Full Tracker</button>
                 </div>
               </motion.div>
 
-              <motion.div whileHover={{ y: -4 }} className="min-h-[300px] rounded-[2rem] border border-[#E2D5E6] bg-white/78 p-7 shadow-[0_16px_50px_rgba(67,47,78,0.08)]">
-                <div className="flex items-center justify-between border-b border-[#E9E0ED] pb-5">
-                  <h4 className="text-2xl font-black text-[#2A1934]">To-Do List</h4>
+              <motion.div whileHover={{ y: -4 }} className="min-h-[300px] rounded-[2rem] border border-[#E6DFFF] bg-white/88 p-7 shadow-[0_16px_50px_rgba(109,93,246,0.08)]">
+                <div className="flex items-center justify-between border-b border-[#ECE7FF] pb-5">
+                  <h4 className="text-2xl font-black text-[#111126]">To-Do List</h4>
                   <span className="text-xs font-black uppercase tracking-wider text-[#A597AA]">1 Pending</span>
                 </div>
                 <div className="mt-8 flex items-center gap-4">
-                  <span className="h-6 w-6 rounded-lg border border-[#C7B8CD]" />
-                  <p className="text-xl font-medium text-[#2A1934]">Lock the Beta for VisNova</p>
+                  <span className="h-6 w-6 rounded-lg border border-[#CFC8EA]" />
+                  <p className="text-xl font-medium text-[#111126]">Lock the Beta for VisNova</p>
                 </div>
               </motion.div>
             </div>
@@ -360,8 +337,7 @@ export default function LandingPage() {
   const explore = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#D8D8DA] px-3 py-5 font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white sm:px-6 sm:py-10">
-      <div className="mx-auto max-w-[1120px] overflow-hidden rounded-[2rem] bg-[#F7F7FB] shadow-[0_34px_120px_rgba(38,38,52,0.14)]">
+    <div className="min-h-screen overflow-x-hidden bg-[#FBFAFF] font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white">
       <nav
         className={cn(
           'sticky top-0 z-50 transition-all duration-300',
@@ -622,49 +598,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="pricing" className="bg-[#F1F2F6] px-5 py-24">
-          <Reveal className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6D5DF6]">Pricing Plans</p>
-            <h2 className="mt-4 text-4xl font-black tracking-[-0.05em] text-[#12122B] sm:text-5xl">Choose the Perfect Plan</h2>
-            <p className="mt-4 text-lg font-medium text-[#66708A]">Start simple, then grow into deeper tracking and accountability as your Vision expands.</p>
-          </Reveal>
-
-          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
-            {pricingPlans.map((plan, index) => (
-              <Reveal key={plan.name} delay={index * 0.06}>
-                <motion.article
-                  className={cn(
-                    'h-full rounded-[1.7rem] border bg-white p-7 shadow-[0_18px_60px_rgba(32,30,70,0.05)]',
-                    plan.featured ? 'border-[#6D5DF6] ring-4 ring-[#6D5DF6]/10' : 'border-[#E6E8F2]'
-                  )}
-                  whileHover={{ y: -8 }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-xl font-black text-[#12122B]">{plan.name}</h3>
-                      <p className="mt-2 text-sm font-semibold leading-6 text-[#66708A]">{plan.copy}</p>
-                    </div>
-                    {plan.featured && <span className="rounded-full bg-[#6D5DF6] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">Beta</span>}
-                  </div>
-                  <p className="mt-8 text-5xl font-black tracking-[-0.06em] text-[#12122B]">{plan.price}<span className="text-sm font-bold text-[#66708A]">{plan.price.startsWith('$') ? '/mo' : ''}</span></p>
-                  <button onClick={goAuth} className={cn('mt-7 h-12 w-full rounded-2xl text-sm font-black transition', plan.featured ? 'bg-[#6D5DF6] text-white shadow-lg shadow-[#6D5DF6]/20' : 'bg-[#F4F5FA] text-[#12122B] hover:bg-[#EEEFFE]')}>
-                    Start now
-                  </button>
-                  <div className="mt-7 space-y-3">
-                    {plan.items.map(item => (
-                      <div key={item} className="flex items-center gap-3 text-sm font-semibold text-[#66708A]">
-                        <CheckCircle2 className="h-4 w-4 text-[#6D5DF6]" />
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </motion.article>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
-        <section className="bg-[#F1F2F6] px-5 pb-24">
+        <section className="bg-[#F6F4FF] px-5 py-24">
           <Reveal className="mx-auto max-w-3xl text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6D5DF6]">FAQ</p>
             <h2 className="mt-4 text-4xl font-black tracking-[-0.05em] text-[#12122B] sm:text-5xl">Frequently Asked Questions</h2>
@@ -714,7 +648,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-      </div>
     </div>
   );
 }
