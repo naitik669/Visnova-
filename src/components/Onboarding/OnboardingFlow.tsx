@@ -515,7 +515,7 @@ function ScreenResetPassword({ nextStep }: any) {
 }
 
 // Components for the screens
-function Screen1({ name, setName, email, setEmail, password, setPassword, nextStep, handleGoogleLogin, setRocketStage }: any) {
+function Screen1({ name, setName, email, setEmail, password, setPassword, nextStep, handleGoogleLogin, setRocketStage, rocketStage = 'form' }: any) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -657,6 +657,15 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         >
           Start building your future
         </motion.h2>
+
+        <div className="relative mx-auto flex h-36 max-w-[250px] justify-center overflow-hidden rounded-[1.75rem] border border-card-border bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] shadow-xl shadow-accent/10 lg:hidden">
+          <div className="absolute left-4 top-4 z-20 rounded-full border border-accent/10 bg-white/85 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-accent shadow-sm">
+            Launch
+          </div>
+          <div className="-mt-16 scale-[0.58]">
+            <RocketMascot stage={rocketStage} />
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2.5">
@@ -2697,7 +2706,7 @@ export default function OnboardingFlow() {
       case 1:
         return (
           <AuthShell mode="signup" rocketStage={authRocketStage}>
-            <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} setRocketStage={setAuthRocketStage} />
+            <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} setRocketStage={setAuthRocketStage} rocketStage={authRocketStage} />
           </AuthShell>
         );
       case 11:
