@@ -1242,13 +1242,13 @@ function SetupWelcomeScreen({ nextStep }: { nextStep: () => void }) {
 
 function SetupPathScreen({ selectedPath, setSelectedPath, nextStep }: { selectedPath: OnboardingPathId; setSelectedPath: (path: OnboardingPathId) => void; nextStep: () => void }) {
   return (
-    <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
+    <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4">
       <div className="space-y-2">
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Choose your path</p>
-        <h2 className="text-3xl font-black tracking-tight text-text-main sm:text-4xl">What are you building right now?</h2>
+        <h2 className="text-3xl font-black tracking-tight text-text-main sm:text-[2.35rem] sm:leading-[1.02]">What are you building right now?</h2>
         <p className="text-sm font-semibold leading-6 text-text-secondary">Your path tunes examples, suggestions, and dashboard copy.</p>
       </div>
-      <div className="grid gap-2.5 sm:grid-cols-2">
+      <div className="grid min-h-0 content-start gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2">
         {ONBOARDING_PATHS.map(path => {
           const Icon = path.icon;
           const selected = selectedPath === path.id;
