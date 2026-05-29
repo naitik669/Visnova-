@@ -850,16 +850,16 @@ const PRIVACY_OPTIONS = [
 function SetupProgressRail({ activeIndex }: { activeIndex: number }) {
   const percent = Math.round(((activeIndex + 1) / SETUP_STEPS.length) * 100);
   return (
-    <aside className="hidden w-56 shrink-0 flex-col justify-between rounded-[2rem] border border-white/70 bg-white/62 p-5 shadow-[0_20px_70px_rgba(109,93,246,0.12)] backdrop-blur-2xl lg:flex">
+    <aside className="hidden w-48 shrink-0 rounded-[2rem] border border-white/70 bg-white/62 p-4 shadow-[0_20px_70px_rgba(109,93,246,0.12)] backdrop-blur-2xl lg:block">
       <div>
         <div className="flex items-center gap-3">
-          <BrandLogo className="h-11 w-11 rounded-2xl shadow-lg shadow-accent/15" />
+          <BrandLogo className="h-10 w-10 rounded-2xl shadow-lg shadow-accent/15" />
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-accent">Setup</p>
             <p className="text-sm font-black text-text-main">{percent}% ready</p>
           </div>
         </div>
-        <div className="mt-7 space-y-2">
+        <div className="mt-6 space-y-2">
           {SETUP_STEPS.map((item, index) => {
             const Icon = item.icon;
             const isActive = index === activeIndex;
@@ -868,7 +868,7 @@ function SetupProgressRail({ activeIndex }: { activeIndex: number }) {
               <div
                 key={item.id}
                 className={cn(
-                  'flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-black transition-all',
+                  'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-black transition-all',
                   isActive ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/20' : isDone ? 'bg-accent/10 text-accent' : 'text-text-secondary/55'
                 )}
               >
@@ -878,10 +878,6 @@ function SetupProgressRail({ activeIndex }: { activeIndex: number }) {
             );
           })}
         </div>
-      </div>
-      <div className="rounded-3xl bg-accent/10 p-4">
-        <p className="text-[10px] font-black uppercase tracking-widest text-accent">Activation goal</p>
-        <p className="mt-2 text-sm font-bold leading-5 text-text-main">Create one Vision, one next move, and your first proof habit.</p>
       </div>
     </aside>
   );
@@ -1202,7 +1198,7 @@ function SetupShell({ step, children, visualProps }: { step: number; children: R
       <MobileSetupProgress activeIndex={activeIndex} />
       <div className="flex w-full gap-5">
         <SetupProgressRail activeIndex={activeIndex} />
-        <div className="grid flex-1 gap-4 lg:h-[min(650px,calc(100dvh-8.5rem))] lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.8fr)]">
+        <div className="grid flex-1 gap-4 lg:h-[min(650px,calc(100dvh-8.5rem))] lg:grid-cols-[minmax(360px,0.82fr)_minmax(460px,1fr)]">
           <OnboardingVisualScene {...visualProps} />
           <SetupCard>{children}</SetupCard>
         </div>
