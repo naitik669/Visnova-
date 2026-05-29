@@ -22,6 +22,7 @@ import {
   NotebookPen,
   WandSparkles,
   ChevronRight,
+  AlertTriangle,
   type LucideIcon
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
@@ -59,6 +60,126 @@ const AVATAR_LIBRARY = [
 ];
 
 const DEFAULT_AVATAR_VALUES = Object.values(DEFAULT_PROFILE_AVATARS);
+
+type RocketStageId = 'form' | 'anticipation' | 'failed_launch' | 'crashing' | 'error_idle' | 'launching';
+
+const rocketStages = {
+  form: {
+    name: "Standard Idle Bobbing",
+    animate: {
+      y: [0, -9, 0],
+      scaleY: [1, 1.025, 1],
+      scaleX: [1, 0.985, 1],
+      rotate: 0,
+    },
+    transition: {
+      y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+      scaleY: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+      scaleX: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+      rotate: { duration: 0.8, ease: "easeInOut" },
+    },
+  },
+  anticipation: {
+    name: "Pre-Launch Compression & Tremor",
+    animate: {
+      y: 35,
+      scaleY: 0.74,
+      scaleX: 1.2,
+      rotate: [-1.5, 1.5, -1.8, 1.8, -1.5, 1.5, -1],
+    },
+    transition: {
+      rotate: { duration: 0.08, repeat: Infinity, ease: "linear" },
+      y: { type: "spring", stiffness: 180, damping: 15 },
+      scaleY: { type: "spring", stiffness: 180, damping: 15 },
+      scaleX: { type: "spring", stiffness: 180, damping: 15 },
+    },
+  },
+  failed_launch: {
+    name: "Mid-Air Sputter & Axis Tilting",
+    animate: {
+      y: -120,
+      scaleY: 1.15,
+      scaleX: 0.88,
+      rotate: [12, 16, 12],
+    },
+    transition: {
+      rotate: { duration: 0.25, repeat: Infinity, ease: "linear" },
+      y: { duration: 0.5, ease: "easeOut" },
+      scaleY: { duration: 0.3, ease: "easeOut" },
+      scaleX: { duration: 0.3, ease: "easeOut" },
+    },
+  },
+  crashing: {
+    name: "Soft Retro Descent Bounce",
+    animate: {
+      y: 0,
+      scaleY: 1,
+      scaleX: 1,
+      rotate: 12.5,
+    },
+    transition: {
+      y: { type: "spring", stiffness: 160, damping: 9 },
+      scaleY: { type: "spring", stiffness: 180, damping: 8 },
+      scaleX: { type: "spring", stiffness: 180, damping: 8 },
+      rotate: { duration: 0.5, ease: "easeOut" },
+    },
+  },
+  error_idle: {
+    name: "Tilted Malfunction Warning Loop",
+    animate: {
+      y: [0, -5, 0],
+      scaleY: [1, 1.015, 1],
+      scaleX: [1, 0.99, 1],
+      rotate: [11.5, 13.5, 11.5],
+    },
+    transition: {
+      y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+      rotate: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+      scaleY: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+      scaleX: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+    },
+  },
+  launching: {
+    name: "High-Velocity Vertical Thrust",
+    animate: {
+      y: -920,
+      scaleY: [0.74, 1.38, 1.1],
+      scaleX: [1.2, 0.78, 0.95],
+    },
+    transition: {
+      y: { duration: 1.2, ease: "easeIn" },
+      scaleY: { duration: 0.35, ease: "easeOut" },
+      scaleX: { duration: 0.35, ease: "easeOut" },
+    },
+  },
+} satisfies Record<RocketStageId, { name: string; animate: Record<string, unknown>; transition: Record<string, unknown> }>;
+
+const rocketStageCopy: Record<RocketStageId, { title: string; copy: string }> = {
+  form: {
+    title: 'Ready for launch',
+    copy: 'Create your account and start your first Vision system.',
+  },
+  anticipation: {
+    title: 'Preparing your launch',
+    copy: 'Checking the details and creating your VisNova account.',
+  },
+  launching: {
+    title: 'Launch confirmed',
+    copy: 'Your account is ready. Next stop: your first Vision.',
+  },
+  failed_launch: {
+    title: 'Tiny course correction',
+    copy: 'Something needs attention before we continue.',
+  },
+  crashing: {
+    title: 'Settling safely',
+    copy: 'No work lost. You can fix the details and try again.',
+  },
+  error_idle: {
+    title: 'Ready to retry',
+    copy: 'Update the highlighted field and launch again.',
+  },
+};
 
 function GoogleIcon() {
   return (
@@ -421,7 +542,7 @@ function ScreenResetPassword({ nextStep }: any) {
 }
 
 // Components for the screens
-function Screen1({ name, setName, email, setEmail, password, setPassword, nextStep, handleGoogleLogin }: any) {
+function Screen1({ name, setName, email, setEmail, password, setPassword, nextStep, handleGoogleLogin, setRocketStage }: any) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -447,19 +568,28 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
     return '';
   };
 
+  const resetRocketAfterEdit = () => {
+    if (generalError || passwordError) {
+      setRocketStage?.('form');
+    }
+  };
+
   const handleManualNext = async () => {
     if (!name || !email || !password || !confirmPassword) {
+      setRocketStage?.('error_idle');
       setGeneralError('All fields are required.');
       addToast({ type: 'error', title: 'Missing fields', description: 'Name, email, and password confirmation are required.' });
       return;
     }
     if (password !== confirmPassword) {
+      setRocketStage?.('error_idle');
       setPasswordError('Passwords do not match');
       addToast({ type: 'error', title: 'Mismatch', description: 'Passwords must be identical.' });
       return;
     }
     const pError = validatePassword(password);
     if (pError) {
+      setRocketStage?.('error_idle');
       setPasswordError(pError);
       addToast({ type: 'error', title: 'Password needs work', description: pError });
       return;
@@ -468,6 +598,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
     setIsSubmitting(true);
     setGeneralError('');
     setPasswordError('');
+    setRocketStage?.('anticipation');
 
     // Trigger signup
     try {
@@ -505,13 +636,18 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
       });
       
       if (data.user?.identities?.length === 0) {
-        nextStep(11); // Already registered, go to login
+        setRocketStage?.('error_idle');
+        window.setTimeout(() => nextStep(11), 650); // Already registered, go to login
       } else {
-        nextStep(2);
+        setRocketStage?.('launching');
+        window.setTimeout(() => nextStep(2), 650);
       }
     } catch (err: any) {
       console.error('Signup error:', err);
       const message = err.message || 'Signup failed';
+      setRocketStage?.('failed_launch');
+      window.setTimeout(() => setRocketStage?.('crashing'), 450);
+      window.setTimeout(() => setRocketStage?.('error_idle'), 1000);
       if (message.includes('already registered')) {
         setGeneralError('Email already registered. Redirecting to login...');
         addToast({ type: 'info', title: 'Account exists', description: 'Redirecting to login page.' });
@@ -562,7 +698,10 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             type="text"
             placeholder="Enter your name"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={e => {
+              setName(e.target.value);
+              resetRocketAfterEdit();
+            }}
             autoComplete="name"
             className="w-full h-11 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
             autoFocus
@@ -574,7 +713,10 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             type="email"
             placeholder="yourmail@example.com"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={e => {
+              setEmail(e.target.value);
+              resetRocketAfterEdit();
+            }}
             autoComplete="email"
             inputMode="email"
             className="w-full h-11 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
@@ -590,6 +732,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
               onChange={e => {
                 setPassword(e.target.value);
                 if (passwordError) setPasswordError('');
+                resetRocketAfterEdit();
               }}
               autoComplete="new-password"
               className={cn(
@@ -617,6 +760,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
               onChange={e => {
                 setConfirmPassword(e.target.value);
                 if (passwordError) setPasswordError('');
+                resetRocketAfterEdit();
               }}
               onKeyDown={e => {
                 if (e.key === 'Enter') void handleManualNext();
@@ -933,7 +1077,115 @@ function FeatureBriefChips() {
   );
 }
 
-function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
+function RocketMascot({ stage }: { stage: RocketStageId }) {
+  const stageConfig = rocketStages[stage];
+  const isLaunching = stage === 'launching';
+  const isAnticipating = stage === 'anticipation';
+  const isError = stage === 'failed_launch' || stage === 'crashing' || stage === 'error_idle';
+  const flameHeight = isLaunching ? 92 : isAnticipating ? 58 : isError ? 34 : 44;
+  const flameOpacity = isError ? 0.68 : 0.92;
+
+  return (
+    <div className="relative mx-auto flex h-[300px] w-[250px] items-center justify-center overflow-hidden">
+      <motion.div
+        aria-hidden="true"
+        className="absolute h-48 w-48 rounded-full border border-accent/10"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+      >
+        {[0, 1, 2].map((dot) => (
+          <motion.span
+            key={dot}
+            className="absolute h-2.5 w-2.5 rounded-full bg-accent shadow-lg shadow-accent/30"
+            style={{
+              left: dot === 0 ? '50%' : dot === 1 ? '8%' : '83%',
+              top: dot === 0 ? '-5px' : dot === 1 ? '72%' : '20%',
+            }}
+            animate={{ scale: [0.75, 1.15, 0.75], opacity: [0.45, 0.9, 0.45] }}
+            transition={{ duration: 2.8 + dot * 0.35, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ))}
+      </motion.div>
+
+      <AnimatePresence>
+        {(isLaunching || isAnticipating) && (
+          <motion.div
+            key="launch-trail"
+            className="absolute bottom-2 h-36 w-16 rounded-t-full bg-gradient-to-t from-transparent via-accent/10 to-accent/30 blur-xl"
+            initial={{ opacity: 0, scaleY: 0.4 }}
+            animate={{ opacity: isLaunching ? 0.95 : 0.45, scaleY: isLaunching ? 1.6 : 0.9 }}
+            exit={{ opacity: 0, scaleY: 0.4 }}
+            transition={{ duration: 0.25 }}
+          />
+        )}
+      </AnimatePresence>
+
+      {[0, 1, 2, 3].map((puff) => (
+        <motion.span
+          key={puff}
+          className="absolute bottom-7 rounded-full bg-white/80 shadow-sm"
+          style={{
+            width: `${18 + puff * 7}px`,
+            height: `${18 + puff * 7}px`,
+            left: `${74 + puff * 25}px`,
+          }}
+          animate={{
+            y: isLaunching ? [0, 18, 0] : [0, 7, 0],
+            opacity: isLaunching ? [0.15, 0.55, 0.15] : [0.08, 0.28, 0.08],
+            scale: isLaunching ? [0.8, 1.25, 0.8] : [0.9, 1.08, 0.9],
+          }}
+          transition={{ duration: 2.5 + puff * 0.25, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      ))}
+
+      <motion.div className="relative z-10 origin-bottom" animate={stageConfig.animate} transition={stageConfig.transition as any}>
+        {isError && (
+          <motion.div
+            className="absolute -right-6 -top-5 flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-600 shadow-lg shadow-amber-200/30"
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: [0.92, 1.05, 0.92] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <AlertTriangle className="h-4 w-4" />
+          </motion.div>
+        )}
+
+        <svg width="118" height="164" viewBox="0 0 118 164" fill="none" aria-hidden="true" className="drop-shadow-[0_24px_35px_rgba(109,93,246,0.28)]">
+          <path d="M59 4C76.5 18.7 87.5 40.9 89.4 69.8L109.4 89.8C113.9 94.3 116 100.7 115 107L110.5 134.5L87.5 112.5H30.5L7.5 134.5L3 107C2 100.7 4.1 94.3 8.6 89.8L28.6 69.8C30.5 40.9 41.5 18.7 59 4Z" fill="url(#rocketBody)" />
+          <path d="M59 4C76.5 18.7 87.5 40.9 89.4 69.8L87.5 112.5H59V4Z" fill="url(#rocketShade)" opacity="0.62" />
+          <circle cx="59" cy="55" r="18" fill="white" opacity="0.96" />
+          <circle cx="59" cy="55" r="10" fill="#DDE7FF" />
+          <path d="M38.5 112.5H79.5L70.8 139.4C67.1 150.9 50.9 150.9 47.2 139.4L38.5 112.5Z" fill="#5D4BF1" />
+          <path d="M45 25C50.4 18.9 55 15.2 59 12.2C63 15.2 67.6 18.9 73 25H45Z" fill="white" opacity="0.85" />
+          <defs>
+            <linearGradient id="rocketBody" x1="18" y1="10" x2="102" y2="133" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#FDFBFF" />
+              <stop offset="0.45" stopColor="#EDE8FF" />
+              <stop offset="1" stopColor="#8B7CFF" />
+            </linearGradient>
+            <linearGradient id="rocketShade" x1="55" y1="4" x2="102" y2="127" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#8B7CFF" stopOpacity="0.18" />
+              <stop offset="1" stopColor="#6D5DF6" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <motion.div
+          className="absolute left-1/2 top-[134px] -z-10 -translate-x-1/2 rounded-b-full bg-gradient-to-b from-amber-200 via-orange-400 to-accent blur-[0.5px]"
+          style={{ width: isLaunching ? 42 : 34 }}
+          animate={{
+            height: [flameHeight * 0.74, flameHeight, flameHeight * 0.82],
+            opacity: [flameOpacity * 0.75, flameOpacity, flameOpacity * 0.72],
+            scaleX: isError ? [0.72, 1.05, 0.62] : [0.82, 1.08, 0.9],
+          }}
+          transition={{ duration: isError ? 0.18 : 0.45, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
+function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'login'; rocketStage?: RocketStageId }) {
   const previewCards = mode === 'signup'
     ? [
         { label: 'Interests', value: 'Creator · Builder · Study', icon: Sparkles },
@@ -945,6 +1197,7 @@ function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
         { label: 'Pulse', value: 'See what changed this week', icon: Activity },
         { label: 'Circle', value: 'Stay accountable by choice', icon: Users }
       ];
+  const rocketCopy = rocketStageCopy[rocketStage];
 
   return (
     <div className="relative hidden h-full min-h-[520px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] p-6 shadow-[0_28px_90px_rgba(109,93,246,0.16)] lg:block">
@@ -973,31 +1226,19 @@ function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
           </p>
         </div>
 
-        <div className="relative mx-auto my-6 h-[300px] w-[210px] rounded-[2.5rem] border-[9px] border-white bg-white shadow-[0_32px_70px_rgba(37,22,61,0.16)]">
-          <div className="absolute left-1/2 top-3 h-5 w-16 -translate-x-1/2 rounded-full bg-text-main" />
-          <div className="h-full overflow-hidden rounded-[1.85rem] bg-[#F7F7FB] p-4 pt-10">
-            <div className="rounded-2xl bg-white p-3 shadow-sm">
-              <p className="text-[9px] font-black uppercase tracking-widest text-accent">Command Center</p>
-              <p className="mt-2 text-lg font-black text-text-main">Launch Beta</p>
-              <div className="mt-3 h-2 rounded-full bg-accent/15">
-                <motion.div className="h-full rounded-full bg-accent" initial={{ width: '20%' }} animate={{ width: '72%' }} transition={{ duration: 1.2, ease: 'easeOut' }} />
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {['Vision', 'Action', 'Proof', 'Pulse'].map((item, index) => (
-                <motion.div
-                  key={item}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.07 }}
-                  className="rounded-2xl bg-white p-3 shadow-sm"
-                >
-                  <span className="block h-7 w-7 rounded-xl bg-accent/10" />
-                  <p className="mt-2 text-[10px] font-black text-text-main">{item}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
+        <div className="relative mx-auto my-5 w-full max-w-[330px] rounded-[2.25rem] border border-white/80 bg-white/55 p-4 text-center shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
+          <RocketMascot stage={rocketStage} />
+          <motion.div
+            key={rocketStage}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+            className="relative z-20 -mt-4 rounded-3xl border border-white/80 bg-white/85 p-4 shadow-sm"
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">{rocketStages[rocketStage].name}</p>
+            <h3 className="mt-2 text-xl font-black text-text-main">{rocketCopy.title}</h3>
+            <p className="mt-1 text-xs font-semibold leading-5 text-text-secondary">{rocketCopy.copy}</p>
+          </motion.div>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
@@ -1023,10 +1264,10 @@ function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
   );
 }
 
-function AuthShell({ mode, children }: { mode: 'signup' | 'login'; children: ReactNode }) {
+function AuthShell({ mode, rocketStage = 'form', children }: { mode: 'signup' | 'login'; rocketStage?: RocketStageId; children: ReactNode }) {
   return (
     <div className="grid h-full w-full max-w-[1120px] gap-5 lg:grid-cols-[minmax(0,1fr)_430px]">
-      <AuthPreviewPanel mode={mode} />
+      <AuthPreviewPanel mode={mode} rocketStage={rocketStage} />
       <div className="flex min-h-0 items-center rounded-[2rem] border border-card-border bg-card/95 p-4 shadow-2xl shadow-accent/10 backdrop-blur-xl sm:p-6">
         {children}
       </div>
@@ -2204,6 +2445,7 @@ export default function OnboardingFlow() {
   const [firstTaskId, setFirstTaskId] = useState<string | null>(null);
   const [hasLoggedFirstProof, setHasLoggedFirstProof] = useState(false);
   const [isOnboardingSaving, setIsOnboardingSaving] = useState(false);
+  const [authRocketStage, setAuthRocketStage] = useState<RocketStageId>('form');
 
   // Sync state from session
   useEffect(() => {
@@ -2479,13 +2721,13 @@ export default function OnboardingFlow() {
     switch (step) {
       case 1:
         return (
-          <AuthShell mode="signup">
-            <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} />
+          <AuthShell mode="signup" rocketStage={authRocketStage}>
+            <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} setRocketStage={setAuthRocketStage} />
           </AuthShell>
         );
       case 11:
         return (
-          <AuthShell mode="login">
+          <AuthShell mode="login" rocketStage="form">
             <ScreenLogin
               email={email} setEmail={setEmail}
               nextStep={nextStep}
