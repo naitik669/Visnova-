@@ -25,7 +25,7 @@ import {
   type LucideIcon
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { getAuthRedirectUrl, supabase, uploadAvatar } from '../../lib/supabase';
 import { checkClientRateLimit, formatRetryAfter, sanitizeText } from '../../lib/security';
@@ -141,8 +141,8 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
   };
 
   return (
-    <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
-      <div className="space-y-3">
+    <div className="flex w-full max-w-sm flex-col justify-center space-y-3.5 mx-auto">
+      <div className="space-y-2">
         <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent mb-2">
           <CheckCircle2 size={24} />
         </div>
@@ -150,7 +150,7 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
         <p className="text-sm text-text-secondary font-medium">Continue where you left off.</p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {verifiedMessage && (
           <div className="p-3 bg-success/10 border border-success/20 rounded-xl text-success text-[10px] font-black uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
             Email verified. You can now log in.
@@ -198,7 +198,7 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -207,11 +207,11 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <button
           onClick={handleGoogleLogin}
           disabled={isLoading}
-          className="w-full h-12 rounded-2xl border border-card-border bg-card text-text-main font-black uppercase tracking-widest text-[11px] transition-all hover:border-accent/40 hover:bg-surface-muted active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+          className="w-full h-11 rounded-2xl border border-card-border bg-card text-text-main font-black uppercase tracking-widest text-[11px] transition-all hover:border-accent/40 hover:bg-surface-muted active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
         >
           <GoogleIcon />
           Continue with Google
@@ -275,7 +275,7 @@ function ScreenForgotPassword({ email, setEmail, backToLogin }: any) {
 
   return (
     <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent mb-2">
           <Mail size={24} />
         </div>
@@ -283,7 +283,7 @@ function ScreenForgotPassword({ email, setEmail, backToLogin }: any) {
         <p className="text-sm text-text-secondary font-medium">We'll help you get back in.</p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {error && <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">{error}</div>}
         {success && <div className="p-3 bg-success/10 border border-success/20 rounded-xl text-success text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">{success}</div>}
 
@@ -299,7 +299,7 @@ function ScreenForgotPassword({ email, setEmail, backToLogin }: any) {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <button
           onClick={handleReset}
           disabled={isLoading}
@@ -357,7 +357,7 @@ function ScreenResetPassword({ nextStep }: any) {
 
   return (
     <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent mb-2">
           <KeyRound size={24} />
         </div>
@@ -365,7 +365,7 @@ function ScreenResetPassword({ nextStep }: any) {
         <p className="text-sm text-text-secondary font-medium">Your recovery link is verified. Lock in fresh credentials.</p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {error && (
           <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
             {error}
@@ -527,17 +527,17 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
 
   return (
     <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <div className="mb-4 flex items-center gap-3">
-            <BrandLogo className="h-12 w-12 rounded-2xl shadow-lg shadow-accent/15" />
-            <h1 className="text-4xl font-extrabold tracking-tight text-text-main">VisNova</h1>
+          <div className="mb-2 flex items-center gap-3">
+            <BrandLogo className="h-10 w-10 rounded-2xl shadow-lg shadow-accent/15" />
+            <h1 className="text-3xl font-extrabold tracking-tight text-text-main">VisNova</h1>
           </div>
-          <p className="text-text-secondary font-medium  opacity-70">Your Visionary Planner.</p>
+          <p className="text-sm text-text-secondary font-medium opacity-70">Your Visionary Planner.</p>
         </motion.div>
 
         <motion.h2
@@ -550,7 +550,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         </motion.h2>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {generalError && (
           <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
             {generalError}
@@ -564,7 +564,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             value={name}
             onChange={e => setName(e.target.value)}
             autoComplete="name"
-            className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+            className="w-full h-11 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
             autoFocus
           />
         </div>
@@ -577,7 +577,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             onChange={e => setEmail(e.target.value)}
             autoComplete="email"
             inputMode="email"
-            className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+            className="w-full h-11 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
           />
         </div>
         <div className="space-y-1.5">
@@ -593,14 +593,14 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
               }}
               autoComplete="new-password"
               className={cn(
-                "w-full h-12 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
+                "w-full h-11 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
                 passwordError ? "border-accent/40 bg-accent/[0.02]" : "border-card-border focus:border-accent"
               )}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -623,14 +623,14 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
               }}
               autoComplete="new-password"
               className={cn(
-                "w-full h-12 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
+                "w-full h-11 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
                 passwordError ? "border-accent/40 bg-accent/[0.02]" : "border-card-border focus:border-accent"
               )}
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-text-secondary opacity-50 transition-opacity hover:opacity-100"
               aria-label={showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'}
             >
               {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -644,11 +644,11 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         </div>
       </div>
 
-      <div className="space-y-3 pt-1">
+      <div className="space-y-2.5 pt-1">
         <button
           onClick={handleGoogleLogin}
           disabled={isSubmitting}
-          className="w-full h-12 rounded-2xl border border-card-border bg-card text-text-main font-black uppercase tracking-widest text-[11px] transition-all hover:border-accent/40 hover:bg-surface-muted active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+          className="w-full h-11 rounded-2xl border border-card-border bg-card text-text-main font-black uppercase tracking-widest text-[11px] transition-all hover:border-accent/40 hover:bg-surface-muted active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
         >
           <GoogleIcon />
           Continue with Google
@@ -661,13 +661,13 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         <button
           onClick={handleManualNext}
           disabled={isSubmitting}
-          className="w-full h-12 bg-accent text-accent-contrast font-bold rounded-2xl transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-95"
+          className="w-full h-11 bg-accent text-accent-contrast font-bold rounded-2xl transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-95"
         >
           {isSubmitting ? 'Loading...' : 'Create account'}
         </button>
       </div>
 
-      <div className="space-y-4 text-center">
+      <div className="text-center">
         <p className="text-sm text-text-secondary font-medium">
           Already have an account? <button onClick={() => nextStep(11)} className="text-accent hover:underline font-bold">Login</button>
         </p>
@@ -747,7 +747,7 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
 
   return (
     <div className="flex flex-col justify-center max-w-sm mx-auto space-y-5 w-full">
-      <div className="space-y-4 text-center">
+      <div className="text-center">
         <div className="w-20 h-20 bg-accent/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-accent animate-pulse">
           <Mail size={40} />
         </div>
@@ -768,7 +768,7 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {error && (
           <div className="p-4 bg-accent/5 border border-accent/10 rounded-2xl text-accent text-[9px] font-black uppercase tracking-widest text-center leading-normal animate-in fade-in slide-in-from-bottom-1">
             {error}
@@ -1134,7 +1134,7 @@ function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionT
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {cards.map((card, index) => {
                       const Icon = card.icon;
                       return (
@@ -1214,7 +1214,7 @@ function SetupShell({ step, children, visualProps }: { step: number; children: R
 function SetupWelcomeScreen({ nextStep }: { nextStep: () => void }) {
   return (
     <div className="flex h-full min-h-0 flex-col justify-center space-y-4 lg:space-y-5">
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">90-second setup</p>
         <h2 className="text-4xl font-black tracking-tight text-text-main sm:text-5xl">Let&apos;s build your growth system.</h2>
         <p className="text-base font-semibold leading-7 text-text-secondary">VisNova works best when your Vision, actions, proof, and progress live in one place.</p>
@@ -1360,7 +1360,7 @@ function SetupPrivacyScreen({ visibility, setVisibility, nextStep }: { visibilit
         <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Who should see your progress?</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Private journals, notes, messages, and private logs stay private unless you choose to share them.</p>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {PRIVACY_OPTIONS.map(option => {
           const Icon = option.icon;
           const selected = visibility === option.id;
@@ -1553,7 +1553,7 @@ function Screen4({ commitment, setCommitment, nextStep }: any) {
         <p className="text-sm text-text-secondary font-medium">How intense should your feedback loops be?</p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {commitments.map(c => {
           const isSelected = commitment === c.id;
           return (
@@ -1598,7 +1598,7 @@ function Screen5({ interests, intent, nextStep }: any) {
         <p className="text-sm text-text-secondary font-medium">Your initial strategy has been generated.</p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -1623,7 +1623,7 @@ function Screen5({ interests, intent, nextStep }: any) {
           className="p-6 rounded-3xl bg-card space-y-4 border border-card-border shadow-xl shadow-accent/5"
         >
           <h4 className="text-[10px] font-black text-text-secondary/60 uppercase tracking-widest">Next Steps</h4>
-          <ul className="space-y-3">
+          <ul className="space-y-2.5">
              {["Plan your daily tasks", "Review your progress", "Stay aligned"].map((task, i) => (
                 <li key={i} className="flex items-center gap-4 text-sm text-text-main font-bold">
                    <div className="w-6 h-6 rounded-lg border-2 border-card-border flex items-center justify-center bg-bg-base" />
@@ -1673,7 +1673,7 @@ function Screen6({ nextStep }: any) {
         >
           <CheckCircle2 size={48} className="text-accent-contrast" />
         </motion.div>
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <h2 className="text-6xl font-black text-text-main tracking-tighter leading-none">NOW PROVE IT.</h2>
           <p className="text-xl text-accent font-bold  tracking-tight opacity-80">Execution is the final authority.</p>
         </div>
@@ -1998,7 +1998,7 @@ function Screen8({ role, setRole, ROLE_CATEGORIES, nextStep }: any) {
 
       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-10 pb-40 px-1">
         {filteredCategories.map((category: any) => (
-          <div key={category.name} className="space-y-3">
+          <div key={category.name} className="space-y-2.5">
             <h4 className="text-[10px] font-black text-text-secondary/60 uppercase tracking-[0.2em] ml-1">{category.name}</h4>
             <div className="flex flex-wrap gap-2.5">
               {category.roles.map((r: string, rIdx: number) => {
@@ -2069,14 +2069,14 @@ function ScreenCreateFirstVision({ onCreate, onSkip }: { onCreate: (title: strin
 
   return (
     <div className="flex h-full w-full max-w-sm flex-col justify-center space-y-7 py-10 mx-auto">
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent">
           <Target size={26} />
         </div>
         <h2 className="text-4xl font-bold leading-tight tracking-tight text-text-main">Create your first Vision</h2>
         <p className="text-sm font-medium text-text-secondary">What are you working toward?</p>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <input
           autoFocus
           maxLength={120}
@@ -2127,7 +2127,7 @@ function Screen9({ handleForceStart }: { handleForceStart: () => void }) {
         transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         className="mx-auto w-16 h-16 border-[6px] border-accent/5 border-t-accent rounded-full shadow-2xl shadow-accent/20"
       />
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <h2 className="text-2xl font-black text-text-main tracking-tight uppercase">Setting up VisNova</h2>
         <p className="text-sm text-text-secondary font-medium tracking-tight">Getting things ready...</p>
       </div>
@@ -2574,7 +2574,7 @@ export default function OnboardingFlow() {
                 <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Your system is ready.</h2>
                 <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Go to Dashboard and keep today&apos;s proof visible.</p>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {[
                   ['Vision created', firstVisionTitle || 'Your first Vision'],
                   ['Next move ready', firstTaskTitle || 'Your first action'],
@@ -2621,70 +2621,62 @@ export default function OnboardingFlow() {
 
   const usesIntroCard = [2, 12, 13].includes(step);
 
+  const progressSteps = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
   return (
-    <div className="flex min-h-[100dvh] flex-col overflow-hidden bg-bg-base p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] font-sans sm:p-4">
+    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-bg-base p-0 font-sans">
       {/* Dynamic Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/5 rounded-full blur-[120px]" />
          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/5 rounded-full blur-[120px]" />
       </div>
 
-      {/* Top Header */}
-      <div className="relative z-10 flex min-h-14 shrink-0 items-center justify-between px-2 py-2 sm:h-16 sm:px-5 sm:py-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
-             <div className="w-2 h-2 bg-card rounded-full animate-pulse" />
-          </div>
-          <span className="text-sm font-black uppercase tracking-[0.3em] text-text-main">VisNova</span>
-        </div>
-
-        {step < 10 && (
-          <div className="flex items-center gap-2 sm:gap-4">
+      {step < 10 && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-8">
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              onClick={prevStep}
+              className="group flex h-10 items-center gap-2 rounded-2xl border border-card-border bg-card/85 px-3 text-[10px] font-black uppercase tracking-widest text-text-secondary/70 shadow-sm backdrop-blur-xl transition-colors hover:text-text-main"
+            >
+              <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
+              Back
+            </button>
             {session?.user && (
               <button
                 onClick={async () => {
                   await signOut();
                   navigate('/');
                 }}
-                className="rounded-lg border border-accent/10 bg-accent/5 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-accent/60 transition-all hover:text-accent"
+                className="rounded-2xl border border-accent/10 bg-card/80 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-accent/60 shadow-sm backdrop-blur-xl transition-all hover:text-accent"
               >
                 Sign Out
               </button>
             )}
-            <button
-              onClick={prevStep}
-              className="group flex h-10 items-center gap-1.5 rounded-xl px-2 text-[10px] font-black uppercase tracking-widest text-text-secondary/60 transition-colors hover:text-text-main sm:gap-2"
-            >
-              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-              Back
-            </button>
           </div>
-        )}
 
-        <div className="ml-auto hidden md:flex items-center gap-5">
-            {step < 10 && (step >= 8 || username) && (
+          <div className="pointer-events-auto flex items-center gap-3">
+            {step >= 8 || username ? (
               <button
                 onClick={handleForceStart}
-                className="text-[9px] font-black uppercase tracking-widest text-accent/40 hover:text-accent transition-all hover:scale-105 active:scale-95 px-3 py-1.5 rounded-lg border border-accent/10 hover:bg-accent/5"
+                className="hidden rounded-2xl border border-accent/10 bg-card/80 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-accent/45 shadow-sm backdrop-blur-xl transition-all hover:text-accent sm:block"
               >
-                Skip to Dashboard
+                Skip
               </button>
-            )}
-           {step < 10 && (
-             <div className="flex gap-1">
-               {[1,2,3,4,5,6,7,8,9].map(s => (
-                 <div
-                   key={s}
-                   className={cn(
-                     "h-1 transition-all duration-500",
-                     step === s ? "w-8 bg-accent" : s < step ? "w-4 bg-accent/20" : "w-4 bg-card-border"
-                   )}
-                 />
-               ))}
-             </div>
-           )}
+            ) : null}
+            <div className="flex gap-1.5 rounded-full border border-card-border bg-card/80 px-2.5 py-2 shadow-sm backdrop-blur-xl">
+              {progressSteps.map(s => (
+                <div
+                  key={s}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all duration-500",
+                    step === s ? "w-8 bg-accent" : s < step ? "w-4 bg-accent/25" : "w-4 bg-card-border"
+                  )}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content Area */}
       <div className="relative flex min-h-0 flex-1 items-stretch justify-center sm:items-center">
@@ -2696,14 +2688,14 @@ export default function OnboardingFlow() {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="absolute inset-0 flex items-stretch justify-center overflow-hidden p-0 sm:items-center sm:p-3"
+            className="absolute inset-0 flex items-stretch justify-center overflow-hidden px-3 pb-3 pt-[calc(4rem+env(safe-area-inset-top))] sm:items-center sm:p-5 sm:pt-[calc(4.25rem+env(safe-area-inset-top))]"
           >
             <div
               className={cn(
                 "w-full overflow-y-auto custom-scrollbar",
                 usesIntroCard
-                  ? "max-h-full max-w-[520px] rounded-[1.5rem] border border-card-border bg-card/95 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-2xl shadow-accent/10 backdrop-blur-xl sm:rounded-[2rem] sm:p-7"
-                  : "max-h-full max-w-[1180px] p-1 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:p-6"
+                  ? "max-h-full max-w-[520px] rounded-[1.5rem] border border-card-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-accent/10 backdrop-blur-xl sm:rounded-[2rem] sm:p-6"
+                  : "max-h-full max-w-[1180px] p-0 pb-[calc(1rem+env(safe-area-inset-bottom))]"
               )}
             >
               {renderCurrentStep()}
@@ -2711,14 +2703,7 @@ export default function OnboardingFlow() {
           </motion.div>
         </AnimatePresence>
       </div>
-
-      {/* Footer Meta */}
-      <div className="hidden h-8 shrink-0 flex-wrap items-center justify-center gap-3 px-4 opacity-50 sm:flex sm:h-10">
-         <span className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest">VisNova setup</span>
-         <Link to="/cookie-policy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Cookie Policy</Link>
-         <Link to="/privacy-policy" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Privacy</Link>
-         <Link to="/terms-of-service" className="text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent">Terms</Link>
-      </div>
     </div>
   );
 }
+
