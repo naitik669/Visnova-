@@ -937,6 +937,107 @@ function FeatureBriefChips() {
   );
 }
 
+function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
+  const previewCards = mode === 'signup'
+    ? [
+        { label: 'Interests', value: 'Creator · Builder · Study', icon: Sparkles },
+        { label: 'Role', value: 'Founder / Student / Custom', icon: Users },
+        { label: 'First proof', value: 'Log one real update today', icon: Activity }
+      ]
+    : [
+        { label: 'Today', value: 'Return to your next move', icon: Target },
+        { label: 'Pulse', value: 'See what changed this week', icon: Activity },
+        { label: 'Circle', value: 'Stay accountable by choice', icon: Users }
+      ];
+
+  return (
+    <div className="relative hidden h-full min-h-[520px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] p-6 shadow-[0_28px_90px_rgba(109,93,246,0.16)] lg:block">
+      <motion.div
+        aria-hidden="true"
+        className="absolute -left-16 top-10 h-48 w-48 rounded-full bg-[#DDE7FF]/80 blur-3xl"
+        animate={{ y: [0, 16, 0], x: [0, 10, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        aria-hidden="true"
+        className="absolute -right-16 bottom-10 h-56 w-56 rounded-full bg-[#E9D8FF]/80 blur-3xl"
+        animate={{ y: [0, -18, 0], x: [0, -10, 0] }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <div className="relative z-10 flex h-full flex-col justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">See it. Plan it. Prove it.</p>
+          <h2 className="mt-3 max-w-sm text-4xl font-black tracking-tight text-text-main">
+            {mode === 'signup' ? 'Build your first growth system.' : 'Continue your visible progress.'}
+          </h2>
+          <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-text-secondary">
+            {mode === 'signup'
+              ? 'VisNova turns your goals, actions, notes, and proof into one calm workspace.'
+              : 'Your Vision, tasks, proof logs, and Pulse are waiting where you left them.'}
+          </p>
+        </div>
+
+        <div className="relative mx-auto my-6 h-[300px] w-[210px] rounded-[2.5rem] border-[9px] border-white bg-white shadow-[0_32px_70px_rgba(37,22,61,0.16)]">
+          <div className="absolute left-1/2 top-3 h-5 w-16 -translate-x-1/2 rounded-full bg-text-main" />
+          <div className="h-full overflow-hidden rounded-[1.85rem] bg-[#F7F7FB] p-4 pt-10">
+            <div className="rounded-2xl bg-white p-3 shadow-sm">
+              <p className="text-[9px] font-black uppercase tracking-widest text-accent">Command Center</p>
+              <p className="mt-2 text-lg font-black text-text-main">Launch Beta</p>
+              <div className="mt-3 h-2 rounded-full bg-accent/15">
+                <motion.div className="h-full rounded-full bg-accent" initial={{ width: '20%' }} animate={{ width: '72%' }} transition={{ duration: 1.2, ease: 'easeOut' }} />
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {['Vision', 'Action', 'Proof', 'Pulse'].map((item, index) => (
+                <motion.div
+                  key={item}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.07 }}
+                  className="rounded-2xl bg-white p-3 shadow-sm"
+                >
+                  <span className="block h-7 w-7 rounded-xl bg-accent/10" />
+                  <p className="mt-2 text-[10px] font-black text-text-main">{item}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          {previewCards.map((card, index) => {
+            const Icon = card.icon;
+            return (
+              <motion.div
+                key={card.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.08 }}
+                className="rounded-2xl border border-white/80 bg-white/75 p-3 shadow-sm backdrop-blur-xl"
+              >
+                <Icon className="h-4 w-4 text-accent" />
+                <p className="mt-2 text-[9px] font-black uppercase tracking-widest text-accent">{card.label}</p>
+                <p className="mt-1 text-[11px] font-bold leading-4 text-text-main">{card.value}</p>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuthShell({ mode, children }: { mode: 'signup' | 'login'; children: ReactNode }) {
+  return (
+    <div className="grid w-full max-w-[1060px] gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <AuthPreviewPanel mode={mode} />
+      <div className="flex min-h-0 items-center rounded-[2rem] border border-card-border bg-card/95 p-4 shadow-2xl shadow-accent/10 backdrop-blur-xl sm:p-6">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionTitle, taskTitle, selectedTheme }: {
   variant: SetupStepId;
   title?: string;
@@ -956,7 +1057,7 @@ function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionT
   ];
 
   return (
-    <div className="relative min-h-[360px] overflow-hidden rounded-[2.4rem] border border-white/80 bg-gradient-to-br from-white/90 via-[#F8F6FF]/90 to-[#EAF7FF]/80 p-5 shadow-[0_30px_90px_rgba(109,93,246,0.18)] sm:min-h-[520px] sm:p-7">
+    <div className="relative min-h-[170px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br from-white/90 via-[#F8F6FF]/90 to-[#EAF7FF]/80 p-4 shadow-[0_30px_90px_rgba(109,93,246,0.18)] sm:min-h-[360px] sm:p-5 lg:min-h-0">
       <motion.div
         aria-hidden="true"
         className="absolute -left-14 -top-12 h-44 w-44 rounded-full bg-[#C9EFFF]/70 blur-3xl"
@@ -984,19 +1085,19 @@ function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionT
           </motion.div>
         </div>
 
-        <div className="relative mx-auto my-8 flex w-full max-w-sm justify-center sm:my-10">
+        <div className="relative mx-auto my-4 flex w-full max-w-sm justify-center sm:my-6 lg:my-7">
           <motion.div
-            className="relative h-[300px] w-[190px] rounded-[2.4rem] border-[8px] border-white bg-white shadow-[0_30px_70px_rgba(37,22,61,0.18)] sm:h-[360px] sm:w-[230px]"
+            className="relative h-[180px] w-[126px] rounded-[1.8rem] border-[6px] border-white bg-white shadow-[0_30px_70px_rgba(37,22,61,0.18)] sm:h-[280px] sm:w-[180px] lg:h-[320px] lg:w-[210px]"
             initial={{ y: 18, opacity: 0, rotate: -2 }}
             animate={{ y: 0, opacity: 1, rotate: variant === 'complete' ? 0 : -1 }}
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="absolute left-1/2 top-3 h-5 w-16 -translate-x-1/2 rounded-full bg-text-main" />
+            <div className="absolute left-1/2 top-2 h-3 w-12 -translate-x-1/2 rounded-full bg-text-main sm:top-3 sm:h-4 sm:w-14" />
             <div
-              className="h-full overflow-hidden rounded-[1.8rem] p-4"
+              className="h-full overflow-hidden rounded-[1.35rem] p-3 sm:rounded-[1.55rem] sm:p-4"
               style={{ background: `linear-gradient(160deg, ${theme.bg}, #ffffff 58%, rgba(var(--accent-rgb),0.12))` }}
             >
-              <div className="mt-8 space-y-3">
+              <div className="mt-5 space-y-2 sm:mt-8 sm:space-y-3">
                 {variant === 'path' ? (
                   <div className="text-center">
                     <path.icon className="mx-auto h-12 w-12 text-accent" />
@@ -1065,7 +1166,7 @@ function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionT
           {orbitItems.map((item, index) => (
             <motion.div
               key={item}
-              className="absolute rounded-full border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-black text-text-main shadow-lg"
+              className="absolute hidden rounded-full border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-black text-text-main shadow-lg sm:block"
               style={{
                 left: index % 2 === 0 ? '2%' : '70%',
                 top: `${18 + index * 20}%`
@@ -1078,7 +1179,7 @@ function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionT
           ))}
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 hidden sm:block">
           <FeatureBriefChips />
         </div>
       </div>
@@ -1088,7 +1189,7 @@ function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionT
 
 function SetupCard({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-[2rem] border border-white/80 bg-white/82 p-5 shadow-[0_24px_80px_rgba(109,93,246,0.14)] backdrop-blur-2xl sm:p-7">
+    <div className="min-h-0 rounded-[2rem] border border-white/80 bg-white/82 p-4 shadow-[0_24px_80px_rgba(109,93,246,0.14)] backdrop-blur-2xl sm:p-5 lg:overflow-hidden">
       {children}
     </div>
   );
@@ -1101,7 +1202,7 @@ function SetupShell({ step, children, visualProps }: { step: number; children: R
       <MobileSetupProgress activeIndex={activeIndex} />
       <div className="flex w-full gap-5">
         <SetupProgressRail activeIndex={activeIndex} />
-        <div className="grid min-h-[620px] flex-1 gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.8fr)]">
+        <div className="grid flex-1 gap-4 lg:h-[min(650px,calc(100dvh-8.5rem))] lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.8fr)]">
           <OnboardingVisualScene {...visualProps} />
           <SetupCard>{children}</SetupCard>
         </div>
@@ -1112,13 +1213,13 @@ function SetupShell({ step, children, visualProps }: { step: number; children: R
 
 function SetupWelcomeScreen({ nextStep }: { nextStep: () => void }) {
   return (
-    <div className="flex h-full flex-col justify-center space-y-6">
+    <div className="flex h-full min-h-0 flex-col justify-center space-y-4 lg:space-y-5">
       <div className="space-y-3">
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">90-second setup</p>
         <h2 className="text-4xl font-black tracking-tight text-text-main sm:text-5xl">Let&apos;s build your growth system.</h2>
         <p className="text-base font-semibold leading-7 text-text-secondary">VisNova works best when your Vision, actions, proof, and progress live in one place.</p>
       </div>
-      <div className="grid gap-3">
+      <div className="grid gap-2.5">
         {[
           ['Vision', 'Choose what you are building.'],
           ['Action', 'Pick one move small enough for today.'],
@@ -1145,13 +1246,13 @@ function SetupWelcomeScreen({ nextStep }: { nextStep: () => void }) {
 
 function SetupPathScreen({ selectedPath, setSelectedPath, nextStep }: { selectedPath: OnboardingPathId; setSelectedPath: (path: OnboardingPathId) => void; nextStep: () => void }) {
   return (
-    <div className="flex h-full flex-col justify-center space-y-5">
+    <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div className="space-y-2">
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Choose your path</p>
         <h2 className="text-3xl font-black tracking-tight text-text-main sm:text-4xl">What are you building right now?</h2>
         <p className="text-sm font-semibold leading-6 text-text-secondary">Your path tunes examples, suggestions, and dashboard copy.</p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-2.5 sm:grid-cols-2">
         {ONBOARDING_PATHS.map(path => {
           const Icon = path.icon;
           const selected = selectedPath === path.id;
@@ -1160,12 +1261,12 @@ function SetupPathScreen({ selectedPath, setSelectedPath, nextStep }: { selected
               key={path.id}
               onClick={() => setSelectedPath(path.id)}
               className={cn(
-                'rounded-2xl border p-4 text-left transition-all active:scale-[0.98]',
+                'rounded-2xl border p-3 text-left transition-all active:scale-[0.98]',
                 selected ? 'border-accent bg-accent text-accent-contrast shadow-xl shadow-accent/20' : 'border-card-border bg-card hover:border-accent/35'
               )}
             >
               <Icon className="h-5 w-5" />
-              <p className="mt-3 text-sm font-black">{path.label}</p>
+              <p className="mt-2 text-sm font-black">{path.label}</p>
               <p className={cn('mt-1 text-xs font-semibold leading-5', selected ? 'text-accent-contrast/80' : 'text-text-secondary')}>{path.description}</p>
             </button>
           );
@@ -1180,8 +1281,9 @@ function SetupPathScreen({ selectedPath, setSelectedPath, nextStep }: { selected
 
 function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { selectedPath: OnboardingPathId; title: string; setTitle: (value: string) => void; nextStep: () => void }) {
   const path = getOnboardingPath(selectedPath);
+  const cleanTitle = String(title || '').trim();
   return (
-    <div className="flex h-full flex-col justify-center space-y-5">
+    <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">First Vision</p>
         <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">What Vision should move first?</h2>
@@ -1206,7 +1308,7 @@ function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { select
           </button>
         ))}
       </div>
-      <button onClick={nextStep} disabled={!title.trim()} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+      <button onClick={nextStep} disabled={!cleanTitle} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
         Create Vision
       </button>
     </div>
@@ -1215,8 +1317,9 @@ function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { select
 
 function SetupTaskScreen({ selectedPath, taskTitle, setTaskTitle, nextStep }: { selectedPath: OnboardingPathId; taskTitle: string; setTaskTitle: (value: string) => void; nextStep: () => void }) {
   const path = getOnboardingPath(selectedPath);
+  const cleanTaskTitle = String(taskTitle || '').trim();
   return (
-    <div className="flex h-full flex-col justify-center space-y-5">
+    <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Next move</p>
         <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">What is small enough to do today?</h2>
@@ -1235,14 +1338,14 @@ function SetupTaskScreen({ selectedPath, taskTitle, setTaskTitle, nextStep }: { 
           <button
             key={suggestion}
             onClick={() => setTaskTitle(suggestion)}
-            className="flex w-full items-center gap-3 rounded-2xl border border-card-border bg-surface-muted p-3 text-left text-sm font-bold text-text-main transition-colors hover:border-accent"
+            className="flex w-full items-center gap-3 rounded-2xl border border-card-border bg-surface-muted p-2.5 text-left text-sm font-bold text-text-main transition-colors hover:border-accent"
           >
             <span className="h-5 w-5 rounded-lg border-2 border-accent/25 bg-card" />
             {suggestion}
           </button>
         ))}
       </div>
-      <button onClick={nextStep} disabled={!taskTitle.trim()} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+      <button onClick={nextStep} disabled={!cleanTaskTitle} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
         Add Action
       </button>
     </div>
@@ -1251,7 +1354,7 @@ function SetupTaskScreen({ selectedPath, taskTitle, setTaskTitle, nextStep }: { 
 
 function SetupPrivacyScreen({ visibility, setVisibility, nextStep }: { visibility: 'private' | 'circle' | 'public'; setVisibility: (value: 'private' | 'circle' | 'public') => void; nextStep: () => void }) {
   return (
-    <div className="flex h-full flex-col justify-center space-y-5">
+    <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Privacy default</p>
         <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Who should see your progress?</h2>
@@ -1286,7 +1389,7 @@ function SetupPrivacyScreen({ visibility, setVisibility, nextStep }: { visibilit
 
 function SetupThemeScreen({ selectedTheme, setSelectedTheme, nextStep }: { selectedTheme: string; setSelectedTheme: (value: string) => void; nextStep: () => void }) {
   return (
-    <div className="flex h-full flex-col justify-center space-y-5">
+    <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Theme</p>
         <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Make VisNova feel like yours.</h2>
@@ -1319,8 +1422,9 @@ function SetupThemeScreen({ selectedTheme, setSelectedTheme, nextStep }: { selec
 }
 
 function SetupProofScreen({ proofContent, setProofContent, onLogProof, onSkip, isSaving }: { proofContent: string; setProofContent: (value: string) => void; onLogProof: () => void; onSkip: () => void; isSaving: boolean }) {
+  const cleanProof = String(proofContent || '').trim();
   return (
-    <div className="flex h-full flex-col justify-center space-y-5">
+    <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Log proof</p>
         <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Progress starts when you log proof.</h2>
@@ -1336,7 +1440,7 @@ function SetupProofScreen({ proofContent, setProofContent, onLogProof, onSkip, i
         placeholder="What did you do today? You can keep it private."
         className="min-h-28 rounded-2xl border border-card-border bg-card p-4 text-sm font-bold leading-6 text-text-main outline-none transition-all placeholder:text-text-secondary/40 focus:border-accent focus:ring-4 focus:ring-accent/10"
       />
-      <button onClick={onLogProof} disabled={!proofContent.trim() || isSaving} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+      <button onClick={onLogProof} disabled={!cleanProof || isSaving} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
         {isSaving ? 'Logging...' : 'Log First Proof'}
       </button>
       <button onClick={onSkip} disabled={isSaving} className="text-xs font-black uppercase tracking-widest text-text-secondary/55 hover:text-accent">
@@ -2235,7 +2339,8 @@ export default function OnboardingFlow() {
 
   const createFirstVisionIfNeeded = async (overrideTitle?: string) => {
     if (firstVisionId) return firstVisionId;
-    const cleanTitle = sanitizeText(overrideTitle || firstVisionTitle || intent || 'My first Vision').slice(0, 120) || 'My first Vision';
+    const rawTitle = String(overrideTitle ?? firstVisionTitle ?? intent ?? 'My first Vision');
+    const cleanTitle = sanitizeText(rawTitle, 120).trim() || 'My first Vision';
     const vision = await addVision({
       title: cleanTitle,
       description: getOnboardingPath(onboardingPath).tone,
@@ -2256,9 +2361,9 @@ export default function OnboardingFlow() {
 
   const handleCreateFirstVision = async (overrideTitle?: string) => {
     try {
-      const nextTitle = overrideTitle || firstVisionTitle;
-      if (!nextTitle.trim()) return;
-      if (overrideTitle) setFirstVisionTitle(overrideTitle);
+      const nextTitle = String(overrideTitle ?? firstVisionTitle ?? '').trim();
+      if (!nextTitle) return;
+      if (overrideTitle !== undefined) setFirstVisionTitle(nextTitle);
       await createFirstVisionIfNeeded(nextTitle);
       nextStep(6);
     } catch (err) {
@@ -2272,13 +2377,14 @@ export default function OnboardingFlow() {
   };
 
   const handleCreateFirstTask = async () => {
-    if (!firstTaskTitle.trim()) return;
+    const cleanTaskTitle = String(firstTaskTitle || '').trim();
+    if (!cleanTaskTitle) return;
     setIsOnboardingSaving(true);
     try {
       const visionId = await createFirstVisionIfNeeded();
       if (!firstTaskId) {
         const task = await addVisionTask(visionId, {
-          text: sanitizeText(firstTaskTitle, 160),
+          text: sanitizeText(cleanTaskTitle, 160),
           description: 'Created during onboarding.',
           status: 'today',
           priority: 'medium',
@@ -2313,12 +2419,13 @@ export default function OnboardingFlow() {
   };
 
   const handleLogFirstProof = async () => {
-    if (!proofContent.trim()) return;
+    const cleanProof = String(proofContent || '').trim();
+    if (!cleanProof) return;
     setIsOnboardingSaving(true);
     try {
       const visionId = await createFirstVisionIfNeeded();
       const saved = await createProgressLog({
-        content: proofContent,
+        content: cleanProof,
         visionId,
         taskId: firstTaskId || undefined,
         visibility: defaultVisibility,
@@ -2374,16 +2481,25 @@ export default function OnboardingFlow() {
 
   const renderCurrentStep = () => {
     switch (step) {
-      case 1: return <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} />;
+      case 1:
+        return (
+          <AuthShell mode="signup">
+            <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} />
+          </AuthShell>
+        );
       case 11:
-        return <ScreenLogin
-          email={email} setEmail={setEmail}
-          nextStep={nextStep}
-          switchToSignup={() => nextStep(1)}
-          setStep={setStep}
-          handleGoogleLogin={handleGoogleLogin}
-          verifiedMessage={verifiedLogin}
-        />;
+        return (
+          <AuthShell mode="login">
+            <ScreenLogin
+              email={email} setEmail={setEmail}
+              nextStep={nextStep}
+              switchToSignup={() => nextStep(1)}
+              setStep={setStep}
+              handleGoogleLogin={handleGoogleLogin}
+              verifiedMessage={verifiedLogin}
+            />
+          </AuthShell>
+        );
       case 12:
         return <ScreenForgotPassword
           email={email} setEmail={setEmail}
@@ -2503,7 +2619,7 @@ export default function OnboardingFlow() {
     }
   };
 
-  const usesIntroCard = [1, 2, 11, 12, 13].includes(step);
+  const usesIntroCard = [2, 12, 13].includes(step);
 
   return (
     <div className="flex min-h-[100dvh] flex-col overflow-hidden bg-bg-base p-2 pt-[calc(0.5rem+env(safe-area-inset-top))] font-sans sm:p-4">

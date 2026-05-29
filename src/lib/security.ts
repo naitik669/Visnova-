@@ -138,10 +138,10 @@ export const validateVisionElements = (elements: any[]) => {
 
 export const validateVisionPayload = (updates: any) => {
   const next = { ...updates };
-  if (next.title !== undefined) next.title = sanitizeText(next.title, 120);
+  if (next.title !== undefined) next.title = sanitizeText(String(next.title ?? ''), 120).trim();
   if (next.description !== undefined) next.description = sanitizePlainText(next.description, 2000);
   if (next.notes !== undefined) next.notes = sanitizePlainText(next.notes, 20000);
-  if (next.tags !== undefined) next.tags = Array.isArray(next.tags) ? next.tags.map((tag: string) => sanitizeText(tag, 30)).filter(Boolean).slice(0, 20) : [];
+  if (next.tags !== undefined) next.tags = Array.isArray(next.tags) ? next.tags.map((tag: string) => sanitizeText(String(tag ?? ''), 30).trim()).filter(Boolean).slice(0, 20) : [];
   if (next.elements !== undefined) next.elements = validateVisionElements(next.elements);
   return next;
 };

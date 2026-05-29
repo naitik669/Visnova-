@@ -2693,20 +2693,21 @@ export const useStore = create<AppState>((set, get) => ({
       throw new Error('Not authenticated');
     }
 
+    const safeVision = validateVisionPayload(vision);
     const tempId = Math.random().toString(36).substring(7);
     const newVision: Vision = {
       id: tempId,
-      title: vision.title || 'Untitled Vision',
-      description: vision.description || '',
+      title: safeVision.title || 'Untitled Vision',
+      description: safeVision.description || '',
       progress: 0,
       status: 'idea',
       tasks: [],
       notes: '',
       proof: [],
-      tags: vision.tags || [],
+      tags: safeVision.tags || [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      ...vision,
+      ...safeVision,
     } as Vision;
 
     set((state) => ({ visions: [...state.visions, newVision] }));
