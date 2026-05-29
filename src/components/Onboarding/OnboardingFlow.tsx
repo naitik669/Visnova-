@@ -154,33 +154,6 @@ const rocketStages = {
   },
 } satisfies Record<RocketStageId, { name: string; animate: Record<string, unknown>; transition: Record<string, unknown> }>;
 
-const rocketStageCopy: Record<RocketStageId, { title: string; copy: string }> = {
-  form: {
-    title: 'Ready for launch',
-    copy: 'Create your account and start your first Vision system.',
-  },
-  anticipation: {
-    title: 'Preparing your launch',
-    copy: 'Checking the details and creating your VisNova account.',
-  },
-  launching: {
-    title: 'Launch confirmed',
-    copy: 'Your account is ready. Next stop: your first Vision.',
-  },
-  failed_launch: {
-    title: 'Tiny course correction',
-    copy: 'Something needs attention before we continue.',
-  },
-  crashing: {
-    title: 'Settling safely',
-    copy: 'No work lost. You can fix the details and try again.',
-  },
-  error_idle: {
-    title: 'Ready to retry',
-    copy: 'Update the highlighted field and launch again.',
-  },
-};
-
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
@@ -1197,7 +1170,6 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
         { label: 'Pulse', value: 'See what changed this week', icon: Activity },
         { label: 'Circle', value: 'Stay accountable by choice', icon: Users }
       ];
-  const rocketCopy = rocketStageCopy[rocketStage];
 
   return (
     <div className="relative hidden h-full min-h-[520px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] p-6 shadow-[0_28px_90px_rgba(109,93,246,0.16)] lg:block">
@@ -1226,19 +1198,14 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
           </p>
         </div>
 
-        <div className="relative mx-auto my-5 w-full max-w-[330px] rounded-[2.25rem] border border-white/80 bg-white/55 p-4 text-center shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
+        <div className="relative mx-auto my-5 flex w-full max-w-[330px] justify-center rounded-[2.25rem] border border-white/80 bg-white/55 p-4 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
+          <div className="absolute left-5 top-5 rounded-full border border-accent/10 bg-white/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-accent shadow-sm">
+            Launch Pad
+          </div>
           <RocketMascot stage={rocketStage} />
-          <motion.div
-            key={rocketStage}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
-            className="relative z-20 -mt-4 rounded-3xl border border-white/80 bg-white/85 p-4 shadow-sm"
-          >
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">{rocketStages[rocketStage].name}</p>
-            <h3 className="mt-2 text-xl font-black text-text-main">{rocketCopy.title}</h3>
-            <p className="mt-1 text-xs font-semibold leading-5 text-text-secondary">{rocketCopy.copy}</p>
-          </motion.div>
+          <div className="absolute bottom-5 right-5 rounded-full border border-white/80 bg-white/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary shadow-sm">
+            Vision ready
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
