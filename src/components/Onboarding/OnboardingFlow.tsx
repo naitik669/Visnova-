@@ -1512,7 +1512,7 @@ function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { select
           </button>
         ))}
       </div>
-      <button onClick={nextStep} disabled={!cleanTitle} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+      <button onClick={() => nextStep()} disabled={!cleanTitle} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
         Create Vision
       </button>
     </div>
@@ -2542,9 +2542,17 @@ export default function OnboardingFlow() {
     }
   };
 
-  const createFirstVisionIfNeeded = async (overrideTitle?: string) => {
+  const coerceVisionTitle = (value: unknown) => {
+    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (typeof (value as any)?.target?.value === 'string') return (value as any).target.value;
+    if (typeof (value as any)?.currentTarget?.value === 'string') return (value as any).currentTarget.value;
+    if (typeof (value as any)?.title === 'string') return (value as any).title;
+    return '';
+  };
+
+  const createFirstVisionIfNeeded = async (overrideTitle?: unknown) => {
     if (firstVisionId) return firstVisionId;
-    const rawTitle = String(overrideTitle ?? firstVisionTitle ?? intent ?? 'My first Vision');
+    const rawTitle = coerceVisionTitle(overrideTitle) || firstVisionTitle || intent || 'My first Vision';
     const cleanTitle = sanitizeText(rawTitle, 120).trim() || 'My first Vision';
     const vision = await addVision({
       title: cleanTitle,
@@ -2564,9 +2572,9 @@ export default function OnboardingFlow() {
     return vision.id;
   };
 
-  const handleCreateFirstVision = async (overrideTitle?: string) => {
+  const handleCreateFirstVision = async (overrideTitle?: unknown) => {
     try {
-      const nextTitle = String(overrideTitle ?? firstVisionTitle ?? '').trim();
+      const nextTitle = (coerceVisionTitle(overrideTitle) || firstVisionTitle || '').trim();
       if (!nextTitle) return;
       if (overrideTitle !== undefined) setFirstVisionTitle(nextTitle);
       await createFirstVisionIfNeeded(nextTitle);

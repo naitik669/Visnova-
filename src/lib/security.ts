@@ -138,7 +138,18 @@ export const validateVisionElements = (elements: any[]) => {
 
 export const validateVisionPayload = (updates: any) => {
   const next = { ...updates };
-  if (next.title !== undefined) next.title = sanitizeText(String(next.title ?? ''), 120).trim();
+  if (next.title !== undefined) {
+    const rawTitle = typeof next.title === 'string' || typeof next.title === 'number'
+      ? String(next.title)
+      : typeof next.title?.target?.value === 'string'
+        ? next.title.target.value
+        : typeof next.title?.currentTarget?.value === 'string'
+          ? next.title.currentTarget.value
+          : typeof next.title?.title === 'string'
+            ? next.title.title
+            : '';
+    next.title = sanitizeText(rawTitle, 120).trim();
+  }
   if (next.description !== undefined) next.description = sanitizePlainText(next.description, 2000);
   if (next.notes !== undefined) next.notes = sanitizePlainText(next.notes, 20000);
   if (next.tags !== undefined) next.tags = Array.isArray(next.tags) ? next.tags.map((tag: string) => sanitizeText(String(tag ?? ''), 30).trim()).filter(Boolean).slice(0, 20) : [];
