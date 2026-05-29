@@ -1056,15 +1056,67 @@ function FeatureBriefChips() {
   );
 }
 
-function RocketMascot({ stage }: { stage: RocketStageId }) {
+type RocketColor = "lavender" | "sunset" | "mint" | "cosmic";
+type RocketMood = "excited" | "determined" | "wink" | "sleepy" | "cool";
+
+const getColorMetadata = (theme: RocketColor) => {
+  switch (theme) {
+    case "lavender":
+      return {
+        primary: "from-[#A78BFA] to-[#7C3AED]",
+        glow: "linear-gradient(to top, #A78BFA, #7C3AED)",
+        secondary: "#DDD6FE",
+        accent: "#4C1D95",
+        highlight: "rgba(255, 255, 255, 0.45)",
+        booster: "from-[#8B5CF6] to-[#6D28D9]",
+      };
+    case "sunset":
+      return {
+        primary: "from-[#F43F5E] to-[#BE123C]",
+        glow: "linear-gradient(to top, #F43F5E, #BE123C)",
+        secondary: "#FECDD3",
+        accent: "#4C0519",
+        highlight: "rgba(255, 255, 255, 0.5)",
+        booster: "from-[#E11D48] to-[#9F1239]",
+      };
+    case "mint":
+      return {
+        primary: "from-[#10B981] to-[#047857]",
+        glow: "linear-gradient(to top, #10B981, #047857)",
+        secondary: "#A7F3D0",
+        accent: "#064E3B",
+        highlight: "rgba(255, 255, 255, 0.45)",
+        booster: "from-[#059669] to-[#065F46]",
+      };
+    case "cosmic":
+      return {
+        primary: "from-[#3B82F6] to-[#1D4ED8]",
+        glow: "linear-gradient(to top, #3B82F6, #1D4ED8)",
+        secondary: "#BFDBFE",
+        accent: "#1E3A8A",
+        highlight: "rgba(255, 255, 255, 0.5)",
+        booster: "from-[#2563EB] to-[#1E40AF]",
+      };
+  }
+};
+
+function RocketMascot({
+  stage,
+  selectedColor = "lavender",
+  selectedMood = "excited",
+  isWiggling = false,
+  onClick,
+}: {
+  stage: RocketStageId;
+  selectedColor?: RocketColor;
+  selectedMood?: RocketMood;
+  isWiggling?: boolean;
+  onClick?: () => void;
+}) {
   const rocketRef = useRef<HTMLDivElement | null>(null);
-  const [pupilOffset, setPupilOffset] = useState({ x: 0, y: 0 });
-  const stageConfig = rocketStages[stage];
-  const isLaunching = stage === 'launching';
-  const isAnticipating = stage === 'anticipation';
-  const isError = stage === 'failed_launch' || stage === 'crashing' || stage === 'error_idle';
-  const flameHeight = isLaunching ? 92 : isAnticipating ? 58 : isError ? 34 : 44;
-  const flameOpacity = isError ? 0.68 : 0.92;
+  const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
+  const [isBlinking, setIsBlinking] = useState(false);
+  const currentColors = getColorMetadata(selectedColor);
 
   useEffect(() => {
     let frame = 0;
@@ -1075,17 +1127,17 @@ function RocketMascot({ stage }: { stage: RocketStageId }) {
         const rect = rocketRef.current?.getBoundingClientRect();
         if (!rect) return;
         const faceCenterX = rect.left + rect.width * 0.5;
-        const faceCenterY = rect.top + rect.height * 0.39;
+        const faceCenterY = rect.top + rect.height * 0.38;
         const angle = Math.atan2(event.clientY - faceCenterY, event.clientX - faceCenterX);
         const distance = Math.min(1, Math.hypot(event.clientX - faceCenterX, event.clientY - faceCenterY) / 160);
-        setPupilOffset({
-          x: Math.cos(angle) * 3.4 * distance,
-          y: Math.sin(angle) * 2.7 * distance,
+        setEyeOffset({
+          x: Math.cos(angle) * 7 * distance,
+          y: Math.sin(angle) * 6 * distance,
         });
       });
     };
 
-    const handlePointerLeave = () => setPupilOffset({ x: 0, y: 0 });
+    const handlePointerLeave = () => setEyeOffset({ x: 0, y: 0 });
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('blur', handlePointerLeave);
@@ -1099,147 +1151,315 @@ function RocketMascot({ stage }: { stage: RocketStageId }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (stage !== 'form') return;
+    const interval = window.setInterval(() => {
+      setIsBlinking(true);
+      window.setTimeout(() => setIsBlinking(false), 130);
+    }, 4300);
+    return () => window.clearInterval(interval);
+  }, [stage]);
+
   return (
-    <div className="relative mx-auto flex h-[300px] w-[250px] items-center justify-center overflow-hidden">
-      <motion.span
-        aria-hidden="true"
-        className="absolute left-7 top-10 text-lg text-amber-300"
-        animate={{ scale: [0.8, 1.18, 0.8], rotate: [0, 10, 0], opacity: [0.55, 1, 0.55] }}
-        transition={{ duration: 2.7, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        ✦
-      </motion.span>
-      <motion.span
-        aria-hidden="true"
-        className="absolute right-9 top-24 text-xl text-pink-300"
-        animate={{ scale: [1, 0.75, 1], rotate: [0, -12, 0], opacity: [0.75, 0.4, 0.75] }}
-        transition={{ duration: 3.1, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        ✦
-      </motion.span>
-      <motion.div
-        aria-hidden="true"
-        className="absolute h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(139,124,255,0.18),rgba(255,255,255,0)_68%)]"
-        animate={{ scale: [0.96, 1.04, 0.96], opacity: [0.55, 0.85, 0.55] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        aria-hidden="true"
-        className="absolute h-48 w-48 rounded-full border border-accent/10"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
-      >
-        {[0, 1, 2].map((dot) => (
-          <motion.span
-            key={dot}
-            className="absolute h-2.5 w-2.5 rounded-full bg-accent shadow-lg shadow-accent/30"
-            style={{
-              left: dot === 0 ? '50%' : dot === 1 ? '8%' : '83%',
-              top: dot === 0 ? '-5px' : dot === 1 ? '72%' : '20%',
-            }}
-            animate={{ scale: [0.75, 1.15, 0.75], opacity: [0.45, 0.9, 0.45] }}
-            transition={{ duration: 2.8 + dot * 0.35, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        ))}
-      </motion.div>
-
-      <AnimatePresence>
-        {(isLaunching || isAnticipating) && (
-          <motion.div
-            key="launch-trail"
-            className="absolute bottom-2 h-36 w-16 rounded-t-full bg-gradient-to-t from-transparent via-accent/10 to-accent/30 blur-xl"
-            initial={{ opacity: 0, scaleY: 0.4 }}
-            animate={{ opacity: isLaunching ? 0.95 : 0.45, scaleY: isLaunching ? 1.6 : 0.9 }}
-            exit={{ opacity: 0, scaleY: 0.4 }}
-            transition={{ duration: 0.25 }}
-          />
-        )}
-      </AnimatePresence>
-
-      {[0, 1, 2, 3].map((puff) => (
-        <motion.span
-          key={puff}
-          className="absolute bottom-3 rounded-[2rem] bg-white/85 shadow-[0_18px_45px_rgba(109,93,246,0.12)]"
-          style={{
-            width: `${42 + puff * 18}px`,
-            height: `${28 + puff * 4}px`,
-            left: `${18 + puff * 48}px`,
-          }}
-          animate={{
-            y: isLaunching ? [0, 22, 0] : [0, 5, 0],
-            opacity: isLaunching ? [0.22, 0.68, 0.22] : [0.18, 0.42, 0.18],
-            scale: isLaunching ? [0.85, 1.18, 0.85] : [0.94, 1.05, 0.94],
-          }}
-          transition={{ duration: 2.5 + puff * 0.25, repeat: Infinity, ease: 'easeInOut' }}
+    <motion.div
+      ref={rocketRef}
+      style={{ originY: 1 }}
+      className="relative cursor-pointer select-none"
+      onClick={onClick}
+      animate={
+        stage === "form"
+          ? {
+              y: [0, -9, 0],
+              scaleY: [1, 1.025, 1],
+              scaleX: [1, 0.985, 1],
+              rotate: isWiggling ? [-4, 4, -4, 4, 0] : 0,
+            }
+          : stage === "anticipation"
+            ? {
+                y: 35,
+                scaleY: 0.74,
+                scaleX: 1.2,
+                rotate: [-1.5, 1.5, -1.8, 1.8, -1.5, 1.5, -1],
+              }
+            : stage === "failed_launch"
+              ? {
+                  y: -120,
+                  scaleY: 1.15,
+                  scaleX: 0.88,
+                  rotate: [12, 16, 12],
+                }
+              : stage === "crashing"
+                ? {
+                    y: 0,
+                    scaleY: 1,
+                    scaleX: 1,
+                    rotate: 12.5,
+                  }
+                : stage === "error_idle"
+                  ? {
+                      y: [0, -5, 0],
+                      rotate: [11.5, 13.5, 11.5],
+                      scaleY: [1, 1.015, 1],
+                      scaleX: [1, 0.99, 1],
+                    }
+                  : stage === "launching"
+                    ? {
+                        y: -920,
+                        scaleY: [0.74, 1.38, 1.1],
+                        scaleX: [1.2, 0.78, 0.95],
+                      }
+                    : {}
+      }
+      transition={
+        stage === "form"
+          ? {
+              y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+              scaleY: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+              scaleX: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+              rotate: isWiggling ? { duration: 0.4 } : { duration: 0.8, ease: "easeInOut" },
+            }
+          : stage === "anticipation"
+            ? {
+                rotate: { duration: 0.08, repeat: Infinity, ease: "linear" },
+                y: { type: "spring", stiffness: 180, damping: 15 },
+                scaleY: { type: "spring", stiffness: 180, damping: 15 },
+                scaleX: { type: "spring", stiffness: 180, damping: 15 },
+              }
+            : stage === "failed_launch"
+              ? {
+                  rotate: { duration: 0.25, repeat: Infinity, ease: "linear" },
+                  y: { duration: 0.5, ease: "easeOut" },
+                  scaleY: { duration: 0.3, ease: "easeOut" },
+                  scaleX: { duration: 0.3, ease: "easeOut" },
+                }
+              : stage === "crashing"
+                ? {
+                    y: { type: "spring", stiffness: 160, damping: 9 },
+                    scaleY: { type: "spring", stiffness: 180, damping: 8 },
+                    scaleX: { type: "spring", stiffness: 180, damping: 8 },
+                    rotate: { duration: 0.5, ease: "easeOut" },
+                  }
+                : stage === "error_idle"
+                  ? {
+                      y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+                      rotate: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+                      scaleY: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+                      scaleX: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+                    }
+                  : stage === "launching"
+                    ? {
+                        y: { duration: 1.2, ease: "easeIn" },
+                        scaleY: { duration: 0.35, ease: "easeOut" },
+                        scaleX: { duration: 0.35, ease: "easeOut" },
+                      }
+                    : {}
+      }
+    >
+      <div className="relative group/mascot">
+        <div
+          className="pointer-events-none absolute -inset-6 rounded-full opacity-15 blur-xl"
+          style={{ background: currentColors.glow }}
         />
-      ))}
 
-      <motion.div ref={rocketRef} className="relative z-10 origin-bottom" animate={stageConfig.animate} transition={stageConfig.transition as any}>
-        {isError && (
-          <motion.div
-            className="absolute -right-6 -top-5 flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-600 shadow-lg shadow-amber-200/30"
-            initial={{ opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 1, scale: [0.92, 1.05, 0.92] }}
-            transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <AlertTriangle className="h-4 w-4" />
-          </motion.div>
-        )}
+        <svg width="200" height="300" viewBox="0 0 200 300" className="relative z-10 drop-shadow-[0_12px_24px_rgba(76,29,149,0.06)]" aria-hidden="true">
+          <motion.path
+            d="M 45 200 L 15 240 Q 8 265 25 265 L 55 240 Z"
+            fill="url(#fuselage-booster-grad)"
+            animate={stage === "anticipation" ? { rotate: -8 } : { rotate: 0 }}
+            style={{ transformOrigin: "45px 200px" }}
+          />
+          <motion.path
+            d="M 155 200 L 185 240 Q 192 265 175 265 L 145 240 Z"
+            fill="url(#fuselage-booster-grad)"
+            animate={stage === "anticipation" ? { rotate: 8 } : { rotate: 0 }}
+            style={{ transformOrigin: "155px 200px" }}
+          />
 
-        <svg width="150" height="210" viewBox="0 0 150 210" fill="none" aria-hidden="true" className="drop-shadow-[0_26px_38px_rgba(109,93,246,0.28)]">
-          <path d="M43 138C25 150 15 167 19 185C20 191 27 194 32 190L52 173L43 138Z" fill="url(#leftFin)" />
-          <path d="M107 138C125 150 135 167 131 185C130 191 123 194 118 190L98 173L107 138Z" fill="url(#rightFin)" />
-          <path d="M75 5C103 24 116 62 116 121C116 161 103 174 75 174C47 174 34 161 34 121C34 62 47 24 75 5Z" fill="url(#rocketBody)" />
-          <path d="M75 5C103 24 116 62 116 121C116 161 103 174 75 174V5Z" fill="url(#rocketShade)" opacity="0.42" />
-          <path d="M48 37C50 25 60 15 75 5C65 26 57 63 57 124C57 139 45 139 43 126C40 87 42 57 48 37Z" fill="white" opacity="0.35" />
-          <circle cx="75" cy="82" r="33" fill="white" opacity="0.96" />
-          <circle cx="75" cy="82" r="25" fill="#171432" />
-          <path d="M58 75C61 70 67 70 70 75" stroke="white" strokeWidth="4" strokeLinecap="round" />
-          <path d="M80 75C83 70 89 70 92 75" stroke="white" strokeWidth="4" strokeLinecap="round" />
-          <circle cx="66" cy="89" r="5" fill="white" />
-          <circle cx="85" cy="89" r="5" fill="white" />
-          <motion.g animate={{ x: pupilOffset.x, y: pupilOffset.y }} transition={{ type: 'spring', stiffness: 360, damping: 30, mass: 0.35 }}>
-            <circle cx="64" cy="91" r="2" fill="#171432" />
-            <circle cx="83" cy="91" r="2" fill="#171432" />
-          </motion.g>
-          <path d="M70 97C73 100 78 100 81 97" stroke="white" strokeWidth="3" strokeLinecap="round" />
-          <circle cx="54" cy="93" r="5" fill="#F2A3C1" opacity="0.8" />
-          <circle cx="96" cy="93" r="5" fill="#F2A3C1" opacity="0.8" />
-          <path d="M75 123L80 135L93 136L83 144L86 157L75 150L64 157L67 144L57 136L70 135L75 123Z" fill="#CFC3FF" opacity="0.75" />
-          <path d="M56 173H94L87 194C83 207 67 207 63 194L56 173Z" fill="#FFD45A" />
+          <g className="flame-layer">
+            {stage === "form" ? (
+              <motion.ellipse
+                cx="100"
+                cy="265"
+                rx="12"
+                ry="16"
+                fill="#FFD23F"
+                animate={{ ry: [12, 22, 12], rx: [10, 13, 10], opacity: [0.7, 0.95, 0.7] }}
+                transition={{ duration: 0.12, repeat: Infinity }}
+              />
+            ) : stage === "anticipation" ? (
+              <>
+                <motion.ellipse
+                  cx="100"
+                  cy="268"
+                  rx="18"
+                  ry="25"
+                  fill="#FF4D00"
+                  animate={{ ry: [20, 35, 20], rx: [16, 22, 16] }}
+                  transition={{ duration: 0.08, repeat: Infinity }}
+                />
+                <motion.ellipse
+                  cx="100"
+                  cy="266"
+                  rx="12"
+                  ry="18"
+                  fill="#FFE600"
+                  animate={{ ry: [14, 24, 14] }}
+                  transition={{ duration: 0.05, repeat: Infinity }}
+                />
+              </>
+            ) : stage === "failed_launch" ? (
+              <>
+                <motion.ellipse
+                  cx="100"
+                  cy="268"
+                  rx="14"
+                  ry="25"
+                  fill="#FF5500"
+                  animate={{ ry: [15, 5, 28, 8, 22], rx: [10, 6, 15, 8, 12], opacity: [0.8, 0.3, 0.95, 0.4, 0.85] }}
+                  transition={{ duration: 0.25, repeat: Infinity, ease: "linear" }}
+                />
+                <motion.ellipse
+                  cx="100"
+                  cy="265"
+                  rx="8"
+                  ry="14"
+                  fill="#FFE100"
+                  animate={{ ry: [8, 3, 16, 5, 12], opacity: [0.9, 0.2, 0.95, 0.3, 0.85] }}
+                  transition={{ duration: 0.15, repeat: Infinity, ease: "linear" }}
+                />
+              </>
+            ) : stage === "crashing" || stage === "error_idle" ? null : (
+              <>
+                <motion.path
+                  d="M 75 255 L 100 320 L 125 255 Z"
+                  fill="url(#launch-beam-grad)"
+                  animate={{ scaleX: [0.9, 1.25, 0.9], scaleY: [1, 1.4, 1] }}
+                  transition={{ duration: 0.06, repeat: Infinity }}
+                  style={{ transformOrigin: "100px 255px" }}
+                />
+                <motion.ellipse
+                  cx="100"
+                  cy="258"
+                  rx="24"
+                  ry="30"
+                  fill="#FFFFFF"
+                  animate={{ opacity: [0.8, 1, 0.8] }}
+                  transition={{ duration: 0.05, repeat: Infinity }}
+                />
+              </>
+            )}
+          </g>
+
+          <path
+            d="M 100 25 C 145 60 162 165 150 245 C 150 255 132 260 100 260 C 68 260 50 255 50 245 C 38 165 55 60 100 25 Z"
+            fill="url(#fuselage-body-grad)"
+          />
+          <path
+            d="M 66 50 Q 72 140 60 225"
+            stroke={currentColors.highlight}
+            strokeWidth="8.5"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.8"
+          />
+          <path
+            d="M 100 168 L 104 175 L 112 175 L 106 180 L 109 188 L 100 183 L 91 188 L 94 180 L 88 175 L 96 175 Z"
+            fill="#FFF"
+            opacity="0.25"
+          />
+          <circle cx="100" cy="115" r="32" fill="#1E1B4B" stroke={currentColors.secondary} strokeWidth="6" />
+
+          <g className="mascot-face">
+            {stage === "failed_launch" || stage === "crashing" || stage === "error_idle" ? (
+              <>
+                <path d="M 82 106 Q 89 101 93 108" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                <path d="M 118 106 Q 111 101 107 108" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                <circle cx="89" cy="115" r="4.5" fill="#FFF" />
+                <circle cx="111" cy="115" r="4.5" fill="#FFF" />
+                <motion.g animate={{ x: eyeOffset.x * 0.3, y: eyeOffset.y * 0.3 }} transition={{ type: "spring", stiffness: 150, damping: 20 }}>
+                  <circle cx="89" cy="115" r="1.5" fill="#4C1D95" />
+                  <circle cx="111" cy="115" r="1.5" fill="#4C1D95" />
+                </motion.g>
+                <path d="M 94 125 Q 100 120 106 125" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              </>
+            ) : isBlinking ? (
+              <>
+                <line x1="85" y1="115" x2="95" y2="115" stroke="white" strokeWidth="5" strokeLinecap="round" />
+                <line x1="105" y1="115" x2="115" y2="115" stroke="white" strokeWidth="5" strokeLinecap="round" />
+              </>
+            ) : selectedMood === "excited" ? (
+              <>
+                <circle cx="90" cy="115" r="6" fill="#FFF" />
+                <circle cx="110" cy="115" r="6" fill="#FFF" />
+                <motion.g animate={{ x: eyeOffset.x * 0.45, y: eyeOffset.y * 0.45 }} transition={{ type: "spring", stiffness: 150, damping: 20 }}>
+                  <circle cx="91.5" cy="112.5" r="2" fill="#4C1D95" />
+                  <circle cx="111.5" cy="112.5" r="2" fill="#4C1D95" />
+                </motion.g>
+                <path d="M 94 121 Q 100 129 106 121" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
+                <path d="M 83 103 Q 90 99 94 104" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                <path d="M 117 103 Q 110 99 106 104" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              </>
+            ) : selectedMood === "determined" ? (
+              <>
+                <path d="M 84 109 L 95 113" stroke="white" strokeWidth="4.5" strokeLinecap="round" />
+                <path d="M 116 109 L 105 113" stroke="white" strokeWidth="4.5" strokeLinecap="round" />
+                <motion.g animate={{ x: eyeOffset.x * 0.8, y: eyeOffset.y * 0.8 }}>
+                  <circle cx="89.5" cy="116.5" r="3.5" fill="#FFF" />
+                  <circle cx="110.5" cy="116.5" r="3.5" fill="#FFF" />
+                </motion.g>
+                <path d="M 95 125 L 105 125" stroke="white" strokeWidth="3" strokeLinecap="round" />
+              </>
+            ) : selectedMood === "wink" ? (
+              <>
+                <path d="M 83 116 Q 90 120 95 114" stroke="white" strokeWidth="4.5" strokeLinecap="round" fill="none" />
+                <circle cx="110" cy="114" r="6" fill="#FFF" />
+                <motion.g animate={{ x: eyeOffset.x * 0.45, y: eyeOffset.y * 0.45 }}>
+                  <circle cx="111" cy="111.5" r="2" fill="#4C1D95" />
+                </motion.g>
+                <path d="M 95 123 Q 102 126 105 120" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
+              </>
+            ) : selectedMood === "sleepy" ? (
+              <>
+                <path d="M 83 115 Q 90 121 95 115" stroke="white" strokeWidth="4.5" strokeLinecap="round" fill="none" />
+                <path d="M 105 115 Q 112 121 119 115" stroke="white" strokeWidth="4.5" strokeLinecap="round" fill="none" />
+                <path d="M 96 123 Q 100 126 104 123" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+              </>
+            ) : (
+              <>
+                <path d="M 76 110 L 124 110 L 120 119 C 114 126 104 126 100 119 C 96 126 86 126 80 119 Z" fill="#7C3AED" stroke="white" strokeWidth="2.5" />
+                <motion.g animate={{ x: eyeOffset.x * 0.5, y: eyeOffset.y * 0.5 }}>
+                  <line x1="84.5" y1="113" x2="94" y2="122" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="105.5" y1="113" x2="114" y2="122" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
+                </motion.g>
+                <path d="M 96 124 L 104 124" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+              </>
+            )}
+            <circle cx="81" cy="123" r="3.5" fill="#FFAEC9" opacity="0.65" />
+            <circle cx="119" cy="123" r="3.5" fill="#FFAEC9" opacity="0.65" />
+          </g>
+
           <defs>
-            <linearGradient id="rocketBody" x1="33" y1="11" x2="114" y2="177" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#C9B8FF" />
-              <stop offset="0.45" stopColor="#9F7CFF" />
-              <stop offset="1" stopColor="#6D3CE8" />
+            <linearGradient id="fuselage-body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={currentColors.secondary} />
+              <stop offset="35%" stopColor={selectedColor === "lavender" ? "#A78BFA" : selectedColor === "sunset" ? "#F43F5E" : selectedColor === "mint" ? "#10B981" : "#3B82F6"} />
+              <stop offset="100%" stopColor={selectedColor === "lavender" ? "#7C3AED" : selectedColor === "sunset" ? "#BE123C" : selectedColor === "mint" ? "#047857" : "#1D4ED8"} />
             </linearGradient>
-            <linearGradient id="rocketShade" x1="72" y1="10" x2="123" y2="174" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#F4EFFF" stopOpacity="0.08" />
-              <stop offset="1" stopColor="#4A21C9" />
+
+            <linearGradient id="fuselage-booster-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={selectedColor === "lavender" ? "#8B5CF6" : selectedColor === "sunset" ? "#E11D48" : selectedColor === "mint" ? "#059669" : "#2563EB"} />
+              <stop offset="100%" stopColor={currentColors.accent} />
             </linearGradient>
-            <linearGradient id="leftFin" x1="18" y1="141" x2="54" y2="191" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#7A4AF1" />
-              <stop offset="1" stopColor="#4D27B8" />
-            </linearGradient>
-            <linearGradient id="rightFin" x1="96" y1="141" x2="132" y2="191" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#7A4AF1" />
-              <stop offset="1" stopColor="#4D27B8" />
+
+            <linearGradient id="launch-beam-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#FFFFFF" />
+              <stop offset="25%" stopColor="#FDE047" />
+              <stop offset="60%" stopColor="#EF4444" />
+              <stop offset="100%" stopColor="rgba(239, 68, 68, 0)" />
             </linearGradient>
           </defs>
         </svg>
-
-        <motion.div
-          className="absolute left-1/2 top-[188px] -z-10 -translate-x-1/2 rounded-b-full bg-gradient-to-b from-yellow-200 via-amber-300 to-orange-400 blur-[0.5px]"
-          style={{ width: isLaunching ? 32 : 24 }}
-          animate={{
-            height: [flameHeight * 0.45, flameHeight * 0.72, flameHeight * 0.52],
-            opacity: [flameOpacity * 0.75, flameOpacity, flameOpacity * 0.72],
-            scaleX: isError ? [0.72, 1.05, 0.62] : [0.82, 1.08, 0.9],
-          }}
-          transition={{ duration: isError ? 0.18 : 0.45, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
 
