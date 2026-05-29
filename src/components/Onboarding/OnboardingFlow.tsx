@@ -1025,7 +1025,7 @@ function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
 
 function AuthShell({ mode, children }: { mode: 'signup' | 'login'; children: ReactNode }) {
   return (
-    <div className="grid w-full max-w-[1060px] gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+    <div className="grid h-full w-full max-w-[1120px] gap-5 lg:grid-cols-[minmax(0,1fr)_430px]">
       <AuthPreviewPanel mode={mode} />
       <div className="flex min-h-0 items-center rounded-[2rem] border border-card-border bg-card/95 p-4 shadow-2xl shadow-accent/10 backdrop-blur-xl sm:p-6">
         {children}
@@ -1185,7 +1185,7 @@ function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionT
 
 function SetupCard({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-0 rounded-[2rem] border border-white/80 bg-white/82 p-4 shadow-[0_24px_80px_rgba(109,93,246,0.14)] backdrop-blur-2xl sm:p-5 lg:overflow-hidden">
+    <div className="min-h-0 rounded-[2rem] border border-white/80 bg-white/82 p-4 shadow-[0_24px_80px_rgba(109,93,246,0.14)] backdrop-blur-2xl sm:p-5">
       {children}
     </div>
   );
@@ -1194,11 +1194,11 @@ function SetupCard({ children }: { children: ReactNode }) {
 function SetupShell({ step, children, visualProps }: { step: number; children: ReactNode; visualProps: ComponentProps<typeof OnboardingVisualScene> }) {
   const activeIndex = SETUP_STEP_TO_INDEX[step] ?? 0;
   return (
-    <div className="w-full">
+    <div className="h-full w-full">
       <MobileSetupProgress activeIndex={activeIndex} />
-      <div className="flex w-full gap-5">
+      <div className="flex h-full w-full gap-5">
         <SetupProgressRail activeIndex={activeIndex} />
-        <div className="grid flex-1 gap-4 lg:h-[min(650px,calc(100dvh-8.5rem))] lg:grid-cols-[minmax(360px,0.82fr)_minmax(460px,1fr)]">
+        <div className="grid min-h-0 flex-1 gap-4 lg:h-[min(760px,calc(100dvh-5.25rem))] lg:grid-cols-[minmax(360px,0.82fr)_minmax(460px,1fr)]">
           <OnboardingVisualScene {...visualProps} />
           <SetupCard>{children}</SetupCard>
         </div>
@@ -2684,14 +2684,14 @@ export default function OnboardingFlow() {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="absolute inset-0 flex items-stretch justify-center overflow-hidden px-3 pb-3 pt-[calc(4rem+env(safe-area-inset-top))] sm:items-center sm:p-5 sm:pt-[calc(4.25rem+env(safe-area-inset-top))]"
+            className="absolute inset-0 flex items-stretch justify-center overflow-hidden px-3 pb-2 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:items-center sm:px-5 sm:pb-3 sm:pt-[calc(4rem+env(safe-area-inset-top))]"
           >
             <div
               className={cn(
                 "w-full overflow-y-auto custom-scrollbar",
                 usesIntroCard
-                  ? "max-h-full max-w-[520px] rounded-[1.5rem] border border-card-border bg-card/95 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-accent/10 backdrop-blur-xl sm:rounded-[2rem] sm:p-6"
-                  : "max-h-full max-w-[1180px] p-0 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+                  ? "h-full max-h-full max-w-[520px] rounded-[1.5rem] border border-card-border bg-card/95 p-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl shadow-accent/10 backdrop-blur-xl sm:rounded-[2rem] sm:p-6"
+                  : "h-full max-h-full max-w-[1180px] p-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
               )}
             >
               {renderCurrentStep()}
