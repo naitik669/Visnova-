@@ -1207,20 +1207,8 @@ function RocketMascot({ stage }: { stage: RocketStageId }) {
 }
 
 function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'login'; rocketStage?: RocketStageId }) {
-  const previewCards = mode === 'signup'
-    ? [
-        { label: 'Interests', value: 'Creator · Builder · Study', icon: Sparkles },
-        { label: 'Role', value: 'Founder / Student / Custom', icon: Users },
-        { label: 'First proof', value: 'Log one real update today', icon: Activity }
-      ]
-    : [
-        { label: 'Today', value: 'Return to your next move', icon: Target },
-        { label: 'Pulse', value: 'See what changed this week', icon: Activity },
-        { label: 'Circle', value: 'Stay accountable by choice', icon: Users }
-      ];
-
   return (
-    <div className="relative hidden h-full min-h-[520px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] p-6 shadow-[0_28px_90px_rgba(109,93,246,0.16)] lg:block">
+    <div className="relative hidden h-full min-h-[520px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] p-7 shadow-[0_28px_90px_rgba(109,93,246,0.16)] lg:block">
       <motion.div
         aria-hidden="true"
         className="absolute -left-16 top-10 h-48 w-48 rounded-full bg-[#DDE7FF]/80 blur-3xl"
@@ -1233,40 +1221,21 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
         animate={{ y: [0, -18, 0], x: [0, -10, 0] }}
         transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
       />
-      <div className="relative z-10 flex h-full flex-col justify-between">
-        <div>
+      <div className="relative z-10 flex h-full flex-col items-center justify-center text-center">
+        <div className="space-y-3">
           <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">See it. Plan it. Prove it.</p>
-          <h2 className="mt-3 max-w-sm text-4xl font-black tracking-tight text-text-main">
-            {mode === 'signup' ? 'Build your first growth system.' : 'Continue your visible progress.'}
+          <h2 className="mx-auto max-w-xs text-3xl font-black tracking-tight text-text-main">
+            {mode === 'signup' ? 'Launch your first Vision.' : 'Welcome back.'}
           </h2>
-          <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-text-secondary">
+          <p className="mx-auto max-w-xs text-sm font-semibold leading-6 text-text-secondary">
             {mode === 'signup'
-              ? 'VisNova turns your goals, actions, notes, and proof into one calm workspace.'
-              : 'Your Vision, tasks, proof logs, and Pulse are waiting where you left them.'}
+              ? 'Create a goal, add your next move, and start logging proof.'
+              : 'Pick up where your progress left off.'}
           </p>
         </div>
 
-        <div className="relative mx-auto my-5 flex w-full max-w-[330px] justify-center overflow-hidden rounded-[2.25rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-4 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
+        <div className="relative mt-8 flex w-full max-w-[330px] justify-center overflow-hidden rounded-[2.25rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-4 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
           <RocketMascot stage={rocketStage} />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          {previewCards.map((card, index) => {
-            const Icon = card.icon;
-            return (
-              <motion.div
-                key={card.label}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.08 }}
-                className="rounded-2xl border border-white/80 bg-white/75 p-3 shadow-sm backdrop-blur-xl"
-              >
-                <Icon className="h-4 w-4 text-accent" />
-                <p className="mt-2 text-[9px] font-black uppercase tracking-widest text-accent">{card.label}</p>
-                <p className="mt-1 text-[11px] font-bold leading-4 text-text-main">{card.value}</p>
-              </motion.div>
-            );
-          })}
         </div>
       </div>
     </div>
