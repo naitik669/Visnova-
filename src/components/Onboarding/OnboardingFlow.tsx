@@ -658,11 +658,8 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
           Start building your future
         </motion.h2>
 
-        <div className="relative mx-auto flex h-36 max-w-[250px] justify-center overflow-hidden rounded-[1.75rem] border border-card-border bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] shadow-xl shadow-accent/10 lg:hidden">
-          <div className="absolute left-4 top-4 z-20 rounded-full border border-accent/10 bg-white/85 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-accent shadow-sm">
-            Launch
-          </div>
-          <div className="-mt-16 scale-[0.58]">
+        <div className="relative mx-auto flex h-36 max-w-[250px] justify-center overflow-hidden rounded-[1.75rem] border border-card-border bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] shadow-xl shadow-accent/10 lg:hidden">
+          <div className="-mt-18 scale-[0.58]">
             <RocketMascot stage={rocketStage} />
           </div>
         </div>
@@ -1069,6 +1066,28 @@ function RocketMascot({ stage }: { stage: RocketStageId }) {
 
   return (
     <div className="relative mx-auto flex h-[300px] w-[250px] items-center justify-center overflow-hidden">
+      <motion.span
+        aria-hidden="true"
+        className="absolute left-7 top-10 text-lg text-amber-300"
+        animate={{ scale: [0.8, 1.18, 0.8], rotate: [0, 10, 0], opacity: [0.55, 1, 0.55] }}
+        transition={{ duration: 2.7, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        ✦
+      </motion.span>
+      <motion.span
+        aria-hidden="true"
+        className="absolute right-9 top-24 text-xl text-pink-300"
+        animate={{ scale: [1, 0.75, 1], rotate: [0, -12, 0], opacity: [0.75, 0.4, 0.75] }}
+        transition={{ duration: 3.1, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        ✦
+      </motion.span>
+      <motion.div
+        aria-hidden="true"
+        className="absolute h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(139,124,255,0.18),rgba(255,255,255,0)_68%)]"
+        animate={{ scale: [0.96, 1.04, 0.96], opacity: [0.55, 0.85, 0.55] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+      />
       <motion.div
         aria-hidden="true"
         className="absolute h-48 w-48 rounded-full border border-accent/10"
@@ -1105,16 +1124,16 @@ function RocketMascot({ stage }: { stage: RocketStageId }) {
       {[0, 1, 2, 3].map((puff) => (
         <motion.span
           key={puff}
-          className="absolute bottom-7 rounded-full bg-white/80 shadow-sm"
+          className="absolute bottom-3 rounded-[2rem] bg-white/85 shadow-[0_18px_45px_rgba(109,93,246,0.12)]"
           style={{
-            width: `${18 + puff * 7}px`,
-            height: `${18 + puff * 7}px`,
-            left: `${74 + puff * 25}px`,
+            width: `${42 + puff * 18}px`,
+            height: `${28 + puff * 4}px`,
+            left: `${18 + puff * 48}px`,
           }}
           animate={{
-            y: isLaunching ? [0, 18, 0] : [0, 7, 0],
-            opacity: isLaunching ? [0.15, 0.55, 0.15] : [0.08, 0.28, 0.08],
-            scale: isLaunching ? [0.8, 1.25, 0.8] : [0.9, 1.08, 0.9],
+            y: isLaunching ? [0, 22, 0] : [0, 5, 0],
+            opacity: isLaunching ? [0.22, 0.68, 0.22] : [0.18, 0.42, 0.18],
+            scale: isLaunching ? [0.85, 1.18, 0.85] : [0.94, 1.05, 0.94],
           }}
           transition={{ duration: 2.5 + puff * 0.25, repeat: Infinity, ease: 'easeInOut' }}
         />
@@ -1132,31 +1151,51 @@ function RocketMascot({ stage }: { stage: RocketStageId }) {
           </motion.div>
         )}
 
-        <svg width="118" height="164" viewBox="0 0 118 164" fill="none" aria-hidden="true" className="drop-shadow-[0_24px_35px_rgba(109,93,246,0.28)]">
-          <path d="M59 4C76.5 18.7 87.5 40.9 89.4 69.8L109.4 89.8C113.9 94.3 116 100.7 115 107L110.5 134.5L87.5 112.5H30.5L7.5 134.5L3 107C2 100.7 4.1 94.3 8.6 89.8L28.6 69.8C30.5 40.9 41.5 18.7 59 4Z" fill="url(#rocketBody)" />
-          <path d="M59 4C76.5 18.7 87.5 40.9 89.4 69.8L87.5 112.5H59V4Z" fill="url(#rocketShade)" opacity="0.62" />
-          <circle cx="59" cy="55" r="18" fill="white" opacity="0.96" />
-          <circle cx="59" cy="55" r="10" fill="#DDE7FF" />
-          <path d="M38.5 112.5H79.5L70.8 139.4C67.1 150.9 50.9 150.9 47.2 139.4L38.5 112.5Z" fill="#5D4BF1" />
-          <path d="M45 25C50.4 18.9 55 15.2 59 12.2C63 15.2 67.6 18.9 73 25H45Z" fill="white" opacity="0.85" />
+        <svg width="150" height="210" viewBox="0 0 150 210" fill="none" aria-hidden="true" className="drop-shadow-[0_26px_38px_rgba(109,93,246,0.28)]">
+          <path d="M43 138C25 150 15 167 19 185C20 191 27 194 32 190L52 173L43 138Z" fill="url(#leftFin)" />
+          <path d="M107 138C125 150 135 167 131 185C130 191 123 194 118 190L98 173L107 138Z" fill="url(#rightFin)" />
+          <path d="M75 5C103 24 116 62 116 121C116 161 103 174 75 174C47 174 34 161 34 121C34 62 47 24 75 5Z" fill="url(#rocketBody)" />
+          <path d="M75 5C103 24 116 62 116 121C116 161 103 174 75 174V5Z" fill="url(#rocketShade)" opacity="0.42" />
+          <path d="M48 37C50 25 60 15 75 5C65 26 57 63 57 124C57 139 45 139 43 126C40 87 42 57 48 37Z" fill="white" opacity="0.35" />
+          <circle cx="75" cy="82" r="33" fill="white" opacity="0.96" />
+          <circle cx="75" cy="82" r="25" fill="#171432" />
+          <path d="M58 75C61 70 67 70 70 75" stroke="white" strokeWidth="4" strokeLinecap="round" />
+          <path d="M80 75C83 70 89 70 92 75" stroke="white" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="66" cy="89" r="5" fill="white" />
+          <circle cx="85" cy="89" r="5" fill="white" />
+          <circle cx="64" cy="91" r="2" fill="#171432" />
+          <circle cx="83" cy="91" r="2" fill="#171432" />
+          <path d="M70 97C73 100 78 100 81 97" stroke="white" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="54" cy="93" r="5" fill="#F2A3C1" opacity="0.8" />
+          <circle cx="96" cy="93" r="5" fill="#F2A3C1" opacity="0.8" />
+          <path d="M75 123L80 135L93 136L83 144L86 157L75 150L64 157L67 144L57 136L70 135L75 123Z" fill="#CFC3FF" opacity="0.75" />
+          <path d="M56 173H94L87 194C83 207 67 207 63 194L56 173Z" fill="#FFD45A" />
           <defs>
-            <linearGradient id="rocketBody" x1="18" y1="10" x2="102" y2="133" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#FDFBFF" />
-              <stop offset="0.45" stopColor="#EDE8FF" />
-              <stop offset="1" stopColor="#8B7CFF" />
+            <linearGradient id="rocketBody" x1="33" y1="11" x2="114" y2="177" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#C9B8FF" />
+              <stop offset="0.45" stopColor="#9F7CFF" />
+              <stop offset="1" stopColor="#6D3CE8" />
             </linearGradient>
-            <linearGradient id="rocketShade" x1="55" y1="4" x2="102" y2="127" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#8B7CFF" stopOpacity="0.18" />
-              <stop offset="1" stopColor="#6D5DF6" />
+            <linearGradient id="rocketShade" x1="72" y1="10" x2="123" y2="174" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#F4EFFF" stopOpacity="0.08" />
+              <stop offset="1" stopColor="#4A21C9" />
+            </linearGradient>
+            <linearGradient id="leftFin" x1="18" y1="141" x2="54" y2="191" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#7A4AF1" />
+              <stop offset="1" stopColor="#4D27B8" />
+            </linearGradient>
+            <linearGradient id="rightFin" x1="96" y1="141" x2="132" y2="191" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#7A4AF1" />
+              <stop offset="1" stopColor="#4D27B8" />
             </linearGradient>
           </defs>
         </svg>
 
         <motion.div
-          className="absolute left-1/2 top-[134px] -z-10 -translate-x-1/2 rounded-b-full bg-gradient-to-b from-amber-200 via-orange-400 to-accent blur-[0.5px]"
-          style={{ width: isLaunching ? 42 : 34 }}
+          className="absolute left-1/2 top-[188px] -z-10 -translate-x-1/2 rounded-b-full bg-gradient-to-b from-yellow-200 via-amber-300 to-orange-400 blur-[0.5px]"
+          style={{ width: isLaunching ? 32 : 24 }}
           animate={{
-            height: [flameHeight * 0.74, flameHeight, flameHeight * 0.82],
+            height: [flameHeight * 0.45, flameHeight * 0.72, flameHeight * 0.52],
             opacity: [flameOpacity * 0.75, flameOpacity, flameOpacity * 0.72],
             scaleX: isError ? [0.72, 1.05, 0.62] : [0.82, 1.08, 0.9],
           }}
@@ -1207,14 +1246,8 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
           </p>
         </div>
 
-        <div className="relative mx-auto my-5 flex w-full max-w-[330px] justify-center rounded-[2.25rem] border border-white/80 bg-white/55 p-4 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
-          <div className="absolute left-5 top-5 rounded-full border border-accent/10 bg-white/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-accent shadow-sm">
-            Launch Pad
-          </div>
+        <div className="relative mx-auto my-5 flex w-full max-w-[330px] justify-center overflow-hidden rounded-[2.25rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-4 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
           <RocketMascot stage={rocketStage} />
-          <div className="absolute bottom-5 right-5 rounded-full border border-white/80 bg-white/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary shadow-sm">
-            Vision ready
-          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
