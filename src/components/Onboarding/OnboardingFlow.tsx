@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ComponentProps, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ComponentProps, type ReactNode } from 'react';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
 import {
   ArrowLeft,
@@ -1057,12 +1057,47 @@ function FeatureBriefChips() {
 }
 
 function RocketMascot({ stage }: { stage: RocketStageId }) {
+  const rocketRef = useRef<HTMLDivElement | null>(null);
+  const [pupilOffset, setPupilOffset] = useState({ x: 0, y: 0 });
   const stageConfig = rocketStages[stage];
   const isLaunching = stage === 'launching';
   const isAnticipating = stage === 'anticipation';
   const isError = stage === 'failed_launch' || stage === 'crashing' || stage === 'error_idle';
   const flameHeight = isLaunching ? 92 : isAnticipating ? 58 : isError ? 34 : 44;
   const flameOpacity = isError ? 0.68 : 0.92;
+
+  useEffect(() => {
+    let frame = 0;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = rocketRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const faceCenterX = rect.left + rect.width * 0.5;
+        const faceCenterY = rect.top + rect.height * 0.39;
+        const angle = Math.atan2(event.clientY - faceCenterY, event.clientX - faceCenterX);
+        const distance = Math.min(1, Math.hypot(event.clientX - faceCenterX, event.clientY - faceCenterY) / 160);
+        setPupilOffset({
+          x: Math.cos(angle) * 3.4 * distance,
+          y: Math.sin(angle) * 2.7 * distance,
+        });
+      });
+    };
+
+    const handlePointerLeave = () => setPupilOffset({ x: 0, y: 0 });
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('blur', handlePointerLeave);
+    document.addEventListener('mouseleave', handlePointerLeave);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('blur', handlePointerLeave);
+      document.removeEventListener('mouseleave', handlePointerLeave);
+    };
+  }, []);
 
   return (
     <div className="relative mx-auto flex h-[300px] w-[250px] items-center justify-center overflow-hidden">
@@ -1139,7 +1174,7 @@ function RocketMascot({ stage }: { stage: RocketStageId }) {
         />
       ))}
 
-      <motion.div className="relative z-10 origin-bottom" animate={stageConfig.animate} transition={stageConfig.transition as any}>
+      <motion.div ref={rocketRef} className="relative z-10 origin-bottom" animate={stageConfig.animate} transition={stageConfig.transition as any}>
         {isError && (
           <motion.div
             className="absolute -right-6 -top-5 flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 text-amber-600 shadow-lg shadow-amber-200/30"
@@ -1163,8 +1198,10 @@ function RocketMascot({ stage }: { stage: RocketStageId }) {
           <path d="M80 75C83 70 89 70 92 75" stroke="white" strokeWidth="4" strokeLinecap="round" />
           <circle cx="66" cy="89" r="5" fill="white" />
           <circle cx="85" cy="89" r="5" fill="white" />
-          <circle cx="64" cy="91" r="2" fill="#171432" />
-          <circle cx="83" cy="91" r="2" fill="#171432" />
+          <motion.g animate={{ x: pupilOffset.x, y: pupilOffset.y }} transition={{ type: 'spring', stiffness: 360, damping: 30, mass: 0.35 }}>
+            <circle cx="64" cy="91" r="2" fill="#171432" />
+            <circle cx="83" cy="91" r="2" fill="#171432" />
+          </motion.g>
           <path d="M70 97C73 100 78 100 81 97" stroke="white" strokeWidth="3" strokeLinecap="round" />
           <circle cx="54" cy="93" r="5" fill="#F2A3C1" opacity="0.8" />
           <circle cx="96" cy="93" r="5" fill="#F2A3C1" opacity="0.8" />
