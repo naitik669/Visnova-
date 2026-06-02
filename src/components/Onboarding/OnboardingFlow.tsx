@@ -658,8 +658,8 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
           Start building your future
         </motion.h2>
 
-        <div className="relative mx-auto flex h-36 max-w-[250px] justify-center overflow-hidden rounded-[1.75rem] border border-card-border bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] shadow-xl shadow-accent/10 lg:hidden">
-          <div className="-mt-18 scale-[0.58]">
+        <div className="relative mx-auto flex h-44 max-w-[300px] justify-center overflow-hidden rounded-[1.9rem] border border-card-border bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] shadow-xl shadow-accent/10 lg:hidden">
+          <div className="-mt-[58px] scale-[0.68]">
             <RocketMascot stage={rocketStage} />
           </div>
         </div>
@@ -1491,8 +1491,10 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
           </p>
         </div>
 
-        <div className="relative mt-8 flex w-full max-w-[330px] justify-center overflow-hidden rounded-[2.25rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-4 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
-          <RocketMascot stage={rocketStage} />
+        <div className="relative mt-8 flex h-[430px] w-full max-w-[470px] justify-center overflow-hidden rounded-[2.5rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-3 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
+          <div className="scale-[1.28]">
+            <RocketMascot stage={rocketStage} />
+          </div>
         </div>
       </div>
     </div>
