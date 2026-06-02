@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, useScroll, useTransform } from 'motion/react';
+import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
 import {
   ArrowRight,
   BarChart3,
@@ -177,6 +177,94 @@ function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; 
     >
       {children}
     </motion.div>
+  );
+}
+
+function OpeningAnimation({ visible }: { visible: boolean }) {
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-[#FBFAFF]"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0, y: '-8%', filter: 'blur(12px)' }}
+          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <motion.div
+            aria-hidden="true"
+            className="absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#EEE8FF] blur-3xl"
+            initial={{ scale: 0.75, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.9 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          />
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#DCD4FF] to-transparent"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#DCD4FF] to-transparent"
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
+          />
+
+          <div className="relative z-10 w-full max-w-xl px-6 text-center">
+            <motion.div
+              className="mx-auto flex h-20 w-20 items-center justify-center rounded-[1.6rem] bg-white shadow-[0_24px_70px_rgba(109,93,246,0.18)]"
+              initial={{ opacity: 0, scale: 0.78, rotate: -8 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 190, damping: 16 }}
+            >
+              <BrandLogo className="h-14 w-14" />
+            </motion.div>
+
+            <motion.p
+              className="mt-8 text-xs font-black uppercase tracking-[0.34em] text-[#6D5DF6]"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.22, duration: 0.45 }}
+            >
+              VisNova
+            </motion.p>
+            <motion.h2
+              className="mt-4 text-4xl font-black tracking-[-0.06em] text-[#12122B] sm:text-5xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.34, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            >
+              Visible progress starts here.
+            </motion.h2>
+
+            <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-3">
+              {['Vision', 'Proof', 'Progress'].map((label, index) => (
+                <motion.div
+                  key={label}
+                  className="rounded-2xl border border-[#E6E8F2] bg-white px-3 py-3 text-sm font-black text-[#25163D] shadow-[0_16px_44px_rgba(32,30,70,0.06)]"
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.48 + index * 0.12, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {label}
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="mx-auto mt-9 h-2 max-w-sm overflow-hidden rounded-full bg-[#E9E4FF]">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-[#6D5DF6] to-[#A694FF]"
+                initial={{ width: '0%' }}
+                animate={{ width: '100%' }}
+                transition={{ delay: 0.35, duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
+              />
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -424,9 +512,20 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [introVisible, setIntroVisible] = useState(true);
   const { scrollYProgress } = useScroll();
   const heroGlowY = useTransform(scrollYProgress, [0, 0.24], [0, 80]);
   const heroMockupY = useTransform(scrollYProgress, [0, 0.28], [0, -36]);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setIntroVisible(false);
+      return undefined;
+    }
+    const timeout = window.setTimeout(() => setIntroVisible(false), 1850);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   useEffect(() => {
     const title = 'VisNova - Turn Visions Into Visible Progress';
@@ -478,6 +577,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#FBFAFF] font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white">
+      <OpeningAnimation visible={introVisible} />
       <motion.div
         className="fixed left-0 top-0 z-[70] h-1 w-full origin-left bg-gradient-to-r from-[#6D5DF6] via-[#8B7CFF] to-[#C8BFFF]"
         style={{ scaleX: scrollYProgress }}
