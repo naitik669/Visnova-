@@ -401,6 +401,9 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
   const [isPickerLoading, setIsPickerLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isTextComposerOpen, setIsTextComposerOpen] = useState(false);
+  const [customText, setCustomText] = useState('');
+  const [isAddingText, setIsAddingText] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const unlockAt = () => new Date(`${unlockDate}T${unlockTime}`).toISOString();
@@ -492,10 +495,24 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
     }
   };
 
-  const addTextItem = async () => {
-    const text = window.prompt('Add a custom text item');
-    if (!text?.trim()) return;
-    await insertItem({ itemType: 'text', title: 'Custom Text', content: text.trim(), metadata: {} });
+  const addTextItem = () => {
+    setIsTextComposerOpen(true);
+  };
+
+  const saveTextItem = async () => {
+    const text = customText.trim();
+    if (!text) return;
+    setIsAddingText(true);
+    try {
+      await insertItem({ itemType: 'text', title: 'Custom Text', content: text, metadata: {} });
+      setCustomText('');
+      setIsTextComposerOpen(false);
+    } catch (error: any) {
+      console.error('Failed to add NovaCapsule text item:', error);
+      addToast({ type: 'error', title: 'Text item failed', description: isMissingNovaClockSchema(error) ? novaClockSchemaMessage : 'Could not add this text item.' });
+    } finally {
+      setIsAddingText(false);
+    }
   };
 
   const loadPicker = async (kind: PickerKind) => {
@@ -757,6 +774,43 @@ function NovaCapsuleBuilder({ mode, capsule, onClose, onChanged }: {
                 </div>
               </div>
             )}
+
+            <AnimatePresence>
+              {isTextComposerOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  className="rounded-[2rem] bg-card border border-card-border p-5 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black text-text-main">Add custom text</h3>
+                    <button
+                      onClick={() => setIsTextComposerOpen(false)}
+                      className="grid h-8 w-8 place-items-center rounded-xl text-text-secondary hover:bg-surface-muted hover:text-text-main"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                  <textarea
+                    value={customText}
+                    onChange={event => setCustomText(event.target.value)}
+                    onKeyDown={event => {
+                      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') saveTextItem();
+                    }}
+                    placeholder="Write the thought, reminder, or proof you want to lock..."
+                    className="h-28 w-full resize-none rounded-2xl border border-card-border bg-app-container p-4 text-sm font-semibold text-text-main outline-none focus:border-accent/60 focus:ring-4 focus:ring-accent/10"
+                  />
+                  <button
+                    onClick={saveTextItem}
+                    disabled={!customText.trim() || isAddingText}
+                    className="h-11 w-full rounded-xl bg-accent text-[10px] font-black uppercase tracking-widest text-accent-contrast disabled:bg-surface-muted disabled:text-text-secondary/40"
+                  >
+                    {isAddingText ? 'Adding...' : 'Add Text Item'}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </aside>
         </div>
 

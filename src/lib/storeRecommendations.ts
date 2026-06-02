@@ -1,8 +1,9 @@
 import type { FinanceGoal, StoreFulfillmentType, StoreProduct, StoreProductType, Vision } from '../types';
 import { normalizeCurrencyCode } from './currency';
 import { safeArray, safeString } from './safeData';
+import { betaFlags } from './betaFlags';
 
-export const STORE_RECOMMENDATIONS_ENABLED = import.meta.env.VITE_ENABLE_STORE_RECOMMENDATIONS !== 'false';
+export const STORE_RECOMMENDATIONS_ENABLED = betaFlags.storeRecommendations;
 
 export type StoreEventType = 'impression' | 'click' | 'save' | 'add_to_goal' | 'not_interested' | 'redirect' | 'view_more' | 'preference_changed';
 export type StoreEventSource = 'feed_sidebar' | 'vision_page' | 'progress_pulse' | 'resources_page' | 'redirect' | 'store_view';

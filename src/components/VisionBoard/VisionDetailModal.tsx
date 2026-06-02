@@ -97,6 +97,8 @@ function SortableTaskItem({ task, index, onToggle, onAddSubTask, isLast, onUpdat
   const [isExpanded, setIsExpanded] = useState(false);
   const [draftText, setDraftText] = useState(task.text);
   const [draftDescription, setDraftDescription] = useState(task.description || '');
+  const [isAddingSubTask, setIsAddingSubTask] = useState(false);
+  const [draftSubTask, setDraftSubTask] = useState('');
 
   useEffect(() => {
     setDraftText(task.text);
@@ -120,8 +122,17 @@ function SortableTaskItem({ task, index, onToggle, onAddSubTask, isLast, onUpdat
 
   const handleAddSubTask = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const text = window.prompt(`Add sub-task for "${task.text}":`);
-    if (text) onAddSubTask(task.id, text);
+    setIsExpanded(true);
+    setIsAddingSubTask(true);
+  };
+
+  const saveSubTask = () => {
+    const text = draftSubTask.trim();
+    if (!text) return;
+    onAddSubTask(task.id, text);
+    setDraftSubTask('');
+    setIsAddingSubTask(false);
+    setIsExpanded(true);
   };
 
   const priorityLabels = {
@@ -246,14 +257,14 @@ function SortableTaskItem({ task, index, onToggle, onAddSubTask, isLast, onUpdat
         </div>
 
         <AnimatePresence>
-          {isExpanded && task.subTasks && task.subTasks.length > 0 && (
+          {isExpanded && ((task.subTasks && task.subTasks.length > 0) || isAddingSubTask) && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               className="mt-3 space-y-2 overflow-hidden border-t border-card-border pt-3"
             >
-              {task.subTasks.map((subTask, sIdx) => (
+              {(task.subTasks || []).map((subTask, sIdx) => (
                 <div
                   key={subTask.id || sIdx}
                   className={cn(
@@ -288,6 +299,47 @@ function SortableTaskItem({ task, index, onToggle, onAddSubTask, isLast, onUpdat
                   </button>
                 </div>
               ))}
+              {isAddingSubTask && (
+                <div className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2">
+                  <input
+                    value={draftSubTask}
+                    autoFocus
+                    onChange={(event) => setDraftSubTask(event.target.value)}
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                      if (event.key === 'Enter') saveSubTask();
+                      if (event.key === 'Escape') {
+                        setIsAddingSubTask(false);
+                        setDraftSubTask('');
+                      }
+                    }}
+                    placeholder="Add checklist item..."
+                    className="min-w-0 flex-1 bg-transparent text-xs font-bold text-text-main outline-none placeholder:text-text-secondary/35"
+                  />
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      saveSubTask();
+                    }}
+                    disabled={!draftSubTask.trim()}
+                    className="h-8 rounded-lg bg-accent px-3 text-[9px] font-black uppercase tracking-widest text-accent-contrast disabled:bg-surface-muted disabled:text-text-secondary/40"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setIsAddingSubTask(false);
+                      setDraftSubTask('');
+                    }}
+                    className="grid h-8 w-8 place-items-center rounded-lg text-text-secondary/50 hover:bg-danger/10 hover:text-danger"
+                    aria-label="Cancel checklist item"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

@@ -20,6 +20,7 @@ import { TeamMembersPanel } from './TeamMembersPanel';
 import { TeamActivityLog } from './TeamActivityLog';
 import { TeamComments } from './TeamComments';
 import { cn } from '../../lib/utils';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 type Tab = 'invite' | 'members' | 'activity' | 'comments';
 
@@ -42,6 +43,8 @@ export function ShareVisionModal({ isOpen, onClose, vision }: { isOpen: boolean;
   const [invites, setInvites] = useState<VisionTeamInvite[]>([]);
   const [activity, setActivity] = useState<VisionTeamActivity[]>([]);
   const [comments, setComments] = useState<VisionTeamComment[]>([]);
+  const [memberToRemove, setMemberToRemove] = useState<VisionTeamMember | null>(null);
+  const [isRemovingMember, setIsRemovingMember] = useState(false);
 
   const canManage = currentRole === 'owner' || currentRole === 'admin' || (!vision.isShared && session?.user?.id);
 
@@ -147,14 +150,23 @@ export function ShareVisionModal({ isOpen, onClose, vision }: { isOpen: boolean;
   };
 
   const removeMember = async (member: VisionTeamMember) => {
-    if (!teamId || !window.confirm('Remove this collaborator from the Vision Team?')) return;
+    if (!teamId) return;
+    setMemberToRemove(member);
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!teamId || !memberToRemove) return;
+    setIsRemovingMember(true);
     try {
-      await removeVisionTeamMember(teamId, member.userId);
-      setMembers(prev => prev.filter(item => item.id !== member.id));
+      await removeVisionTeamMember(teamId, memberToRemove.userId);
+      setMembers(prev => prev.filter(item => item.id !== memberToRemove.id));
       addToast({ type: 'success', title: 'Member removed', description: 'Collaborator access was removed.' });
     } catch (error: any) {
       console.error('Failed to remove Vision Team member:', error);
       addToast({ type: 'error', title: 'Remove failed', description: error.message || 'Could not remove this member.' });
+    } finally {
+      setIsRemovingMember(false);
+      setMemberToRemove(null);
     }
   };
 
@@ -270,6 +282,18 @@ export function ShareVisionModal({ isOpen, onClose, vision }: { isOpen: boolean;
         <Shield size={18} className="mt-0.5 shrink-0 text-accent" />
         Only content shared inside this Vision Team is accessible to collaborators. Your private notes, journals, logs, messages, and other Visions stay private.
       </div>
+      <ConfirmDialog
+        open={!!memberToRemove}
+        title="Remove collaborator?"
+        description={`This removes ${memberToRemove?.profile?.displayName || memberToRemove?.profile?.fullName || 'this collaborator'} from the Vision Team. They will lose access to shared collaboration features.`}
+        confirmLabel="Remove"
+        tone="danger"
+        isLoading={isRemovingMember}
+        onCancel={() => {
+          if (!isRemovingMember) setMemberToRemove(null);
+        }}
+        onConfirm={confirmRemoveMember}
+      />
     </ResponsiveModal>
   );
 }

@@ -7,6 +7,7 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
+    "prelaunch:schema": "node scripts/prelaunch-schema-check.mjs",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "cap:sync": "npm run build && cap sync android",

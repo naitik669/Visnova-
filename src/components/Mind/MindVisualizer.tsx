@@ -32,6 +32,7 @@ import { checkClientRateLimit, sanitizePlainText, sanitizeText, validateYouTubeU
 import { SelectMenu } from '../ui/SelectMenu';
 import { formatCurrency } from '../../lib/currency';
 import { ProgressPulsePage } from '../Growth/ProgressPulsePage';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 type GrowthStatus = 'saved' | 'learning' | 'completed' | 'applied' | 'archived';
 type SourceType = 'youtube' | 'article' | 'course' | 'book' | 'podcast' | 'pdf' | 'website' | 'other';
@@ -72,6 +73,14 @@ type GrowthResource = {
   archived_at?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type ConfirmAction = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  tone?: 'danger' | 'warning' | 'info';
+  run: () => Promise<void>;
 };
 
 type TimestampNote = {
@@ -195,6 +204,8 @@ export default function MindVisualizer() {
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState<GrowthResource | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
   const [form, setForm] = useState<ResourceForm>(emptyForm);
   const [youtubeUrl, setYoutubeUrl] = useState('');
 
@@ -529,15 +540,22 @@ export default function MindVisualizer() {
 
   const deleteGrowthResource = async (resource: GrowthResource) => {
     if (!requireUser()) return;
-    if (!window.confirm(`Delete "${resource.title}" from Growth?`)) return;
-    const { error } = await supabase.from('growth_resources').delete().eq('id', resource.id).eq('user_id', userId);
-    if (error) {
-      console.error('Failed to delete Growth resource:', error);
-      addToast({ type: 'error', title: 'Delete failed', description: error.message });
-      return;
-    }
-    setResources(current => current.filter(item => item.id !== resource.id));
-    setSelectedResource(null);
+    setConfirmAction({
+      title: 'Delete this resource?',
+      description: `"${resource.title}" will be removed from Growth. Notes and tasks you already created from it will stay.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+      run: async () => {
+        const { error } = await supabase.from('growth_resources').delete().eq('id', resource.id).eq('user_id', userId);
+        if (error) {
+          console.error('Failed to delete Growth resource:', error);
+          addToast({ type: 'error', title: 'Delete failed', description: error.message });
+          return;
+        }
+        setResources(current => current.filter(item => item.id !== resource.id));
+        setSelectedResource(null);
+      }
+    });
   };
 
   const openResource = async (resource: GrowthResource) => {
@@ -622,24 +640,29 @@ export default function MindVisualizer() {
       addToast({ type: 'error', title: 'Insight needed', description: 'Add an applied note or learning notes before sharing.' });
       return;
     }
-    const confirmed = window.confirm('Share this learning as an insight post?');
-    if (!confirmed) return;
+    setConfirmAction({
+      title: 'Share this insight?',
+      description: 'This creates a public Feed post from your learning notes. Private notes stay private unless you choose to share them.',
+      confirmLabel: 'Share',
+      tone: 'info',
+      run: async () => {
+        const success = await addPost({
+          type: 'insight',
+          caption: `Applied learning from ${resource.title}`,
+          content: resource.applied_note || resource.notes || '',
+          visibility: 'public',
+          tags: ['growth', ...(resource.tags || [])],
+          mentions: [],
+          media: [],
+          metadata: {
+            growth_resource_id: resource.id,
+            linked_vision_id: resource.linked_vision_id || null
+          }
+        });
 
-    const success = await addPost({
-      type: 'insight',
-      caption: `Applied learning from ${resource.title}`,
-      content: resource.applied_note || resource.notes || '',
-      visibility: 'public',
-      tags: ['growth', ...(resource.tags || [])],
-      mentions: [],
-      media: [],
-      metadata: {
-        growth_resource_id: resource.id,
-        linked_vision_id: resource.linked_vision_id || null
+        if (success) addToast({ type: 'success', title: 'Insight shared', description: 'Your applied learning is now on Feed.' });
       }
     });
-
-    if (success) addToast({ type: 'success', title: 'Insight shared', description: 'Your applied learning is now on Feed.' });
   };
 
   return (
@@ -809,6 +832,27 @@ export default function MindVisualizer() {
           />
         ))}
       </AnimatePresence>
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.description || ''}
+        confirmLabel={confirmAction?.confirmLabel || 'Confirm'}
+        tone={confirmAction?.tone || 'danger'}
+        isLoading={isConfirmingAction}
+        onCancel={() => {
+          if (!isConfirmingAction) setConfirmAction(null);
+        }}
+        onConfirm={async () => {
+          if (!confirmAction) return;
+          setIsConfirmingAction(true);
+          try {
+            await confirmAction.run();
+            setConfirmAction(null);
+          } finally {
+            setIsConfirmingAction(false);
+          }
+        }}
+      />
     </div>
   );
 }

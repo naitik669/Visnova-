@@ -132,6 +132,9 @@ export default function PostThreadPage() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('spam');
   const [reportDetails, setReportDetails] = useState('');
+  const [reportingComment, setReportingComment] = useState<Comment | null>(null);
+  const [commentReportReason, setCommentReportReason] = useState('spam');
+  const [commentReportDetails, setCommentReportDetails] = useState('');
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
@@ -316,9 +319,9 @@ export default function PostThreadPage() {
   };
 
   const handleReportComment = async (comment: Comment) => {
-    const details = window.prompt('Report this comment? Add optional details, or leave blank.');
-    if (details === null) return;
-    await reportComment(comment.id, 'other', details);
+    setReportingComment(comment);
+    setCommentReportReason('spam');
+    setCommentReportDetails('');
   };
 
   const handleToggleCommentLike = async (comment: Comment) => {
@@ -645,6 +648,23 @@ export default function PostThreadPage() {
             onSubmit={async () => {
               const ok = await reportPost(post.id, reportReason, reportDetails);
               if (ok) setIsReportOpen(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {reportingComment && (
+          <PostReportModal
+            title="Report Comment"
+            subtitle="Comment reports are private."
+            onClose={() => setReportingComment(null)}
+            reason={commentReportReason}
+            setReason={setCommentReportReason}
+            details={commentReportDetails}
+            setDetails={setCommentReportDetails}
+            onSubmit={async () => {
+              const ok = await reportComment(reportingComment.id, commentReportReason, commentReportDetails);
+              if (ok) setReportingComment(null);
             }}
           />
         )}

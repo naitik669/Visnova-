@@ -37,6 +37,7 @@ import { accountabilityFlags } from '../lib/accountabilityFlags';
 import { extractHashtags as extractSocialHashtags, extractMentions as extractSocialMentions } from '../utils/parseSocialText';
 import { convertCurrencyAmount, normalizeCurrencyCode } from '../lib/currency';
 import { isLikelyNetworkError, notifyNetworkIssue } from '../lib/networkState';
+import { betaFlags } from '../lib/betaFlags';
 
 function isDbId(id: string | undefined): id is string {
   return typeof id === 'string' && id.length > 0;
@@ -1144,7 +1145,9 @@ export const useStore = create<AppState>((set, get) => ({
     runBackground('Dashboard weekly sprint refresh', () => get().fetchWeeklyProofSprint());
     runBackground('Dashboard nudges refresh', () => get().fetchNudges());
     runBackground('Dashboard growth timeline refresh', () => get().fetchGrowthTimeline());
-    runBackground('Dashboard AI insights refresh', () => get().fetchAIInsights());
+    if (betaFlags.assistant) {
+      runBackground('Dashboard AI insights refresh', () => get().fetchAIInsights());
+    }
     runBackground('Dashboard money refresh', async () => {
       try {
         await get().fetchMoneyOverview();
@@ -1582,6 +1585,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   fetchAIInsights: async (visionId?: string) => {
+    if (!betaFlags.assistant) return;
     const userId = get().session?.user?.id;
     if (!userId) return;
     try {
@@ -2665,6 +2669,17 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addToast: (toast) => {
+    const text = `${toast.title || ''} ${toast.description || ''}`.toLowerCase();
+    const suppressedInfoToast = toast.type === 'info' && (
+      text.includes('compatibility mode') ||
+      text.includes('already completed') ||
+      text.includes('schema cache') ||
+      text.includes('run the latest') ||
+      text.includes('saved for this session')
+    );
+
+    if (suppressedInfoToast) return;
+
     const looksLikeNetworkIssue = toast.type === 'error' && (
       (typeof navigator !== 'undefined' && !navigator.onLine) ||
       isLikelyNetworkError(`${toast.title} ${toast.description || ''}`)
@@ -2678,7 +2693,7 @@ export const useStore = create<AppState>((set, get) => ({
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     playInteractionSound(toast.type === 'success' ? 'success' : toast.type === 'error' ? 'error' : 'info');
     set((state) => ({
-      toasts: [...state.toasts.slice(-3), { id, ...toast }],
+      toasts: [...state.toasts.slice(-1), { id, ...toast }],
     }));
   },
 

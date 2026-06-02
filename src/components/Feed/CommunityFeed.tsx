@@ -1827,7 +1827,25 @@ function PostCard({ post, onOpenThread, onHashtagClick, onPostDeleted, onPostUpd
   );
 }
 
-export function PostReportModal({ onClose, reason, setReason, details, setDetails, onSubmit }: { onClose: () => void; reason: string; setReason: (value: string) => void; details: string; setDetails: (value: string) => void; onSubmit: () => Promise<void> }) {
+export function PostReportModal({
+  onClose,
+  reason,
+  setReason,
+  details,
+  setDetails,
+  onSubmit,
+  title = 'Report Post',
+  subtitle = 'Reports are private.'
+}: {
+  onClose: () => void;
+  reason: string;
+  setReason: (value: string) => void;
+  details: string;
+  setDetails: (value: string) => void;
+  onSubmit: () => Promise<void>;
+  title?: string;
+  subtitle?: string;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const submit = async () => {
@@ -1842,8 +1860,8 @@ export function PostReportModal({ onClose, reason, setReason, details, setDetail
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 16 }} className="relative w-full max-w-md max-h-[100dvh] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto custom-scrollbar bg-app-container rounded-t-[2rem] sm:rounded-[2rem] border border-card-border shadow-2xl p-5 sm:p-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between gap-4 mb-5">
           <div>
-            <h3 className="text-lg font-black uppercase tracking-tight text-text-main">Report Post</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50 mt-1">Reports are private.</p>
+            <h3 className="text-lg font-black uppercase tracking-tight text-text-main">{title}</h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/50 mt-1">{subtitle}</p>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-surface-muted flex items-center justify-center text-text-secondary/50 hover:text-text-main">
             <X size={18} />
@@ -2042,6 +2060,9 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
+  const [reportingComment, setReportingComment] = useState<Comment | null>(null);
+  const [commentReportReason, setCommentReportReason] = useState('spam');
+  const [commentReportDetails, setCommentReportDetails] = useState('');
 
   const fetchComments = async () => {
     try {
@@ -2181,9 +2202,9 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
   };
 
   const handleReportComment = async (comment: Comment) => {
-    const details = window.prompt('Report this comment? Add optional details, or leave blank.');
-    if (details === null) return;
-    await reportComment(comment.id, 'other', details);
+    setReportingComment(comment);
+    setCommentReportReason('spam');
+    setCommentReportDetails('');
   };
 
   const handleToggleCommentLike = async (comment: Comment) => {
@@ -2240,6 +2261,7 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
   const threadComments = buildModalCommentTree(comments);
 
   return renderModalPortal(
+    <>
     <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <motion.div
         initial={{ opacity: 0 }}
@@ -2331,6 +2353,45 @@ export function CommentThreadModal({ post, onClose }: { post: Post, onClose: () 
         </div>
       </motion.div>
     </div>
+    <AnimatePresence>
+      {reportingComment && (
+        <PostReportModal
+          title="Report Comment"
+          subtitle="Comment reports are private."
+          onClose={() => setReportingComment(null)}
+          reason={commentReportReason}
+          setReason={setCommentReportReason}
+          details={commentReportDetails}
+          setDetails={setCommentReportDetails}
+          onSubmit={async () => {
+            const ok = await reportComment(reportingComment.id, commentReportReason, commentReportDetails);
+            if (ok) setReportingComment(null);
+          }}
+        />
+      )}
+    </AnimatePresence>
+    <ConfirmDialog
+      open={!!confirmAction}
+      title={confirmAction?.title || ''}
+      description={confirmAction?.description || ''}
+      confirmLabel={confirmAction?.confirmLabel || 'Confirm'}
+      tone={confirmAction?.tone || 'danger'}
+      isLoading={isConfirmingAction}
+      onCancel={() => {
+        if (!isConfirmingAction) setConfirmAction(null);
+      }}
+      onConfirm={async () => {
+        if (!confirmAction) return;
+        setIsConfirmingAction(true);
+        try {
+          await confirmAction.run();
+          setConfirmAction(null);
+        } finally {
+          setIsConfirmingAction(false);
+        }
+      }}
+    />
+    </>
   );
 }
 
