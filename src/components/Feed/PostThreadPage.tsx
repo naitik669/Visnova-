@@ -682,7 +682,8 @@ function CommentItem({
   onReport,
   onLike,
   onPin,
-  canPin
+  canPin,
+  depth = 0
 }: {
   comment: Comment;
   currentUserId?: string;
@@ -692,6 +693,7 @@ function CommentItem({
   onLike: (comment: Comment) => void;
   onPin: (comment: Comment) => void;
   canPin: boolean;
+  depth?: number;
 }) {
   const deleted = !!comment.deletedAt;
   const isMine = !!currentUserId && comment.userId === currentUserId;
@@ -754,7 +756,12 @@ function CommentItem({
         </div>
       </div>
       {safeArray<Comment>(comment.replies).length > 0 && (
-        <div className="ml-8 sm:ml-12 pl-4 border-l border-card-border space-y-3">
+        <div className={cn(
+          'space-y-3',
+          depth === 0
+            ? 'ml-8 border-l border-card-border pl-4 sm:ml-12'
+            : 'ml-0 pl-0'
+        )}>
           {safeArray<Comment>(comment.replies).map(reply => (
             <CommentItem
               key={reply.id}
@@ -766,6 +773,7 @@ function CommentItem({
               onLike={onLike}
               onPin={onPin}
               canPin={canPin}
+              depth={depth + 1}
             />
           ))}
         </div>

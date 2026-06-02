@@ -659,7 +659,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         </motion.h2>
 
         <div className="relative mx-auto flex h-44 max-w-[300px] justify-center overflow-hidden rounded-[1.9rem] border border-card-border bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] shadow-xl shadow-accent/10 lg:hidden">
-          <div className="-mt-[58px] scale-[0.68]">
+          <div className="-mt-[36px] scale-[0.56]">
             <RocketMascot stage={rocketStage} />
           </div>
         </div>
@@ -1492,9 +1492,7 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
         </div>
 
         <div className="relative mt-8 flex h-[430px] w-full max-w-[470px] justify-center overflow-hidden rounded-[2.5rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-3 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
-          <div className="scale-[1.28]">
-            <RocketMascot stage={rocketStage} />
-          </div>
+          <RocketMascot stage={rocketStage} />
         </div>
       </div>
     </div>
