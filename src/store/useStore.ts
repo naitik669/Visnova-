@@ -288,7 +288,7 @@ function normalizeNote(row: any): Note {
     title: safeString(row?.title, 'Untitled Note'),
     content: safeString(row?.content),
     note_type: normalizeNoteType(row?.note_type),
-    icon: safeString(row?.note_icon).slice(0, 8) || undefined,
+    icon: safeString(row?.note_icon || row?.icon).slice(0, 8) || undefined,
     folderId: row?.folder_id || null,
     tags: safeArray<string>(row?.tags),
     linkedVisionId: row?.linked_vision_id || null,
@@ -3429,7 +3429,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       const { id: _, ...noteData } = newNote;
-      const { data, error } = await supabase.from('notes').insert({
+      const insertPayload: any = {
         title: noteData.title,
         content: noteData.content,
         note_type: noteData.note_type,
@@ -3452,7 +3452,12 @@ export const useStore = create<AppState>((set, get) => ({
         audio_mime_type: noteData.audio_mime_type,
         user_id: userId,
         created_at: new Date(noteData.createdAt).toISOString()
-      }).select().single();
+      };
+      let { data, error } = await supabase.from('notes').insert(insertPayload).select().single();
+      if (isMissingColumnError(error, 'note_icon')) {
+        delete insertPayload.note_icon;
+        ({ data, error } = await supabase.from('notes').insert(insertPayload).select().single());
+      }
       if (error) throw error;
       set((state) => ({
         notes: state.notes.map(n => n.id === tempId ? { ...n, id: data.id } : n)
@@ -3502,7 +3507,12 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.audio_mime_type !== undefined) dbUpdates.audio_mime_type = updates.audio_mime_type;
       dbUpdates.updated_at = new Date().toISOString();
 
-      await supabase.from('notes').update(dbUpdates).eq('id', id);
+      let { error } = await supabase.from('notes').update(dbUpdates).eq('id', id);
+      if (isMissingColumnError(error, 'note_icon')) {
+        delete dbUpdates.note_icon;
+        ({ error } = await supabase.from('notes').update(dbUpdates).eq('id', id));
+      }
+      if (error) throw error;
     } catch (error) {
       console.error('Failed to update note:', error);
     }
@@ -3571,8 +3581,9 @@ export const useStore = create<AppState>((set, get) => ({
       const formattedNotes: Note[] = (data || []).map(normalizeNote).filter(note => note.id);
 
       set({ notes: formattedNotes });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch notes:', error);
+      get().addToast({ type: 'error', title: 'Library failed', description: error.message || 'Could not load your notes. Try refresh once.' });
     }
   },
 

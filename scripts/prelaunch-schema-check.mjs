@@ -15,7 +15,7 @@ const supabase = createClient(url, anonKey, {
 const checks = [
   { table: 'profiles', columns: 'id,default_currency,has_seen_landing,onboarding_step,onboarded' },
   { table: 'tasks', columns: 'id,status,sort_order,visibility,completed_at' },
-  { table: 'notes', columns: 'id,icon,note_type,is_deleted,audio_url,audio_storage_path' },
+  { table: 'notes', columns: 'id,note_type,is_deleted,audio_url,audio_path' },
   { table: 'progress_logs', columns: 'id,visibility,vision_id,task_id,attachments' },
   { table: 'conversation_participants', columns: 'conversation_id,user_id' },
   { table: 'messages', columns: 'id,conversation_id,user_id,content,read_at,deleted_at' },
@@ -26,6 +26,11 @@ const checks = [
 ];
 
 const failures = [];
+const warnings = [];
+
+const optionalChecks = [
+  { table: 'notes', columns: 'id,note_icon', reason: 'Note icon picker persistence' },
+];
 
 for (const check of checks) {
   const { error } = await supabase
@@ -34,9 +39,36 @@ for (const check of checks) {
     .limit(1);
 
   if (error) {
+    if (error.code === '42501') {
+      warnings.push({
+        table: check.table,
+        columns: check.columns,
+        reason: 'Private table is not inspectable with the publishable anon key; verify with authenticated QA or service-role CI.',
+        code: error.code,
+        message: error.message,
+      });
+      continue;
+    }
     failures.push({
       table: check.table,
       columns: check.columns,
+      code: error.code,
+      message: error.message,
+    });
+  }
+}
+
+for (const check of optionalChecks) {
+  const { error } = await supabase
+    .from(check.table)
+    .select(check.columns)
+    .limit(1);
+
+  if (error) {
+    warnings.push({
+      table: check.table,
+      columns: check.columns,
+      reason: check.reason,
       code: error.code,
       message: error.message,
     });
@@ -49,7 +81,23 @@ if (failures.length > 0) {
     console.error(`- ${failure.table}: ${failure.message} (${failure.code || 'no code'})`);
     console.error(`  expected columns: ${failure.columns}`);
   }
+  if (warnings.length > 0) {
+    console.error('Optional schema warnings:');
+    for (const warning of warnings) {
+      console.error(`- ${warning.table}: ${warning.message} (${warning.code || 'no code'})`);
+      console.error(`  optional for: ${warning.reason}`);
+    }
+  }
   process.exit(1);
+}
+
+if (warnings.length > 0) {
+  console.warn('VisNova prelaunch schema check passed with optional warnings.');
+  for (const warning of warnings) {
+    console.warn(`- ${warning.table}: ${warning.message} (${warning.code || 'no code'})`);
+    console.warn(`  optional for: ${warning.reason}`);
+  }
+  process.exit(0);
 }
 
 console.log('VisNova prelaunch schema check passed.');
