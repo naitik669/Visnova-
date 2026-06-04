@@ -15,7 +15,7 @@ const supabase = createClient(url, anonKey, {
 const checks = [
   { table: 'profiles', columns: 'id,default_currency,has_seen_landing,onboarding_step,onboarded' },
   { table: 'tasks', columns: 'id,status,sort_order,visibility,completed_at' },
-  { table: 'notes', columns: 'id,note_type,is_deleted,audio_url,audio_path' },
+  { table: 'notes', columns: 'id,note_type,is_deleted,deleted_at,audio_url,audio_path' },
   { table: 'progress_logs', columns: 'id,visibility,vision_id,task_id,attachments' },
   { table: 'conversation_participants', columns: 'conversation_id,user_id' },
   { table: 'messages', columns: 'id,conversation_id,user_id,content,read_at,deleted_at' },

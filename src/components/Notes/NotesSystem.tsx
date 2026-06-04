@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import {
   Folder,
@@ -144,6 +144,7 @@ function NoteIconGlyph({ note, fallback: FallbackIcon, size = 19 }: { note: Note
 export default function NotesSystem() {
   const { notes, folders, visions, addNote, updateNote, deleteNote, addFolder, fetchFolders, fetchNotes, moveNoteToFolder, addPost, user, session, addToast } = useStore();
   const location = useLocation();
+  const [, setSearchParams] = useSearchParams();
   const initialTabParam = new URLSearchParams(location.search).get('tab');
   const initialTab = initialTabParam === 'journal' || location.pathname.includes('journal') ? 'journal' : initialTabParam === 'audio' ? 'audio' : 'vault';
   const [activeTab, setActiveTab] = useState<'vault' | 'audio' | 'journal'>(initialTab);
@@ -174,6 +175,25 @@ export default function NotesSystem() {
   const [pendingProfilePostNote, setPendingProfilePostNote] = useState<Note | null>(null);
   const libraryNoteTypes: Note['note_type'][] = ['normal', 'audio'];
 
+  const tabForNote = useCallback((note: Pick<Note, 'note_type'>) => {
+    if (note.note_type === 'journal') return 'journal';
+    if (note.note_type === 'audio') return 'audio';
+    return 'notes';
+  }, []);
+
+  const activeTabQueryValue = useCallback((tab: 'vault' | 'audio' | 'journal') => (
+    tab === 'vault' ? 'notes' : tab
+  ), []);
+
+  const setLibraryQuery = useCallback((updates: Record<string, string | null>, replace = false) => {
+    const next = new URLSearchParams(location.search);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value) next.delete(key);
+      else next.set(key, value);
+    });
+    setSearchParams(next, { replace });
+  }, [location.search, setSearchParams]);
+
   useEffect(() => {
     const folderId = new URLSearchParams(location.search).get('folder');
     if (folderId) {
@@ -181,6 +201,20 @@ export default function NotesSystem() {
       setSelectedFolder(folderId);
     }
   }, [location.search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const noteId = params.get('note') || params.get('journal') || params.get('audioNote');
+    if (!noteId) return;
+
+    const target = safeArray<Note>(notes).find(note => note.id === noteId);
+    if (!target) return;
+
+    setSelectedNoteId(target.id);
+    setActiveTab(target.note_type === 'journal' ? 'journal' : target.note_type === 'audio' ? 'audio' : 'vault');
+    if (target.isDeleted) setSidebarFilter('trash');
+    if (target.folderId) setSelectedFolder(target.folderId);
+  }, [location.search, notes]);
 
   const journalEntry = useMemo(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -319,12 +353,41 @@ export default function NotesSystem() {
     [notes, selectedNoteId]
   );
 
-  const handleCreateNote = (type: 'normal' | 'journal') => {
+  const openNoteById = useCallback((noteId: string, note?: Note) => {
+    const target = note || safeArray<Note>(notes).find(item => item.id === noteId);
+    setSelectedNoteId(noteId);
+    setLibraryQuery({
+      tab: target ? tabForNote(target) : activeTabQueryValue(activeTab),
+      note: noteId,
+      journal: null,
+      audioNote: null,
+      folder: null
+    });
+  }, [activeTab, activeTabQueryValue, notes, setLibraryQuery, tabForNote]);
+
+  const closeNoteEditor = useCallback(() => {
+    setSelectedNoteId(null);
+    setLibraryQuery({ note: null, journal: null, audioNote: null }, true);
+  }, [setLibraryQuery]);
+
+  const changeTab = (tab: 'vault' | 'audio' | 'journal') => {
+    setActiveTab(tab);
+    setSelectedNoteId(null);
+    setLibraryQuery({
+      tab: activeTabQueryValue(tab),
+      note: null,
+      journal: null,
+      audioNote: null,
+      folder: null
+    });
+  };
+
+  const handleCreateNote = async (type: 'normal' | 'journal') => {
     const defaultTitle = type === 'journal' 
       ? `Entry ${format(new Date(), 'MMM dd, yyyy')}`
       : 'Untitled Note';
     
-    addNote({
+    const created = await addNote({
       title: defaultTitle,
       content: '',
       note_type: type,
@@ -333,6 +396,8 @@ export default function NotesSystem() {
       createdAt: Date.now(),
       updatedAt: Date.now()
     });
+
+    if (created) openNoteById(created.id, created);
   };
 
   const handleMoveNote = async (noteId: string, folderId: string | null) => {
@@ -404,8 +469,7 @@ export default function NotesSystem() {
                     <button
                       key={tab.value}
                       onClick={() => {
-                        setActiveTab(tab.value);
-                        setSelectedNoteId(null);
+                        changeTab(tab.value);
                       }}
                       className={cn(
                         "h-11 px-4 sm:h-9 sm:px-4 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap",
@@ -480,7 +544,7 @@ export default function NotesSystem() {
               <NoteEditor 
                 key={selectedNote.id}
                 note={selectedNote} 
-                onClose={() => setSelectedNoteId(null)}
+                onClose={closeNoteEditor}
                 updateNote={updateNote}
                 folders={folders}
               />
@@ -679,7 +743,7 @@ export default function NotesSystem() {
                         notes={safeArray<Note>(filteredNotes)}
                         folders={safeArray<FolderType>(folders)}
                         selectedFolder={selectedFolder}
-                        onOpenNote={setSelectedNoteId}
+                        onOpenNote={openNoteById}
                         onMove={handleMoveNote}
                         onPost={requestPostNoteToProfile}
                         onDragStart={setDraggingNoteId}
@@ -699,7 +763,7 @@ export default function NotesSystem() {
                               note={note}
                               folders={safeArray<FolderType>(folders)}
                               folderName={note.folderId ? safeArray<FolderType>(folders).find(folder => folder.id === note.folderId)?.name : 'Unfiled'}
-                              onClick={() => setSelectedNoteId(note.id)}
+                              onClick={() => openNoteById(note.id, note)}
                               onMove={handleMoveNote}
                               onDragStart={() => setDraggingNoteId(note.id)}
                               onDragEnd={() => {
@@ -747,7 +811,7 @@ export default function NotesSystem() {
         onClose={() => setIsAudioModalOpen(false)}
         onSaved={(noteId) => {
           setIsAudioModalOpen(false);
-          setSelectedNoteId(noteId);
+          openNoteById(noteId);
         }}
       />
       <FolderViewerModal
@@ -756,7 +820,7 @@ export default function NotesSystem() {
         onClose={() => setFolderViewer(null)}
         onOpenNote={(noteId) => {
           setFolderViewer(null);
-          setSelectedNoteId(noteId);
+          openNoteById(noteId);
         }}
         onMakePublic={async (noteIds) => {
           const ids = safeArray<string>(noteIds).length > 0 ? noteIds : safeArray<Note>(notes).filter(note => note.folderId === folderViewer?.id && !note.isDeleted).map(note => note.id);
@@ -3146,7 +3210,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
             )}
           </div>
           
-          <div className="border-t border-card-border/50 pt-5">
+          <div className="rounded-[2.35rem] border border-card-border/60 bg-card/55 p-2 shadow-sm">
             <div
               ref={editorRef}
               contentEditable
@@ -3177,7 +3241,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
                 }
                 saveEditorContent();
               }}
-              className="note-paper-editor min-h-[62dvh] w-full px-3 py-6 text-base font-medium leading-[36px] outline-none empty:before:text-slate-400/60 empty:before:content-[attr(data-placeholder)] sm:min-h-[calc(100vh-22rem)] sm:px-6 sm:text-lg lg:px-8"
+              className="note-paper-editor min-h-[62dvh] w-full rounded-[2rem] border border-card-border bg-card px-3 py-6 text-base font-medium leading-[36px] text-text-main outline-none empty:before:text-text-secondary/45 empty:before:content-[attr(data-placeholder)] sm:min-h-[calc(100vh-22rem)] sm:px-6 sm:text-lg lg:px-8"
               data-placeholder="Log details..."
             />
           </div>

@@ -14,11 +14,11 @@ import {
   Sparkles,
   Target,
   Lock,
-  Palette,
   ShieldCheck,
   ListChecks,
   Activity,
   CircleDot,
+  Compass,
   NotebookPen,
   WandSparkles,
   ChevronRight,
@@ -165,11 +165,12 @@ function GoogleIcon() {
   );
 }
 
-function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handleGoogleLogin, verifiedMessage }: any) {
+function ScreenLogin({ email, setEmail, nextStep, switchToSignup, handleGoogleLogin, verifiedMessage }: any) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   const addToast = useStore((state) => state.addToast);
 
   const handleLogin = async () => {
@@ -195,7 +196,9 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
 
       if (user) {
         addToast({ type: 'success', title: 'Login successful', description: 'Accessing your dashboard...' });
-        await useStore.getState().ensureCurrentUserProfile();
+        const store = useStore.getState();
+        if (data.session) store.setSession(data.session);
+        await store.ensureCurrentUserProfile();
         // Correctly logged in, check if onboarded via profile
         try {
           const { data: profile } = await supabase
@@ -206,16 +209,19 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
 
           if (profile) {
              // Existing account found - skip onboarding or resume
-             await useStore.getState().loadUserProfile(user.id);
+             await store.loadUserProfile(user.id);
              if (profile.onboarded) {
-                setStep(10);
+                localStorage.setItem('visnova_landing_seen', 'true');
+                navigate('/dashboard', { replace: true });
              } else {
                 nextStep(profile.onboarding_step && profile.onboarding_step > 0 ? profile.onboarding_step : 3);
              }
           } else {
-            const fallbackProfile = await useStore.getState().ensureCurrentUserProfile();
+            const fallbackProfile = await store.ensureCurrentUserProfile();
             if (fallbackProfile?.onboarded) {
-              setStep(10);
+              await store.loadUserProfile(user.id);
+              localStorage.setItem('visnova_landing_seen', 'true');
+              navigate('/dashboard', { replace: true });
             } else {
               nextStep(3);
             }
@@ -271,7 +277,7 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, setStep, handl
           <div className="flex justify-between items-center px-1">
             <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50">Password</label>
             <button
-              onClick={() => setStep(12)}
+              onClick={() => nextStep(12)}
               className="text-[9px] font-black uppercase tracking-widest text-accent hover:underline"
             >
               Forgot?
@@ -933,15 +939,14 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
   );
 }
 
-type SetupStepId = 'welcome' | 'path' | 'vision' | 'task' | 'privacy' | 'theme' | 'proof' | 'complete';
+type SetupStepId = 'welcome' | 'path' | 'vision' | 'task' | 'privacy' | 'proof' | 'complete';
 
 const SETUP_STEPS: Array<{ id: SetupStepId; label: string; icon: LucideIcon }> = [
-  { id: 'welcome', label: 'Start', icon: Sparkles },
-  { id: 'path', label: 'Path', icon: CircleDot },
+  { id: 'welcome', label: 'System', icon: Sparkles },
+  { id: 'path', label: 'Lane', icon: CircleDot },
   { id: 'vision', label: 'Vision', icon: Target },
-  { id: 'task', label: 'Action', icon: ListChecks },
+  { id: 'task', label: 'Move', icon: ListChecks },
   { id: 'privacy', label: 'Privacy', icon: ShieldCheck },
-  { id: 'theme', label: 'Theme', icon: Palette },
   { id: 'proof', label: 'Proof', icon: Activity },
   { id: 'complete', label: 'Ready', icon: CheckCircle2 }
 ];
@@ -953,8 +958,8 @@ const SETUP_STEP_TO_INDEX: Record<number, number> = {
   6: 3,
   7: 4,
   8: 5,
-  9: 6,
-  9.35: 7
+  9: 5,
+  9.35: 6
 };
 
 const THEME_OPTIONS = [
@@ -969,6 +974,87 @@ const PRIVACY_OPTIONS = [
   { id: 'circle', title: 'Circle', desc: 'Trusted accountability partners.', icon: Users },
   { id: 'public', title: 'Public', desc: 'Visible on profile and feed.', icon: Sparkles }
 ] as const;
+
+const FOCUS_OPTIONS = [
+  'Productivity',
+  'Learning',
+  'Career',
+  'Creative work',
+  'Long-term project',
+  'Money'
+] as const;
+
+const HELP_OPTIONS = [
+  'Stay consistent',
+  'Track progress',
+  'Organize goals',
+  'Build habits',
+  'Stay accountable',
+  'Capture ideas'
+] as const;
+
+const INTRO_STORY_CARDS: Array<{
+  eyebrow: string;
+  title: string;
+  copy: string;
+  icon: LucideIcon;
+  gradient: string;
+  accent: string;
+  mockup: Array<{ label: string; value: string; width: string }>;
+}> = [
+  {
+    eyebrow: 'Visible Progress',
+    title: 'Turn scattered goals into visible progress.',
+    copy: 'Bring Visions, tasks, notes, journals, proof, and growth into one focused workspace.',
+    icon: Target,
+    gradient: 'from-[#6D5DF6] via-[#8B7CFF] to-[#C8BFFF]',
+    accent: '#6D5DF6',
+    mockup: [
+      { label: 'Vision', value: 'Launch Beta', width: 'w-[78%]' },
+      { label: 'Task', value: 'Polish onboarding', width: 'w-[62%]' },
+      { label: 'Proof', value: 'Logged today', width: 'w-[88%]' }
+    ]
+  },
+  {
+    eyebrow: 'Proof Habit',
+    title: "Don't just plan. Prove your progress.",
+    copy: 'Log real proof of movement so your goals stop living only in your head.',
+    icon: Activity,
+    gradient: 'from-[#B77BFF] via-[#D8A6FF] to-[#F0D6FF]',
+    accent: '#9B5CF6',
+    mockup: [
+      { label: 'Proof Log', value: 'Updated hero + CTA', width: 'w-[84%]' },
+      { label: 'Visibility', value: 'Private', width: 'w-[48%]' },
+      { label: 'Timeline', value: 'Day 2 momentum', width: 'w-[70%]' }
+    ]
+  },
+  {
+    eyebrow: 'Growth Pulse',
+    title: 'Clarity. Action. Proof. Growth.',
+    copy: 'Create a Vision, break it down, stay consistent, and see yourself moving forward.',
+    icon: Zap,
+    gradient: 'from-[#DDE7FF] via-[#C9EFFF] to-[#B8AEFF]',
+    accent: '#5D6DF6',
+    mockup: [
+      { label: 'Weekly', value: '72% on track', width: 'w-[72%]' },
+      { label: 'Tasks', value: '8 completed', width: 'w-[58%]' },
+      { label: 'Pulse', value: 'Momentum rising', width: 'w-[90%]' }
+    ]
+  },
+  {
+    eyebrow: 'Personal OS',
+    title: 'Build your personal operating system.',
+    copy: 'A calm space for students, creators, builders, and anyone serious about meaningful progress.',
+    icon: Compass,
+    gradient: 'from-[#F8F6FF] via-[#EAF1FF] to-[#FFFFFF]',
+    accent: '#6D5DF6',
+    mockup: [
+      { label: 'Circle', value: 'Accountability', width: 'w-[66%]' },
+      { label: 'Journal', value: 'Reflect privately', width: 'w-[74%]' },
+      { label: 'Board', value: 'Visualize the goal', width: 'w-[82%]' }
+    ]
+  }
+];
 
 function SetupProgressRail({ activeIndex }: { activeIndex: number }) {
   const percent = Math.round(((activeIndex + 1) / SETUP_STEPS.length) * 100);
@@ -1000,6 +1086,16 @@ function SetupProgressRail({ activeIndex }: { activeIndex: number }) {
               </div>
             );
           })}
+        </div>
+        <div className="mt-5 rounded-3xl border border-accent/10 bg-gradient-to-br from-white to-accent/10 p-3">
+          <p className="text-[9px] font-black uppercase tracking-[0.22em] text-accent">Core Loop</p>
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            {['Vision', 'Move', 'Proof', 'Pulse'].map((item) => (
+              <span key={item} className="rounded-xl bg-white/80 px-2 py-1.5 text-center text-[10px] font-black text-text-main shadow-sm">
+                {item}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </aside>
@@ -1040,7 +1136,7 @@ function FeatureBriefChips() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05, duration: 0.35 }}
-            className="rounded-2xl border border-white/70 bg-white/70 p-3 shadow-sm backdrop-blur-xl"
+            className="rounded-2xl border border-white/70 bg-white/72 p-3 shadow-sm backdrop-blur-xl"
           >
             <div className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent/10 text-accent">
@@ -1480,19 +1576,26 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
       />
       <div className="relative z-10 flex h-full flex-col items-center justify-center text-center">
         <div className="space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">See it. Plan it. Prove it.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Vision. Move. Proof.</p>
           <h2 className="mx-auto max-w-xs text-3xl font-black tracking-tight text-text-main">
-            {mode === 'signup' ? 'Launch your first Vision.' : 'Welcome back.'}
+            {mode === 'signup' ? 'Turn ambition into proof.' : 'Welcome back.'}
           </h2>
           <p className="mx-auto max-w-xs text-sm font-semibold leading-6 text-text-secondary">
             {mode === 'signup'
-              ? 'Create a goal, add your next move, and start logging proof.'
-              : 'Pick up where your progress left off.'}
+              ? 'Create one Vision, choose the next move, and keep progress private by default.'
+              : 'Pick up where your visible progress left off.'}
           </p>
         </div>
 
         <div className="relative mt-8 flex h-[430px] w-full max-w-[470px] justify-center overflow-hidden rounded-[2.5rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-3 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
           <RocketMascot stage={rocketStage} />
+        </div>
+        <div className="mt-4 grid w-full max-w-[470px] grid-cols-3 gap-2">
+          {['Private first', 'Proof-led', 'Daily focus'].map((item) => (
+            <span key={item} className="rounded-2xl border border-white/80 bg-white/75 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary shadow-sm">
+              {item}
+            </span>
+          ))}
         </div>
       </div>
     </div>
@@ -1547,6 +1650,13 @@ function OnboardingVisualScene({ variant, title, subtitle, selectedPath, visionT
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">{title || 'VisNova setup'}</p>
             <h3 className="mt-2 max-w-sm text-2xl font-black tracking-tight text-text-main sm:text-4xl">{subtitle || path.tone}</h3>
+            <div className="mt-3 hidden flex-wrap gap-2 sm:flex">
+              {['Private by default', 'Proof over pressure', 'One next move'].map(item => (
+                <span key={item} className="rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-text-secondary shadow-sm">
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
           <motion.div
             className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/80 text-accent shadow-xl sm:flex"
@@ -1683,68 +1793,258 @@ function SetupShell({ step, children, visualProps }: { step: number; children: R
   );
 }
 
-function SetupWelcomeScreen({ nextStep }: { nextStep: () => void }) {
+function OnboardingStoryCard({ card, activeIndex }: { card: (typeof INTRO_STORY_CARDS)[number]; activeIndex: number }) {
+  const Icon = card.icon;
   return (
-    <div className="flex h-full min-h-0 flex-col justify-center space-y-4 lg:space-y-5">
-      <div className="space-y-2.5">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">90-second setup</p>
-        <h2 className="text-4xl font-black tracking-tight text-text-main sm:text-5xl">Let&apos;s build your growth system.</h2>
-        <p className="text-base font-semibold leading-7 text-text-secondary">VisNova works best when your Vision, actions, proof, and progress live in one place.</p>
+    <motion.div
+      key={card.title}
+      initial={{ opacity: 0, x: 28, scale: 0.98 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: -28, scale: 0.98 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className={cn(
+        'relative min-h-[350px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br p-5 text-white shadow-[0_26px_70px_rgba(109,93,246,0.20)] sm:min-h-[390px]',
+        card.gradient
+      )}
+    >
+      <motion.div
+        aria-hidden="true"
+        className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/30 blur-3xl"
+        animate={{ scale: [1, 1.16, 1], opacity: [0.32, 0.5, 0.32] }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        aria-hidden="true"
+        className="absolute -bottom-20 left-10 h-56 w-56 rounded-full bg-white/24 blur-3xl"
+        animate={{ y: [0, -16, 0], x: [0, 10, 0] }}
+        transition={{ duration: 6.2, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      <div className="relative z-10 flex h-full flex-col justify-between gap-6">
+        <div>
+          <div className="flex items-start justify-between gap-4">
+            <span className="rounded-full bg-white/18 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-white shadow-sm backdrop-blur-md">
+              {card.eyebrow}
+            </span>
+            <motion.span
+              className="grid h-12 w-12 place-items-center rounded-2xl bg-white/18 shadow-xl backdrop-blur-md"
+              animate={{ rotate: activeIndex === 2 ? [0, 8, -8, 0] : 0, y: [0, -5, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <Icon className="h-5 w-5" />
+            </motion.span>
+          </div>
+          <h2 className="mt-8 max-w-[18rem] text-[2.45rem] font-black leading-[0.94] tracking-[-0.065em] sm:text-5xl">
+            {card.title}
+          </h2>
+          <p className="mt-4 max-w-sm text-sm font-bold leading-6 text-white/82">
+            {card.copy}
+          </p>
+        </div>
+
+        <div className="relative">
+          <div className="absolute -left-3 -top-7 hidden rounded-2xl bg-white/22 px-3 py-2 text-[10px] font-black text-white shadow-xl backdrop-blur-md sm:block">
+            Proof over intention
+          </div>
+          <div className="rounded-[1.8rem] border border-white/34 bg-white/86 p-3 text-[#151528] shadow-[0_22px_60px_rgba(37,22,61,0.18)] backdrop-blur-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#FF8BA8]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#FFD66D]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#78E0B6]" />
+              </div>
+              <span className="rounded-full bg-[#F1ECFF] px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-[#6D5DF6]">
+                VisNova
+              </span>
+            </div>
+            <div className="space-y-2.5">
+              {card.mockup.map((row, index) => (
+                <motion.div
+                  key={row.label}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08 + 0.1 }}
+                  className="rounded-2xl border border-[#E8E4FF] bg-white p-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#8A7AA7]">{row.label}</p>
+                      <p className="mt-1 text-xs font-black text-[#18142A]">{row.value}</p>
+                    </div>
+                    <span className="h-8 w-8 rounded-xl bg-[#F1ECFF]" />
+                  </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#EEEAFD]">
+                    <motion.div
+                      className={cn('h-full rounded-full')}
+                      style={{ backgroundColor: card.accent }}
+                      initial={{ width: 0 }}
+                      animate={{ width: row.width.replace('w-[', '').replace(']', '') }}
+                      transition={{ duration: 0.7, delay: index * 0.08 + 0.2 }}
+                    />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="grid gap-2.5">
-        {[
-          ['Vision', 'Choose what you are building.'],
-          ['Action', 'Pick one move small enough for today.'],
-          ['Proof', 'Log what actually changed.']
-        ].map(([title, copy], index) => (
-          <motion.div
-            key={title}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            className="rounded-2xl border border-card-border bg-surface-muted p-4"
+    </motion.div>
+  );
+}
+
+function SetupWelcomeScreen({ nextStep }: { nextStep: () => void }) {
+  const [activeIntro, setActiveIntro] = useState(0);
+  const currentCard = INTRO_STORY_CARDS[activeIntro] || INTRO_STORY_CARDS[0];
+  const isLastIntro = activeIntro === INTRO_STORY_CARDS.length - 1;
+  const goNext = () => {
+    if (!isLastIntro) {
+      setActiveIntro(index => Math.min(INTRO_STORY_CARDS.length - 1, index + 1));
+      return;
+    }
+    nextStep();
+  };
+
+  return (
+    <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4">
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">First 10 seconds</p>
+        <h2 className="text-3xl font-black tracking-tight text-text-main sm:text-[2.7rem] sm:leading-[0.98]">See why VisNova exists.</h2>
+        <p className="max-w-xl text-sm font-semibold leading-6 text-text-secondary">A quick product story first, then we&apos;ll build your first real setup.</p>
+      </div>
+
+      <div className="min-h-0 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <OnboardingStoryCard card={currentCard} activeIndex={activeIntro} />
+        </AnimatePresence>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-center gap-2">
+          {INTRO_STORY_CARDS.map((card, index) => (
+            <button
+              key={card.title}
+              type="button"
+              onClick={() => setActiveIntro(index)}
+              className={cn(
+                'h-2 rounded-full transition-all',
+                index === activeIntro ? 'w-8 bg-accent' : 'w-2 bg-card-border'
+              )}
+              aria-label={`Show intro card ${index + 1}`}
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-[auto_1fr] gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveIntro(index => Math.max(0, index - 1))}
+            disabled={activeIntro === 0}
+            className="h-14 rounded-2xl border border-card-border bg-card px-5 text-xs font-black uppercase tracking-widest text-text-secondary transition-all disabled:opacity-35 active:scale-[0.98]"
           >
-            <p className="text-sm font-black text-text-main">{title}</p>
-            <p className="mt-1 text-xs font-semibold text-text-secondary">{copy}</p>
-          </motion.div>
-        ))}
+            Back
+          </button>
+          <button onClick={goNext} className="flex h-14 items-center justify-center gap-3 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 transition-transform active:scale-[0.98]">
+            {isLastIntro ? 'Start setup' : 'Next'} <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        {!isLastIntro && (
+          <button
+            type="button"
+            onClick={nextStep}
+            className="w-full text-center text-[10px] font-black uppercase tracking-[0.18em] text-text-secondary/50 transition-colors hover:text-accent"
+          >
+            Skip story and set up
+          </button>
+        )}
       </div>
-      <button onClick={nextStep} className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 transition-transform active:scale-[0.98]">
-        Start setup <ChevronRight className="h-4 w-4" />
-      </button>
     </div>
   );
 }
 
-function SetupPathScreen({ selectedPath, setSelectedPath, nextStep }: { selectedPath: OnboardingPathId; setSelectedPath: (path: OnboardingPathId) => void; nextStep: () => void }) {
+function SetupPathScreen({
+  selectedPath,
+  setSelectedPath,
+  selectedFocus,
+  setSelectedFocus,
+  supportNeed,
+  setSupportNeed,
+  nextStep
+}: {
+  selectedPath: OnboardingPathId;
+  setSelectedPath: (path: OnboardingPathId) => void;
+  selectedFocus: (typeof FOCUS_OPTIONS)[number];
+  setSelectedFocus: (value: (typeof FOCUS_OPTIONS)[number]) => void;
+  supportNeed: (typeof HELP_OPTIONS)[number];
+  setSupportNeed: (value: (typeof HELP_OPTIONS)[number]) => void;
+  nextStep: () => void;
+}) {
   return (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4">
       <div className="space-y-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Choose your path</p>
-        <h2 className="text-3xl font-black tracking-tight text-text-main sm:text-[2.35rem] sm:leading-[1.02]">What are you building right now?</h2>
-        <p className="text-sm font-semibold leading-6 text-text-secondary">Your path tunes examples, suggestions, and dashboard copy.</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Choose your lane</p>
+        <h2 className="text-3xl font-black tracking-tight text-text-main sm:text-[2.35rem] sm:leading-[1.02]">What are you building?</h2>
+        <p className="text-sm font-semibold leading-6 text-text-secondary">Pick a lane, a focus, and the support you want most.</p>
       </div>
-      <div className="grid min-h-0 content-start gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2">
-        {ONBOARDING_PATHS.map(path => {
-          const Icon = path.icon;
-          const selected = selectedPath === path.id;
-          return (
-            <button
-              key={path.id}
-              onClick={() => setSelectedPath(path.id)}
-              className={cn(
-                'rounded-2xl border p-3 text-left transition-all active:scale-[0.98]',
-                selected ? 'border-accent bg-accent text-accent-contrast shadow-xl shadow-accent/20' : 'border-card-border bg-card hover:border-accent/35'
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              <p className="mt-2 text-sm font-black">{path.label}</p>
-              <p className={cn('mt-1 text-xs font-semibold leading-5', selected ? 'text-accent-contrast/80' : 'text-text-secondary')}>{path.description}</p>
-            </button>
-          );
-        })}
+      <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+        <div className="grid content-start gap-2.5 sm:grid-cols-2">
+          {ONBOARDING_PATHS.map(path => {
+            const Icon = path.icon;
+            const selected = selectedPath === path.id;
+            return (
+              <button
+                key={path.id}
+                onClick={() => setSelectedPath(path.id)}
+                className={cn(
+                  'rounded-2xl border p-3 text-left transition-all active:scale-[0.98]',
+                  selected ? 'border-accent bg-accent text-accent-contrast shadow-xl shadow-accent/20' : 'border-card-border bg-card hover:border-accent/35'
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                <p className="mt-2 text-sm font-black">{path.label}</p>
+                <p className={cn('mt-1 text-xs font-semibold leading-5', selected ? 'text-accent-contrast/80' : 'text-text-secondary')}>{path.description}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="rounded-[1.5rem] border border-card-border bg-surface-muted p-3">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary/55">Focus right now</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {FOCUS_OPTIONS.map(option => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setSelectedFocus(option)}
+                className={cn(
+                  'rounded-full border px-3 py-2 text-[11px] font-black transition-all active:scale-[0.97]',
+                  selectedFocus === option ? 'border-accent bg-accent text-accent-contrast shadow-lg shadow-accent/15' : 'border-card-border bg-card text-text-secondary hover:border-accent/35'
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-card-border bg-card p-3">
+          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary/55">Help me most with</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {HELP_OPTIONS.map(option => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setSupportNeed(option)}
+                className={cn(
+                  'rounded-full border px-3 py-2 text-[11px] font-black transition-all active:scale-[0.97]',
+                  supportNeed === option ? 'border-accent bg-accent/10 text-accent shadow-sm' : 'border-card-border bg-surface-muted text-text-secondary hover:border-accent/35'
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
-      <button onClick={nextStep} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 active:scale-[0.98]">
+      <button onClick={nextStep} disabled={!selectedFocus || !supportNeed} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
         Continue
       </button>
     </div>
@@ -1758,8 +2058,8 @@ function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { select
     <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">First Vision</p>
-        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">What Vision should move first?</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Start with one thing. You can add more later.</p>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Name the direction.</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">One clear Vision is enough to begin.</p>
       </div>
       <input
         autoFocus
@@ -1794,8 +2094,8 @@ function SetupTaskScreen({ selectedPath, taskTitle, setTaskTitle, nextStep }: { 
     <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Next move</p>
-        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">What is small enough to do today?</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">A tiny next action beats a perfect plan.</p>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Choose one doable move.</h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Small enough to finish. Clear enough to prove.</p>
       </div>
       <input
         autoFocus
@@ -1829,7 +2129,7 @@ function SetupPrivacyScreen({ visibility, setVisibility, nextStep }: { visibilit
     <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Privacy default</p>
-        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Who should see your progress?</h2>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Choose what becomes visible.</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Private journals, notes, messages, and private logs stay private unless you choose to share them.</p>
       </div>
       <div className="space-y-2.5">
@@ -1859,47 +2159,13 @@ function SetupPrivacyScreen({ visibility, setVisibility, nextStep }: { visibilit
   );
 }
 
-function SetupThemeScreen({ selectedTheme, setSelectedTheme, nextStep }: { selectedTheme: string; setSelectedTheme: (value: string) => void; nextStep: () => void }) {
-  return (
-    <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Theme</p>
-        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Make VisNova feel like yours.</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Lavender Focus is the VisNova default.</p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {THEME_OPTIONS.map(theme => {
-          const selected = selectedTheme === theme.id;
-          return (
-            <button
-              key={theme.id}
-              onClick={() => setSelectedTheme(theme.id)}
-              className={cn('rounded-2xl border p-4 text-left transition-all', selected ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10' : 'border-card-border bg-card')}
-            >
-              <div className="mb-4 flex gap-2 rounded-2xl border border-card-border bg-white p-2">
-                <span className="h-10 flex-1 rounded-xl" style={{ background: theme.bg }} />
-                <span className="h-10 w-12 rounded-xl" style={{ background: theme.accent }} />
-              </div>
-              <p className="text-sm font-black text-text-main">{theme.label}</p>
-              <p className="mt-1 text-xs font-semibold text-text-secondary">{theme.desc}</p>
-            </button>
-          );
-        })}
-      </div>
-      <button onClick={nextStep} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 active:scale-[0.98]">
-        Apply Theme
-      </button>
-    </div>
-  );
-}
-
 function SetupProofScreen({ proofContent, setProofContent, onLogProof, onSkip, isSaving }: { proofContent: string; setProofContent: (value: string) => void; onLogProof: () => void; onSkip: () => void; isSaving: boolean }) {
   const cleanProof = String(proofContent || '').trim();
   return (
     <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Log proof</p>
-        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Progress starts when you log proof.</h2>
+        <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Record what changed.</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Tasks show intention. Proof shows movement.</p>
       </div>
       <div className="rounded-3xl border border-card-border bg-surface-muted p-4">
@@ -2671,10 +2937,12 @@ export default function OnboardingFlow() {
   const [role, setRole] = useState('');
   const [avatar, setAvatar] = useState(() => getRandomVisNovaAvatar());
   const [onboardingPath, setOnboardingPath] = useState<OnboardingPathId>('builder');
+  const [selectedFocus, setSelectedFocus] = useState<(typeof FOCUS_OPTIONS)[number]>('Long-term project');
+  const [supportNeed, setSupportNeed] = useState<(typeof HELP_OPTIONS)[number]>('Track progress');
   const [firstVisionTitle, setFirstVisionTitle] = useState('');
   const [firstTaskTitle, setFirstTaskTitle] = useState('');
   const [defaultVisibility, setDefaultVisibility] = useState<'private' | 'circle' | 'public'>('private');
-  const [selectedTheme, setSelectedTheme] = useState('lavender');
+  const [selectedTheme] = useState('lavender');
   const [proofContent, setProofContent] = useState('');
   const [firstVisionId, setFirstVisionId] = useState<string | null>(null);
   const [firstTaskId, setFirstTaskId] = useState<string | null>(null);
@@ -2784,11 +3052,12 @@ export default function OnboardingFlow() {
 
     try {
       const currentUser = session?.user;
+      setTheme('lavender' as any);
 
       await completeOnboarding({
         name: name || 'Visionary Explorer',
         email: email || currentUser?.email || 'explorer@visnova.ai',
-        interests: Array.from(new Set([onboardingPath, ...interests])).filter(Boolean),
+        interests: Array.from(new Set([onboardingPath, selectedFocus, supportNeed, ...interests])).filter(Boolean),
         intent: firstVisionTitle || intent,
         commitment,
         username: getGeneratedUsername(),
@@ -2828,7 +3097,7 @@ export default function OnboardingFlow() {
       progress: 0,
       status: 'planning',
       category: onboardingPath,
-      tags: Array.from(new Set([onboardingPath, ...interests])).filter(Boolean),
+      tags: Array.from(new Set([onboardingPath, selectedFocus, supportNeed, ...interests])).filter(Boolean),
       tasks: [],
       notes: '',
       proof: [],
@@ -2836,7 +3105,7 @@ export default function OnboardingFlow() {
       visibility: defaultVisibility
     });
     setFirstVisionId(vision.id);
-    trackBetaEvent(session?.user?.id, 'onboarding_vision_created', { path: onboardingPath });
+    trackBetaEvent(session?.user?.id, 'onboarding_vision_created', { path: onboardingPath, focus: selectedFocus, support: supportNeed });
     return vision.id;
   };
 
@@ -2870,7 +3139,7 @@ export default function OnboardingFlow() {
           status: 'today',
           priority: 'medium',
           progressPercent: 0,
-          tags: [onboardingPath],
+          tags: [onboardingPath, selectedFocus, supportNeed].filter(Boolean),
           checklist: [],
           visibility: defaultVisibility
         } as any);
@@ -2891,12 +3160,6 @@ export default function OnboardingFlow() {
   const handlePrivacyContinue = () => {
     trackBetaEvent(session?.user?.id, 'onboarding_privacy_selected', { visibility: defaultVisibility });
     nextStep(8);
-  };
-
-  const handleThemeContinue = () => {
-    setTheme(selectedTheme as any);
-    trackBetaEvent(session?.user?.id, 'onboarding_theme_selected', { theme: selectedTheme });
-    nextStep(9);
   };
 
   const handleLogFirstProof = async () => {
@@ -2975,7 +3238,6 @@ export default function OnboardingFlow() {
               email={email} setEmail={setEmail}
               nextStep={nextStep}
               switchToSignup={() => nextStep(1)}
-              setStep={setStep}
               handleGoogleLogin={handleGoogleLogin}
               verifiedMessage={verifiedLogin}
             />
@@ -2990,7 +3252,7 @@ export default function OnboardingFlow() {
       case 2: return <ScreenVerify email={email} nextStep={nextStep} onChangeEmail={() => nextStep(1)} />;
       case 3:
         return (
-          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'welcome', title: 'Start small', subtitle: 'Build your system one proof log at a time.' }}>
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'welcome', title: 'First setup', subtitle: 'One Vision. One move. One proof habit.' }}>
             <SetupWelcomeScreen nextStep={() => {
               trackBetaEvent(session?.user?.id, 'onboarding_started', { source: 'setup_welcome' });
               nextStep(4);
@@ -2999,40 +3261,44 @@ export default function OnboardingFlow() {
         );
       case 4:
         return (
-          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'path', title: 'Personalize', subtitle: getOnboardingPath(onboardingPath).tone }}>
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'path', title: 'Your lane', subtitle: selectedFocus ? `${selectedFocus} - ${supportNeed}` : getOnboardingPath(onboardingPath).tone }}>
             <SetupPathScreen selectedPath={onboardingPath} setSelectedPath={(path) => {
               setOnboardingPath(path);
-              trackBetaEvent(session?.user?.id, 'onboarding_path_selected', { path });
-            }} nextStep={() => nextStep(5)} />
+              trackBetaEvent(session?.user?.id, 'onboarding_path_selected', { path, focus: selectedFocus, support: supportNeed });
+            }}
+              selectedFocus={selectedFocus}
+              setSelectedFocus={setSelectedFocus}
+              supportNeed={supportNeed}
+              setSupportNeed={setSupportNeed}
+              nextStep={() => {
+                trackBetaEvent(session?.user?.id, 'onboarding_path_selected', { path: onboardingPath, focus: selectedFocus, support: supportNeed });
+                nextStep(5);
+              }}
+            />
           </SetupShell>
         );
       case 5:
         return (
-          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'vision', title: 'Your Vision', subtitle: firstVisionTitle || 'Name the future you want to move first.' }}>
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'vision', title: 'First Vision', subtitle: firstVisionTitle || 'Give your ambition a clear place to live.' }}>
             <SetupVisionScreen selectedPath={onboardingPath} title={firstVisionTitle} setTitle={setFirstVisionTitle} nextStep={handleCreateFirstVision} />
           </SetupShell>
         );
       case 6:
         return (
-          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'task', title: 'Your next move', subtitle: firstTaskTitle || 'Make it small enough to do today.' }}>
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'task', title: 'Next move', subtitle: firstTaskTitle || 'Choose the smallest useful action.' }}>
             <SetupTaskScreen selectedPath={onboardingPath} taskTitle={firstTaskTitle} setTaskTitle={setFirstTaskTitle} nextStep={handleCreateFirstTask} />
           </SetupShell>
         );
       case 7:
         return (
-          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'privacy', title: 'Private by default', subtitle: 'You control what becomes visible.' }}>
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'privacy', title: 'Privacy', subtitle: 'Private first. Shared only by choice.' }}>
             <SetupPrivacyScreen visibility={defaultVisibility} setVisibility={setDefaultVisibility} nextStep={handlePrivacyContinue} />
           </SetupShell>
         );
       case 8:
-        return (
-          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'theme', title: 'Your workspace', subtitle: 'A calm interface for repeat progress.' }}>
-            <SetupThemeScreen selectedTheme={selectedTheme} setSelectedTheme={setSelectedTheme} nextStep={handleThemeContinue} />
-          </SetupShell>
-        );
       case 9:
         return (
-          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'proof', title: 'Proof habit', subtitle: 'Tasks show intention. Proof shows movement.' }}>
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'proof', title: 'Proof habit', subtitle: 'A short record beats a perfect recap.' }}>
             <SetupProofScreen
               proofContent={proofContent}
               setProofContent={setProofContent}
@@ -3048,12 +3314,12 @@ export default function OnboardingFlow() {
       case 9.25: return <ScreenCreateFirstVision onCreate={(title) => handleCreateFirstVision(title)} onSkip={() => handleComplete(false)} />;
       case 9.35:
         return (
-          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'complete', title: 'You are set', subtitle: 'Your first growth system is ready.' }}>
+          <SetupShell step={step} visualProps={{ ...setupVisualBase, variant: 'complete', title: 'Ready', subtitle: 'Your first VisNova loop is live.' }}>
             <div className="flex h-full flex-col justify-center space-y-5">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.25em] text-accent">Ready</p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Your system is ready.</h2>
-                <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Go to Dashboard and keep today&apos;s proof visible.</p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-text-main sm:text-4xl">Your first loop is ready.</h2>
+                <p className="mt-2 text-sm font-semibold leading-6 text-text-secondary">Open Dashboard, finish the next move, and log proof when something changes.</p>
               </div>
               <div className="space-y-2.5">
                 {[
@@ -3102,7 +3368,7 @@ export default function OnboardingFlow() {
 
   const usesIntroCard = [2, 12, 13].includes(step);
 
-  const progressSteps = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const progressSteps = [1, 2, 3, 4, 5, 6, 7, 8];
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-bg-base p-0 font-sans">

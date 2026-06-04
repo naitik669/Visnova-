@@ -63,6 +63,9 @@ const BOARD_INNER_SURFACE = {
 };
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 2.5;
+const WHEEL_ZOOM_SPEED = 0.0048;
+const SECTION_LAYER_FLOOR = 10;
+const ITEM_LAYER_FLOOR = 1200;
 const SAVE_DELAY_MS = 850;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -653,8 +656,10 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
   const moveLayer = useCallback((id: string, direction: 'forward' | 'backward') => {
     const target = elements.find(element => element.id === id);
     if (!target) return;
-    const layerFloor = target.type === 'section' ? 1 : 1000;
-    const layerCeiling = elements.reduce((max, element) => Math.max(max, safeNumber(element.zIndex, 1)), layerFloor);
+    const layerFloor = target.type === 'section' ? SECTION_LAYER_FLOOR : ITEM_LAYER_FLOOR;
+    const layerCeiling = elements
+      .filter(element => target.type === 'section' ? element.type === 'section' : element.type !== 'section')
+      .reduce((max, element) => Math.max(max, safeNumber(element.zIndex, 1)), layerFloor);
     const currentLayer = Math.max(layerFloor, safeNumber(target.zIndex, layerFloor));
     updateElement(id, {
       zIndex: direction === 'forward'
@@ -662,6 +667,38 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
         : Math.max(layerFloor, currentLayer - 25)
     });
   }, [elements, updateElement]);
+
+  const eraseAtPoint = useCallback((clientX: number, clientY: number) => {
+    if (readOnly) {
+      explainReadOnly();
+      return false;
+    }
+    const point = viewportToCanvas(clientX, clientY);
+    const hit = [...elements]
+      .sort((a, b) => safeNumber(b.zIndex, 1) - safeNumber(a.zIndex, 1))
+      .find(element => {
+        if (element.type === 'connector') return false;
+        if (element.type === 'drawing') {
+          const points = safeString(element.content)
+            .split(/[ML]\s*/g)
+            .map(part => part.trim())
+            .filter(Boolean)
+            .map(part => {
+              const [x, y] = part.split(/\s+/).map(Number);
+              return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+            })
+            .filter(Boolean) as Array<{ x: number; y: number }>;
+          return points.some(item => Math.hypot(item.x - point.x, item.y - point.y) <= 28 / scale);
+        }
+        const width = element.width || defaultSize(element.type).width;
+        const height = element.height || defaultSize(element.type).height;
+        return point.x >= element.x && point.x <= element.x + width && point.y >= element.y && point.y <= element.y + height;
+      });
+    if (!hit) return false;
+    deleteElement(hit.id);
+    setActiveTool('select');
+    return true;
+  }, [deleteElement, elements, explainReadOnly, readOnly, scale, viewportToCanvas]);
 
   const restoreHistory = useCallback((direction: 'undo' | 'redo') => {
     const source = direction === 'undo' ? undoStackRef.current : redoStackRef.current;
@@ -820,8 +857,13 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
       event.stopPropagation();
-      const factor = Math.exp(-event.deltaY * 0.0018);
-      zoomTo(scale * factor);
+      const rect = node.getBoundingClientRect();
+      const normalizedDelta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * 80 : event.deltaY;
+      const factor = Math.exp(-normalizedDelta * WHEEL_ZOOM_SPEED);
+      zoomTo(scale * factor, {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      });
     };
     node.addEventListener('wheel', onNativeWheel, { passive: false });
     return () => node.removeEventListener('wheel', onNativeWheel);
@@ -948,6 +990,12 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
     }
     if (startDrawing(event)) return;
     if ((event.target as HTMLElement).closest('[data-no-pan], [data-control], input, textarea, button, a')) return;
+    if (activeTool === 'eraser' && event.button === 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      eraseAtPoint(event.clientX, event.clientY);
+      return;
+    }
     setSelectedId(null);
     setMobileToolsOpen(false);
     setMoreToolsOpen(false);
@@ -1028,7 +1076,7 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
       className={cn(
         'relative h-full min-h-[520px] w-full overflow-hidden bg-bg-base/20 select-none',
         activeTool === 'pen' && 'cursor-crosshair',
-        activeTool === 'eraser' && 'cursor-not-allowed',
+        activeTool === 'eraser' && 'cursor-crosshair',
         isPanning && 'cursor-grabbing'
       )}
       onPointerDown={handleViewportPointerDown}
@@ -1212,6 +1260,8 @@ export const CreativeCanvas: React.FC<CreativeCanvasProps> = ({ vision, updateVi
           <ElementEditor
             element={selectedElement}
             onUpdate={(updates) => updateElement(selectedElement.id, updates)}
+            onBringForward={() => moveLayer(selectedElement.id, 'forward')}
+            onSendBackward={() => moveLayer(selectedElement.id, 'backward')}
             onDelete={() => deleteElement(selectedElement.id)}
             onClose={() => setSelectedId(null)}
             onAddChecklistItem={(text) => addChecklistItem(selectedElement, text)}
@@ -1447,7 +1497,7 @@ function ElementContent({
     return (
       <EditableBlock
         className={cn(baseClass, 'p-4 text-text-main')}
-        style={{ background: element.metadata?.color || '#fef08a' }}
+        style={{ background: element.metadata?.color || '#fef08a', fontSize: element.metadata?.fontSize || '20px' }}
         value={element.content || 'Idea or reminder'}
         editing={editing}
         onEdit={onEdit}
@@ -1811,17 +1861,22 @@ function ConnectorLine({ connector, elements }: { connector: VisionElement; elem
 function ElementEditor({
   element,
   onUpdate,
+  onBringForward,
+  onSendBackward,
   onDelete,
   onClose,
   onAddChecklistItem
 }: {
   element: VisionElement;
   onUpdate: (updates: Partial<VisionElement>) => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
   onDelete: () => void;
   onClose: () => void;
   onAddChecklistItem: (text: string) => void;
 }) {
   const [itemText, setItemText] = useState('');
+  const fontSize = parseInt(safeString(element.metadata?.fontSize, '22px'), 10) || 22;
   const applyElementColor = (color: string) => {
     if (element.type === 'section') {
       onUpdate({ metadata: { fillColor: color, strokeColor: color } });
@@ -1842,10 +1897,10 @@ function ElementEditor({
   const canColorElement = ['section', 'sticky', 'task', 'shape', 'text'].includes(element.type);
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 10 }}
-      className="absolute bottom-[calc(14rem+env(safe-area-inset-bottom))] left-3 z-[175] w-[min(360px,calc(100vw-1.5rem))] rounded-3xl border border-card-border bg-card/95 p-4 shadow-2xl backdrop-blur-xl md:bottom-5 md:left-5"
+      initial={{ opacity: 0, x: 22 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 22 }}
+      className="absolute right-3 top-[5rem] z-[175] max-h-[calc(100dvh-11rem)] w-[min(360px,calc(100vw-1.5rem))] overflow-y-auto rounded-3xl border border-card-border bg-card/95 p-4 shadow-2xl shadow-accent/10 ring-4 ring-bg-base/70 backdrop-blur-xl md:right-5 md:top-[6rem]"
       data-no-pan
     >
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -1858,9 +1913,48 @@ function ElementEditor({
         </button>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => onUpdate({ zIndex: Date.now() })} className="rounded-2xl bg-surface-muted px-3 py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary">Bring forward</button>
-        <button onClick={() => onUpdate({ zIndex: element.type === 'section' ? 1 : 1000 })} className="rounded-2xl bg-surface-muted px-3 py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary">Send back</button>
+        <button onClick={onBringForward} className="rounded-2xl bg-surface-muted px-3 py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary">Bring forward</button>
+        <button onClick={onSendBackward} className="rounded-2xl bg-surface-muted px-3 py-3 text-[9px] font-black uppercase tracking-widest text-text-secondary">Send back</button>
       </div>
+      {(element.type === 'text' || element.type === 'sticky' || element.type === 'note' || element.type === 'quote') && (
+        <div className="mt-3 rounded-2xl bg-bg-base/60 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[8px] font-black uppercase tracking-widest text-text-secondary">Text size</p>
+            <span className="text-[10px] font-black tabular-nums text-text-main">{fontSize}px</span>
+          </div>
+          <input
+            type="range"
+            min={14}
+            max={40}
+            step={1}
+            value={fontSize}
+            onChange={(event) => onUpdate({ metadata: { fontSize: `${event.target.value}px` } })}
+            className="w-full accent-[var(--accent)]"
+            data-control
+          />
+        </div>
+      )}
+      {element.type === 'shape' && (
+        <div className="mt-3 rounded-2xl bg-bg-base/60 p-3">
+          <p className="mb-2 text-[8px] font-black uppercase tracking-widest text-text-secondary">Shape</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(['rectangle', 'circle', 'diamond'] as const).map(shapeType => (
+              <button
+                key={shapeType}
+                type="button"
+                onClick={() => onUpdate({ metadata: { shapeType } })}
+                className={cn(
+                  'rounded-xl border px-2 py-2 text-[9px] font-black uppercase tracking-widest transition-colors',
+                  element.metadata?.shapeType === shapeType ? 'border-accent bg-accent/10 text-accent' : 'border-card-border bg-card text-text-secondary'
+                )}
+                data-control
+              >
+                {shapeType}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {canColorElement && (
         <div className="mt-3 rounded-2xl bg-bg-base/60 p-3">
           <p className="mb-2 text-[8px] font-black uppercase tracking-widest text-text-secondary">Color</p>

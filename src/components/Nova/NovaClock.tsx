@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Archive,
@@ -80,6 +81,8 @@ const novaClockSchemaMessage = 'Nova Clock database is not ready yet. Apply the 
 
 export default function NovaClock() {
   const { session, addToast } = useStore();
+  const location = useLocation();
+  const [, setSearchParams] = useSearchParams();
   const userId = session?.user?.id;
   const [capsules, setCapsules] = useState<NovaCapsule[]>([]);
   const [activeTab, setActiveTab] = useState<CapsuleTab>('upcoming');
@@ -179,6 +182,13 @@ export default function NovaClock() {
     setBuilderOpen(true);
   };
 
+  const syncCapsuleQuery = (capsuleId: string | null, replace = false) => {
+    const next = new URLSearchParams(location.search);
+    if (capsuleId) next.set('capsule', capsuleId);
+    else next.delete('capsule');
+    setSearchParams(next, { replace });
+  };
+
   const deleteCapsule = async (capsule: NovaCapsule) => {
     if (!userId || !confirm(`Delete "${capsule.title}"?`)) return;
     const paths = capsule.items.map(item => item.storagePath).filter(Boolean) as string[];
@@ -197,8 +207,12 @@ export default function NovaClock() {
     addToast({ type: 'success', title: 'NovaCapsule deleted', description: 'The NovaCapsule was removed.' });
   };
 
-  const openCapsule = async (capsule: NovaCapsule) => {
-    if (capsule.status === 'locked') return;
+  const openCapsule = async (capsule: NovaCapsule, syncUrl = true) => {
+    if (syncUrl) syncCapsuleQuery(capsule.id);
+    if (capsule.status === 'locked') {
+      setDetailCapsule(capsule);
+      return;
+    }
     if (capsule.status === 'unlocked') {
       const openedAt = new Date().toISOString();
       const { error } = await supabase
@@ -218,6 +232,16 @@ export default function NovaClock() {
     }
     setDetailCapsule(capsule);
   };
+
+  useEffect(() => {
+    if (isLoading) return;
+    const capsuleId = new URLSearchParams(location.search).get('capsule');
+    if (!capsuleId || detailCapsule?.id === capsuleId) return;
+    const target = capsules.find(capsule => capsule.id === capsuleId);
+    if (!target) return;
+    setActiveTab(target.status === 'draft' ? 'draft' : target.status === 'opened' ? 'opened' : target.status === 'unlocked' ? 'unlocked' : 'upcoming');
+    void openCapsule(target, false);
+  }, [capsules, detailCapsule?.id, isLoading, location.search]);
 
   const activeCapsules = categorized[activeTab];
 
@@ -301,7 +325,10 @@ export default function NovaClock() {
           />
         )}
         {detailCapsule && (
-          <NovaCapsuleDetail capsule={detailCapsule} onClose={() => setDetailCapsule(null)} />
+          <NovaCapsuleDetail capsule={detailCapsule} onClose={() => {
+            setDetailCapsule(null);
+            syncCapsuleQuery(null, true);
+          }} />
         )}
       </AnimatePresence>
     </div>

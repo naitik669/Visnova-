@@ -90,7 +90,17 @@ create index if not exists idx_tasks_user_status on public.tasks(user_id, status
 create index if not exists idx_tasks_due_date on public.tasks(due_date);
 
 alter table if exists public.notes
-  add column if not exists note_icon text;
+  add column if not exists note_icon text,
+  add column if not exists deleted_at timestamptz;
+
+update public.notes
+set deleted_at = coalesce(updated_at, created_at, now())
+where is_deleted is true
+  and deleted_at is null;
+
+create index if not exists idx_notes_user_deleted_at
+  on public.notes(user_id, deleted_at)
+  where is_deleted is true;
 
 create table if not exists public.store_products (
   id uuid primary key default gen_random_uuid(),

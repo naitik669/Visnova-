@@ -146,6 +146,7 @@ export interface Note {
   isPinned?: boolean;
   isFavorite?: boolean;
   isDeleted?: boolean;
+  deletedAt?: string | null;
   journal_date?: string; // yyyy-MM-dd
   location?: string;
   image_url?: string;

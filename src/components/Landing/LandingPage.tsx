@@ -649,10 +649,10 @@ export default function LandingPage() {
               See it. Plan it. Prove it.
             </p>
             <h1 className="mt-8 text-5xl font-black leading-[1.02] tracking-[-0.075em] text-[#12122B] sm:text-6xl lg:text-7xl">
-              Turn visions into <span className="bg-gradient-to-r from-[#6D5DF6] to-[#9D8CFF] bg-clip-text text-transparent">visible progress.</span>
+              Your Vision. Your Proof. <span className="bg-gradient-to-r from-[#6D5DF6] to-[#9D8CFF] bg-clip-text text-transparent">Your Progress.</span>
             </h1>
             <p className="mx-auto mt-7 max-w-2xl text-lg font-semibold leading-8 text-[#66708A]">
-              Create goals, break them into tasks, log proof, reflect through journals, and watch your progress build over time.
+              VisNova helps you plan what matters, choose one next move, log proof, and watch your progress become visible over time.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <motion.button onClick={goAuth} className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-8 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(109,93,246,0.28)]" whileHover={{ y: -3, scale: 1.03 }} whileTap={{ scale: 0.97 }}>

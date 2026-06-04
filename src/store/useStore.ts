@@ -278,6 +278,17 @@ function normalizeNoteType(type?: string | null): Note['note_type'] {
   return 'normal';
 }
 
+const NOTE_TRASH_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+function noteDeletedAtMs(note: Pick<Note, 'deletedAt' | 'updatedAt' | 'createdAt'>) {
+  if (note.deletedAt) return safeTime(note.deletedAt, note.updatedAt || note.createdAt);
+  return note.updatedAt || note.createdAt || Date.now();
+}
+
+function isExpiredTrashNote(note: Note) {
+  return Boolean(note.isDeleted) && Date.now() - noteDeletedAtMs(note) >= NOTE_TRASH_RETENTION_MS;
+}
+
 function normalizeNote(row: any): Note {
   const createdAt = safeTime(row?.created_at);
   const updatedAt = safeTime(row?.updated_at, createdAt);
@@ -296,6 +307,7 @@ function normalizeNote(row: any): Note {
     isPinned: safeBoolean(row?.is_pinned),
     isFavorite: safeBoolean(row?.is_favorite),
     isDeleted: safeBoolean(row?.is_deleted),
+    deletedAt: row?.deleted_at || null,
     mood: row?.mood || undefined,
     journal_date: row?.journal_date || undefined,
     location: row?.location || undefined,
@@ -3496,6 +3508,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (updates.isPinned !== undefined) dbUpdates.is_pinned = updates.isPinned;
       if (updates.isFavorite !== undefined) dbUpdates.is_favorite = updates.isFavorite;
       if (updates.isDeleted !== undefined) dbUpdates.is_deleted = updates.isDeleted;
+      if (updates.deletedAt !== undefined) dbUpdates.deleted_at = updates.deletedAt;
       if (updates.mood !== undefined) dbUpdates.mood = updates.mood;
       if (updates.journal_date !== undefined) dbUpdates.journal_date = updates.journal_date;
       if (updates.location !== undefined) dbUpdates.location = updates.location;
@@ -3510,6 +3523,10 @@ export const useStore = create<AppState>((set, get) => ({
       let { error } = await supabase.from('notes').update(dbUpdates).eq('id', id);
       if (isMissingColumnError(error, 'note_icon')) {
         delete dbUpdates.note_icon;
+        ({ error } = await supabase.from('notes').update(dbUpdates).eq('id', id));
+      }
+      if (isMissingColumnError(error, 'deleted_at')) {
+        delete dbUpdates.deleted_at;
         ({ error } = await supabase.from('notes').update(dbUpdates).eq('id', id));
       }
       if (error) throw error;
@@ -3579,8 +3596,21 @@ export const useStore = create<AppState>((set, get) => ({
       if (error) throw error;
 
       const formattedNotes: Note[] = (data || []).map(normalizeNote).filter(note => note.id);
+      const expiredTrashNotes = formattedNotes.filter(isExpiredTrashNote);
+      const visibleNotes = formattedNotes.filter(note => !isExpiredTrashNote(note));
 
-      set({ notes: formattedNotes });
+      set({ notes: visibleNotes });
+
+      if (expiredTrashNotes.length > 0) {
+        supabase
+          .from('notes')
+          .delete()
+          .in('id', expiredTrashNotes.map(note => note.id))
+          .eq('user_id', userId)
+          .then(({ error: purgeError }) => {
+            if (purgeError) console.error('Failed to purge expired trash notes:', purgeError);
+          });
+      }
     } catch (error: any) {
       console.error('Failed to fetch notes:', error);
       get().addToast({ type: 'error', title: 'Library failed', description: error.message || 'Could not load your notes. Try refresh once.' });
@@ -3603,7 +3633,7 @@ export const useStore = create<AppState>((set, get) => ({
       }
     } else {
       // Move to trash
-      get().updateNote(id, { isDeleted: true });
+      get().updateNote(id, { isDeleted: true, deletedAt: new Date().toISOString() });
     }
   },
 

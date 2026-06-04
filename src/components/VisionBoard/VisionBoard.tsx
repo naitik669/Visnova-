@@ -71,10 +71,7 @@ export default function VisionBoard() {
     if (!target) return;
     setSelectedVision(target);
     setIsModalOpen(true);
-    const next = new URLSearchParams(searchParams);
-    next.delete('open');
-    setSearchParams(next, { replace: true });
-  }, [isVisionsLoading, searchParams, setSearchParams, visions]);
+  }, [isVisionsLoading, searchParams, visions]);
 
   const refreshRepository = async () => {
     if (!session?.user?.id) {
@@ -97,6 +94,17 @@ export default function VisionBoard() {
   const handleCardClick = (vision: Vision) => {
     setSelectedVision(vision);
     setIsModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.set('open', vision.id);
+    setSearchParams(next, { replace: false });
+  };
+
+  const handleCloseVision = () => {
+    setIsModalOpen(false);
+    setSelectedVision(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete('open');
+    setSearchParams(next, { replace: true });
   };
 
   const handleAddNew = useCallback(async () => {
@@ -165,6 +173,9 @@ export default function VisionBoard() {
       setSetupVision(null);
       setSelectedVision(updatedVision);
       setIsModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.set('open', updatedVision.id);
+      setSearchParams(next, { replace: false });
       addToast({
         type: 'success',
         title: 'Vision Initialized',
@@ -397,7 +408,7 @@ export default function VisionBoard() {
 
       <VisionDetailModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseVision}
         vision={selectedVision}
       />
 

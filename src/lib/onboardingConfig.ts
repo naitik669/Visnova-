@@ -79,12 +79,12 @@ export const ONBOARDING_PATHS: OnboardingPathConfig[] = [
 ];
 
 export const ONBOARDING_FEATURE_CHIPS = [
-  { label: 'Vision', copy: 'Your long-term goal.' },
-  { label: 'Task', copy: 'Your next move.' },
-  { label: 'Proof', copy: 'What you actually did.' },
-  { label: 'Progress Pulse', copy: 'Your visible growth.' },
+  { label: 'Vision', copy: 'The direction you choose.' },
+  { label: 'Task', copy: 'The next move you can finish.' },
+  { label: 'Proof', copy: 'The record of what changed.' },
+  { label: 'Pulse', copy: 'Your growth becoming visible.' },
   { label: 'Circle', copy: 'Accountability when you want it.' },
-  { label: 'Notes / Journal', copy: 'Reflection connected to goals.' }
+  { label: 'Journal', copy: 'Reflection tied back to goals.' }
 ];
 
 export function getOnboardingPath(id: OnboardingPathId | string | null | undefined) {
