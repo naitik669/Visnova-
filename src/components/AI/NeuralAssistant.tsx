@@ -11,6 +11,7 @@ import { cn } from '../../lib/utils';
 import Markdown from 'react-markdown';
 
 const ASSISTANT_ENABLED = import.meta.env.VITE_ENABLE_ASSISTANT === 'true';
+const MARKDOWN_ALLOWED_ELEMENTS = ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'code', 'pre'] as const;
 
 export default function NeuralAssistant() {
   if (!ASSISTANT_ENABLED) return null;
@@ -155,7 +156,13 @@ export default function NeuralAssistant() {
                           : "bg-white/5 border border-white/5 text-text-main rounded-tl-none"
                       )}>
                         <div className="markdown-body">
-                           <Markdown>{m.content}</Markdown>
+                          <Markdown
+                            skipHtml
+                            allowedElements={[...MARKDOWN_ALLOWED_ELEMENTS]}
+                            unwrapDisallowed
+                          >
+                            {m.content}
+                          </Markdown>
                         </div>
                       </div>
                       <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary/40 px-2">

@@ -30,7 +30,6 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
-    "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "posthog-js": "^1.376.1",
@@ -46,8 +45,6 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
-    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^10.2.1",
