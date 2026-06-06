@@ -84,6 +84,12 @@ type ConfirmAction = {
   run: () => Promise<void>;
 };
 const FEED_POST_PREVIEW_LIMIT = 420;
+const CLOSED_BETA_POST_TYPES: Array<{ value: Post['type']; label: string }> = [
+  { value: 'update', label: 'Proof update' },
+  { value: 'achievement', label: 'Win' },
+  { value: 'help_request', label: 'Help request' },
+  { value: 'insight', label: 'Reflection' },
+];
 const renderModalPortal = (node: ReactNode) => {
   if (typeof document === 'undefined') return node;
   return createPortal(node, document.body);
@@ -817,7 +823,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
     if (typeof window === 'undefined') return 'update';
     const requestedType = sessionStorage.getItem('visnova-open-feed-composer-type') || sessionStorage.getItem('visnova-open-feed-composer');
     sessionStorage.removeItem('visnova-open-feed-composer-type');
-    return requestedType === 'help_request' ? 'help_request' : 'update';
+    return CLOSED_BETA_POST_TYPES.some(item => item.value === requestedType) ? requestedType as Post['type'] : 'update';
   });
   const [images, setImages] = useState<{ file: File, preview: string, uploading: boolean }[]>([]);
   const [title, setTitle] = useState('');
@@ -995,7 +1001,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
 
         <div className="flex-1 space-y-6 overflow-y-auto p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] custom-scrollbar sm:space-y-8 sm:overflow-y-auto sm:p-0 sm:pb-0">
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {(['status', 'update', 'help_request', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
+            {CLOSED_BETA_POST_TYPES.map(({ value: t, label }) => (
               <button
                 key={t}
                 onClick={() => setType(t)}
@@ -1007,9 +1013,10 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
                 )}
               >
                 {t === 'achievement' && <Trophy size={12} />}
-                {t === 'milestone' && <Flag size={12} />}
-                {t === 'status' && <MessageSquare size={12} />}
-                {t === 'help_request' ? 'Help' : t}
+                {t === 'help_request' && <MessageSquare size={12} />}
+                {t === 'update' && <Zap size={12} />}
+                {t === 'insight' && <Hash size={12} />}
+                {label}
               </button>
             ))}
           </div>
@@ -1049,7 +1056,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
               <MentionHashtagTextarea
                 value={caption}
                 onChange={setCaption}
-                placeholder="A catchy hook for your update..."
+                      placeholder="Short title for this proof, win, help request, or reflection..."
                 textareaClassName="w-full h-20 bg-card border border-card-border rounded-2xl p-4 text-sm font-bold focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20"
               />
             </div>
@@ -1070,7 +1077,7 @@ function PostComposer({ onClose, onPost }: { onClose: () => void, onPost: (p: an
                 value={content}
                 onChange={setContent}
                 maxLength={type === 'status' ? statusLimit : undefined}
-                placeholder={type === 'status' ? "What's your current status?" : "Expand on your progress, insights, or plans..."}
+                placeholder={type === 'status' ? "What's your current status?" : "What happened, what changed, or what help do you need?"}
                 textareaClassName={cn(
                   "w-full bg-card border border-card-border p-4 text-sm font-medium focus:outline-none focus:border-accent/30 transition-all resize-none placeholder:text-text-secondary/20",
                   type === 'status' ? "h-28 rounded-[2rem] rounded-tl-md text-base font-bold bg-accent/5 border-accent/15" : "h-40 rounded-2xl"
@@ -1233,7 +1240,7 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
 
         <div className="space-y-6">
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {(['status', 'update', 'sprint', 'insight', 'milestone', 'achievement'] as Post['type'][]).map(t => (
+            {CLOSED_BETA_POST_TYPES.map(({ value: t, label }) => (
               <button
                 key={t}
                 onClick={() => setType(t)}
@@ -1244,13 +1251,11 @@ export function PostEditModal({ post, onClose, onSave }: { post: Post, onClose: 
                     : "bg-surface-muted border-card-border text-text-secondary opacity-60 hover:opacity-100 hover:border-accent/30"
                 )}
               >
-                {t === 'status' && <MessageSquare size={12} />}
                 {t === 'update' && <Zap size={12} />}
-                {t === 'sprint' && <TrendingUp size={12} />}
                 {t === 'insight' && <Hash size={12} />}
                 {t === 'achievement' && <Trophy size={12} />}
-                {t === 'milestone' && <Flag size={12} />}
-                {t}
+                {t === 'help_request' && <MessageSquare size={12} />}
+                {label}
               </button>
             ))}
           </div>

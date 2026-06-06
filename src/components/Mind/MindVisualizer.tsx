@@ -33,6 +33,7 @@ import { SelectMenu } from '../ui/SelectMenu';
 import { formatCurrency } from '../../lib/currency';
 import { ProgressPulsePage } from '../Growth/ProgressPulsePage';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { betaFlags } from '../../lib/betaFlags';
 
 type GrowthStatus = 'saved' | 'learning' | 'completed' | 'applied' | 'archived';
 type SourceType = 'youtube' | 'article' | 'course' | 'book' | 'podcast' | 'pdf' | 'website' | 'other';
@@ -195,7 +196,9 @@ export default function MindVisualizer() {
   const [resources, setResources] = useState<GrowthResource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [growthSection, setGrowthSection] = useState<GrowthSection>((location.state as any)?.section === 'tracker' || (location.state as any)?.fromDashboard ? 'tracker' : 'resources');
+  const [growthSection, setGrowthSection] = useState<GrowthSection>(
+    betaFlags.mindVisualizer && (location.state as any)?.section === 'resources' ? 'resources' : 'tracker'
+  );
   const [activeTab, setActiveTab] = useState<GrowthTab>('library');
   const [statusFilter, setStatusFilter] = useState<GrowthStatus | 'all'>('all');
   const [sourceFilter, setSourceFilter] = useState<SourceType | 'all'>('all');
@@ -237,12 +240,19 @@ export default function MindVisualizer() {
   useEffect(() => {
     if (userId && visions.length === 0) fetchVisions();
     if (userId) fetchDashboardData().catch(error => console.error('Failed to load Growth Tracker data:', error));
-    fetchGrowthResources();
+    if (betaFlags.mindVisualizer) {
+      fetchGrowthResources();
+    } else {
+      setResources([]);
+      setIsLoading(false);
+    }
   }, [userId]);
 
   useEffect(() => {
     const requestedSection = (location.state as any)?.section;
-    if (requestedSection === 'tracker' || (location.state as any)?.fromDashboard) {
+    if (requestedSection === 'resources' && betaFlags.mindVisualizer) {
+      setGrowthSection('resources');
+    } else if (requestedSection === 'tracker' || (location.state as any)?.fromDashboard || !betaFlags.mindVisualizer) {
       setGrowthSection('tracker');
     }
   }, [location.state]);
@@ -667,26 +677,28 @@ export default function MindVisualizer() {
 
   return (
     <div className="w-full max-w-[1700px] mx-auto pb-20 animate-in fade-in duration-700 space-y-6">
-      <section className="rounded-[2rem] border border-card-border bg-card p-3 shadow-sm">
-        <div className="grid grid-cols-2 gap-2">
-          {([
-            { id: 'resources', label: 'Resources', desc: 'Learning and saved material' },
-            { id: 'tracker', label: 'Growth Tracker', desc: 'Proof, streaks, goals' },
-          ] as const).map(section => (
-            <button
-              key={section.id}
-              onClick={() => setGrowthSection(section.id)}
-              className={cn(
-                'rounded-[1.25rem] px-4 py-2.5 text-left transition-all',
-                growthSection === section.id ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/15' : 'bg-app-container text-text-secondary hover:text-text-main'
-              )}
-            >
-              <span className="block text-xs font-black uppercase tracking-widest">{section.label}</span>
-              <span className={cn('mt-1 block text-[10px] font-semibold', growthSection === section.id ? 'text-accent-contrast/70' : 'text-text-secondary/55')}>{section.desc}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      {betaFlags.mindVisualizer && (
+        <section className="rounded-[2rem] border border-card-border bg-card p-3 shadow-sm">
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { id: 'tracker', label: 'Progress Pulse', desc: 'Proof, streaks, goals' },
+              { id: 'resources', label: 'Resources', desc: 'Learning and saved material' },
+            ] as const).map(section => (
+              <button
+                key={section.id}
+                onClick={() => setGrowthSection(section.id)}
+                className={cn(
+                  'rounded-[1.25rem] px-4 py-2.5 text-left transition-all',
+                  growthSection === section.id ? 'bg-accent text-accent-contrast shadow-lg shadow-accent/15' : 'bg-app-container text-text-secondary hover:text-text-main'
+                )}
+              >
+                <span className="block text-xs font-black uppercase tracking-widest">{section.label}</span>
+                <span className={cn('mt-1 block text-[10px] font-semibold', growthSection === section.id ? 'text-accent-contrast/70' : 'text-text-secondary/55')}>{section.desc}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {growthSection === 'tracker' && (
         <ProgressPulsePage

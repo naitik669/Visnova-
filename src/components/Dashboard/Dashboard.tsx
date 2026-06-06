@@ -40,6 +40,7 @@ import { formatCurrency } from "../../lib/currency";
 import { DashboardProgressPulseCard } from "../Growth/DashboardProgressPulseCard";
 import { DashboardCircleMomentumCard } from "../Circle/DashboardCircleMomentumCard";
 import { MobilePage } from "../mobile/MobileLayout";
+import { betaFlags } from "../../lib/betaFlags";
 
 const CircularProgress = ({
   value,
@@ -97,7 +98,7 @@ const CircularProgress = ({
 
 import { useNavigate } from "react-router-dom";
 
-function FirstVisionPrompt({ onCreate, onFeed }: { onCreate: () => void; onFeed: () => void }) {
+function FirstVisionPrompt({ onCreate, onSecondary, secondaryLabel = "Send Feedback" }: { onCreate: () => void; onSecondary: () => void; secondaryLabel?: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -121,10 +122,10 @@ function FirstVisionPrompt({ onCreate, onFeed }: { onCreate: () => void; onFeed:
             Create my first Vision
           </button>
           <button
-            onClick={onFeed}
+            onClick={onSecondary}
             className="h-12 rounded-2xl border border-card-border bg-card px-6 text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-accent"
           >
-            Explore the Feed
+            {secondaryLabel}
           </button>
         </div>
       </div>
@@ -834,11 +835,11 @@ export default function Dashboard() {
   const weeklyProgressLogs = progressLogs.filter(log => log.createdAt >= weekStart);
   const weeklyJournalCount = journalEntries.filter(entry => entry.createdAt >= weekStart).length;
   const weeklyScore = Math.min(100, weeklyProgressLogs.length * 18 + completedTasksThisWeek.length * 10 + weeklyJournalCount * 8 + Math.min(20, currentStreak * 3));
-  const weeklyMoneyUpdates = moneyOverview ? (moneyOverview.monthIncome > 0 || moneyOverview.monthExpenses > 0 || moneyOverview.monthSavings > 0 ? 1 : 0) : 0;
+  const weeklyMoneyUpdates = betaFlags.money && moneyOverview ? (moneyOverview.monthIncome > 0 || moneyOverview.monthExpenses > 0 || moneyOverview.monthSavings > 0 ? 1 : 0) : 0;
   const recentTimeline = growthTimelineEvents.slice(0, 3);
   const visionById = React.useMemo(() => new Map(visions.map(vision => [vision.id, vision])), [visions]);
   const activeMoneyGoals = React.useMemo(() => (
-    financeGoals
+    betaFlags.money ? financeGoals
       .filter(goal => goal.status !== 'archived')
       .map(goal => {
         const progress = Math.min(100, Math.round((goal.currentAmount / Math.max(1, goal.targetAmount)) * 100));
@@ -860,8 +861,9 @@ export default function Dashboard() {
       .sort((a, b) => {
         const statusWeight = { behind: 0, 'at risk': 1, 'on track': 2, completed: 3 } as Record<string, number>;
         return statusWeight[a.pulseStatus] - statusWeight[b.pulseStatus] || b.remaining - a.remaining;
-      })
+      }) : []
   ), [financeGoals, visionById]);
+  const dashboardResourceGoal = betaFlags.money ? activeMoneyGoals.find(goal => goal.pulseStatus !== 'completed') || activeMoneyGoals[0] || null : null;
   const deadlineCards = React.useMemo(() => (
     visions
       .filter(vision => !!vision.deadline)
@@ -912,7 +914,7 @@ export default function Dashboard() {
   }, [visionById, weeklyProgressLogs]);
   const progressUpdates = React.useMemo(() => {
     const updates: string[] = [];
-    const topGoal = activeMoneyGoals.find(goal => goal.pulseStatus !== 'completed' && goal.remaining > 0);
+    const topGoal = betaFlags.money ? activeMoneyGoals.find(goal => goal.pulseStatus !== 'completed' && goal.remaining > 0) : null;
     if (topGoal) {
       updates.push(`You need ${formatMoney(topGoal.remaining, topGoal.currency)} more to complete ${topGoal.title}.`);
     }
@@ -944,7 +946,7 @@ export default function Dashboard() {
       return {
         title: "Log today's proof",
         description: `Add one update for ${activeVision.title}. Private is fine; visible progress starts with the record.`,
-        actionLabel: "Log Progress",
+        actionLabel: "Log Proof",
         onAction: () => setShowProgressComposer(true),
       };
     }
@@ -962,13 +964,13 @@ export default function Dashboard() {
       };
     }
 
-    const moneyGoal = activeMoneyGoals.find(goal => goal.pulseStatus !== 'completed');
+    const moneyGoal = betaFlags.money ? activeMoneyGoals.find(goal => goal.pulseStatus !== 'completed') : null;
     if (moneyGoal) {
       return {
         title: "Update your resources",
         description: `You need ${formatMoney(moneyGoal.remaining, moneyGoal.currency)} more for ${moneyGoal.title}.`,
-        actionLabel: "Open Resources",
-        onAction: () => navigate('/growth', { state: { section: 'resources' } }),
+        actionLabel: "Open Resource Goals",
+        onAction: () => navigate('/wallet'),
       };
     }
 
@@ -1052,16 +1054,16 @@ export default function Dashboard() {
           </div>
         </button>
 
-        <section className="grid grid-cols-3 gap-2.5">
+        <section className={cn("grid gap-2.5", betaFlags.money ? "grid-cols-3" : "grid-cols-2")}>
           {[
             { icon: FileText, label: "Proof", value: progressLogs.length, detail: `${weeklyProgressLogs.length} this week`, tint: "bg-[#eaf5ff] text-[#2d9ae8]" },
             { icon: CheckCircle2, label: "Tasks", value: completedTasksThisWeek.length, detail: `${pendingTasks.length} pending`, tint: "bg-[#eef8ef] text-[#34a86b]" },
-            { icon: Wallet, label: "Resources", value: activeMoneyGoals[0]?.progress ?? 0, detail: activeMoneyGoals[0] ? "funded" : "ready", suffix: activeMoneyGoals[0] ? "%" : "", tint: "bg-[#fff3dc] text-[#e3a12b]" },
+            ...(betaFlags.money ? [{ icon: Wallet, label: "Resources", value: activeMoneyGoals[0]?.progress ?? 0, detail: activeMoneyGoals[0] ? "funded" : "ready", suffix: activeMoneyGoals[0] ? "%" : "", tint: "bg-[#fff3dc] text-[#e3a12b]" }] : []),
           ].map(item => (
             <button
               key={item.label}
               type="button"
-              onClick={() => item.label === 'Resources' ? navigate('/growth', { state: { section: 'resources' } }) : navigate(item.label === 'Tasks' ? '/tasks' : '/growth')}
+              onClick={() => item.label === 'Resources' ? navigate('/wallet') : navigate(item.label === 'Tasks' ? '/tasks' : '/growth')}
               className="rounded-[1.35rem] border border-[#ecf0ec] bg-white p-3 text-left shadow-[0_10px_26px_rgba(24,32,26,0.06)]"
             >
               <div className={cn("mb-2 flex h-7 w-7 items-center justify-center rounded-full", item.tint)}>
@@ -1116,7 +1118,7 @@ export default function Dashboard() {
         <section className="rounded-[1.8rem] border border-[#ecf0ec] bg-white p-4 shadow-[0_12px_30px_rgba(24,32,26,0.07)]">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[13px] font-black text-[#17211b]">Recent Progress</h2>
-            <button type="button" onClick={() => navigate('/feed')} className="text-[10px] font-black text-[#9a6cff]">See all</button>
+            <button type="button" onClick={() => navigate('/growth')} className="text-[10px] font-black text-[#9a6cff]">View Pulse</button>
           </div>
           <div className="space-y-3">
             {progressLogs.slice(0, 3).map((log, index) => (
@@ -1179,7 +1181,7 @@ export default function Dashboard() {
           className="sticky bottom-3 z-20 flex min-h-14 w-full items-center justify-center gap-2 rounded-[1.5rem] bg-[#9a6cff] px-4 text-[11px] font-black uppercase tracking-widest text-white shadow-[0_18px_44px_rgba(154,108,255,0.32)] active:scale-[0.99]"
         >
           <Plus size={18} />
-          Log Progress
+          Log Proof
         </button>
       </MobilePage>
       {/* Header section */}
@@ -1213,7 +1215,7 @@ export default function Dashboard() {
           {visions.length === 0 && (
             <FirstVisionPrompt
               onCreate={() => navigate('/visions')}
-              onFeed={() => navigate('/feed')}
+              onSecondary={() => navigate('/feedback')}
             />
           )}
 
@@ -1262,7 +1264,7 @@ export default function Dashboard() {
                       <p className="mt-2 max-w-xl text-xs font-semibold text-text-secondary/70">
                         {activeVision
                           ? "Pick the next action, log proof, and keep this Vision moving."
-                          : "Create a Vision so tasks, notes, journals, proof, and Circle activity connect in one loop."}
+                          : "Create a Vision so tasks, notes, journals, and proof connect in one loop."}
                       </p>
                     </div>
                     <button
@@ -1271,7 +1273,7 @@ export default function Dashboard() {
                       className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[9px] font-black uppercase tracking-widest text-accent-contrast shadow-lg shadow-accent/15"
                     >
                       <Plus size={13} />
-                      Log Progress
+                      Log Proof
                     </button>
                     </div>
                   )}
@@ -1374,8 +1376,8 @@ export default function Dashboard() {
           </div>
 
           {/* Top Row: Circle momentum / Events */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <DashboardCircleMomentumCard />
+          <div className={cn("grid grid-cols-1 gap-6", betaFlags.circle ? "md:grid-cols-2" : "")}>
+            {betaFlags.circle && <DashboardCircleMomentumCard />}
 
             {/* Upcoming Events / Tasks */}
             <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col gap-4">
@@ -1826,67 +1828,61 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Wallet Snapshot */}
-          <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col gap-5 border border-card-border/40">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
-                    <Wallet size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-[15px] font-semibold text-text-main">Wallet</h3>
-                    <p className="text-[11px] font-semibold text-text-secondary/65">Spending and savings for your Visions</p>
+          {betaFlags.money && (
+            <div className="bg-card rounded-[2.5rem] p-6 shadow-sm flex flex-col gap-5 border border-card-border/40">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-accent/10 text-accent flex items-center justify-center">
+                      <Wallet size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-[15px] font-semibold text-text-main">Resource Goals</h3>
+                      <p className="text-[11px] font-semibold text-text-secondary/65">Money or materials linked to a Vision</p>
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={() => navigate('/wallet')}
+                  className="h-10 px-4 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shrink-0"
+                >
+                  Open Goals
+                </button>
               </div>
-              <button
-                onClick={() => navigate('/wallet')}
-                className="h-10 px-4 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shrink-0"
-              >
-                Open Wallet
-              </button>
+
+              {dashboardResourceGoal ? (
+                <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="block truncate text-sm font-black text-text-main">{dashboardResourceGoal.title}</span>
+                      <span className="mt-1 block truncate text-[11px] font-semibold text-text-secondary">
+                        {dashboardResourceGoal.linkedVision?.title ? `Linked Vision: ${dashboardResourceGoal.linkedVision.title}` : 'Link this to a Vision for clearer progress.'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-black text-accent">{dashboardResourceGoal.progress}%</span>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-surface-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-accent" style={{ width: `${dashboardResourceGoal.progress}%` }} />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                    <span>{formatMoney(dashboardResourceGoal.currentAmount, dashboardResourceGoal.currency)}</span>
+                    <span className="text-text-secondary/35">/</span>
+                    <span>{formatMoney(dashboardResourceGoal.targetAmount, dashboardResourceGoal.currency)}</span>
+                    {dashboardResourceGoal.remaining > 0 && (
+                      <span className="rounded-full bg-accent/10 px-2 py-1 text-accent">
+                        {formatMoney(dashboardResourceGoal.remaining, dashboardResourceGoal.currency)} left
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-app-container border border-dashed border-card-border p-5">
+                  <p className="text-sm font-semibold text-text-main">No resource goal yet.</p>
+                  <p className="mt-1 text-xs text-text-secondary">Add a target amount, current amount, currency, and linked Vision when needed.</p>
+                </div>
+              )}
             </div>
-
-            {moneyOverview ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Saved this month</p>
-                  <p className="mt-2 text-lg font-black text-text-main">{formatMoney(moneyOverview.monthSavings, defaultCurrency)}</p>
-                </div>
-                <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Income</p>
-                  <p className="mt-2 text-lg font-black text-success">{formatMoney(moneyOverview.monthIncome, defaultCurrency)}</p>
-                </div>
-                <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Expenses</p>
-                  <p className="mt-2 text-lg font-black text-danger">{formatMoney(moneyOverview.monthExpenses, defaultCurrency)}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-app-container border border-dashed border-card-border p-5">
-                <p className="text-sm font-semibold text-text-main">Track spending and savings for your Visions.</p>
-                <p className="mt-1 text-xs text-text-secondary">Add income, expenses, goals, and subscriptions when you are ready.</p>
-              </div>
-            )}
-
-            {moneyOverview?.topGoal && (
-              <div className="rounded-2xl bg-app-container border border-card-border/60 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-bold text-text-secondary truncate">Top Goal: {moneyOverview.topGoal.title}</span>
-                  <span className="text-[10px] font-black text-accent">
-                    {Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}%
-                  </span>
-                </div>
-                <div className="mt-2 h-2 rounded-full bg-surface-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${Math.min(100, Math.round((moneyOverview.topGoal.currentAmount / Math.max(1, moneyOverview.topGoal.targetAmount)) * 100))}%` }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Right Sidebar stats panel */}
@@ -1898,6 +1894,18 @@ export default function Dashboard() {
             tasksDone={completedTasksThisWeek.length}
             onOpen={() => navigate('/growth', { state: { fromDashboard: true, section: 'tracker' } })}
           />
+
+          <button
+            type="button"
+            onClick={() => navigate('/feedback')}
+            className="rounded-[1.7rem] border border-card-border bg-card p-4 text-left shadow-sm transition-all hover:border-accent/25 hover:shadow-md"
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-accent">Closed beta</p>
+            <h3 className="mt-2 text-sm font-black text-text-main">Send feedback</h3>
+            <p className="mt-1 text-[11px] font-semibold leading-5 text-text-secondary">
+              Tell us what blocks Vision, Task, Proof, or Progress.
+            </p>
+          </button>
 
           <div className="bg-card rounded-[2rem] p-5 flex flex-col shadow-sm relative">
           <div className="flex flex-col gap-4 w-full h-auto">

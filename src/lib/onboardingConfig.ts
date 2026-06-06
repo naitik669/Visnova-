@@ -82,8 +82,8 @@ export const ONBOARDING_FEATURE_CHIPS = [
   { label: 'Task', copy: 'The next move you can finish.' },
   { label: 'Proof', copy: 'The record of what changed.' },
   { label: 'Pulse', copy: 'Your growth becoming visible.' },
-  { label: 'Circle', copy: 'Accountability when you want it.' },
-  { label: 'Journal', copy: 'Reflection tied back to goals.' }
+  { label: 'Journal', copy: 'Reflection tied back to goals.' },
+  { label: 'Privacy', copy: 'Private by default, shared by choice.' }
 ];
 
 export function getOnboardingPath(id: OnboardingPathId | string | null | undefined) {

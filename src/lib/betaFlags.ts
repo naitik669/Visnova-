@@ -8,7 +8,9 @@ export const betaFlags = {
   visionTeams: import.meta.env.VITE_ENABLE_VISION_TEAMS === 'true',
   novaClock: import.meta.env.VITE_ENABLE_NOVA_CLOCK === 'true',
   money: import.meta.env.VITE_ENABLE_MONEY === 'true',
+  mindVisualizer: import.meta.env.VITE_ENABLE_MIND_VISUALIZER === 'true',
+  subscriptions: import.meta.env.VITE_ENABLE_SUBSCRIPTIONS === 'true',
   advancedAnimations: import.meta.env.VITE_ENABLE_ADVANCED_ANIMATIONS === 'true',
   analytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
-  betaGate: import.meta.env.VITE_ENABLE_BETA_GATE === 'true',
+  betaGate: import.meta.env.VITE_ENABLE_BETA_GATE !== 'false',
 };

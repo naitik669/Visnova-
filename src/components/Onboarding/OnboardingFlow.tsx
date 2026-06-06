@@ -911,7 +911,7 @@ const FOCUS_OPTIONS = [
   'Career',
   'Creative work',
   'Long-term project',
-  'Money'
+  'Consistency'
 ] as const;
 
 const HELP_OPTIONS = [
@@ -979,9 +979,9 @@ const INTRO_STORY_CARDS: Array<{
     gradient: 'from-[#F8F6FF] via-[#EAF1FF] to-[#FFFFFF]',
     accent: '#6D5DF6',
     mockup: [
-      { label: 'Circle', value: 'Accountability', width: 'w-[66%]' },
+      { label: 'Progress', value: 'Pulse ready', width: 'w-[66%]' },
       { label: 'Journal', value: 'Reflect privately', width: 'w-[74%]' },
-      { label: 'Board', value: 'Visualize the goal', width: 'w-[82%]' }
+      { label: 'Privacy', value: 'Private default', width: 'w-[82%]' }
     ]
   }
 ];
@@ -2257,7 +2257,7 @@ function Screen7({ avatar, setAvatar, name, setName, username, setUsername, bio,
 }
 
 const ROLE_CATEGORIES = [
-  'Growth', 'Lifestyle', 'Career', 'Wallet', 'Creativity', 'Coding', 'Study', 'Business', 'Fitness', 'Mindset', 'Productivity'
+  'Growth', 'Lifestyle', 'Career', 'Creativity', 'Coding', 'Study', 'Business', 'Fitness', 'Mindset', 'Productivity'
 ];
 
 function ScreenInterests({ selectedInterests, setSelectedInterests, nextStep }: any) {

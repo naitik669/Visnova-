@@ -43,6 +43,7 @@ import { VISNOVA_PROFILE_AVATARS } from '../../lib/avatarLibrary';
 import { CURRENCY_OPTIONS } from '../../lib/currency';
 import { ProfileRoleSelect } from '../ProfileRoleSelect';
 import { VisNovaMotion } from '../ui/VisNovaMotion';
+import { betaFlags } from '../../lib/betaFlags';
 
 type SettingsSection = 'profile' | 'themes' | 'notifications' | 'preferences' | 'privacy';
 
@@ -396,7 +397,7 @@ export default function Settings() {
                     ]}
                   />
                 </SettingsField>
-                <SettingsField label="Default Wallet currency">
+                <SettingsField label="Default Resource Goals currency">
                   <SelectMenu
                     value={user.defaultCurrency || 'INR'}
                     onChange={value => {
@@ -550,36 +551,42 @@ export default function Settings() {
                         ]}
                       />
                     </SettingsField>
-                    <SettingsField label="Circle Momentum">
-                      <SelectMenu
-                        value={preferencePrefs.circleMomentumVisibility}
-                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, circleMomentumVisibility: value as any })}
-                        options={[
-                          { value: 'circle', label: 'On - Circle only' },
-                          { value: 'public', label: 'On - Public profile too' },
-                          { value: 'hidden', label: 'Hidden from board' }
-                        ]}
+                    {betaFlags.circle && (
+                      <>
+                        <SettingsField label="Circle Momentum">
+                          <SelectMenu
+                            value={preferencePrefs.circleMomentumVisibility}
+                            onChange={value => updatePreferencePrefs({ ...preferencePrefs, circleMomentumVisibility: value as any })}
+                            options={[
+                              { value: 'circle', label: 'On - Circle only' },
+                              { value: 'public', label: 'On - Public profile too' },
+                              { value: 'hidden', label: 'Hidden from board' }
+                            ]}
+                          />
+                          <p className="mt-2 text-[11px] font-semibold text-text-secondary/60">
+                            Circle Momentum only uses progress you choose to share with your Circle. Private logs stay yours only.
+                          </p>
+                        </SettingsField>
+                        <SettingsField label="Momentum detail">
+                          <SelectMenu
+                            value={preferencePrefs.circleMomentumDetail}
+                            onChange={value => updatePreferencePrefs({ ...preferencePrefs, circleMomentumDetail: value as any })}
+                            options={[
+                              { value: 'counts', label: 'Score + visible activity counts' },
+                              { value: 'score', label: 'Score only' }
+                            ]}
+                          />
+                        </SettingsField>
+                      </>
+                    )}
+                    {betaFlags.storeRecommendations && (
+                      <ToggleRow
+                        label="Personalized recommendations"
+                        desc="Use allowed interests, public/circle vision categories, and saved resources. Private messages, journals, notes, and logs are never used."
+                        checked={preferencePrefs.personalizedRecommendations}
+                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, personalizedRecommendations: value })}
                       />
-                      <p className="mt-2 text-[11px] font-semibold text-text-secondary/60">
-                        Circle Momentum only uses progress you choose to share with your Circle. Private logs stay yours only.
-                      </p>
-                    </SettingsField>
-                    <SettingsField label="Momentum detail">
-                      <SelectMenu
-                        value={preferencePrefs.circleMomentumDetail}
-                        onChange={value => updatePreferencePrefs({ ...preferencePrefs, circleMomentumDetail: value as any })}
-                        options={[
-                          { value: 'counts', label: 'Score + visible activity counts' },
-                          { value: 'score', label: 'Score only' }
-                        ]}
-                      />
-                    </SettingsField>
-                    <ToggleRow
-                      label="Personalized recommendations"
-                      desc="Use allowed interests, public/circle vision categories, and saved resources. Private messages, journals, notes, and logs are never used."
-                      checked={preferencePrefs.personalizedRecommendations}
-                      onChange={value => updatePreferencePrefs({ ...preferencePrefs, personalizedRecommendations: value })}
-                    />
+                    )}
                   </div>
                 </div>
 
@@ -604,10 +611,12 @@ export default function Settings() {
                           <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Personalization</p>
                           <p className={cn('mt-2 text-sm font-black', canUsePersonalization ? 'text-success' : 'text-text-secondary')}>{canUsePersonalization ? 'On' : 'Off'}</p>
                         </div>
-                        <div className="rounded-2xl border border-card-border bg-card p-4">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Recommendations</p>
-                          <p className={cn('mt-2 text-sm font-black', canUseResourceRecommendations ? 'text-success' : 'text-text-secondary')}>{canUseResourceRecommendations ? 'On' : 'Off'}</p>
-                        </div>
+                        {betaFlags.storeRecommendations && (
+                          <div className="rounded-2xl border border-card-border bg-card p-4">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-text-secondary/50">Recommendations</p>
+                            <p className={cn('mt-2 text-sm font-black', canUseResourceRecommendations ? 'text-success' : 'text-text-secondary')}>{canUseResourceRecommendations ? 'On' : 'Off'}</p>
+                          </div>
+                        )}
                       </div>
                       {consent?.updatedAt && (
                         <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-text-secondary/45">

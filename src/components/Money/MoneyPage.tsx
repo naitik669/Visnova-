@@ -24,11 +24,7 @@ type MoneyModal = 'income' | 'expense' | 'goal' | 'subscription' | 'budget' | 'r
 
 const tabs: { id: MoneyTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
-  { id: 'transactions', label: 'Transactions' },
-  { id: 'goals', label: 'Goals' },
-  { id: 'subscriptions', label: 'Subscriptions' },
-  { id: 'budgets', label: 'Budgets' },
-  { id: 'review', label: 'Review' },
+  { id: 'goals', label: 'Resource Goals' },
 ];
 
 const incomeCategories = ['Freelance', 'Salary', 'Allowance', 'Business', 'Client Work', 'Gift', 'Refund', 'Other'];
@@ -171,7 +167,7 @@ export default function MoneyPage() {
         addToast({
           type: 'error',
           title: 'Currency partially updated',
-          description: 'Some Wallet rows could not be converted. Refresh and try again.'
+          description: 'Some resource goal rows could not be converted. Refresh and try again.'
         });
       }
     } finally {
@@ -283,18 +279,18 @@ export default function MoneyPage() {
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent">
               <Wallet size={14} />
-              Private Wallet
+              Private Resource Goals
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-text-main sm:text-5xl">Wallet</h1>
+              <h1 className="text-3xl font-black tracking-tight text-text-main sm:text-5xl">Resource Goals</h1>
               <p className="mt-2 max-w-2xl text-sm font-medium text-text-secondary sm:text-base">
-                Track spending, subscriptions, and savings connected to your Visions.
+                Track the money or materials your Vision needs. Keep it simple: target, current amount, currency, and linked Vision.
               </p>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
             <div className="relative z-[260] min-w-0 overflow-visible rounded-2xl border border-card-border bg-bg-base p-2 sm:min-w-56">
-              <p className="px-2 pb-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">Wallet Currency</p>
+              <p className="px-2 pb-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">Resource Currency</p>
               <SelectMenu
                 value={defaultCurrency}
                 onChange={handleDefaultCurrencyChange}
@@ -304,14 +300,8 @@ export default function MoneyPage() {
               />
               {isConvertingCurrency && <p className="px-2 pt-1 text-[9px] font-black uppercase tracking-widest text-accent">Converting values...</p>}
             </div>
-            <button onClick={() => setModal('income')} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-success px-4 text-[11px] font-black uppercase tracking-widest text-white">
-              <Plus size={16} /> Add Income
-            </button>
-            <button onClick={() => setModal('expense')} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-danger/10 px-4 text-[11px] font-black uppercase tracking-widest text-danger">
-              <Plus size={16} /> Add Expense
-            </button>
             <button onClick={() => setModal('goal')} className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-[11px] font-black uppercase tracking-widest text-accent-contrast">
-              <Target size={16} /> Add Goal
+              <Target size={16} /> Add Resource Goal
             </button>
           </div>
         </div>
@@ -334,16 +324,14 @@ export default function MoneyPage() {
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-            <MetricCard icon={ArrowUpRight} label="This Month Income" value={formatMoney(moneyOverview?.monthIncome || 0, defaultCurrency)} tone="success" />
-            <MetricCard icon={ArrowDownLeft} label="This Month Expenses" value={formatMoney(moneyOverview?.monthExpenses || 0, defaultCurrency)} tone="danger" />
-            <MetricCard icon={PiggyBank} label="Saved This Month" value={formatMoney(moneyOverview?.monthSavings || 0, defaultCurrency)} tone="accent" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
             <MetricCard icon={Target} label="Active Goals" value={String(moneyOverview?.activeGoals || 0)} tone="neutral" />
+            <MetricCard icon={PiggyBank} label="Linked to Visions" value={String(activeGoals.filter(goal => !!goal.linkedVisionId).length)} tone="accent" />
           </div>
-          {currencyRows.length > 1 && (
+          {false && currencyRows.length > 1 && (
             <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
               <h2 className="text-lg font-black text-text-main">Currency breakdown</h2>
-              <p className="mt-1 text-xs font-semibold text-text-secondary">Multiple currencies are shown separately. No exchange conversion is guessed.</p>
+              <p className="mt-1 text-xs font-semibold text-text-secondary">Multiple currencies are shown separately. Totals only convert when you change the selected currency.</p>
               <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {currencyRows.map(([currency, totals]) => (
                   <div key={currency} className="rounded-2xl border border-card-border bg-app-container p-4">
@@ -364,33 +352,21 @@ export default function MoneyPage() {
             </section>
           )}
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-            <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5 lg:col-span-2">
+          <div className="grid grid-cols-1 gap-4">
+            <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg font-black text-text-main">Vision funding</h2>
-                  <p className="text-xs font-medium text-text-secondary">Saving goals linked to your long-term work.</p>
+                  <h2 className="text-lg font-black text-text-main">Vision resource goals</h2>
+                  <p className="text-xs font-medium text-text-secondary">Target amount, current amount, currency, and linked Vision.</p>
                 </div>
                 <button onClick={() => setModal('goal')} className="h-10 px-3 rounded-xl bg-surface-muted text-text-secondary text-[10px] font-black uppercase tracking-widest">New Goal</button>
               </div>
               {activeGoals.length === 0 ? (
-                <EmptyState icon={<PiggyBank size={24} />} title="No saving goals yet." description="Create a savings goal and link it to a Vision." action="Create Goal" onClick={() => setModal('goal')} />
+                <EmptyState icon={<PiggyBank size={24} />} title="No resource goals yet." description="Create one goal and link it to the Vision it supports." action="Create Goal" onClick={() => setModal('goal')} />
               ) : (
                 <div className="space-y-3">
                   {activeGoals.slice(0, 4).map(goal => <GoalRow key={goal.id} goal={goal} visions={visions} onContribute={() => setContributionGoal(goal)} onEdit={() => { setEditingGoal(goal); setModal('goal'); }} onDelete={() => deleteFinanceGoal(goal.id)} />)}
                 </div>
-              )}
-            </section>
-
-            <section className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
-              <h2 className="text-lg font-black text-text-main">Upcoming</h2>
-              <p className="text-xs font-medium text-text-secondary mb-4">Subscriptions due soon.</p>
-              {moneyOverview?.upcomingSubscriptions?.length ? (
-                <div className="space-y-3">
-                  {moneyOverview.upcomingSubscriptions.map(sub => <SubscriptionRow key={sub.id} subscription={sub} visions={visions} onEdit={() => { setEditingSubscription(sub); setModal('subscription'); }} onDelete={() => deleteFinanceSubscription(sub.id)} />)}
-                </div>
-              ) : (
-                <EmptyState icon={<CreditCard size={24} />} title="No upcoming subscriptions." description="Add recurring payments before they surprise you." action="Add Subscription" onClick={() => setModal('subscription')} />
               )}
             </section>
           </div>
@@ -486,11 +462,11 @@ export default function MoneyPage() {
       {isMoneyLoading && (
         <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-card-border bg-card px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary shadow-sm">
           <Loader2 size={13} className="animate-spin text-accent" />
-          Refreshing Wallet...
+          Refreshing Resource Goals...
         </div>
       )}
 
-      <ResponsiveModal open={!!modal || !!contributionGoal} onClose={closeModal} title={modalTitle(modal, editingTransaction, editingGoal, editingSubscription, contributionGoal)} subtitle="Wallet is private by default." size="md">
+      <ResponsiveModal open={!!modal || !!contributionGoal} onClose={closeModal} title={modalTitle(modal, editingTransaction, editingGoal, editingSubscription, contributionGoal)} subtitle="Resource Goals are private by default." size="md">
         <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
           {(modal === 'income' || modal === 'expense') && (
             <TransactionForm mode={modal} transaction={editingTransaction} visions={visions} goals={financeGoals} onSubmit={handleTransactionSubmit} />
@@ -513,11 +489,11 @@ function modalTitle(modal: MoneyModal, transaction: FinanceTransaction | null, g
   if (subscription) return 'Edit subscription';
   if (modal === 'income') return 'Add Income';
   if (modal === 'expense') return 'Add Expense';
-  if (modal === 'goal') return 'Add Saving Goal';
+  if (modal === 'goal') return 'Add Resource Goal';
   if (modal === 'subscription') return 'Add Subscription';
   if (modal === 'budget') return 'Add Budget';
   if (modal === 'review') return 'Weekly Review';
-  return 'Wallet';
+  return 'Resource Goals';
 }
 
 function MetricCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: 'success' | 'danger' | 'accent' | 'neutral' }) {
