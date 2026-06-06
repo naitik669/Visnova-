@@ -8,6 +8,7 @@ import { applyAppPreferences } from './lib/appPreferences.ts';
 import { useCookieConsent } from './hooks/useCookieConsent.ts';
 import { initAnalytics, optInAnalytics, optOutAnalytics } from './lib/analytics.ts';
 import { setupDeepLinks } from './lib/deepLinks.ts';
+import { betaFlags } from './lib/betaFlags.ts';
 
 applyAppPreferences();
 initAnalytics();
@@ -24,7 +25,7 @@ function ConsentedAnalytics() {
     }
   }, [canUseAnalytics]);
 
-  return canUseAnalytics ? <Analytics /> : null;
+  return betaFlags.analytics && canUseAnalytics ? <Analytics /> : null;
 }
 
 createRoot(document.getElementById('root')!).render(

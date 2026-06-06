@@ -664,9 +664,32 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
           Start building your future
         </motion.h2>
 
-        <div className="relative mx-auto flex h-44 max-w-[300px] justify-center overflow-hidden rounded-[1.9rem] border border-card-border bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] shadow-xl shadow-accent/10 lg:hidden">
-          <div className="-mt-[36px] scale-[0.56]">
-            <RocketMascot stage={rocketStage} />
+        <div className="relative mx-auto h-44 max-w-[300px] overflow-hidden rounded-[1.9rem] border border-card-border bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-4 text-left shadow-xl shadow-accent/10 lg:hidden">
+          <div className="rounded-2xl border border-white/80 bg-white/80 p-3 shadow-sm">
+            <p className="text-[8px] font-black uppercase tracking-[0.22em] text-accent">Command Center</p>
+            <p className="mt-1 text-base font-black text-text-main">Your first Vision</p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-accent/10">
+              <motion.div
+                className="h-full w-1/2 rounded-full bg-accent"
+                animate={{ width: ['24%', '58%', '42%'] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[
+              ['Vision', Target],
+              ['Move', ListChecks],
+              ['Proof', Activity],
+            ].map(([label, Icon]) => {
+              const TypedIcon = Icon as LucideIcon;
+              return (
+                <div key={label as string} className="rounded-2xl border border-white/80 bg-white/70 p-2 text-center shadow-sm">
+                  <TypedIcon className="mx-auto h-4 w-4 text-accent" />
+                  <p className="mt-1 text-[8px] font-black uppercase tracking-wider text-text-secondary">{label as string}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1559,7 +1582,19 @@ function RocketMascot({
   );
 }
 
-function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'login'; rocketStage?: RocketStageId }) {
+function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
+  const previewRows = mode === 'signup'
+    ? [
+        { label: 'Vision', value: 'Launch your first system', icon: Target },
+        { label: 'Action', value: 'Choose one next move', icon: ListChecks },
+        { label: 'Proof', value: 'Log what changed today', icon: Activity },
+      ]
+    : [
+        { label: 'Today', value: 'Return to your next move', icon: Target },
+        { label: 'Pulse', value: 'See what has improved', icon: Activity },
+        { label: 'Circle', value: 'Stay accountable by choice', icon: Users },
+      ];
+
   return (
     <div className="relative hidden h-full min-h-[520px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] p-7 shadow-[0_28px_90px_rgba(109,93,246,0.16)] lg:block">
       <motion.div
@@ -1578,17 +1613,68 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
         <div className="space-y-3">
           <p className="text-[10px] font-black uppercase tracking-[0.28em] text-accent">Vision. Move. Proof.</p>
           <h2 className="mx-auto max-w-xs text-3xl font-black tracking-tight text-text-main">
-            {mode === 'signup' ? 'Turn ambition into proof.' : 'Welcome back.'}
+            {mode === 'signup' ? 'Start with one real move.' : 'Welcome back.'}
           </h2>
           <p className="mx-auto max-w-xs text-sm font-semibold leading-6 text-text-secondary">
             {mode === 'signup'
-              ? 'Create one Vision, choose the next move, and keep progress private by default.'
+              ? 'Create a Vision, add the next task, and log proof when real progress happens.'
               : 'Pick up where your visible progress left off.'}
           </p>
         </div>
 
-        <div className="relative mt-8 flex h-[430px] w-full max-w-[470px] justify-center overflow-hidden rounded-[2.5rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-3 shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
-          <RocketMascot stage={rocketStage} />
+        <div className="relative mt-8 flex h-[430px] w-full max-w-[470px] flex-col justify-between overflow-hidden rounded-[2.5rem] border border-white/80 bg-gradient-to-b from-[#F7F2FF] via-[#FDFBFF] to-[#F6F7FF] p-5 text-left shadow-[0_32px_70px_rgba(37,22,61,0.13)] backdrop-blur-2xl">
+          <motion.div
+            className="absolute -right-8 -top-8 h-36 w-36 rounded-full bg-accent/15 blur-2xl"
+            animate={{ scale: [1, 1.12, 1], opacity: [0.55, 0.85, 0.55] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <div className="relative rounded-[2rem] border border-white/80 bg-white/80 p-5 shadow-xl shadow-accent/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-accent">Command Center</p>
+                <h3 className="mt-2 text-2xl font-black tracking-tight text-text-main">
+                  {mode === 'signup' ? 'Your first Vision' : 'Today’s focus'}
+                </h3>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-contrast shadow-lg shadow-accent/20">
+                <Sparkles size={20} />
+              </div>
+            </div>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-accent/10">
+              <motion.div
+                className="h-full rounded-full bg-accent"
+                initial={{ width: '18%' }}
+                animate={{ width: mode === 'signup' ? ['18%', '54%', '38%'] : ['44%', '78%', '66%'] }}
+                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </div>
+          </div>
+          <div className="relative space-y-3">
+            {previewRows.map((row, index) => {
+              const Icon = row.icon;
+              return (
+                <motion.div
+                  key={row.label}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08, duration: 0.35 }}
+                  className="flex items-center gap-3 rounded-[1.35rem] border border-white/80 bg-white/75 p-3 shadow-sm"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                    <Icon size={17} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-text-secondary/50">{row.label}</p>
+                    <p className="text-sm font-black text-text-main">{row.value}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+          <div className="relative rounded-[1.6rem] border border-white/80 bg-accent px-5 py-4 text-accent-contrast shadow-xl shadow-accent/20">
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] opacity-80">Progress Pulse</p>
+            <p className="mt-1 text-sm font-black">Tasks show intention. Proof shows movement.</p>
+          </div>
         </div>
         <div className="mt-4 grid w-full max-w-[470px] grid-cols-3 gap-2">
           {['Private first', 'Proof-led', 'Daily focus'].map((item) => (
@@ -1602,10 +1688,10 @@ function AuthPreviewPanel({ mode, rocketStage = 'form' }: { mode: 'signup' | 'lo
   );
 }
 
-function AuthShell({ mode, rocketStage = 'form', children }: { mode: 'signup' | 'login'; rocketStage?: RocketStageId; children: ReactNode }) {
+function AuthShell({ mode, children }: { mode: 'signup' | 'login'; children: ReactNode }) {
   return (
     <div className="grid h-full w-full max-w-[1120px] gap-5 lg:grid-cols-[minmax(0,1fr)_430px]">
-      <AuthPreviewPanel mode={mode} rocketStage={rocketStage} />
+      <AuthPreviewPanel mode={mode} />
       <div className="flex min-h-0 items-center rounded-[2rem] border border-card-border bg-card/95 p-4 shadow-2xl shadow-accent/10 backdrop-blur-xl sm:p-6">
         {children}
       </div>
@@ -3227,13 +3313,13 @@ export default function OnboardingFlow() {
     switch (step) {
       case 1:
         return (
-          <AuthShell mode="signup" rocketStage={authRocketStage}>
+          <AuthShell mode="signup">
             <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} setRocketStage={setAuthRocketStage} rocketStage={authRocketStage} />
           </AuthShell>
         );
       case 11:
         return (
-          <AuthShell mode="login" rocketStage="form">
+          <AuthShell mode="login">
             <ScreenLogin
               email={email} setEmail={setEmail}
               nextStep={nextStep}

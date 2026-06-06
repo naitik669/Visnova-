@@ -185,7 +185,7 @@ type NavItem = {
 };
 
 const mainNavBase: NavItem[] = [
-  { icon: Home, label: 'Dashboard', path: '/', id: 'nav-dashboard' },
+  { icon: Home, label: 'Dashboard', path: '/dashboard', id: 'nav-dashboard' },
   { icon: Compass, label: 'Feed', path: '/feed' },
   { icon: Users, label: 'Circle', path: '/circle', id: 'nav-circle' },
   { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
@@ -197,7 +197,7 @@ const mainNavBase: NavItem[] = [
 ];
 
 const isRouteActive = (pathname: string, path: string) => {
-  if (path === '/') return pathname === '/';
+  if (path === '/dashboard') return pathname === '/' || pathname === '/dashboard';
   if (path === '/wallet') return pathname === '/wallet' || pathname === '/money';
   return pathname === path || pathname.startsWith(`${path}/`);
 };
@@ -470,7 +470,7 @@ function MobileNav() {
   const createSheetTitleId = useId();
 
   const primaryItems = [
-    { icon: Home, label: 'Home', path: '/' },
+    { icon: Home, label: 'Home', path: '/dashboard' },
     { icon: Compass, label: 'Feed', path: '/feed' },
     { icon: Users, label: 'Circle', path: '/circle', badge: unreadMessageCount },
     { icon: User, label: 'Profile', path: '/profile' },

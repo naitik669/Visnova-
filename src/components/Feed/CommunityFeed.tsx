@@ -47,6 +47,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { DatePicker } from '../ui/DatePicker';
 import { SharedPostEmbed } from './SharedPostEmbed';
 import { FeedResourceRecommendations } from './FeedResourceRecommendations';
+import { STORE_RECOMMENDATIONS_ENABLED } from '../../lib/storeRecommendations';
 import { MentionHashtagTextarea } from '../Composer/MentionHashtagTextarea';
 import { renderSocialText } from '../../utils/parseSocialText';
 import { MobileEmptyState } from '../mobile/MobileLayout';
@@ -643,9 +644,11 @@ export default function CommunityFeed() {
           </AnimatePresence>
         </div>
 
+        {STORE_RECOMMENDATIONS_ENABLED && (
         <div className="hidden lg:block w-80 shrink-0 space-y-6">
           <FeedResourceRecommendations />
         </div>
+        )}
       </div>
     ) : (
           <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-7xl mx-auto">
