@@ -150,6 +150,7 @@ export default function FocusOverlay() {
 
   const activeVision = visions.find(v => v.status === 'in-progress');
   const primaryTask = activeVision?.tasks.find(t => !t.completed);
+  const activeCircleMembers = circle.filter(member => member.isGrinding);
 
   return (
     <ResponsiveModal
@@ -273,22 +274,20 @@ export default function FocusOverlay() {
             {sessionState === 'active' && (
               <div className={cn("space-y-5 sm:space-y-6", isExpanded && "flex min-h-0 flex-1 flex-col overflow-hidden")}>
                 <div className={cn("space-y-5 sm:space-y-6", isExpanded && "flex min-h-0 flex-1 flex-col gap-4 pt-0")}>
-                {/* Social Pulse in Focus */}
-                <div className={cn("flex justify-center", isExpanded && "hidden sm:flex opacity-70")}>
-                  <div className={cn(
-                    "inline-flex items-center gap-4 rounded-full border px-4 py-2",
-                    isExpanded ? "border-accent/20 bg-overlay/35 backdrop-blur-md" : "bg-accent/[0.03] border-accent/10"
-                  )}>
-                    <div className="flex -space-x-2">
-                       {circle.filter(m => m.isGrinding).slice(0, 3).map(m => (
-                         <img key={m.id} src={m.avatar} className="w-6 h-6 rounded-full border-2 border-card" alt={m.name} />
-                       ))}
+                {activeCircleMembers.length > 0 && !isExpanded && (
+                  <div className="flex justify-center">
+                    <div className="inline-flex items-center gap-4 rounded-full border border-accent/10 bg-accent/[0.03] px-4 py-2">
+                      <div className="flex -space-x-2">
+                         {activeCircleMembers.slice(0, 3).map(member => (
+                           <img key={member.id} src={member.avatar} className="w-6 h-6 rounded-full border-2 border-card" alt={member.name} />
+                         ))}
+                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-accent">
+                        {activeCircleMembers.length === 1 ? '1 Circle member is focusing' : `${activeCircleMembers.length} Circle members are focusing`}
+                      </span>
                     </div>
-                    <span className={cn("text-[9px] font-black uppercase tracking-widest", isExpanded ? "text-accent-contrast" : "text-accent")}>
-                      {circle.filter(m => m.isGrinding).length} circle members grinding with you
-                    </span>
                   </div>
-                </div>
+                )}
 
                 {/* Header Info */}
                 <div className={cn("text-center", isExpanded ? "space-y-2 opacity-80" : "space-y-4")}>
@@ -393,7 +392,7 @@ export default function FocusOverlay() {
                 {/* Main Timer Area */}
                 <div className={cn(
                   "flex flex-col items-center justify-center",
-                  isExpanded ? "min-h-0 flex-1 -translate-y-8 pb-10 sm:-translate-y-10 lg:-translate-y-14" : "py-2 sm:py-4"
+                  isExpanded ? "min-h-0 flex-1 py-6 sm:py-8 lg:py-10" : "py-2 sm:py-4"
                 )}>
                   <div className="relative group">
                     <motion.div
@@ -406,7 +405,7 @@ export default function FocusOverlay() {
                         "font-medium tracking-tighter leading-none select-none tabular-nums relative z-10",
                         isExpanded ? "text-accent-contrast drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)]" : "text-text-main"
                       )}
-                      style={{ fontSize: isExpanded ? 'clamp(5.25rem, 14vw, 10.75rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
+                      style={{ fontSize: isExpanded ? 'clamp(4.25rem, 10.5vw, 8.75rem)' : 'clamp(3.5rem, 12vw, 8rem)' }}
                     >
                       {formatTime(focusSession.timeLeft)}
                     </motion.div>
