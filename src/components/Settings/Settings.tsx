@@ -397,7 +397,7 @@ export default function Settings() {
                     ]}
                   />
                 </SettingsField>
-                <SettingsField label="Default Resource Goals currency">
+                <SettingsField label="Default Wallet currency">
                   <SelectMenu
                     value={user.defaultCurrency || 'INR'}
                     onChange={value => {

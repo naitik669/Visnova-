@@ -969,7 +969,7 @@ export default function Dashboard() {
       return {
         title: "Update your resources",
         description: `You need ${formatMoney(moneyGoal.remaining, moneyGoal.currency)} more for ${moneyGoal.title}.`,
-        actionLabel: "Open Resource Goals",
+        actionLabel: "Open Wallet",
         onAction: () => navigate('/wallet'),
       };
     }
@@ -1118,7 +1118,7 @@ export default function Dashboard() {
         <section className="rounded-[1.8rem] border border-[#ecf0ec] bg-white p-4 shadow-[0_12px_30px_rgba(24,32,26,0.07)]">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-[13px] font-black text-[#17211b]">Recent Progress</h2>
-            <button type="button" onClick={() => navigate('/growth')} className="text-[10px] font-black text-[#9a6cff]">View Pulse</button>
+            <button type="button" onClick={() => betaFlags.publicFeed ? navigate('/feed') : navigate('/growth')} className="text-[10px] font-black text-[#9a6cff]">See all</button>
           </div>
           <div className="space-y-3">
             {progressLogs.slice(0, 3).map((log, index) => (
@@ -1215,7 +1215,8 @@ export default function Dashboard() {
           {visions.length === 0 && (
             <FirstVisionPrompt
               onCreate={() => navigate('/visions')}
-              onSecondary={() => navigate('/feedback')}
+              onSecondary={() => betaFlags.publicFeed ? navigate('/feed') : navigate('/feedback')}
+              secondaryLabel={betaFlags.publicFeed ? 'Explore the Feed' : 'Send Feedback'}
             />
           )}
 
@@ -1837,7 +1838,7 @@ export default function Dashboard() {
                       <Wallet size={20} />
                     </div>
                     <div>
-                      <h3 className="text-[15px] font-semibold text-text-main">Resource Goals</h3>
+                      <h3 className="text-[15px] font-semibold text-text-main">Wallet</h3>
                       <p className="text-[11px] font-semibold text-text-secondary/65">Money or materials linked to a Vision</p>
                     </div>
                   </div>
@@ -1846,7 +1847,7 @@ export default function Dashboard() {
                   onClick={() => navigate('/wallet')}
                   className="h-10 px-4 rounded-xl bg-accent text-accent-contrast text-[10px] font-black uppercase tracking-widest shrink-0"
                 >
-                  Open Goals
+                  Open Wallet
                 </button>
               </div>
 

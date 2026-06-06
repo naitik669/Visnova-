@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, X, LibraryBig, MoreHorizontal, Wallet, Plus, User, FileText, BookOpen, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, X, LibraryBig, MoreHorizontal, Wallet, Plus, User, FileText, BookOpen, CheckCircle2, MessageSquare } from 'lucide-react';
 import { lazy, Suspense, useId, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -189,12 +189,13 @@ type NavItem = {
 
 const mainNavBase: NavItem[] = [
   { icon: Home, label: 'Dashboard', path: '/dashboard', id: 'nav-dashboard' },
+  ...(betaFlags.publicFeed ? [{ icon: Compass, label: 'Feed', path: '/feed' }] : []),
+  ...(betaFlags.circle ? [{ icon: Users, label: 'Circle', path: '/circle', id: 'nav-circle' }] : []),
   { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
   { icon: CheckCircle2, label: 'Tasks', path: '/tasks', id: 'nav-tasks' },
-  { icon: Zap, label: 'Progress', path: '/growth', id: 'nav-growth' },
+  { icon: Zap, label: 'Growth', path: '/growth', id: 'nav-growth' },
   { icon: LibraryBig, label: 'Library', path: '/library', id: 'nav-library' },
-  ...(betaFlags.circle ? [{ icon: Users, label: 'Circle', path: '/circle', id: 'nav-circle' }] : []),
-  ...(betaFlags.money ? [{ icon: Wallet, label: 'Resource Goals', path: '/wallet', id: 'nav-money' }] : []),
+  ...(betaFlags.money ? [{ icon: Wallet, label: 'Wallet', path: '/wallet', id: 'nav-money' }] : []),
 ];
 
 const isRouteActive = (pathname: string, path: string) => {
@@ -472,7 +473,7 @@ function MobileNav() {
   const primaryItems: NavItem[] = [
     { icon: Home, label: 'Home', path: '/dashboard' },
     { icon: CheckCircle2, label: 'Tasks', path: '/tasks' },
-    { icon: Zap, label: 'Progress', path: '/growth' },
+    { icon: Zap, label: 'Growth', path: '/growth' },
     { icon: User, label: 'Profile', path: '/profile' },
   ];
 
@@ -508,6 +509,15 @@ function MobileNav() {
       description: 'Plan one action.',
       onClick: () => go('/tasks')
     },
+    ...(betaFlags.publicFeed ? [{
+      icon: MessageSquare,
+      title: 'Post Update',
+      description: 'Share proof, a win, or a reflection.',
+      onClick: () => {
+        sessionStorage.setItem('visnova-open-feed-composer', 'update');
+        go('/feed');
+      }
+    }] : []),
     {
       icon: BookOpen,
       title: 'Write Journal',
@@ -745,9 +755,9 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/circle': { title: 'Circle', subtitle: 'Messages, connections, communities, requests, and activity' },
   '/circle/momentum': { title: 'Circle Momentum', subtitle: 'Friendly progress across your accountability circle' },
   '/communities': { title: 'Circle', subtitle: 'Messages, connections, communities, requests, and activity' },
-  '/growth': { title: 'Progress Pulse', subtitle: 'See proof, tasks, streaks, and momentum' },
-  '/money': { title: 'Resource Goals', subtitle: 'Track resources linked to your Visions' },
-  '/wallet': { title: 'Resource Goals', subtitle: 'Track resources linked to your Visions' },
+  '/growth': { title: 'Growth', subtitle: 'Progress Pulse, proof history, and momentum' },
+  '/money': { title: 'Wallet', subtitle: 'Track money and resources linked to your Visions' },
+  '/wallet': { title: 'Wallet', subtitle: 'Track money and resources linked to your Visions' },
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
   '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
   '/profile': { title: 'Profile', subtitle: 'Your public progress page' },
