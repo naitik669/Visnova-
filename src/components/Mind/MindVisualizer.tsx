@@ -197,7 +197,7 @@ export default function MindVisualizer() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [growthSection, setGrowthSection] = useState<GrowthSection>(
-    betaFlags.mindVisualizer && (location.state as any)?.section === 'resources' ? 'resources' : 'tracker'
+    betaFlags.growthResources && (location.state as any)?.section === 'resources' ? 'resources' : 'tracker'
   );
   const [activeTab, setActiveTab] = useState<GrowthTab>('library');
   const [statusFilter, setStatusFilter] = useState<GrowthStatus | 'all'>('all');
@@ -240,7 +240,7 @@ export default function MindVisualizer() {
   useEffect(() => {
     if (userId && visions.length === 0) fetchVisions();
     if (userId) fetchDashboardData().catch(error => console.error('Failed to load Growth Tracker data:', error));
-    if (betaFlags.mindVisualizer) {
+    if (betaFlags.growthResources) {
       fetchGrowthResources();
     } else {
       setResources([]);
@@ -250,9 +250,9 @@ export default function MindVisualizer() {
 
   useEffect(() => {
     const requestedSection = (location.state as any)?.section;
-    if (requestedSection === 'resources' && betaFlags.mindVisualizer) {
+    if (requestedSection === 'resources' && betaFlags.growthResources) {
       setGrowthSection('resources');
-    } else if (requestedSection === 'tracker' || (location.state as any)?.fromDashboard || !betaFlags.mindVisualizer) {
+    } else if (requestedSection === 'tracker' || (location.state as any)?.fromDashboard || !betaFlags.growthResources) {
       setGrowthSection('tracker');
     }
   }, [location.state]);
@@ -677,7 +677,7 @@ export default function MindVisualizer() {
 
   return (
     <div className="w-full max-w-[1700px] mx-auto pb-20 animate-in fade-in duration-700 space-y-6">
-      {betaFlags.mindVisualizer && (
+      {betaFlags.growthResources && (
         <section className="rounded-[2rem] border border-card-border bg-card p-3 shadow-sm">
           <div className="grid grid-cols-2 gap-2">
             {([
