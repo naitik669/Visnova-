@@ -5,7 +5,6 @@ import {
   Compass,
   HeartPulse,
   Palette,
-  Rocket,
   type LucideIcon
 } from 'lucide-react';
 
@@ -44,7 +43,7 @@ export const ONBOARDING_PATHS: OnboardingPathConfig[] = [
     id: 'builder',
     label: 'Founder / Builder',
     description: 'Products, launches, users, and momentum.',
-    icon: Rocket,
+    icon: Code2,
     visionSuggestions: ['Launch beta', 'Build my MVP', 'Get first users', 'Improve my product'],
     taskSuggestions: ['Fix one onboarding issue', 'Write the launch checklist', 'Ask one user for feedback', 'Log today\'s product proof'],
     tone: 'Turn the launch from idea into visible evidence.'

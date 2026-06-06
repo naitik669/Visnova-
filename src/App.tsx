@@ -4,7 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
-import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet, Plus, User, FileText, BookOpen, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Home, Target, Zap, Users, Bell, Compass, Clock, X, LibraryBig, MoreHorizontal, GraduationCap, Wallet, Plus, User, FileText, BookOpen, CheckCircle2, MessageSquare, Sparkles } from 'lucide-react';
 import { lazy, Suspense, useId, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -43,6 +43,7 @@ import { ProgressLogComposer } from './components/Progress/ProgressLogComposer';
 import { useCookieConsent } from './hooks/useCookieConsent';
 import { identifyAnalyticsUser, resetAnalyticsUser, trackPageView } from './lib/analytics';
 import { isLikelyNetworkError, VISNOVA_NETWORK_ERROR_EVENT } from './lib/networkState';
+import { betaFlags } from './lib/betaFlags';
 
 const loadVisionBoard = () => import('./components/VisionBoard/VisionBoard');
 const loadNovaClock = () => import('./components/Nova/NovaClock');
@@ -186,14 +187,14 @@ type NavItem = {
 
 const mainNavBase: NavItem[] = [
   { icon: Home, label: 'Dashboard', path: '/dashboard', id: 'nav-dashboard' },
-  { icon: Compass, label: 'Feed', path: '/feed' },
-  { icon: Users, label: 'Circle', path: '/circle', id: 'nav-circle' },
+  ...(betaFlags.publicFeed ? [{ icon: Compass, label: 'Feed', path: '/feed' }] : []),
+  ...(betaFlags.circle ? [{ icon: Users, label: 'Circle', path: '/circle', id: 'nav-circle' }] : []),
   { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
   { icon: CheckCircle2, label: 'Tasks', path: '/tasks', id: 'nav-tasks' },
   { icon: LibraryBig, label: 'Library', path: '/library', id: 'nav-library' },
   { icon: GraduationCap, label: 'Growth', path: '/growth', id: 'nav-growth' },
-  { icon: Wallet, label: 'Wallet', path: '/wallet', id: 'nav-money' },
-  { icon: Clock, label: 'Nova Clock', path: '/nova-clock' },
+  ...(betaFlags.money ? [{ icon: Wallet, label: 'Wallet', path: '/wallet', id: 'nav-money' }] : []),
+  ...(betaFlags.novaClock ? [{ icon: Clock, label: 'Nova Clock', path: '/nova-clock' }] : []),
 ];
 
 const isRouteActive = (pathname: string, path: string) => {
@@ -211,7 +212,7 @@ function useUnreadMessageCount() {
     let cancelled = false;
 
     const loadCount = async () => {
-      if (!currentUserId) {
+      if (!betaFlags.messages || !currentUserId) {
         setCount(0);
         return;
       }
@@ -471,8 +472,8 @@ function MobileNav() {
 
   const primaryItems = [
     { icon: Home, label: 'Home', path: '/dashboard' },
-    { icon: Compass, label: 'Feed', path: '/feed' },
-    { icon: Users, label: 'Circle', path: '/circle', badge: unreadMessageCount },
+    ...(betaFlags.publicFeed ? [{ icon: Compass, label: 'Feed', path: '/feed' }] : [{ icon: Target, label: 'Visions', path: '/visions' }]),
+    ...(betaFlags.circle ? [{ icon: Users, label: 'Circle', path: '/circle', badge: unreadMessageCount }] : [{ icon: GraduationCap, label: 'Growth', path: '/growth' }]),
     { icon: User, label: 'Profile', path: '/profile' },
   ];
 
@@ -839,6 +840,29 @@ function RouteFallback() {
         <div className="h-2 w-2 animate-ping rounded-full bg-accent" />
       </motion.div>
       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/50">Loading workspace</p>
+    </div>
+  );
+}
+
+function BetaComingSoon({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="mx-auto flex min-h-[58vh] max-w-xl flex-col items-center justify-center px-6 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent shadow-lg shadow-accent/10">
+        <Sparkles size={22} />
+      </div>
+      <p className="mt-6 text-[10px] font-black uppercase tracking-[0.28em] text-accent">Closed beta</p>
+      <h1 className="mt-3 text-3xl font-black tracking-tight text-text-main">{title}</h1>
+      <p className="mt-3 text-sm font-semibold leading-6 text-text-secondary">
+        {description || 'This part of VisNova is being polished and will open when it is stable enough for beta testers.'}
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <Link to="/dashboard" className="rounded-2xl bg-accent px-5 py-3 text-[10px] font-black uppercase tracking-widest text-accent-contrast">
+          Back to Dashboard
+        </Link>
+        <Link to="/feedback" className="rounded-2xl border border-card-border bg-card px-5 py-3 text-[10px] font-black uppercase tracking-widest text-text-main">
+          Send Feedback
+        </Link>
+      </div>
     </div>
   );
 }
@@ -1296,7 +1320,7 @@ function AppContent() {
           >
             <Suspense fallback={<RouteFallback />}>
               <Routes>
-                <Route path="/join/vision-team/:token" element={<JoinVisionTeamPage />} />
+                <Route path="/join/vision-team/:token" element={betaFlags.visionTeams ? <JoinVisionTeamPage /> : <BetaComingSoon title="Vision Teams are not open yet." description="Collaboration invites are closed while beta permissions are being verified." />} />
               </Routes>
             </Suspense>
           </motion.div>
@@ -1380,30 +1404,30 @@ function AppContent() {
                       <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/login" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/signup" element={<Navigate to="/dashboard" replace />} />
-                      <Route path="/feed" element={<CommunityFeed />} />
-                      <Route path="/post/:postId" element={<PostThreadPage />} />
-                      <Route path="/store" element={<StoreResourcesPage />} />
-                      <Route path="/resources/store" element={<StoreResourcesPage />} />
-                      <Route path="/store/redirect/:productId" element={<StoreRedirectPage />} />
+                      <Route path="/feed" element={betaFlags.publicFeed ? <CommunityFeed /> : <BetaComingSoon title="Feed is not open for this beta yet." description="For now, focus on your Vision, tasks, proof logs, Library, and Progress Pulse." />} />
+                      <Route path="/post/:postId" element={betaFlags.publicFeed ? <PostThreadPage /> : <BetaComingSoon title="Public posts are not open yet." />} />
+                      <Route path="/store" element={betaFlags.store ? <StoreResourcesPage /> : <BetaComingSoon title="Resources are being polished." description="The first beta is focused on Vision, Task, Proof, and Progress. Store/resource recommendations are hidden until stable." />} />
+                      <Route path="/resources/store" element={betaFlags.store ? <StoreResourcesPage /> : <BetaComingSoon title="Resources are being polished." />} />
+                      <Route path="/store/redirect/:productId" element={betaFlags.store ? <StoreRedirectPage /> : <BetaComingSoon title="Partner resources are disabled for beta." />} />
                       <Route path="/visions" element={<VisionBoard />} />
-                      <Route path="/join/vision-team/:token" element={<JoinVisionTeamPage />} />
+                      <Route path="/join/vision-team/:token" element={betaFlags.visionTeams ? <JoinVisionTeamPage /> : <BetaComingSoon title="Vision Teams are not open yet." description="Collaboration is staying behind a beta flag while we harden privacy and permissions." />} />
                       <Route path="/vision" element={<Navigate to="/visions" replace />} />
                       <Route path="/tasks" element={<TasksPage />} />
-                      <Route path="/circle/momentum" element={<CircleMomentumPage />} />
-                      <Route path="/circle" element={<Circle />} />
-                      <Route path="/communities" element={<Navigate to="/circle?tab=communities" replace />} />
-                      <Route path="/messages" element={<MessagesRedirect />} />
+                      <Route path="/circle/momentum" element={betaFlags.circle ? <CircleMomentumPage /> : <BetaComingSoon title="Circle Momentum is not open yet." />} />
+                      <Route path="/circle" element={betaFlags.circle ? <Circle /> : <BetaComingSoon title="Circle is not open for this beta yet." description="We are keeping accountability social features closed until message and visibility rules are fully verified." />} />
+                      <Route path="/communities" element={betaFlags.circle ? <Navigate to="/circle?tab=communities" replace /> : <BetaComingSoon title="Communities are not open yet." />} />
+                      <Route path="/messages" element={betaFlags.messages ? <MessagesRedirect /> : <BetaComingSoon title="Messages are not open yet." description="Private messaging stays hidden until participant-only access is fully verified in live beta." />} />
                       <Route path="/library" element={<NotesSystem />} />
                       <Route path="/notes" element={<NotesRedirect />} />
                       <Route path="/journal" element={<Navigate to="/library?tab=journal" replace />} />
                       <Route path="/profile" element={<ProfilePage />} />
                       <Route path="/profile/:profileId" element={<ProfilePage />} />
                       <Route path="/settings" element={<Settings />} />
-                      <Route path="/money" element={<MoneyPage />} />
-                      <Route path="/wallet" element={<MoneyPage />} />
-                      <Route path="/nova-clock" element={<NovaClock />} />
-                      <Route path="/nova" element={<Navigate to="/nova-clock" replace />} />
-                      <Route path="/timeline" element={<Navigate to="/nova-clock" replace />} />
+                      <Route path="/money" element={betaFlags.money ? <MoneyPage /> : <BetaComingSoon title="Wallet is not open yet." description="Money/resource tracking is staying hidden until currency and schema checks are complete." />} />
+                      <Route path="/wallet" element={betaFlags.money ? <MoneyPage /> : <BetaComingSoon title="Wallet is not open yet." />} />
+                      <Route path="/nova-clock" element={betaFlags.novaClock ? <NovaClock /> : <BetaComingSoon title="Nova Clock is not open yet." description="Nova Clock and capsules are being hardened before public beta testers use them." />} />
+                      <Route path="/nova" element={betaFlags.novaClock ? <Navigate to="/nova-clock" replace /> : <BetaComingSoon title="Nova Clock is not open yet." />} />
+                      <Route path="/timeline" element={betaFlags.novaClock ? <Navigate to="/nova-clock" replace /> : <BetaComingSoon title="Nova Clock is not open yet." />} />
                       <Route path="/growth" element={<MindVisualizer />} />
                       <Route path="/mind-map" element={<Navigate to="/growth" replace />} />
                       <Route path="/privacy" element={<PrivacyPolicyPage />} />

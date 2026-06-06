@@ -61,98 +61,7 @@ const AVATAR_LIBRARY = [
 
 const DEFAULT_AVATAR_VALUES = Object.values(DEFAULT_PROFILE_AVATARS);
 
-type RocketStageId = 'form' | 'anticipation' | 'failed_launch' | 'crashing' | 'error_idle' | 'launching';
-
-const rocketStages = {
-  form: {
-    name: "Standard Idle Bobbing",
-    animate: {
-      y: [0, -9, 0],
-      scaleY: [1, 1.025, 1],
-      scaleX: [1, 0.985, 1],
-      rotate: 0,
-    },
-    transition: {
-      y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-      scaleY: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-      scaleX: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-      rotate: { duration: 0.8, ease: "easeInOut" },
-    },
-  },
-  anticipation: {
-    name: "Pre-Launch Compression & Tremor",
-    animate: {
-      y: 35,
-      scaleY: 0.74,
-      scaleX: 1.2,
-      rotate: [-1.5, 1.5, -1.8, 1.8, -1.5, 1.5, -1],
-    },
-    transition: {
-      rotate: { duration: 0.08, repeat: Infinity, ease: "linear" },
-      y: { type: "spring", stiffness: 180, damping: 15 },
-      scaleY: { type: "spring", stiffness: 180, damping: 15 },
-      scaleX: { type: "spring", stiffness: 180, damping: 15 },
-    },
-  },
-  failed_launch: {
-    name: "Mid-Air Sputter & Axis Tilting",
-    animate: {
-      y: -120,
-      scaleY: 1.15,
-      scaleX: 0.88,
-      rotate: [12, 16, 12],
-    },
-    transition: {
-      rotate: { duration: 0.25, repeat: Infinity, ease: "linear" },
-      y: { duration: 0.5, ease: "easeOut" },
-      scaleY: { duration: 0.3, ease: "easeOut" },
-      scaleX: { duration: 0.3, ease: "easeOut" },
-    },
-  },
-  crashing: {
-    name: "Soft Retro Descent Bounce",
-    animate: {
-      y: 0,
-      scaleY: 1,
-      scaleX: 1,
-      rotate: 12.5,
-    },
-    transition: {
-      y: { type: "spring", stiffness: 160, damping: 9 },
-      scaleY: { type: "spring", stiffness: 180, damping: 8 },
-      scaleX: { type: "spring", stiffness: 180, damping: 8 },
-      rotate: { duration: 0.5, ease: "easeOut" },
-    },
-  },
-  error_idle: {
-    name: "Tilted Malfunction Warning Loop",
-    animate: {
-      y: [0, -5, 0],
-      scaleY: [1, 1.015, 1],
-      scaleX: [1, 0.99, 1],
-      rotate: [11.5, 13.5, 11.5],
-    },
-    transition: {
-      y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-      rotate: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-      scaleY: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-      scaleX: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-    },
-  },
-  launching: {
-    name: "High-Velocity Vertical Thrust",
-    animate: {
-      y: -920,
-      scaleY: [0.74, 1.38, 1.1],
-      scaleX: [1.2, 0.78, 0.95],
-    },
-    transition: {
-      y: { duration: 1.2, ease: "easeIn" },
-      scaleY: { duration: 0.35, ease: "easeOut" },
-      scaleX: { duration: 0.35, ease: "easeOut" },
-    },
-  },
-} satisfies Record<RocketStageId, { name: string; animate: Record<string, unknown>; transition: Record<string, unknown> }>;
+type SignupMotionState = 'idle' | 'submitting' | 'success' | 'error';
 
 function GoogleIcon() {
   return (
@@ -521,7 +430,7 @@ function ScreenResetPassword({ nextStep }: any) {
 }
 
 // Components for the screens
-function Screen1({ name, setName, email, setEmail, password, setPassword, nextStep, handleGoogleLogin, setRocketStage, rocketStage = 'form' }: any) {
+function Screen1({ name, setName, email, setEmail, password, setPassword, nextStep, handleGoogleLogin, setSignupMotionState }: any) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -547,28 +456,28 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
     return '';
   };
 
-  const resetRocketAfterEdit = () => {
+  const resetMotionAfterEdit = () => {
     if (generalError || passwordError) {
-      setRocketStage?.('form');
+      setSignupMotionState?.('idle');
     }
   };
 
   const handleManualNext = async () => {
     if (!name || !email || !password || !confirmPassword) {
-      setRocketStage?.('error_idle');
+      setSignupMotionState?.('error');
       setGeneralError('All fields are required.');
       addToast({ type: 'error', title: 'Missing fields', description: 'Name, email, and password confirmation are required.' });
       return;
     }
     if (password !== confirmPassword) {
-      setRocketStage?.('error_idle');
+      setSignupMotionState?.('error');
       setPasswordError('Passwords do not match');
       addToast({ type: 'error', title: 'Mismatch', description: 'Passwords must be identical.' });
       return;
     }
     const pError = validatePassword(password);
     if (pError) {
-      setRocketStage?.('error_idle');
+      setSignupMotionState?.('error');
       setPasswordError(pError);
       addToast({ type: 'error', title: 'Password needs work', description: pError });
       return;
@@ -577,7 +486,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
     setIsSubmitting(true);
     setGeneralError('');
     setPasswordError('');
-    setRocketStage?.('anticipation');
+    setSignupMotionState?.('submitting');
 
     // Trigger signup
     try {
@@ -615,18 +524,16 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
       });
       
       if (data.user?.identities?.length === 0) {
-        setRocketStage?.('error_idle');
+        setSignupMotionState?.('error');
         window.setTimeout(() => nextStep(11), 650); // Already registered, go to login
       } else {
-        setRocketStage?.('launching');
+        setSignupMotionState?.('success');
         window.setTimeout(() => nextStep(2), 650);
       }
     } catch (err: any) {
       console.error('Signup error:', err);
       const message = err.message || 'Signup failed';
-      setRocketStage?.('failed_launch');
-      window.setTimeout(() => setRocketStage?.('crashing'), 450);
-      window.setTimeout(() => setRocketStage?.('error_idle'), 1000);
+      setSignupMotionState?.('error');
       if (message.includes('already registered')) {
         setGeneralError('Email already registered. Redirecting to login...');
         addToast({ type: 'info', title: 'Account exists', description: 'Redirecting to login page.' });
@@ -708,7 +615,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             value={name}
             onChange={e => {
               setName(e.target.value);
-              resetRocketAfterEdit();
+              resetMotionAfterEdit();
             }}
             autoComplete="name"
             className="w-full h-11 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
@@ -723,7 +630,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
             value={email}
             onChange={e => {
               setEmail(e.target.value);
-              resetRocketAfterEdit();
+              resetMotionAfterEdit();
             }}
             autoComplete="email"
             inputMode="email"
@@ -740,7 +647,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
               onChange={e => {
                 setPassword(e.target.value);
                 if (passwordError) setPasswordError('');
-                resetRocketAfterEdit();
+                resetMotionAfterEdit();
               }}
               autoComplete="new-password"
               className={cn(
@@ -768,7 +675,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
               onChange={e => {
                 setConfirmPassword(e.target.value);
                 if (passwordError) setPasswordError('');
-                resetRocketAfterEdit();
+                resetMotionAfterEdit();
               }}
               onKeyDown={e => {
                 if (e.key === 'Enter') void handleManualNext();
@@ -1175,414 +1082,7 @@ function FeatureBriefChips() {
   );
 }
 
-type RocketColor = "lavender" | "sunset" | "mint" | "cosmic";
-type RocketMood = "excited" | "determined" | "wink" | "sleepy" | "cool";
-
-const getColorMetadata = (theme: RocketColor) => {
-  switch (theme) {
-    case "lavender":
-      return {
-        primary: "from-[#A78BFA] to-[#7C3AED]",
-        glow: "linear-gradient(to top, #A78BFA, #7C3AED)",
-        secondary: "#DDD6FE",
-        accent: "#4C1D95",
-        highlight: "rgba(255, 255, 255, 0.45)",
-        booster: "from-[#8B5CF6] to-[#6D28D9]",
-      };
-    case "sunset":
-      return {
-        primary: "from-[#F43F5E] to-[#BE123C]",
-        glow: "linear-gradient(to top, #F43F5E, #BE123C)",
-        secondary: "#FECDD3",
-        accent: "#4C0519",
-        highlight: "rgba(255, 255, 255, 0.5)",
-        booster: "from-[#E11D48] to-[#9F1239]",
-      };
-    case "mint":
-      return {
-        primary: "from-[#10B981] to-[#047857]",
-        glow: "linear-gradient(to top, #10B981, #047857)",
-        secondary: "#A7F3D0",
-        accent: "#064E3B",
-        highlight: "rgba(255, 255, 255, 0.45)",
-        booster: "from-[#059669] to-[#065F46]",
-      };
-    case "cosmic":
-      return {
-        primary: "from-[#3B82F6] to-[#1D4ED8]",
-        glow: "linear-gradient(to top, #3B82F6, #1D4ED8)",
-        secondary: "#BFDBFE",
-        accent: "#1E3A8A",
-        highlight: "rgba(255, 255, 255, 0.5)",
-        booster: "from-[#2563EB] to-[#1E40AF]",
-      };
-  }
-};
-
-function RocketMascot({
-  stage,
-  selectedColor = "lavender",
-  selectedMood = "excited",
-  isWiggling = false,
-  onClick,
-}: {
-  stage: RocketStageId;
-  selectedColor?: RocketColor;
-  selectedMood?: RocketMood;
-  isWiggling?: boolean;
-  onClick?: () => void;
-}) {
-  const rocketRef = useRef<HTMLDivElement | null>(null);
-  const [eyeOffset, setEyeOffset] = useState({ x: 0, y: 0 });
-  const [isBlinking, setIsBlinking] = useState(false);
-  const currentColors = getColorMetadata(selectedColor);
-
-  useEffect(() => {
-    let frame = 0;
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const rect = rocketRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const faceCenterX = rect.left + rect.width * 0.5;
-        const faceCenterY = rect.top + rect.height * 0.38;
-        const angle = Math.atan2(event.clientY - faceCenterY, event.clientX - faceCenterX);
-        const distance = Math.min(1, Math.hypot(event.clientX - faceCenterX, event.clientY - faceCenterY) / 160);
-        setEyeOffset({
-          x: Math.cos(angle) * 7 * distance,
-          y: Math.sin(angle) * 6 * distance,
-        });
-      });
-    };
-
-    const handlePointerLeave = () => setEyeOffset({ x: 0, y: 0 });
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('blur', handlePointerLeave);
-    document.addEventListener('mouseleave', handlePointerLeave);
-
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('blur', handlePointerLeave);
-      document.removeEventListener('mouseleave', handlePointerLeave);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (stage !== 'form') return;
-    const interval = window.setInterval(() => {
-      setIsBlinking(true);
-      window.setTimeout(() => setIsBlinking(false), 130);
-    }, 4300);
-    return () => window.clearInterval(interval);
-  }, [stage]);
-
-  return (
-    <motion.div
-      ref={rocketRef}
-      style={{ originY: 1 }}
-      className="relative cursor-pointer select-none"
-      onClick={onClick}
-      animate={
-        stage === "form"
-          ? {
-              y: [0, -9, 0],
-              scaleY: [1, 1.025, 1],
-              scaleX: [1, 0.985, 1],
-              rotate: isWiggling ? [-4, 4, -4, 4, 0] : 0,
-            }
-          : stage === "anticipation"
-            ? {
-                y: 35,
-                scaleY: 0.74,
-                scaleX: 1.2,
-                rotate: [-1.5, 1.5, -1.8, 1.8, -1.5, 1.5, -1],
-              }
-            : stage === "failed_launch"
-              ? {
-                  y: -120,
-                  scaleY: 1.15,
-                  scaleX: 0.88,
-                  rotate: [12, 16, 12],
-                }
-              : stage === "crashing"
-                ? {
-                    y: 0,
-                    scaleY: 1,
-                    scaleX: 1,
-                    rotate: 12.5,
-                  }
-                : stage === "error_idle"
-                  ? {
-                      y: [0, -5, 0],
-                      rotate: [11.5, 13.5, 11.5],
-                      scaleY: [1, 1.015, 1],
-                      scaleX: [1, 0.99, 1],
-                    }
-                  : stage === "launching"
-                    ? {
-                        y: -920,
-                        scaleY: [0.74, 1.38, 1.1],
-                        scaleX: [1.2, 0.78, 0.95],
-                      }
-                    : {}
-      }
-      transition={
-        stage === "form"
-          ? {
-              y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-              scaleY: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-              scaleX: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-              rotate: isWiggling ? { duration: 0.4 } : { duration: 0.8, ease: "easeInOut" },
-            }
-          : stage === "anticipation"
-            ? {
-                rotate: { duration: 0.08, repeat: Infinity, ease: "linear" },
-                y: { type: "spring", stiffness: 180, damping: 15 },
-                scaleY: { type: "spring", stiffness: 180, damping: 15 },
-                scaleX: { type: "spring", stiffness: 180, damping: 15 },
-              }
-            : stage === "failed_launch"
-              ? {
-                  rotate: { duration: 0.25, repeat: Infinity, ease: "linear" },
-                  y: { duration: 0.5, ease: "easeOut" },
-                  scaleY: { duration: 0.3, ease: "easeOut" },
-                  scaleX: { duration: 0.3, ease: "easeOut" },
-                }
-              : stage === "crashing"
-                ? {
-                    y: { type: "spring", stiffness: 160, damping: 9 },
-                    scaleY: { type: "spring", stiffness: 180, damping: 8 },
-                    scaleX: { type: "spring", stiffness: 180, damping: 8 },
-                    rotate: { duration: 0.5, ease: "easeOut" },
-                  }
-                : stage === "error_idle"
-                  ? {
-                      y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-                      rotate: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-                      scaleY: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-                      scaleX: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
-                    }
-                  : stage === "launching"
-                    ? {
-                        y: { duration: 1.2, ease: "easeIn" },
-                        scaleY: { duration: 0.35, ease: "easeOut" },
-                        scaleX: { duration: 0.35, ease: "easeOut" },
-                      }
-                    : {}
-      }
-    >
-      <div className="relative group/mascot">
-        <div
-          className="pointer-events-none absolute -inset-6 rounded-full opacity-15 blur-xl"
-          style={{ background: currentColors.glow }}
-        />
-
-        <svg width="200" height="300" viewBox="0 0 200 300" className="relative z-10 drop-shadow-[0_12px_24px_rgba(76,29,149,0.06)]" aria-hidden="true">
-          <motion.path
-            d="M 45 200 L 15 240 Q 8 265 25 265 L 55 240 Z"
-            fill="url(#fuselage-booster-grad)"
-            animate={stage === "anticipation" ? { rotate: -8 } : { rotate: 0 }}
-            style={{ transformOrigin: "45px 200px" }}
-          />
-          <motion.path
-            d="M 155 200 L 185 240 Q 192 265 175 265 L 145 240 Z"
-            fill="url(#fuselage-booster-grad)"
-            animate={stage === "anticipation" ? { rotate: 8 } : { rotate: 0 }}
-            style={{ transformOrigin: "155px 200px" }}
-          />
-
-          <g className="flame-layer">
-            {stage === "form" ? (
-              <motion.ellipse
-                cx="100"
-                cy="265"
-                rx="12"
-                ry="16"
-                fill="#FFD23F"
-                animate={{ ry: [12, 22, 12], rx: [10, 13, 10], opacity: [0.7, 0.95, 0.7] }}
-                transition={{ duration: 0.12, repeat: Infinity }}
-              />
-            ) : stage === "anticipation" ? (
-              <>
-                <motion.ellipse
-                  cx="100"
-                  cy="268"
-                  rx="18"
-                  ry="25"
-                  fill="#FF4D00"
-                  animate={{ ry: [20, 35, 20], rx: [16, 22, 16] }}
-                  transition={{ duration: 0.08, repeat: Infinity }}
-                />
-                <motion.ellipse
-                  cx="100"
-                  cy="266"
-                  rx="12"
-                  ry="18"
-                  fill="#FFE600"
-                  animate={{ ry: [14, 24, 14] }}
-                  transition={{ duration: 0.05, repeat: Infinity }}
-                />
-              </>
-            ) : stage === "failed_launch" ? (
-              <>
-                <motion.ellipse
-                  cx="100"
-                  cy="268"
-                  rx="14"
-                  ry="25"
-                  fill="#FF5500"
-                  animate={{ ry: [15, 5, 28, 8, 22], rx: [10, 6, 15, 8, 12], opacity: [0.8, 0.3, 0.95, 0.4, 0.85] }}
-                  transition={{ duration: 0.25, repeat: Infinity, ease: "linear" }}
-                />
-                <motion.ellipse
-                  cx="100"
-                  cy="265"
-                  rx="8"
-                  ry="14"
-                  fill="#FFE100"
-                  animate={{ ry: [8, 3, 16, 5, 12], opacity: [0.9, 0.2, 0.95, 0.3, 0.85] }}
-                  transition={{ duration: 0.15, repeat: Infinity, ease: "linear" }}
-                />
-              </>
-            ) : stage === "crashing" || stage === "error_idle" ? null : (
-              <>
-                <motion.path
-                  d="M 75 255 L 100 320 L 125 255 Z"
-                  fill="url(#launch-beam-grad)"
-                  animate={{ scaleX: [0.9, 1.25, 0.9], scaleY: [1, 1.4, 1] }}
-                  transition={{ duration: 0.06, repeat: Infinity }}
-                  style={{ transformOrigin: "100px 255px" }}
-                />
-                <motion.ellipse
-                  cx="100"
-                  cy="258"
-                  rx="24"
-                  ry="30"
-                  fill="#FFFFFF"
-                  animate={{ opacity: [0.8, 1, 0.8] }}
-                  transition={{ duration: 0.05, repeat: Infinity }}
-                />
-              </>
-            )}
-          </g>
-
-          <path
-            d="M 100 25 C 145 60 162 165 150 245 C 150 255 132 260 100 260 C 68 260 50 255 50 245 C 38 165 55 60 100 25 Z"
-            fill="url(#fuselage-body-grad)"
-          />
-          <path
-            d="M 66 50 Q 72 140 60 225"
-            stroke={currentColors.highlight}
-            strokeWidth="8.5"
-            strokeLinecap="round"
-            fill="none"
-            opacity="0.8"
-          />
-          <path
-            d="M 100 168 L 104 175 L 112 175 L 106 180 L 109 188 L 100 183 L 91 188 L 94 180 L 88 175 L 96 175 Z"
-            fill="#FFF"
-            opacity="0.25"
-          />
-          <circle cx="100" cy="115" r="32" fill="#1E1B4B" stroke={currentColors.secondary} strokeWidth="6" />
-
-          <g className="mascot-face">
-            {stage === "failed_launch" || stage === "crashing" || stage === "error_idle" ? (
-              <>
-                <path d="M 82 106 Q 89 101 93 108" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-                <path d="M 118 106 Q 111 101 107 108" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-                <circle cx="89" cy="115" r="4.5" fill="#FFF" />
-                <circle cx="111" cy="115" r="4.5" fill="#FFF" />
-                <motion.g animate={{ x: eyeOffset.x * 0.3, y: eyeOffset.y * 0.3 }} transition={{ type: "spring", stiffness: 150, damping: 20 }}>
-                  <circle cx="89" cy="115" r="1.5" fill="#4C1D95" />
-                  <circle cx="111" cy="115" r="1.5" fill="#4C1D95" />
-                </motion.g>
-                <path d="M 94 125 Q 100 120 106 125" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-              </>
-            ) : isBlinking ? (
-              <>
-                <line x1="85" y1="115" x2="95" y2="115" stroke="white" strokeWidth="5" strokeLinecap="round" />
-                <line x1="105" y1="115" x2="115" y2="115" stroke="white" strokeWidth="5" strokeLinecap="round" />
-              </>
-            ) : selectedMood === "excited" ? (
-              <>
-                <circle cx="90" cy="115" r="6" fill="#FFF" />
-                <circle cx="110" cy="115" r="6" fill="#FFF" />
-                <motion.g animate={{ x: eyeOffset.x * 0.45, y: eyeOffset.y * 0.45 }} transition={{ type: "spring", stiffness: 150, damping: 20 }}>
-                  <circle cx="91.5" cy="112.5" r="2" fill="#4C1D95" />
-                  <circle cx="111.5" cy="112.5" r="2" fill="#4C1D95" />
-                </motion.g>
-                <path d="M 94 121 Q 100 129 106 121" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
-                <path d="M 83 103 Q 90 99 94 104" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-                <path d="M 117 103 Q 110 99 106 104" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-              </>
-            ) : selectedMood === "determined" ? (
-              <>
-                <path d="M 84 109 L 95 113" stroke="white" strokeWidth="4.5" strokeLinecap="round" />
-                <path d="M 116 109 L 105 113" stroke="white" strokeWidth="4.5" strokeLinecap="round" />
-                <motion.g animate={{ x: eyeOffset.x * 0.8, y: eyeOffset.y * 0.8 }}>
-                  <circle cx="89.5" cy="116.5" r="3.5" fill="#FFF" />
-                  <circle cx="110.5" cy="116.5" r="3.5" fill="#FFF" />
-                </motion.g>
-                <path d="M 95 125 L 105 125" stroke="white" strokeWidth="3" strokeLinecap="round" />
-              </>
-            ) : selectedMood === "wink" ? (
-              <>
-                <path d="M 83 116 Q 90 120 95 114" stroke="white" strokeWidth="4.5" strokeLinecap="round" fill="none" />
-                <circle cx="110" cy="114" r="6" fill="#FFF" />
-                <motion.g animate={{ x: eyeOffset.x * 0.45, y: eyeOffset.y * 0.45 }}>
-                  <circle cx="111" cy="111.5" r="2" fill="#4C1D95" />
-                </motion.g>
-                <path d="M 95 123 Q 102 126 105 120" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
-              </>
-            ) : selectedMood === "sleepy" ? (
-              <>
-                <path d="M 83 115 Q 90 121 95 115" stroke="white" strokeWidth="4.5" strokeLinecap="round" fill="none" />
-                <path d="M 105 115 Q 112 121 119 115" stroke="white" strokeWidth="4.5" strokeLinecap="round" fill="none" />
-                <path d="M 96 123 Q 100 126 104 123" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-              </>
-            ) : (
-              <>
-                <path d="M 76 110 L 124 110 L 120 119 C 114 126 104 126 100 119 C 96 126 86 126 80 119 Z" fill="#7C3AED" stroke="white" strokeWidth="2.5" />
-                <motion.g animate={{ x: eyeOffset.x * 0.5, y: eyeOffset.y * 0.5 }}>
-                  <line x1="84.5" y1="113" x2="94" y2="122" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="105.5" y1="113" x2="114" y2="122" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
-                </motion.g>
-                <path d="M 96 124 L 104 124" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-              </>
-            )}
-            <circle cx="81" cy="123" r="3.5" fill="#FFAEC9" opacity="0.65" />
-            <circle cx="119" cy="123" r="3.5" fill="#FFAEC9" opacity="0.65" />
-          </g>
-
-          <defs>
-            <linearGradient id="fuselage-body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={currentColors.secondary} />
-              <stop offset="35%" stopColor={selectedColor === "lavender" ? "#A78BFA" : selectedColor === "sunset" ? "#F43F5E" : selectedColor === "mint" ? "#10B981" : "#3B82F6"} />
-              <stop offset="100%" stopColor={selectedColor === "lavender" ? "#7C3AED" : selectedColor === "sunset" ? "#BE123C" : selectedColor === "mint" ? "#047857" : "#1D4ED8"} />
-            </linearGradient>
-
-            <linearGradient id="fuselage-booster-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={selectedColor === "lavender" ? "#8B5CF6" : selectedColor === "sunset" ? "#E11D48" : selectedColor === "mint" ? "#059669" : "#2563EB"} />
-              <stop offset="100%" stopColor={currentColors.accent} />
-            </linearGradient>
-
-            <linearGradient id="launch-beam-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#FFFFFF" />
-              <stop offset="25%" stopColor="#FDE047" />
-              <stop offset="60%" stopColor="#EF4444" />
-              <stop offset="100%" stopColor="rgba(239, 68, 68, 0)" />
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
-    </motion.div>
-  );
-}
-
-function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
+function AuthPreviewPanel({ mode, signupMotionState = 'idle' }: { mode: 'signup' | 'login'; signupMotionState?: SignupMotionState }) {
   const previewRows = mode === 'signup'
     ? [
         { label: 'Vision', value: 'Launch your first system', icon: Target },
@@ -1594,6 +1094,18 @@ function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
         { label: 'Pulse', value: 'See what has improved', icon: Activity },
         { label: 'Circle', value: 'Stay accountable by choice', icon: Users },
       ];
+  const progressWidths: Record<SignupMotionState, string[]> = {
+    idle: ['18%', '54%', '38%'],
+    submitting: ['20%', '72%', '92%'],
+    success: ['74%', '100%', '100%'],
+    error: ['44%', '28%', '36%'],
+  };
+  const statusCopy: Record<SignupMotionState, string> = {
+    idle: 'Tasks show intention. Proof shows movement.',
+    submitting: 'Creating your private workspace...',
+    success: 'Workspace ready. Check your email to verify.',
+    error: 'Something needs attention. You can retry safely.',
+  };
 
   return (
     <div className="relative hidden h-full min-h-[520px] overflow-hidden rounded-[2rem] border border-white/80 bg-gradient-to-br from-white via-[#F8F6FF] to-[#EAF1FF] p-7 shadow-[0_28px_90px_rgba(109,93,246,0.16)] lg:block">
@@ -1644,8 +1156,8 @@ function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
               <motion.div
                 className="h-full rounded-full bg-accent"
                 initial={{ width: '18%' }}
-                animate={{ width: mode === 'signup' ? ['18%', '54%', '38%'] : ['44%', '78%', '66%'] }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                animate={{ width: mode === 'signup' ? progressWidths[signupMotionState] : ['44%', '78%', '66%'] }}
+                transition={{ duration: signupMotionState === 'success' ? 0.5 : 5, repeat: signupMotionState === 'idle' || signupMotionState === 'submitting' ? Infinity : 0, ease: 'easeInOut' }}
               />
             </div>
           </div>
@@ -1671,9 +1183,12 @@ function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
               );
             })}
           </div>
-          <div className="relative rounded-[1.6rem] border border-white/80 bg-accent px-5 py-4 text-accent-contrast shadow-xl shadow-accent/20">
+          <div className={cn(
+            "relative rounded-[1.6rem] border border-white/80 px-5 py-4 shadow-xl",
+            signupMotionState === 'error' ? "bg-danger/10 text-danger shadow-danger/10" : "bg-accent text-accent-contrast shadow-accent/20"
+          )}>
             <p className="text-[9px] font-black uppercase tracking-[0.22em] opacity-80">Progress Pulse</p>
-            <p className="mt-1 text-sm font-black">Tasks show intention. Proof shows movement.</p>
+            <p className="mt-1 text-sm font-black">{mode === 'signup' ? statusCopy[signupMotionState] : 'Your progress is waiting where you left it.'}</p>
           </div>
         </div>
         <div className="mt-4 grid w-full max-w-[470px] grid-cols-3 gap-2">
@@ -1688,10 +1203,10 @@ function AuthPreviewPanel({ mode }: { mode: 'signup' | 'login' }) {
   );
 }
 
-function AuthShell({ mode, children }: { mode: 'signup' | 'login'; children: ReactNode }) {
+function AuthShell({ mode, signupMotionState = 'idle', children }: { mode: 'signup' | 'login'; signupMotionState?: SignupMotionState; children: ReactNode }) {
   return (
     <div className="grid h-full w-full max-w-[1120px] gap-5 lg:grid-cols-[minmax(0,1fr)_430px]">
-      <AuthPreviewPanel mode={mode} />
+      <AuthPreviewPanel mode={mode} signupMotionState={signupMotionState} />
       <div className="flex min-h-0 items-center rounded-[2rem] border border-card-border bg-card/95 p-4 shadow-2xl shadow-accent/10 backdrop-blur-xl sm:p-6">
         {children}
       </div>
@@ -3034,7 +2549,7 @@ export default function OnboardingFlow() {
   const [firstTaskId, setFirstTaskId] = useState<string | null>(null);
   const [hasLoggedFirstProof, setHasLoggedFirstProof] = useState(false);
   const [isOnboardingSaving, setIsOnboardingSaving] = useState(false);
-  const [authRocketStage, setAuthRocketStage] = useState<RocketStageId>('form');
+  const [signupMotionState, setSignupMotionState] = useState<SignupMotionState>('idle');
 
   // Sync state from session
   useEffect(() => {
@@ -3313,8 +2828,8 @@ export default function OnboardingFlow() {
     switch (step) {
       case 1:
         return (
-          <AuthShell mode="signup">
-            <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} setRocketStage={setAuthRocketStage} rocketStage={authRocketStage} />
+          <AuthShell mode="signup" signupMotionState={signupMotionState}>
+            <Screen1 name={name} setName={setName} email={email} setEmail={setEmail} password={password} setPassword={setPassword} nextStep={nextStep} handleGoogleLogin={handleGoogleLogin} setSignupMotionState={setSignupMotionState} />
           </AuthShell>
         );
       case 11:

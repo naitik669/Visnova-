@@ -1,5 +1,14 @@
 export const betaFlags = {
   assistant: import.meta.env.VITE_ENABLE_ASSISTANT === 'true',
+  store: import.meta.env.VITE_ENABLE_STORE === 'true',
   storeRecommendations: import.meta.env.VITE_ENABLE_STORE_RECOMMENDATIONS === 'true',
+  publicFeed: import.meta.env.VITE_ENABLE_PUBLIC_FEED === 'true',
+  circle: import.meta.env.VITE_ENABLE_CIRCLE === 'true',
+  messages: import.meta.env.VITE_ENABLE_MESSAGES === 'true',
+  visionTeams: import.meta.env.VITE_ENABLE_VISION_TEAMS === 'true',
+  novaClock: import.meta.env.VITE_ENABLE_NOVA_CLOCK === 'true',
+  money: import.meta.env.VITE_ENABLE_MONEY === 'true',
+  advancedAnimations: import.meta.env.VITE_ENABLE_ADVANCED_ANIMATIONS === 'true',
   analytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
+  betaGate: import.meta.env.VITE_ENABLE_BETA_GATE === 'true',
 };

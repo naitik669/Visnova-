@@ -2,6 +2,7 @@ import { track } from '@vercel/analytics';
 import { isSupabaseConfigured, supabase } from './supabase';
 import { canUseAnalyticsFromStorage } from '../hooks/useCookieConsent';
 import { trackEvent } from './analytics';
+import { betaFlags } from './betaFlags';
 
 type AnalyticsMetadata = Record<string, string | number | boolean | null | undefined>;
 
@@ -14,6 +15,7 @@ export async function trackBetaEvent(
   entityId?: string | null
 ) {
   if (!isSupabaseConfigured() || !userId || !eventType) return;
+  if (!betaFlags.analytics) return;
   if (!canUseAnalyticsFromStorage()) return;
 
   const cleanMetadata = Object.fromEntries(
