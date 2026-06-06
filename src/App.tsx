@@ -1372,7 +1372,7 @@ function AppContent() {
 
               {!tutorialCompleted && hasCompletedOnboarding && !isPasswordRecovery && <InteractiveTour />}
               <Sidebar />
-              {betaFlags.novaClock && <FloatingTimer />}
+              <FloatingTimer />
               <main className="flex-1 min-w-0 lg:pl-16 h-full flex flex-col relative transition-all duration-500 overflow-hidden">
                 <PageContextHeader />
                 <div
