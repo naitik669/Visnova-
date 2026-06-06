@@ -115,6 +115,18 @@ export default function FocusOverlay() {
     }
   }, [focusSession.isActive, focusSession.timeLeft]);
 
+  useEffect(() => {
+    if (!focusSession.isActive || !focusSession.isRunning || focusSession.timeLeft <= 0) return;
+
+    const interval = window.setInterval(() => {
+      updateFocusTime(Math.max(0, focusSession.timeLeft - 1));
+    }, 1000);
+
+    if (!user.isGrinding) toggleGrinding();
+
+    return () => window.clearInterval(interval);
+  }, [focusSession.isActive, focusSession.isRunning, focusSession.timeLeft, updateFocusTime, user.isGrinding, toggleGrinding]);
+
   const handleToggleActive = () => {
     toggleFocusSession();
   };
