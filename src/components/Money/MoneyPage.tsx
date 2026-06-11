@@ -283,10 +283,10 @@ export default function MoneyPage() {
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-accent">
               <Wallet size={14} />
-              Private Wallet
+              Private by default
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-text-main sm:text-5xl">Wallet</h1>
+              <h1 className="text-3xl font-black tracking-tight text-text-main sm:text-5xl">Resource Goals</h1>
               <p className="mt-2 max-w-2xl text-sm font-medium text-text-secondary sm:text-base">
                 Track the money or materials your Vision needs. Keep it simple: target, current amount, currency, and linked Vision.
               </p>
@@ -294,7 +294,7 @@ export default function MoneyPage() {
           </div>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
             <div className="relative z-[260] min-w-0 overflow-visible rounded-2xl border border-card-border bg-bg-base p-2 sm:min-w-56">
-              <p className="px-2 pb-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">Wallet Currency</p>
+              <p className="px-2 pb-1 text-[9px] font-black uppercase tracking-widest text-text-secondary/60">Goal Currency</p>
               <SelectMenu
                 value={defaultCurrency}
                 onChange={handleDefaultCurrencyChange}
@@ -465,7 +465,7 @@ export default function MoneyPage() {
       {activeTab === 'review' && (
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div className="rounded-[1.5rem] border border-card-border bg-card p-4 sm:rounded-[2rem] sm:p-5">
-            <h2 className="text-xl font-black text-text-main">Weekly Wallet Review</h2>
+            <h2 className="text-xl font-black text-text-main">Weekly Resource Review</h2>
             <p className="text-sm font-medium text-text-secondary mt-2">Reflect on what helped your Visions, what spending leaked value, and what you will improve next week.</p>
             <button onClick={() => setModal('review')} className="mt-5 h-11 w-full rounded-2xl bg-accent px-4 text-[10px] font-black uppercase tracking-widest text-accent-contrast sm:w-auto">Write Review</button>
           </div>
@@ -484,11 +484,11 @@ export default function MoneyPage() {
       {isMoneyLoading && (
         <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-card-border bg-card px-4 py-2 text-[10px] font-black uppercase tracking-widest text-text-secondary shadow-sm">
           <Loader2 size={13} className="animate-spin text-accent" />
-          Refreshing Wallet...
+          Refreshing Resource Goals...
         </div>
       )}
 
-      <ResponsiveModal open={!!modal || !!contributionGoal} onClose={closeModal} title={modalTitle(modal, editingTransaction, editingGoal, editingSubscription, contributionGoal)} subtitle="Wallet is private by default." size="md">
+      <ResponsiveModal open={!!modal || !!contributionGoal} onClose={closeModal} title={modalTitle(modal, editingTransaction, editingGoal, editingSubscription, contributionGoal)} subtitle="Resource Goals are private by default." size="md">
         <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
           {(modal === 'income' || modal === 'expense') && (
             <TransactionForm mode={modal} transaction={editingTransaction} visions={visions} goals={financeGoals} onSubmit={handleTransactionSubmit} />
@@ -515,7 +515,7 @@ function modalTitle(modal: MoneyModal, transaction: FinanceTransaction | null, g
   if (modal === 'subscription') return 'Add Subscription';
   if (modal === 'budget') return 'Add Budget';
   if (modal === 'review') return 'Weekly Review';
-  return 'Wallet';
+  return 'Resource Goals';
 }
 
 function MetricCard({ icon: Icon, label, value, tone }: { icon: any; label: string; value: string; tone: 'success' | 'danger' | 'accent' | 'neutral' }) {
