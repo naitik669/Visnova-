@@ -646,10 +646,10 @@ export default function LandingPage() {
 
           <Reveal className="relative mx-auto max-w-4xl">
             <p className="mx-auto inline-flex rounded-full bg-[#F4F0FF] px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6D5DF6]">
-              See it. Plan it. Prove it.
+              Your Vision. Your Proof. Your Progress.
             </p>
             <h1 className="mt-8 text-5xl font-black leading-[1.02] tracking-[-0.075em] text-[#12122B] sm:text-6xl lg:text-7xl">
-              Your Vision. Your Proof. <span className="bg-gradient-to-r from-[#6D5DF6] to-[#9D8CFF] bg-clip-text text-transparent">Your Progress.</span>
+              Turn visions into <span className="bg-gradient-to-r from-[#6D5DF6] to-[#9D8CFF] bg-clip-text text-transparent">visible progress.</span>
             </h1>
             <p className="mx-auto mt-7 max-w-2xl text-lg font-semibold leading-8 text-[#66708A]">
               VisNova helps you plan what matters, choose one next move, log proof, and watch your progress become visible over time.
@@ -671,7 +671,7 @@ export default function LandingPage() {
 
         <section className="border-y border-[#EEF0F7] bg-white px-5 py-8">
           <Reveal className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-3">
-            {['Goals', 'Tasks', 'Journal', 'Feed', 'Circle', 'Nova Clock', 'Progress'].map(label => (
+            {['Visions', 'Tasks', 'Proof Logs', 'Journal', 'Vision Board', 'Circle', 'Progress Pulse'].map(label => (
               <span key={label} className="rounded-full border border-[#E6E8F2] bg-[#FBFAFF] px-5 py-2.5 text-sm font-black text-[#66708A]">
                 {label}
               </span>
