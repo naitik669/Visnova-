@@ -1,9 +1,31 @@
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const HTML_TAGS = /<[^>]*>/g;
 
+import DOMPurify from 'dompurify';
+
 export type RateLimitResult = {
   allowed: boolean;
   retryAfterMs: number;
+};
+
+const NOTE_HTML_ALLOWED_TAGS = [
+  'p', 'div', 'br', 'b', 'i', 'u', 's', 'strong', 'em', 'mark', 'span',
+  'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'blockquote', 'a', 'input', 'img'
+];
+const NOTE_HTML_ALLOWED_ATTR = ['href', 'rel', 'target', 'class', 'style', 'type', 'checked', 'value', 'src', 'alt'];
+
+// Render-side defense for rich note content that is written via innerHTML.
+// Keeps the existing editor markup (checklists, highlights, font sizes) while
+// stripping scripts, event handlers, and unsafe URL protocols.
+export const sanitizeHtml = (input: unknown) => {
+  const html = String(input ?? '');
+  if (!html) return '';
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: NOTE_HTML_ALLOWED_TAGS,
+    ALLOWED_ATTR: NOTE_HTML_ALLOWED_ATTR,
+    ALLOWED_URI_REGEXP: /^(?:https:|data:image\/(?:png|jpe?g|gif|webp);)/i,
+    ALLOW_DATA_ATTR: false
+  });
 };
 
 const getRateLimitStorage = () => {

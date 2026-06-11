@@ -42,6 +42,7 @@ import {
   ListChecks
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { sanitizeHtml } from '../../lib/security';
 import { format, isToday, isYesterday, isThisWeek, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isBefore, isAfter, startOfDay } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { Note, Folder as FolderType, JournalCanvasElement, Vision } from '../../types';
@@ -67,7 +68,7 @@ const escapeHtml = (value: string) => value
   .replace(/'/g, '&#039;')
   .replace(/\n/g, '<br>');
 
-const normalizeNoteEditorHtml = (value: string) => (hasHtmlMarkup(value) ? value : escapeHtml(value || ''));
+const normalizeNoteEditorHtml = (value: string) => (hasHtmlMarkup(value) ? sanitizeHtml(value) : escapeHtml(value || ''));
 
 function formatDuration(seconds?: number) {
   if (!seconds) return '0:00';
@@ -2760,7 +2761,7 @@ function NoteEditor({ note, onClose, updateNote, folders }: { note: Note, onClos
   }, []);
 
   const saveEditorContent = (immediate = false) => {
-    const html = editorRef.current?.innerHTML || '';
+    const html = sanitizeHtml(editorRef.current?.innerHTML || '');
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     if (immediate) {
       updateNote(note.id, { content: html });
