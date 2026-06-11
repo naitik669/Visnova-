@@ -62,6 +62,7 @@ const loadFeedbackPage = () => import('./components/Support/FeedbackPage');
 const loadMoneyPage = () => import('./components/Money/MoneyPage');
 const loadJoinVisionTeamPage = () => import('./components/VisionTeam/JoinVisionTeamPage');
 const loadLandingPage = () => import('./components/Landing/LandingPage');
+const loadAdminPage = () => import('./components/Admin/AdminPage');
 
 const VisionBoard = lazy(loadVisionBoard);
 const NovaClock = lazy(loadNovaClock);
@@ -79,6 +80,7 @@ const FeedbackPage = lazy(loadFeedbackPage);
 const MoneyPage = lazy(loadMoneyPage);
 const JoinVisionTeamPage = lazy(loadJoinVisionTeamPage);
 const LandingPage = lazy(loadLandingPage);
+const AdminPage = lazy(loadAdminPage);
 
 const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Promise<unknown>; enabled?: boolean }> = [
   { match: path => path === '/feed', load: loadCommunityFeed, enabled: betaFlags.publicFeed },
@@ -193,9 +195,9 @@ const mainNavBase: NavItem[] = [
   ...(betaFlags.circle ? [{ icon: Users, label: 'Circle', path: '/circle', id: 'nav-circle' }] : []),
   { icon: Target, label: 'Visions', path: '/visions', id: 'nav-vision' },
   { icon: CheckCircle2, label: 'Tasks', path: '/tasks', id: 'nav-tasks' },
-  { icon: Zap, label: 'Growth', path: '/growth', id: 'nav-growth' },
+  { icon: Zap, label: 'Progress', path: '/growth', id: 'nav-growth' },
   { icon: LibraryBig, label: 'Library', path: '/library', id: 'nav-library' },
-  ...(betaFlags.money ? [{ icon: Wallet, label: 'Wallet', path: '/wallet', id: 'nav-money' }] : []),
+  ...(betaFlags.money ? [{ icon: Wallet, label: 'Resource Goals', path: '/wallet', id: 'nav-money' }] : []),
 ];
 
 const isRouteActive = (pathname: string, path: string) => {
@@ -473,7 +475,7 @@ function MobileNav() {
   const primaryItems: NavItem[] = [
     { icon: Home, label: 'Home', path: '/dashboard' },
     { icon: CheckCircle2, label: 'Tasks', path: '/tasks' },
-    { icon: Zap, label: 'Growth', path: '/growth' },
+    { icon: Zap, label: 'Progress', path: '/growth' },
     { icon: User, label: 'Profile', path: '/profile' },
   ];
 
@@ -755,9 +757,9 @@ const pageContext: Record<string, { title: string; subtitle?: string }> = {
   '/circle': { title: 'Circle', subtitle: 'Messages, connections, communities, requests, and activity' },
   '/circle/momentum': { title: 'Circle Momentum', subtitle: 'Friendly progress across your accountability circle' },
   '/communities': { title: 'Circle', subtitle: 'Messages, connections, communities, requests, and activity' },
-  '/growth': { title: 'Growth', subtitle: 'Progress Pulse, proof history, and momentum' },
-  '/money': { title: 'Wallet', subtitle: 'Track money and resources linked to your Visions' },
-  '/wallet': { title: 'Wallet', subtitle: 'Track money and resources linked to your Visions' },
+  '/growth': { title: 'Progress Pulse', subtitle: 'Proof history, streaks, and momentum' },
+  '/money': { title: 'Resource Goals', subtitle: 'Track money and resources linked to your Visions' },
+  '/wallet': { title: 'Resource Goals', subtitle: 'Track money and resources linked to your Visions' },
   '/nova-clock': { title: 'Nova Clock', subtitle: 'NovaCapsules for your future self' },
   '/settings': { title: 'Settings', subtitle: 'Manage your workspace' },
   '/profile': { title: 'Profile', subtitle: 'Your public progress page' },
@@ -1429,6 +1431,7 @@ function AppContent() {
                       <Route path="/trust" element={<TrustIndexPage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/feedback" element={<FeedbackPage />} />
+                      <Route path="/admin" element={<AdminPage />} />
                       <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                   </Suspense>

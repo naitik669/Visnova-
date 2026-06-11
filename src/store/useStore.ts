@@ -816,6 +816,9 @@ let authSubscription: { unsubscribe: () => void } | null = null;
 let circleDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let dataRealtimeChannel: any = null;
 let dataRealtimeUserId: string | null = null;
+let teamRealtimeChannel: any = null;
+let teamRealtimeKey: string | null = null;
+let teamRealtimeGet: (() => AppState) | null = null;
 const dataRefreshTimers: Record<string, ReturnType<typeof setTimeout> | undefined> = {};
 
 const scheduleCircleRefresh = (get: () => AppState) => {
@@ -843,13 +846,75 @@ const teardownUserDataRealtime = () => {
     supabase.removeChannel(dataRealtimeChannel);
     dataRealtimeChannel = null;
   }
+  if (teamRealtimeChannel) {
+    supabase.removeChannel(teamRealtimeChannel);
+    teamRealtimeChannel = null;
+  }
+  teamRealtimeKey = null;
   dataRealtimeUserId = null;
+};
+
+// Shared visions belong to other users, so the user_id-filtered channel above
+// never sees teammates' edits. Subscribe to those vision/task rows directly.
+export const refreshTeamRealtime = async (userId?: string | null) => {
+  const targetUserId = userId || dataRealtimeUserId;
+  const getState = teamRealtimeGet;
+  if (!targetUserId || !getState) return;
+
+  let sharedVisionIds: string[] = [];
+  try {
+    const { data: memberships } = await supabase
+      .from('vision_team_members')
+      .select('team_id, vision_teams!inner(vision_id, owner_id)')
+      .eq('user_id', targetUserId)
+      .eq('status', 'active');
+    sharedVisionIds = Array.from(new Set(
+      (memberships || [])
+        .map((row: any) => row.vision_teams?.vision_id)
+        .filter((visionId: string | null) => Boolean(visionId))
+    ));
+  } catch (error) {
+    console.error('Failed to load shared visions for realtime:', error);
+    return;
+  }
+
+  const key = `${targetUserId}:${sharedVisionIds.sort().join(',')}`;
+  if (key === teamRealtimeKey) return;
+  teamRealtimeKey = key;
+
+  if (teamRealtimeChannel) {
+    supabase.removeChannel(teamRealtimeChannel);
+    teamRealtimeChannel = null;
+  }
+  if (sharedVisionIds.length === 0) return;
+
+  const refreshSharedVisions = () => scheduleDataRefresh('team-visions', () => {
+    getState().fetchVisions().catch(error => console.error('Realtime shared vision refresh failed:', error));
+  });
+  const refreshSharedTasks = () => scheduleDataRefresh('team-tasks', () => {
+    getState().fetchTodos().catch(error => console.error('Realtime shared task refresh failed:', error));
+  });
+
+  const visionFilter = `id=in.(${sharedVisionIds.join(',')})`;
+  const taskFilter = `vision_id=in.(${sharedVisionIds.join(',')})`;
+
+  teamRealtimeChannel = supabase
+    .channel(`visnova-team:${targetUserId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'visions', filter: visionFilter }, refreshSharedVisions)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: taskFilter }, refreshSharedTasks)
+    .subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        console.warn('VisNova team realtime unavailable:', status);
+      }
+    });
 };
 
 const setupUserDataRealtime = (get: () => AppState, userId: string) => {
   if (!userId || dataRealtimeUserId === userId) return;
   teardownUserDataRealtime();
   dataRealtimeUserId = userId;
+  teamRealtimeGet = get;
+  void refreshTeamRealtime(userId);
 
   const refreshNotes = () => scheduleDataRefresh('notes', () => {
     get().fetchNotes().catch(error => console.error('Realtime notes refresh failed:', error));

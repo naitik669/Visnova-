@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, Shield, Users, XCircle } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { refreshTeamRealtime, useStore } from '../../store/useStore';
 import { joinVisionTeam, validateVisionTeamInvite } from '../../lib/visionTeams';
 
 type InvitePreview = {
@@ -56,6 +56,7 @@ export default function JoinVisionTeamPage() {
     try {
       const result = await joinVisionTeam(token);
       await fetchVisions();
+      void refreshTeamRealtime();
       addToast({
         type: 'success',
         title: result?.already_member ? 'Already in team' : 'Joined Vision Team',

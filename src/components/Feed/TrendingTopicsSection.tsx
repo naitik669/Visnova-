@@ -42,7 +42,7 @@ export function TrendingTopicsSection({ onTopicClick, className }: TrendingTopic
     <div className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between px-2">
         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-secondary/60 flex items-center gap-2">
-          <TrendingUp size={12} className="text-accent" /> Trending Topics
+          <TrendingUp size={12} className="text-accent" /> Active Topics
         </h3>
       </div>
       
