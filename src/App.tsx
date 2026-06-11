@@ -62,6 +62,7 @@ const loadFeedbackPage = () => import('./components/Support/FeedbackPage');
 const loadMoneyPage = () => import('./components/Money/MoneyPage');
 const loadJoinVisionTeamPage = () => import('./components/VisionTeam/JoinVisionTeamPage');
 const loadLandingPage = () => import('./components/Landing/LandingPage');
+const loadAdminPage = () => import('./components/Admin/AdminPage');
 
 const VisionBoard = lazy(loadVisionBoard);
 const NovaClock = lazy(loadNovaClock);
@@ -79,6 +80,7 @@ const FeedbackPage = lazy(loadFeedbackPage);
 const MoneyPage = lazy(loadMoneyPage);
 const JoinVisionTeamPage = lazy(loadJoinVisionTeamPage);
 const LandingPage = lazy(loadLandingPage);
+const AdminPage = lazy(loadAdminPage);
 
 const routePreloaders: Array<{ match: (path: string) => boolean; load: () => Promise<unknown>; enabled?: boolean }> = [
   { match: path => path === '/feed', load: loadCommunityFeed, enabled: betaFlags.publicFeed },
@@ -1429,6 +1431,7 @@ function AppContent() {
                       <Route path="/trust" element={<TrustIndexPage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/feedback" element={<FeedbackPage />} />
+                      <Route path="/admin" element={<AdminPage />} />
                       <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                   </Suspense>
