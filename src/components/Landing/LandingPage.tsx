@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
+import { AnimatePresence, animate, motion, useInView, useMotionValue, useScroll, useSpring, useTransform } from 'motion/react';
 import {
   ArrowRight,
   BarChart3,
@@ -135,12 +135,6 @@ const useCases = [
   },
 ];
 
-const processSteps = [
-  { icon: Target, title: 'Clarify your Vision', copy: 'Name the direction and choose what stays private.' },
-  { icon: ListChecks, title: 'Plan your Actions', copy: 'Break it into today-sized moves and linked tasks.' },
-  { icon: CheckCircle2, title: 'Log Proof & Grow', copy: 'Record what changed and watch momentum build.' },
-];
-
 const benefits = [
   { icon: LayoutDashboard, title: 'Clearer system', copy: 'Bring goals, actions, notes, journals, boards, resources, and proof into one focused workspace.' },
   { icon: TrendingUp, title: 'Faster goal-to-action planning', copy: 'Move from idea to next step without losing the thread of why it matters.' },
@@ -177,6 +171,192 @@ function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; 
     >
       {children}
     </motion.div>
+  );
+}
+
+function CountUp({ to, suffix = '', duration = 1.4, className = '' }: { to: number; suffix?: string; duration?: number; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    const controls = animate(0, to, {
+      duration,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: latest => setValue(Math.round(latest))
+    });
+    return () => controls.stop();
+  }, [inView, to, duration]);
+
+  return <span ref={ref} className={className}>{value}{suffix}</span>;
+}
+
+function StaggeredHeadline({ text, highlight, className = '' }: { text: string; highlight: string; className?: string }) {
+  const words = [...text.split(' ').map(word => ({ word, accent: false })), ...highlight.split(' ').map(word => ({ word, accent: true }))];
+  return (
+    <h1 className={className}>
+      {words.map(({ word, accent }, index) => (
+        <motion.span
+          key={`${word}-${index}`}
+          className={cn('inline-block whitespace-pre', accent && 'bg-gradient-to-r from-[#6D5DF6] to-[#9D8CFF] bg-clip-text text-transparent')}
+          initial={{ opacity: 0, y: 34, rotateX: 45, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, rotateX: 0, filter: 'blur(0px)' }}
+          transition={{ delay: 0.12 + index * 0.085, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {word}{' '}
+        </motion.span>
+      ))}
+    </h1>
+  );
+}
+
+function TiltCard({ children, className = '', maxTilt = 5 }: { children: ReactNode; className?: string; maxTilt?: number }) {
+  const rotateX = useMotionValue(0);
+  const rotateY = useMotionValue(0);
+  const springX = useSpring(rotateX, { stiffness: 120, damping: 18 });
+  const springY = useSpring(rotateY, { stiffness: 120, damping: 18 });
+
+  return (
+    <motion.div
+      className={className}
+      style={{ rotateX: springX, rotateY: springY, transformPerspective: 1400 }}
+      onPointerMove={event => {
+        if (event.pointerType !== 'mouse') return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        rotateY.set(((event.clientX - rect.left) / rect.width - 0.5) * maxTilt * 2);
+        rotateX.set(-((event.clientY - rect.top) / rect.height - 0.5) * maxTilt * 2);
+      }}
+      onPointerLeave={() => {
+        rotateX.set(0);
+        rotateY.set(0);
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function MarqueeStrip() {
+  const chips = ['Visions', 'Tasks', 'Proof Logs', 'Journal', 'Vision Board', 'Circle', 'Progress Pulse', 'Resource Goals', 'Private by default'];
+  const loop = [...chips, ...chips];
+  return (
+    <section className="border-y border-[#EEF0F7] bg-white py-8" aria-label="VisNova modules">
+      <div className="group relative overflow-hidden" style={{ maskImage: 'linear-gradient(to right, transparent, black 12%, black 88%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 12%, black 88%, transparent)' }}>
+        <motion.div
+          className="flex w-max items-center gap-3 pr-3 group-hover:[animation-play-state:paused]"
+          animate={{ x: ['0%', '-50%'] }}
+          transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
+        >
+          {loop.map((label, index) => (
+            <span key={`${label}-${index}`} className="flex items-center gap-2 rounded-full border border-[#E6E8F2] bg-[#FBFAFF] px-5 py-2.5 text-sm font-black text-[#66708A] transition hover:border-[#D2CBFF] hover:text-[#6D5DF6]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#6D5DF6]" />
+              {label}
+            </span>
+          ))}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+const loopStages = [
+  { icon: Target, label: 'Vision', title: 'Name the direction', copy: 'One clear ambition, private by default.', accent: '#6D5DF6' },
+  { icon: ListChecks, label: 'Task', title: 'Pick the next move', copy: 'A today-sized action linked to the Vision.', accent: '#28B98E' },
+  { icon: CheckCircle2, label: 'Proof', title: 'Log what changed', copy: 'A short record of real movement.', accent: '#8B7CFF' },
+  { icon: TrendingUp, label: 'Pulse', title: 'Watch momentum build', copy: 'Streaks, charts, and Day 1 vs Now.', accent: '#FF9D42' },
+];
+
+function CoreLoopJourney() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start 0.78', 'end 0.45'] });
+  const smooth = useSpring(scrollYProgress, { stiffness: 90, damping: 24 });
+  const dotLeft = useTransform(smooth, [0.05, 0.9], ['2%', '98%']);
+  const trackScale = useTransform(smooth, [0.05, 0.9], [0, 1]);
+  const ringProgress = useTransform(smooth, [0.62, 0.95], [0, 0.78]);
+  const ringDash = useTransform(ringProgress, value => 264 * (1 - value));
+  const ringPercent = useTransform(ringProgress, value => `${Math.round((value / 0.78) * 78)}%`);
+
+  return (
+    <section id="how" ref={sectionRef} className="relative overflow-hidden px-5 py-24">
+      <motion.div
+        aria-hidden="true"
+        className="absolute left-1/2 top-1/2 h-[40rem] w-[40rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F1ECFF] blur-3xl"
+        style={{ opacity: useTransform(smooth, [0, 0.5], [0, 0.8]) }}
+      />
+      <SectionHeader
+        kicker="The Core Loop"
+        title="Vision → Task → Proof → Progress."
+        copy="Scroll to follow one proof dot through the loop that makes progress visible. Log proof. See progress. Return tomorrow."
+      />
+
+      <div className="relative mx-auto mt-16 max-w-5xl">
+        <div className="relative hidden md:block">
+          <div className="absolute left-0 right-0 top-[4.4rem] h-1 rounded-full bg-[#ECE7FF]" />
+          <motion.div className="absolute left-0 right-0 top-[4.4rem] h-1 origin-left rounded-full bg-gradient-to-r from-[#6D5DF6] via-[#8B7CFF] to-[#FF9D42]" style={{ scaleX: trackScale }} />
+          <motion.div
+            className="absolute top-[4.4rem] z-10 -ml-3 -mt-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-[0_8px_24px_rgba(109,93,246,0.45)]"
+            style={{ left: dotLeft }}
+          >
+            <motion.span
+              className="h-3.5 w-3.5 rounded-full bg-[#6D5DF6]"
+              animate={{ scale: [1, 1.35, 1] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          </motion.div>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-4 md:gap-6 md:pt-10">
+          {loopStages.map((stage, index) => (
+            <Reveal key={stage.label} delay={index * 0.1}>
+              <motion.article
+                className="relative h-full rounded-[1.6rem] border border-[#E6E8F2] bg-white p-6 text-center shadow-[0_18px_60px_rgba(32,30,70,0.05)]"
+                whileHover={{ y: -9, boxShadow: '0 30px 80px rgba(109,93,246,0.16)' }}
+                transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+              >
+                <span className="absolute left-1/2 top-0 hidden h-3 w-3 -translate-x-1/2 -translate-y-[2.05rem] rounded-full border-4 border-white md:block" style={{ background: stage.accent }} />
+                <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: stage.accent }}>
+                  <stage.icon className="h-7 w-7" />
+                </span>
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.24em]" style={{ color: stage.accent }}>{stage.label}</p>
+                <h3 className="mt-2 text-lg font-black text-[#12122B]">{stage.title}</h3>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[#66708A]">{stage.copy}</p>
+              </motion.article>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal className="mt-14">
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-8 rounded-[2rem] border border-[#E2DAFF] bg-white p-8 shadow-[0_26px_90px_rgba(109,93,246,0.1)] sm:flex-row sm:justify-between">
+            <div className="text-center sm:text-left">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6D5DF6]">Progress Pulse</p>
+              <h3 className="mt-3 text-2xl font-black tracking-[-0.04em] text-[#12122B]">The loop pays off here.</h3>
+              <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-[#66708A]">Every proof you log fills the ring. Keep the streak alive and momentum becomes something you can actually see.</p>
+            </div>
+            <div className="relative h-36 w-36 shrink-0">
+              <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#EEE9FF" strokeWidth="9" />
+                <motion.circle
+                  cx="50" cy="50" r="42" fill="none" stroke="url(#loopRingGradient)" strokeWidth="9" strokeLinecap="round"
+                  strokeDasharray="264"
+                  style={{ strokeDashoffset: ringDash }}
+                />
+                <defs>
+                  <linearGradient id="loopRingGradient" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#6D5DF6" />
+                    <stop offset="100%" stopColor="#A694FF" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <motion.span className="text-2xl font-black text-[#12122B]">{ringPercent}</motion.span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#66708A]">this week</span>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
   );
 }
 
@@ -294,11 +474,7 @@ function HeroMockup() {
         transition={{ duration: 28, repeat: Infinity, ease: 'linear' }}
       />
 
-      <motion.div
-        className="relative overflow-hidden rounded-[2rem] border border-[#E7E1FF] bg-[#F7F3FF] p-3 shadow-[0_38px_130px_rgba(78,58,144,0.18)] sm:p-5"
-        whileHover={{ y: -7, scale: 1.006 }}
-        transition={{ type: 'spring', stiffness: 170, damping: 22 }}
-      >
+      <TiltCard className="relative overflow-hidden rounded-[2rem] border border-[#E7E1FF] bg-[#F7F3FF] p-3 shadow-[0_38px_130px_rgba(78,58,144,0.18)] sm:p-5">
         <div className="grid min-h-[520px] overflow-hidden rounded-[1.6rem] bg-[#FBFAFF] lg:grid-cols-[72px_1fr_350px]">
           <aside className="hidden border-r border-[#E8E1FF] bg-[#F0E9FA] py-6 lg:flex lg:flex-col lg:items-center lg:justify-between">
             <div className="flex flex-col items-center gap-5">
@@ -345,7 +521,7 @@ function HeroMockup() {
 
               <div className="rounded-[1.8rem] bg-[#F0ECFF] p-6 text-center">
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-[#66708A]">Progress Pulse</p>
-                <p className="mt-5 text-5xl font-black text-[#6D5DF6]">72%</p>
+                <p className="mt-5 text-5xl font-black text-[#6D5DF6]"><CountUp to={72} suffix="%" /></p>
                 <div className="mt-5 h-3 rounded-full bg-[#DDD6FF]">
                   <motion.div className="h-full rounded-full bg-[#6D5DF6]" initial={{ width: 0 }} whileInView={{ width: '72%' }} viewport={{ once: true }} transition={{ duration: 1 }} />
                 </div>
@@ -405,7 +581,7 @@ function HeroMockup() {
             </div>
           </div>
         </div>
-      </motion.div>
+      </TiltCard>
     </Reveal>
   );
 }
@@ -648,9 +824,11 @@ export default function LandingPage() {
             <p className="mx-auto inline-flex rounded-full bg-[#F4F0FF] px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#6D5DF6]">
               Your Vision. Your Proof. Your Progress.
             </p>
-            <h1 className="mt-8 text-5xl font-black leading-[1.02] tracking-[-0.075em] text-[#12122B] sm:text-6xl lg:text-7xl">
-              Turn visions into <span className="bg-gradient-to-r from-[#6D5DF6] to-[#9D8CFF] bg-clip-text text-transparent">visible progress.</span>
-            </h1>
+            <StaggeredHeadline
+              text="Turn visions into"
+              highlight="visible progress."
+              className="mt-8 text-5xl font-black leading-[1.02] tracking-[-0.075em] text-[#12122B] sm:text-6xl lg:text-7xl"
+            />
             <p className="mx-auto mt-7 max-w-2xl text-lg font-semibold leading-8 text-[#66708A]">
               VisNova helps you plan what matters, choose one next move, log proof, and watch your progress become visible over time.
             </p>
@@ -669,15 +847,7 @@ export default function LandingPage() {
           </motion.div>
         </section>
 
-        <section className="border-y border-[#EEF0F7] bg-white px-5 py-8">
-          <Reveal className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-3">
-            {['Visions', 'Tasks', 'Proof Logs', 'Journal', 'Vision Board', 'Circle', 'Progress Pulse'].map(label => (
-              <span key={label} className="rounded-full border border-[#E6E8F2] bg-[#FBFAFF] px-5 py-2.5 text-sm font-black text-[#66708A]">
-                {label}
-              </span>
-            ))}
-          </Reveal>
-        </section>
+        <MarqueeStrip />
 
         <ProductSuiteTabs />
 
@@ -708,28 +878,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="how" className="px-5 py-24">
-          <SectionHeader
-            kicker="Simple Process"
-            title="Get started in 3 simple steps."
-            copy="Start small. Keep the loop visible. Return tomorrow with a clearer next move."
-          />
-          <div className="relative mx-auto mt-14 grid max-w-5xl gap-8 md:grid-cols-3">
-            <motion.div className="absolute left-[20%] right-[20%] top-14 hidden origin-left border-t-2 border-dashed border-[#D7D0FF] md:block" initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 1 }} />
-            {processSteps.map((step, index) => (
-              <Reveal key={step.title} delay={index * 0.08} className="relative">
-                <motion.article className="relative rounded-[1.5rem] border border-[#E6E8F2] bg-white p-8 text-center shadow-[0_18px_60px_rgba(32,30,70,0.05)]" whileHover={{ y: -7 }}>
-                  <span className="absolute left-6 top-6 flex h-8 w-8 items-center justify-center rounded-full bg-[#6D5DF6] text-sm font-black text-white">{index + 1}</span>
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F0ECFF] text-[#6D5DF6]">
-                    <step.icon className="h-7 w-7" />
-                  </div>
-                  <h3 className="mt-8 text-lg font-black text-[#12122B]">{step.title}</h3>
-                  <p className="mt-3 text-sm font-semibold leading-6 text-[#66708A]">{step.copy}</p>
-                </motion.article>
-              </Reveal>
-            ))}
-          </div>
-        </section>
+        <CoreLoopJourney />
 
         <section className="bg-[#25163D] px-5 py-24 text-white">
           <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
@@ -742,17 +891,17 @@ export default function LandingPage() {
             <Reveal>
               <div className="rounded-[2rem] border border-white/10 bg-white/8 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.22)] backdrop-blur-xl">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {[
-                    ['Proof logs', '12', 'This week'],
-                    ['Weekly consistency', '72%', '5 of 7 days'],
-                    ['Active Vision', 'Launch Beta', 'Current focus'],
-                    ['Tasks completed', '8', 'Linked to proof'],
-                  ].map(([label, value, note]) => (
-                    <div key={label} className="rounded-[1.3rem] bg-white p-5 text-[#12122B]">
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6D5DF6]">{label}</p>
-                      <p className="mt-3 text-3xl font-black tracking-[-0.05em]">{value}</p>
-                      <p className="mt-2 text-sm font-bold text-[#66708A]">{note}</p>
-                    </div>
+                  {([
+                    { label: 'Proof logs', value: <CountUp to={12} />, note: 'This week' },
+                    { label: 'Weekly consistency', value: <CountUp to={72} suffix="%" />, note: '5 of 7 days' },
+                    { label: 'Active Vision', value: 'Launch Beta', note: 'Current focus' },
+                    { label: 'Tasks completed', value: <CountUp to={8} />, note: 'Linked to proof' },
+                  ] as const).map(stat => (
+                    <motion.div key={stat.label} className="rounded-[1.3rem] bg-white p-5 text-[#12122B]" whileHover={{ y: -4 }}>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6D5DF6]">{stat.label}</p>
+                      <p className="mt-3 text-3xl font-black tracking-[-0.05em]">{stat.value}</p>
+                      <p className="mt-2 text-sm font-bold text-[#66708A]">{stat.note}</p>
+                    </motion.div>
                   ))}
                 </div>
                 <div className="mt-5 rounded-[1.3rem] bg-[#F4F1FF] p-5 text-[#12122B]">
