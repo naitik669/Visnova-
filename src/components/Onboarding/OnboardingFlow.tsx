@@ -6,8 +6,10 @@ import {
   KeyRound,
   Mail,
   Zap,
+  Check,
   Eye,
   EyeOff,
+  Loader2,
   Image as ImageIcon,
   Users,
   Plus,
@@ -166,7 +168,8 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, handleGoogleLo
           </div>
         )}
         {error && (
-          <div className="p-3 bg-accent/5 border border-accent/10 rounded-xl text-accent text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
+          <div className="flex items-center justify-center gap-2 p-3 bg-danger/5 border border-danger/15 rounded-xl text-danger text-[10px] font-bold uppercase tracking-widest text-center animate-in fade-in slide-in-from-top-1">
+            <AlertTriangle size={13} className="shrink-0" />
             {error}
           </div>
         )}
@@ -179,7 +182,8 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, handleGoogleLo
             onChange={e => setEmail(e.target.value)}
             autoComplete="email"
             inputMode="email"
-            className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:border-accent transition-all font-medium"
+            autoFocus
+            className="w-full h-12 px-4 rounded-2xl bg-card border border-card-border text-text-main focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all font-medium"
           />
         </div>
         <div className="space-y-1.5">
@@ -233,9 +237,10 @@ function ScreenLogin({ email, setEmail, nextStep, switchToSignup, handleGoogleLo
         <button
           onClick={handleLogin}
           disabled={isLoading}
-          className="w-full h-12 bg-text-main text-bg-base font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shadow-xl shadow-accent/10"
+          className="flex w-full h-12 items-center justify-center gap-2 bg-gradient-to-r from-accent to-[#8B7CFF] text-accent-contrast font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all hover:shadow-lg hover:shadow-accent/25 active:scale-[0.98] disabled:opacity-70 shadow-xl shadow-accent/10"
         >
-          {isLoading ? 'Loading...' : 'Login'}
+          {isLoading ? <Loader2 size={15} className="animate-spin" /> : null}
+          {isLoading ? 'Signing in...' : 'Login'}
         </button>
         <div className="flex flex-col gap-2">
           <button
@@ -437,7 +442,20 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
   const [passwordError, setPasswordError] = useState('');
   const [generalError, setGeneralError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const addToast = useStore((state) => state.addToast);
+
+  const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const passwordChecks = [
+    { label: '8+ characters', met: password.length >= 8 },
+    { label: 'Lowercase', met: /[a-z]/.test(password) },
+    { label: 'Uppercase', met: /[A-Z]/.test(password) },
+    { label: 'Number', met: /\d/.test(password) },
+    { label: 'Symbol', met: /[^a-zA-Z0-9\s]/.test(password) }
+  ];
+  const passwordStrong = passwordChecks.every(check => check.met);
+  const confirmTouched = confirmPassword.length > 0;
+  const passwordsMatch = confirmTouched && password === confirmPassword;
 
   const validatePassword = (pass: string) => {
     // At least one lowercase, uppercase, symbol, and number
@@ -624,18 +642,32 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         </div>
         <div className="space-y-1.5">
           <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Email</label>
-          <input
-            type="email"
-            placeholder="yourmail@example.com"
-            value={email}
-            onChange={e => {
-              setEmail(e.target.value);
-              resetMotionAfterEdit();
-            }}
-            autoComplete="email"
-            inputMode="email"
-            className="w-full h-11 px-4 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
-          />
+          <div className="relative">
+            <input
+              type="email"
+              placeholder="yourmail@example.com"
+              value={email}
+              onChange={e => {
+                setEmail(e.target.value);
+                resetMotionAfterEdit();
+              }}
+              autoComplete="email"
+              inputMode="email"
+              className="w-full h-11 px-4 pr-11 rounded-2xl bg-card border border-card-border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 focus:border-accent transition-all"
+            />
+            <AnimatePresence>
+              {emailLooksValid && (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.4 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.4 }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-success"
+                >
+                  <Check size={16} strokeWidth={3} />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
         <div className="space-y-1.5">
           <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Password</label>
@@ -649,6 +681,7 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
                 if (passwordError) setPasswordError('');
                 resetMotionAfterEdit();
               }}
+              onFocus={() => setPasswordFocused(true)}
               autoComplete="new-password"
               className={cn(
                 "w-full h-11 px-4 pr-12 rounded-2xl bg-card border text-text-main placeholder:text-text-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent/10 transition-all",
@@ -664,6 +697,32 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          <AnimatePresence>
+            {(passwordFocused || password.length > 0) && !passwordStrong && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-wrap gap-1.5 pt-1.5 pl-1">
+                  {passwordChecks.map(check => (
+                    <span
+                      key={check.label}
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider transition-all duration-300',
+                        check.met ? 'bg-success/10 text-success' : 'bg-surface-muted text-text-secondary/50'
+                      )}
+                    >
+                      {check.met && <Check size={10} strokeWidth={3.5} />}
+                      {check.label}
+                    </span>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         <div className="space-y-1.5">
           <label className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-50 ml-1">Confirm Password</label>
@@ -695,6 +754,19 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
               {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          {confirmTouched && (
+            <motion.p
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn(
+                'ml-1 mt-1 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest',
+                passwordsMatch ? 'text-success' : 'text-text-secondary/60'
+              )}
+            >
+              {passwordsMatch ? <Check size={11} strokeWidth={3.5} /> : <Lock size={10} />}
+              {passwordsMatch ? 'Passwords match' : 'Passwords do not match yet'}
+            </motion.p>
+          )}
           {passwordError && (
             <p className="text-[9px] font-bold text-text-secondary/60 ml-1 mt-1 uppercase tracking-widest opacity-80">
               {passwordError}
@@ -720,9 +792,10 @@ function Screen1({ name, setName, email, setEmail, password, setPassword, nextSt
         <button
           onClick={handleManualNext}
           disabled={isSubmitting}
-          className="w-full h-11 bg-accent text-accent-contrast font-bold rounded-2xl transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-95"
+          className="flex w-full h-11 items-center justify-center gap-2 bg-gradient-to-r from-accent to-[#8B7CFF] text-accent-contrast font-bold rounded-2xl transition-all hover:shadow-lg hover:shadow-accent/20 active:scale-[0.98] disabled:opacity-70"
         >
-          {isSubmitting ? 'Loading...' : 'Create account'}
+          {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : null}
+          {isSubmitting ? 'Creating your account...' : 'Create account'}
         </button>
       </div>
 
@@ -739,7 +812,14 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState('');
   const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const { session } = useStore();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setTimeout(() => setResendCooldown(value => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   const checkVerification = async () => {
     setIsChecking(true);
@@ -789,6 +869,7 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
         options: { emailRedirectTo: getAuthRedirectUrl() }
       });
       setError('A new verification link has been dispatched to your inbox.');
+      setResendCooldown(30);
     } catch (err: any) {
       setError(err.message || 'Resend failed.');
     } finally {
@@ -848,10 +929,10 @@ function ScreenVerify({ email, nextStep, onChangeEmail }: any) {
               <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-40">Still nothing?</span>
               <button
                 onClick={handleResend}
-                disabled={isResending}
+                disabled={isResending || resendCooldown > 0}
                 className="text-[9px] font-black uppercase tracking-widest text-accent hover:underline disabled:opacity-40"
               >
-                {isResending ? 'Sending...' : 'Resend link'}
+                {isResending ? 'Sending...' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend link'}
               </button>
             </div>
             <div className="flex flex-col gap-2 border-t border-card-border pt-3">
@@ -1652,9 +1733,21 @@ function SetupPathScreen({
   );
 }
 
-function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { selectedPath: OnboardingPathId; title: string; setTitle: (value: string) => void; nextStep: () => void }) {
+function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { selectedPath: OnboardingPathId; title: string; setTitle: (value: string) => void; nextStep: () => void | Promise<void> }) {
   const path = getOnboardingPath(selectedPath);
   const cleanTitle = String(title || '').trim();
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!cleanTitle || busy) return;
+    setBusy(true);
+    try {
+      await nextStep();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
@@ -1667,30 +1760,54 @@ function SetupVisionScreen({ selectedPath, title, setTitle, nextStep }: { select
         maxLength={120}
         value={title}
         onChange={event => setTitle(event.target.value)}
+        onKeyDown={event => {
+          if (event.key === 'Enter') void submit();
+        }}
         placeholder="Launch beta, learn coding, improve focus..."
         className="h-14 rounded-2xl border border-card-border bg-card px-5 text-sm font-black text-text-main outline-none transition-all placeholder:text-text-secondary/40 focus:border-accent focus:ring-4 focus:ring-accent/10"
       />
       <div className="flex flex-wrap gap-2">
-        {path.visionSuggestions.map(suggestion => (
-          <button
-            key={suggestion}
-            onClick={() => setTitle(suggestion)}
-            className="rounded-full border border-card-border bg-surface-muted px-4 py-2 text-[11px] font-black text-text-secondary transition-colors hover:border-accent hover:text-accent"
-          >
-            {suggestion}
-          </button>
-        ))}
+        {path.visionSuggestions.map(suggestion => {
+          const selected = title === suggestion;
+          return (
+            <button
+              key={suggestion}
+              onClick={() => setTitle(selected ? '' : suggestion)}
+              className={cn(
+                'rounded-full border px-4 py-2 text-[11px] font-black transition-all active:scale-95',
+                selected
+                  ? 'border-accent bg-accent text-accent-contrast shadow-lg shadow-accent/20'
+                  : 'border-card-border bg-surface-muted text-text-secondary hover:border-accent hover:text-accent'
+              )}
+            >
+              {suggestion}
+            </button>
+          );
+        })}
       </div>
-      <button onClick={() => nextStep()} disabled={!cleanTitle} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
-        Create Vision
+      <button onClick={() => void submit()} disabled={!cleanTitle || busy} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-accent to-[#8B7CFF] text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+        {busy && <Loader2 size={15} className="animate-spin" />}
+        {busy ? 'Creating Vision...' : 'Create Vision'}
       </button>
     </div>
   );
 }
 
-function SetupTaskScreen({ selectedPath, taskTitle, setTaskTitle, nextStep }: { selectedPath: OnboardingPathId; taskTitle: string; setTaskTitle: (value: string) => void; nextStep: () => void }) {
+function SetupTaskScreen({ selectedPath, taskTitle, setTaskTitle, nextStep }: { selectedPath: OnboardingPathId; taskTitle: string; setTaskTitle: (value: string) => void; nextStep: () => void | Promise<void> }) {
   const path = getOnboardingPath(selectedPath);
   const cleanTaskTitle = String(taskTitle || '').trim();
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!cleanTaskTitle || busy) return;
+    setBusy(true);
+    try {
+      await nextStep();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col justify-center space-y-4">
       <div>
@@ -1703,23 +1820,40 @@ function SetupTaskScreen({ selectedPath, taskTitle, setTaskTitle, nextStep }: { 
         maxLength={160}
         value={taskTitle}
         onChange={event => setTaskTitle(event.target.value)}
+        onKeyDown={event => {
+          if (event.key === 'Enter') void submit();
+        }}
         placeholder="Write first draft, fix one bug, study 25 minutes..."
         className="h-14 rounded-2xl border border-card-border bg-card px-5 text-sm font-black text-text-main outline-none transition-all placeholder:text-text-secondary/40 focus:border-accent focus:ring-4 focus:ring-accent/10"
       />
       <div className="space-y-2">
-        {path.taskSuggestions.slice(0, 4).map(suggestion => (
-          <button
-            key={suggestion}
-            onClick={() => setTaskTitle(suggestion)}
-            className="flex w-full items-center gap-3 rounded-2xl border border-card-border bg-surface-muted p-2.5 text-left text-sm font-bold text-text-main transition-colors hover:border-accent"
-          >
-            <span className="h-5 w-5 rounded-lg border-2 border-accent/25 bg-card" />
-            {suggestion}
-          </button>
-        ))}
+        {path.taskSuggestions.slice(0, 4).map(suggestion => {
+          const selected = taskTitle === suggestion;
+          return (
+            <button
+              key={suggestion}
+              onClick={() => setTaskTitle(selected ? '' : suggestion)}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left text-sm font-bold transition-all active:scale-[0.99]',
+                selected
+                  ? 'border-accent bg-accent/10 text-text-main shadow-lg shadow-accent/10'
+                  : 'border-card-border bg-surface-muted text-text-main hover:border-accent'
+              )}
+            >
+              <span className={cn(
+                'flex h-5 w-5 items-center justify-center rounded-lg border-2 transition-colors',
+                selected ? 'border-accent bg-accent text-accent-contrast' : 'border-accent/25 bg-card'
+              )}>
+                {selected && <Check size={12} strokeWidth={3.5} />}
+              </span>
+              {suggestion}
+            </button>
+          );
+        })}
       </div>
-      <button onClick={nextStep} disabled={!cleanTaskTitle} className="h-14 rounded-2xl bg-accent text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
-        Add Action
+      <button onClick={() => void submit()} disabled={!cleanTaskTitle || busy} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-accent to-[#8B7CFF] text-xs font-black uppercase tracking-widest text-accent-contrast shadow-2xl shadow-accent/20 disabled:opacity-45 active:scale-[0.98]">
+        {busy && <Loader2 size={15} className="animate-spin" />}
+        {busy ? 'Adding...' : 'Add Action'}
       </button>
     </div>
   );
