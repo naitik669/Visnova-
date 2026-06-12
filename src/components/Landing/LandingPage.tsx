@@ -211,6 +211,127 @@ function StaggeredHeadline({ text, highlight, className = '' }: { text: string; 
   );
 }
 
+// Soft lavender spotlight that trails the cursor across the page. Desktop only.
+function CursorGlow() {
+  const x = useMotionValue(-600);
+  const y = useMotionValue(-600);
+  const springX = useSpring(x, { stiffness: 110, damping: 24, mass: 0.6 });
+  const springY = useSpring(y, { stiffness: 110, damping: 24, mass: 0.6 });
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    setEnabled(true);
+    const onMove = (event: PointerEvent) => {
+      x.set(event.clientX - 300);
+      y.set(event.clientY - 300);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [x, y]);
+
+  if (!enabled) return null;
+  return (
+    <motion.div
+      aria-hidden="true"
+      className="pointer-events-none fixed left-0 top-0 z-[1] h-[600px] w-[600px]"
+      style={{
+        x: springX,
+        y: springY,
+        background: 'radial-gradient(circle, rgba(109,93,246,0.085) 0%, rgba(155,140,255,0.04) 38%, transparent 68%)'
+      }}
+    />
+  );
+}
+
+// Pulls its child gently toward the cursor, like a magnet. Desktop only.
+function Magnetic({ children, strength = 0.32, className = '' }: { children: ReactNode; strength?: number; className?: string }) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const springX = useSpring(x, { stiffness: 220, damping: 16 });
+  const springY = useSpring(y, { stiffness: 220, damping: 16 });
+
+  return (
+    <motion.div
+      className={cn('inline-block', className)}
+      style={{ x: springX, y: springY }}
+      onPointerMove={event => {
+        if (event.pointerType !== 'mouse') return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        x.set((event.clientX - rect.left - rect.width / 2) * strength);
+        y.set((event.clientY - rect.top - rect.height / 2) * strength);
+      }}
+      onPointerLeave={() => {
+        x.set(0);
+        y.set(0);
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// Card with a cursor-tracking radial highlight on the surface and border.
+function SpotlightCard({ children, className = '' }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [spot, setSpot] = useState({ x: -200, y: -200, active: false });
+
+  return (
+    <div
+      ref={ref}
+      className={cn('group/spot relative overflow-hidden', className)}
+      onPointerMove={event => {
+        if (event.pointerType !== 'mouse' || !ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        setSpot({ x: event.clientX - rect.left, y: event.clientY - rect.top, active: true });
+      }}
+      onPointerLeave={() => setSpot(prev => ({ ...prev, active: false }))}
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 transition-opacity duration-500"
+        style={{
+          opacity: spot.active ? 1 : 0,
+          background: `radial-gradient(420px circle at ${spot.x}px ${spot.y}px, rgba(109,93,246,0.09), transparent 65%)`
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-500"
+        style={{
+          opacity: spot.active ? 1 : 0,
+          background: `radial-gradient(260px circle at ${spot.x}px ${spot.y}px, rgba(109,93,246,0.4), transparent 70%)`,
+          padding: '1.5px',
+          maskImage: 'linear-gradient(black, black) content-box, linear-gradient(black, black)',
+          WebkitMaskImage: 'linear-gradient(black, black) content-box, linear-gradient(black, black)',
+          maskComposite: 'exclude',
+          WebkitMaskComposite: 'xor'
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
+// Animated rotating conic-gradient border for the featured plan card.
+function GradientBorder({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('relative rounded-[1.65rem] p-[1.5px]', className)}>
+      <div aria-hidden="true" className="absolute inset-0 overflow-hidden rounded-[inherit]">
+        <motion.div
+          className="absolute left-1/2 top-1/2 aspect-square w-[200%] -translate-x-1/2 -translate-y-1/2"
+          style={{ background: 'conic-gradient(from 0deg, #6D5DF6, #C8BFFF, #FF9D42, #A694FF, #6D5DF6)' }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}
+        />
+      </div>
+      <div className="absolute -inset-1 rounded-[inherit] bg-gradient-to-r from-[#6D5DF6]/25 via-[#C8BFFF]/25 to-[#6D5DF6]/25 blur-lg" aria-hidden="true" />
+      <div className="relative rounded-[1.6rem] bg-white">{children}</div>
+    </div>
+  );
+}
+
 function TiltCard({ children, className = '', maxTilt = 5 }: { children: ReactNode; className?: string; maxTilt?: number }) {
   const rotateX = useMotionValue(0);
   const rotateY = useMotionValue(0);
@@ -754,6 +875,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#FBFAFF] font-sans text-[#131323] selection:bg-[#6D5DF6] selection:text-white">
       <OpeningAnimation visible={introVisible} />
+      <CursorGlow />
       <motion.div
         className="fixed left-0 top-0 z-[70] h-1 w-full origin-left bg-gradient-to-r from-[#6D5DF6] via-[#8B7CFF] to-[#C8BFFF]"
         style={{ scaleX: scrollYProgress }}
@@ -778,9 +900,11 @@ export default function LandingPage() {
             <button onClick={() => navigate('/auth')} className="hidden rounded-2xl border border-[#E6E8F2] bg-white px-5 py-3 text-sm font-black text-[#25163D] transition hover:border-[#D2CBFF] sm:inline-flex">
               Sign in
             </button>
-            <button onClick={goAuth} className="rounded-2xl bg-[#6D5DF6] px-5 py-3 text-sm font-black text-white shadow-[0_14px_28px_rgba(109,93,246,0.24)] transition hover:-translate-y-0.5">
-              Start Free
-            </button>
+            <Magnetic strength={0.25}>
+              <button onClick={goAuth} className="rounded-2xl bg-[#6D5DF6] px-5 py-3 text-sm font-black text-white shadow-[0_14px_28px_rgba(109,93,246,0.24)]">
+                Start Free
+              </button>
+            </Magnetic>
             <button onClick={() => setMenuOpen(value => !value)} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#E6E8F2] bg-white text-[#25163D] lg:hidden">
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -833,12 +957,16 @@ export default function LandingPage() {
               VisNova helps you plan what matters, choose one next move, log proof, and watch your progress become visible over time.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <motion.button onClick={goAuth} className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-8 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(109,93,246,0.28)]" whileHover={{ y: -3, scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                Start Free <ArrowRight className="ml-2 inline h-4 w-4" />
-              </motion.button>
-              <motion.button onClick={() => explore('how')} className="rounded-2xl border border-[#E1E4F0] bg-white px-8 py-4 text-sm font-black text-[#111126] shadow-sm" whileHover={{ y: -3, scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                See How It Works <ArrowRight className="ml-2 inline h-4 w-4" />
-              </motion.button>
+              <Magnetic>
+                <motion.button onClick={goAuth} className="rounded-2xl bg-gradient-to-r from-[#6D5DF6] to-[#8B7CFF] px-8 py-4 text-sm font-black text-white shadow-[0_16px_34px_rgba(109,93,246,0.28)]" whileTap={{ scale: 0.96 }}>
+                  Start Free <ArrowRight className="ml-2 inline h-4 w-4" />
+                </motion.button>
+              </Magnetic>
+              <Magnetic>
+                <motion.button onClick={() => explore('how')} className="rounded-2xl border border-[#E1E4F0] bg-white px-8 py-4 text-sm font-black text-[#111126] shadow-sm" whileTap={{ scale: 0.96 }}>
+                  See How It Works <ArrowRight className="ml-2 inline h-4 w-4" />
+                </motion.button>
+              </Magnetic>
             </div>
           </Reveal>
 
@@ -860,7 +988,8 @@ export default function LandingPage() {
           <div className="mx-auto mt-12 grid max-w-6xl gap-5 md:grid-cols-2 xl:grid-cols-5">
             {useCases.map((item, index) => (
               <Reveal key={item.title} delay={index * 0.04}>
-                <motion.article className="h-full rounded-[1.65rem] border border-[#E6E8F2] bg-[#FBFAFF] p-6 shadow-[0_18px_60px_rgba(32,30,70,0.04)]" whileHover={{ y: -8, boxShadow: '0 26px 70px rgba(109,93,246,0.12)' }}>
+                <motion.article className="h-full" whileHover={{ y: -8 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
+                  <SpotlightCard className="h-full rounded-[1.65rem] border border-[#E6E8F2] bg-[#FBFAFF] p-6 shadow-[0_18px_60px_rgba(32,30,70,0.04)]">
                   <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F0ECFF] text-[#6D5DF6]">
                     <item.icon className="h-6 w-6" />
                   </span>
@@ -872,6 +1001,7 @@ export default function LandingPage() {
                       <span key={feature} className="rounded-full bg-white px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-[#6D5DF6]">{feature}</span>
                     ))}
                   </div>
+                  </SpotlightCard>
                 </motion.article>
               </Reveal>
             ))}
@@ -953,18 +1083,25 @@ export default function LandingPage() {
             copy="Paid plans will open after beta. For now, the priority is proving the core loop: Vision, action, proof, progress."
           />
           <div className="mx-auto mt-12 grid max-w-6xl gap-5 md:grid-cols-3">
-            {plans.map(([name, headline, copy], index) => (
-              <Reveal key={name} delay={index * 0.05}>
-                <motion.article className={cn('h-full rounded-[1.65rem] border p-7 shadow-[0_20px_70px_rgba(32,30,70,0.05)]', index === 0 ? 'border-[#DCD4FF] bg-white' : 'border-[#E6E8F2] bg-white/75')} whileHover={{ y: -7 }}>
+            {plans.map(([name, headline, copy], index) => {
+              const card = (
+                <article className={cn('h-full p-7', index === 0 ? 'rounded-[1.6rem]' : 'rounded-[1.65rem] border border-[#E6E8F2] bg-white/75 shadow-[0_20px_70px_rgba(32,30,70,0.05)]')}>
                   <p className="text-sm font-black uppercase tracking-[0.18em] text-[#6D5DF6]">{name}</p>
                   <h3 className="mt-5 text-2xl font-black tracking-[-0.04em] text-[#12122B]">{headline}</h3>
                   <p className="mt-4 text-sm font-semibold leading-6 text-[#66708A]">{copy}</p>
                   <button onClick={goAuth} className={cn('mt-8 w-full rounded-2xl px-5 py-3 text-sm font-black', index === 0 ? 'bg-[#6D5DF6] text-white' : 'bg-[#F0ECFF] text-[#6D5DF6]')}>
                     {index === 0 ? 'Start Free' : 'Coming after beta'}
                   </button>
-                </motion.article>
-              </Reveal>
-            ))}
+                </article>
+              );
+              return (
+                <Reveal key={name} delay={index * 0.05}>
+                  <motion.div className="h-full" whileHover={{ y: -7 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
+                    {index === 0 ? <GradientBorder className="h-full shadow-[0_24px_80px_rgba(109,93,246,0.14)]">{card}</GradientBorder> : card}
+                  </motion.div>
+                </Reveal>
+              );
+            })}
           </div>
         </section>
 
@@ -977,10 +1114,12 @@ export default function LandingPage() {
           <div className="mx-auto mt-12 grid max-w-6xl gap-5 md:grid-cols-2 lg:grid-cols-4">
             {benefits.map((benefit, index) => (
               <Reveal key={benefit.title} delay={index * 0.04}>
-                <motion.article className="h-full rounded-[1.5rem] border border-[#E6E8F2] bg-white p-6 shadow-[0_18px_60px_rgba(32,30,70,0.04)]" whileHover={{ y: -6 }}>
-                  <benefit.icon className="h-7 w-7 text-[#6D5DF6]" />
-                  <h3 className="mt-6 text-xl font-black text-[#12122B]">{benefit.title}</h3>
-                  <p className="mt-3 text-sm font-semibold leading-6 text-[#66708A]">{benefit.copy}</p>
+                <motion.article className="h-full" whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
+                  <SpotlightCard className="h-full rounded-[1.5rem] border border-[#E6E8F2] bg-white p-6 shadow-[0_18px_60px_rgba(32,30,70,0.04)]">
+                    <benefit.icon className="h-7 w-7 text-[#6D5DF6]" />
+                    <h3 className="mt-6 text-xl font-black text-[#12122B]">{benefit.title}</h3>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-[#66708A]">{benefit.copy}</p>
+                  </SpotlightCard>
                 </motion.article>
               </Reveal>
             ))}
